@@ -1,0 +1,94 @@
+.container {
+  display: flex;
+  height: 100vh;
+  font-family: 'Segoe UI', sans-serif;
+}
+
+.left-panel {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+
+.bg-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.overlay-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: white;
+  text-align: center;
+  letter-spacing: 3px;
+}
+
+.overlay-text h2 {
+  font-size: 2em;
+  margin: 0;
+}
+
+.overlay-text h3 {
+  font-size: 1.5em;
+  margin: 0;
+}
+
+.right-panel {
+  flex: 1;
+  background-color: #e7edff;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.confirm-box {
+  background: white;
+  padding: 40px;
+  border-radius: 10px;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+  width: 400px;
+  text-align: center;
+}
+
+.confirm-box h2 {
+  margin-bottom: 20px;
+}
+
+.confirm-box input[type="email"],
+.confirm-box input[type="password"] {
+  width: 100%;
+  padding: 10px;
+  margin: 8px 0;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+}
+
+a,p {
+  color: #5E6E82;
+  text-decoration: none;
+}
+
+.confirm-box button {
+  width: 70%;
+  margin: 10px auto 20px; 
+  display: block;
+  padding: 10px;
+  background-color: #5c73db;
+  border: none;
+  color: white;
+  font-weight: bold;
+  border-radius: 5px;
+  cursor: pointer;
+  margin-top: 45px; 
+}
+
+.logo {
+  margin-top: 30px;
+}
+
+.logo img {
+  height: 100px;
+}
