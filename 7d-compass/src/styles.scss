@@ -1,7 +1,27 @@
 /* You can add global styles to this file, and also import other style files */
-
+@use './variables' as *;
 html, body { height: 100%; }
 body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
 
 html, body { height: 100%; }
 body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
+
+mat-expansion-panel.mat-expanded.mat-expansion-panel-spacing {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+}
+.mat-expansion-panel-body {
+  padding: 0 !important;
+}
+// Style header of expanded panel
+mat-expansion-panel.mat-expanded .mat-expansion-panel-header {
+  background-color: $deep-blue !important;
+  color: $white !important;
+  padding-top: 32 !important;
+}
+
+// Also force icon and text inside the header to be white
+mat-expansion-panel.mat-expanded .mat-expansion-panel-header * {
+  color: $white !important;
+  fill: $white !important; // for SVG icons
+}
