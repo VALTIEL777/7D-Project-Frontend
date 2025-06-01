@@ -38,4 +38,10 @@ export class AuthService {
   return !!localStorage.getItem('token');
 }
 
+getUserRole(): string {
+  // Devuelve un rol dummy por ahora
+  return 'admin'; // o 'user', dependiendo de tu lógica
+}
+
+
 }

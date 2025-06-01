@@ -53,6 +53,6 @@ export class LoginComponent implements OnInit {
   }
 
   redirectToForgotPassword(): void {
-    this.router.navigate(['/forgotpassword']);
+    this.router.navigate(['/forgot-password']);
   }
 }
