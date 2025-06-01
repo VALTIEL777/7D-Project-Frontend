@@ -1,0 +1,34 @@
+<h2 mat-dialog-title>
+  {{ data.type === 'user' ? data.name :
+     data.type === 'invoice' ? 'Invoice #' + data.id :
+     data.type === 'route' ? 'Route ' + data.id :
+     'Detail'
+  }}
+</h2>
+
+<mat-dialog-content>
+  <ng-container [ngSwitch]="data.type">
+    <div *ngSwitchCase="'user'">
+      <p><strong>Role:</strong> {{ data.role }}</p>
+      <p><strong>City:</strong> {{ data.city }}</p>
+    </div>
+
+    <div *ngSwitchCase="'invoice'">
+      <p><strong>Customer:</strong> {{ data.customer }}</p>
+      <p><strong>Total:</strong> ${{ data.total }}</p>
+    </div>
+
+    <div *ngSwitchCase="'route'">
+      <p><strong>Origin:</strong> {{ data.origin }}</p>
+      <p><strong>Destination:</strong> {{ data.destination }}</p>
+    </div>
+
+    <div *ngSwitchDefault>
+      <p>No detail available for this item.</p>
+    </div>
+  </ng-container>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button mat-dialog-close>Close</button>
+</mat-dialog-actions>

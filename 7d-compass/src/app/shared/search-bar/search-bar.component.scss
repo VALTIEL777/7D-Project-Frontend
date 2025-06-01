@@ -1,0 +1,58 @@
+@use '../../../variables' as *;
+
+:host {
+  display: block;
+  width: 100%;
+}
+
+.search-box {
+  padding: 0px 16px;
+  background: $light-blue;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  max-width: 500px;
+  margin-left: auto;
+  margin-right: auto;
+  position: relative;
+
+  mat-icon.search-icon {
+    color: $deep-blue;
+    font-size: 20px;
+  }
+
+  input {
+    width: 100%;
+    height: 40px;
+    background: transparent;
+    border: none;
+    outline: none;
+    box-shadow: none;
+    font-size: 16px;
+    color: $deep-blue;
+
+    &::placeholder {
+      color: $deep-blue;
+      opacity: 1;
+    }
+
+    &:focus {
+      outline: none;
+      box-shadow: none;
+    }
+  }
+}
+
+// Remove Angular Material outline from autocomplete
+::ng-deep .mdc-notched-outline {
+  display: none !important;
+}
+::ng-deep .mat-mdc-form-field-icon-prefix {
+  margin-right: 0px !important; // default is 8px, reduce to 4px or even 2px
+  padding: 0 !important;        // remove any internal padding if present
+  height: 20px;                 // optional: reduce height of icon if needed
+  display: flex;
+  align-items: center;
+}
+

@@ -1,0 +1,18 @@
+<mat-form-field class="search-box" appearance="outline">
+  <mat-icon matPrefix class="search-icon">search</mat-icon>
+  <input
+    type="text"
+    matInput
+    [formControl]="searchControl"
+    [matAutocomplete]="auto"
+    placeholder="How can I help you?"
+  />
+  <mat-autocomplete
+    #auto="matAutocomplete"
+    [displayWith]="displayFn.bind(this)"
+  >
+    <mat-option *ngFor="let item of filteredOptions" [value]="item">
+      {{ displayFn(item) }}
+    </mat-option>
+  </mat-autocomplete>
+</mat-form-field>

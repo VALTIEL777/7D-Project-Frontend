@@ -1,0 +1,29 @@
+@use '../../../variables' as *;
+.title-bar-toolbar {
+  display: flex;
+  align-items: center;
+
+  .toolbar-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: $deep-blue;
+  }
+
+  .spacer {
+    flex: 1 1 auto;
+  }
+
+  app-search-bar {
+    margin-right: 1%;
+    max-width: 600px;
+  }
+
+
+
+  .user-photo {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    object-fit: cover;
+  }
+}
