@@ -51,7 +51,10 @@ export class SideNavbarComponent {
     });
   }
 
-  isExpanded(paths: string[]): boolean {
-    return paths.some(path => this.currentRoute.startsWith(path));
+  isExpanded(routes: string[]): boolean {
+    const currentUrl = this.router.url;
+
+    // Return true if currentUrl matches exactly or starts with one of the routes
+    return routes.some(route => currentUrl === route || currentUrl.startsWith(route + '/'));
   }
 }

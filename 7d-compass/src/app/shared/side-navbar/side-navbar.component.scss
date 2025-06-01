@@ -119,3 +119,11 @@ mat-form-field {
 ::ng-deep mat-sidenav-content {
   background-color: $white;
 }
+a.mat-button {
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+a.mat-button.active-link {
+  background-color: #1976d2;
+  color: white;
+}
