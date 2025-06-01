@@ -1,0 +1,110 @@
+<mat-sidenav-container class="app-container">
+  <mat-sidenav
+    #sidenav
+    mode="side"
+    opened
+    fixedInViewport="true"
+    class="app-sidenav"
+  >
+    <div class="sidebar-title">
+      <img
+        src="assets/svg/7Compass-black.svg"
+        alt="Compass Logo"
+        width="28"
+        height="28"
+        style="vertical-align: middle; margin-right: 8px"
+      />
+      <span class="sidebar-title-text">Compass</span>
+    </div>
+    <mat-divider></mat-divider>
+    <mat-form-field>
+      <mat-select disabled [(value)]="selectedCompany">
+        <mat-select-trigger>
+          <div style="display: flex; align-items: center; gap: 8px">
+            <img
+              src="assets/svg/PeopleGas.svg"
+              alt="Compass Logo"
+              width="28"
+              height="28"
+              style="vertical-align: middle; margin-right: 8px"
+            />
+            People Gas
+          </div>
+        </mat-select-trigger>
+        <mat-option value="option1">
+          <div style="display: flex; align-items: center; gap: 8px">
+            <img
+              src="assets/svg/PeopleGas.svg"
+              alt="Compass Logo"
+              width="28"
+              height="28"
+              style="vertical-align: middle; margin-right: 8px"
+            />
+            People Gas
+          </div>
+        </mat-option>
+        <mat-option value="option2" disabled>Option 2 </mat-option>
+        <mat-option value="option3">Option 3</mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <mat-accordion>
+      <mat-expansion-panel>
+        <mat-expansion-panel-header> Overview </mat-expansion-panel-header>
+        <a mat-button routerLink="/overview" routerLinkActive="active-link"
+          >Go to Overview</a
+        >
+      </mat-expansion-panel>
+      <mat-expansion-panel>
+        <mat-expansion-panel-header> RTR Data </mat-expansion-panel-header>
+        <a mat-button routerLink="/rtr-data">Go to RTR Data</a>
+      </mat-expansion-panel>
+      <mat-expansion-panel>
+        <mat-expansion-panel-header> User Data </mat-expansion-panel-header>
+        <a mat-button routerLink="/user-data">Go to User Data</a>
+      </mat-expansion-panel>
+      <mat-expansion-panel>
+        <mat-expansion-panel-header>
+          Route Generator
+        </mat-expansion-panel-header>
+        <a mat-button routerLink="/route-generator">Go to Route Generator</a>
+      </mat-expansion-panel>
+      <mat-expansion-panel>
+        <mat-expansion-panel-header> Tables </mat-expansion-panel-header>
+        <a mat-button routerLink="/tables">Go to Tables</a>
+      </mat-expansion-panel>
+      <mat-expansion-panel>
+        <mat-expansion-panel-header> Invoice </mat-expansion-panel-header>
+        <a mat-button routerLink="/invoice">Go to Invoice</a>
+      </mat-expansion-panel>
+      <mat-expansion-panel>
+        <mat-expansion-panel-header>
+          Files and Permits
+        </mat-expansion-panel-header>
+        <a mat-button routerLink="/files-and-permits"
+          >Go to Files and Permits</a
+        >
+      </mat-expansion-panel>
+      <mat-expansion-panel>
+        <mat-expansion-panel-header>
+          Fines and Penalties
+        </mat-expansion-panel-header>
+        <a mat-button routerLink="/fines-and-penalties"
+          >Go to Fines and Penalties</a
+        >
+      </mat-expansion-panel>
+      <mat-expansion-panel>
+        <mat-expansion-panel-header> Report Center </mat-expansion-panel-header>
+        <a mat-button routerLink="/report-center">Go to Report Center</a>
+      </mat-expansion-panel>
+      <mat-expansion-panel>
+        <mat-expansion-panel-header> Settings </mat-expansion-panel-header>
+        <a mat-button routerLink="/settings">Go to Settings</a>
+      </mat-expansion-panel>
+    </mat-accordion>
+  </mat-sidenav>
+
+  <mat-sidenav-content>
+    <ng-content></ng-content>
+  </mat-sidenav-content>
+</mat-sidenav-container>
