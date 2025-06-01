@@ -1,0 +1,129 @@
+@use '../../../variables' as *;
+
+.app-container {
+  height: 100vh;
+  width: 100%;
+}
+
+.app-sidenav {
+  width: 250px;  // Fixed width for sidebar
+
+  a[mat-button] {
+    width: 100%;
+    border-radius: 0 !important;
+    text-align: left !important;
+  }
+}
+
+.sidebar-title {
+  display: flex;
+  align-items: center;
+  padding: 16px 24px;
+  gap: 12px;
+
+  .sidebar-logo {
+    width: 40px;
+    height: 40px;
+  }
+
+  .sidebar-title-text {
+    font-size: 1.6rem; // Larger text
+    font-weight: 600;
+    color: $light-blue;
+  }
+}
+
+mat-expansion-panel {
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  border-bottom: 1px solid #eee;
+}
+
+// Expansion panel overrides
+::ng-deep mat-expansion-panel.mat-expanded {
+  .mat-expansion-panel-header {
+    padding-top: -5px !important; // override Material default
+  }
+}
+
+// Button styles
+a.mat-button {
+  width: 100% !important;
+  border-radius: 0 !important;
+  text-align: left;
+  justify-content: flex-start;
+  padding-left: 16px;
+  box-sizing: border-box;
+
+  &:hover {
+    background-color: $light-blue !important;
+  }
+
+  &.active-link {
+    background-color: $deep-blue !important;
+    color: $white !important;
+  }
+}
+mat-form-field {
+  width: 100%;
+
+  // These additional styles ensure proper stretching
+  .mat-form-field-infix {
+    width: 100%;
+  }
+
+  .mat-select {
+    width: 100%;
+  }
+
+  .mat-form-field-flex {
+    align-items: center; // Keeps the arrow aligned properly
+  }
+}
+
+.option-with-icon {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  mat-icon {
+    font-size: 20px;
+    height: 20px;
+    width: 20px;
+  }
+}
+
+.mat-select-value-text {
+  display: flex;
+  align-items: center;
+}
+::ng-deep .mat-mdc-form-field-subscript-wrapper {
+  display: none !important;
+}
+::ng-deep mat-expansion-panel-header mat-icon {
+  margin-right: 8px; // Adjust as needed (e.g. 4px, 6px, etc.)
+}
+::ng-deep mat-expansion-panel-header {
+  color: $deep-blue !important;
+
+  mat-icon {
+    color: $deep-blue !important;
+    margin-right: 8px; // spacing between icon and text
+  }
+
+  span {
+    color: $deep-blue !important;
+    font-weight: 500;
+  }
+}
+::ng-deep mat-sidenav-content {
+  background-color: $white;
+}
+a.mat-button {
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+a.mat-button.active-link {
+  background-color: #1976d2;
+  color: white;
+}

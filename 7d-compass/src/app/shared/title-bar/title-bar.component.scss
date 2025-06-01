@@ -1,0 +1,51 @@
+@use '../../../variables' as *;
+
+.title-bar {
+  width: 100%;
+  background: $light-purple;   // blue-ish container background
+  border-radius: 12px;
+  padding: 0 24px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  height: 64px; // Adjust as needed
+}
+
+.title-bar-toolbar {
+  background: transparent;
+  box-shadow: none;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  height: 100%;
+  padding: 0;
+  border-radius: inherit;
+
+  .toolbar-title {
+    font-size: 20px;
+    font-weight: 600;
+    color: $deep-blue;
+  }
+
+  .spacer {
+    flex: 1;
+  }
+
+  app-search-bar {
+    flex-grow: 1;
+    max-width: 800px;
+    margin: 0 16px;
+  }
+
+  .notification-button {
+    margin-left: 5vh;
+  }
+
+  .user-photo {
+    margin-left: 2vh;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    margin-right: 5vh;
+  }
+}

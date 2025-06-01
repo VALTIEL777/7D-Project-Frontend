@@ -1,1 +1,25 @@
-<p>dashboard works!</p>
+<app-dashboard-layout>
+  <h1>Dashboard</h1>
+  <p>Dashboard page is owrking.</p>
+  <app-card-with-button
+  [title]="'Sales Overview'"
+  [description]="'Details of monthly sales'"
+  [percentage]="12"
+  [isPositive]="true"
+  [showEyeButton]="true"
+  ></app-card-with-button>
+    <app-card-with-button
+  [title]="'Inventory Status'"
+  [description]="'Current stock levels'"
+  [percentage]="-5"
+  [isPositive]="false"
+  [showEditButton]="true"
+  ></app-card-with-button>
+
+      <app-card-with-button
+  [title]="'Basic Report'"
+  [description]="'No actions available'"
+  [percentage]="0"
+  [isPositive]="true"
+  ></app-card-with-button>
+</app-dashboard-layout>
