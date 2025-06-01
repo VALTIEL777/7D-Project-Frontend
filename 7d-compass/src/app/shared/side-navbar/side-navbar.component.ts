@@ -13,6 +13,8 @@ import {MatInputModule} from '@angular/material/input';
 import {MatSelectModule} from '@angular/material/select';
 import {MatFormFieldModule} from '@angular/material/form-field';
 import {MatCheckboxModule} from '@angular/material/checkbox';
+import { Router, NavigationEnd } from '@angular/router';
+
 @Component({
   selector: 'app-side-navbar',
   imports: [
@@ -38,5 +40,18 @@ import {MatCheckboxModule} from '@angular/material/checkbox';
 export class SideNavbarComponent {
   selectedCompany = 'option1';
 
+  currentRoute = '';
 
+  constructor(private router: Router) {
+    // Watch for route changes
+    this.router.events.subscribe(event => {
+      if (event instanceof NavigationEnd) {
+        this.currentRoute = event.urlAfterRedirects;
+      }
+    });
+  }
+
+  isExpanded(paths: string[]): boolean {
+    return paths.some(path => this.currentRoute.startsWith(path));
+  }
 }

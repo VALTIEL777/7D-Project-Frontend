@@ -35,7 +35,7 @@
     <mat-accordion>
 
       <!-- Overview -->
-      <mat-expansion-panel>
+      <mat-expansion-panel [expanded]="isExpanded(['/overview'])">
         <mat-expansion-panel-header>
           <mat-icon>dashboard</mat-icon>
           <span>Overview</span>
@@ -44,7 +44,7 @@
       </mat-expansion-panel>
 
       <!-- RTR Data -->
-      <mat-expansion-panel>
+      <mat-expansion-panel [expanded]="isExpanded(['/rtr-processing', '/misc-generation'])">
         <mat-expansion-panel-header>
           <mat-icon>storage</mat-icon>
           <span>RTR Data</span>
@@ -54,7 +54,7 @@
       </mat-expansion-panel>
 
       <!-- Files & Reports -->
-      <mat-expansion-panel>
+      <mat-expansion-panel [expanded]="isExpanded(['/report-center', '/files-permits'])">
         <mat-expansion-panel-header>
           <mat-icon>folder</mat-icon>
           <span>Files & Reports</span>
@@ -64,7 +64,7 @@
       </mat-expansion-panel>
 
       <!-- Routes -->
-      <mat-expansion-panel>
+      <mat-expansion-panel [expanded]="isExpanded(['/route-generator', '/route-history', '/route-tracker'])">
         <mat-expansion-panel-header>
           <mat-icon>alt_route</mat-icon>
           <span>Routes</span>
@@ -75,7 +75,7 @@
       </mat-expansion-panel>
 
       <!-- Revenue -->
-      <mat-expansion-panel>
+      <mat-expansion-panel [expanded]="isExpanded(['/income', '/fines-penalties'])">
         <mat-expansion-panel-header>
           <mat-icon>payments</mat-icon>
           <span>Revenue</span>
@@ -85,7 +85,11 @@
       </mat-expansion-panel>
 
       <!-- Manage -->
-      <mat-expansion-panel>
+      <mat-expansion-panel [expanded]="isExpanded([
+        '/users', '/contract-units', '/payments', '/invoices',
+        '/fines', '/supervisors', '/inventory', '/suppliers',
+        '/equipment', '/crews', '/ticket'
+      ])">
         <mat-expansion-panel-header>
           <mat-icon>manage_accounts</mat-icon>
           <span>Manage</span>
