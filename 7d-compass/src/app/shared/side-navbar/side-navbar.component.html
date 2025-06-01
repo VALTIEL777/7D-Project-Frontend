@@ -6,16 +6,15 @@
     fixedInViewport="true"
     class="app-sidenav"
   >
-    <div class="sidebar-title">
-      <img
-        src="assets/svg/7Compass-black.svg"
-        alt="Compass Logo"
-        width="28"
-        height="28"
-        style="vertical-align: middle; margin-right: 8px"
-      />
-      <span class="sidebar-title-text">Compass</span>
-    </div>
+<div class="sidebar-title">
+  <img
+    src="assets/svg/7Compass-blue.svg"
+    alt="Compass Logo"
+    class="sidebar-logo"
+  />
+  <span class="sidebar-title-text">Compass</span>
+</div>
+
     <mat-divider></mat-divider>
     <mat-form-field>
       <mat-select disabled [(value)]="selectedCompany">
@@ -50,36 +49,53 @@
 
     <mat-accordion>
       <mat-expansion-panel>
-        <mat-expansion-panel-header> Overview </mat-expansion-panel-header>
+        <mat-expansion-panel-header>
+          <mat-icon>dashboard</mat-icon>
+          <span>Overview</span>
+        </mat-expansion-panel-header>
         <a mat-button routerLink="/overview" routerLinkActive="active-link"
           >Go to Overview</a
         >
       </mat-expansion-panel>
       <mat-expansion-panel>
-        <mat-expansion-panel-header> RTR Data </mat-expansion-panel-header>
+        <mat-expansion-panel-header>
+          <mat-icon>storage</mat-icon>
+          <span>RTR Data</span>
+        </mat-expansion-panel-header>
         <a mat-button routerLink="/rtr-data">Go to RTR Data</a>
       </mat-expansion-panel>
       <mat-expansion-panel>
-        <mat-expansion-panel-header> User Data </mat-expansion-panel-header>
+        <mat-expansion-panel-header>
+          <mat-icon>people</mat-icon>
+          <span>User Data</span>
+        </mat-expansion-panel-header>
         <a mat-button routerLink="/user-data">Go to User Data</a>
       </mat-expansion-panel>
       <mat-expansion-panel>
         <mat-expansion-panel-header>
-          Route Generator
+          <mat-icon>route</mat-icon>
+          <span>Route Generator</span>
         </mat-expansion-panel-header>
         <a mat-button routerLink="/route-generator">Go to Route Generator</a>
       </mat-expansion-panel>
       <mat-expansion-panel>
-        <mat-expansion-panel-header> Tables </mat-expansion-panel-header>
+        <mat-expansion-panel-header>
+          <mat-icon>table_chart</mat-icon>
+          <span>Tables</span>
+        </mat-expansion-panel-header>
         <a mat-button routerLink="/tables">Go to Tables</a>
       </mat-expansion-panel>
       <mat-expansion-panel>
-        <mat-expansion-panel-header> Invoice </mat-expansion-panel-header>
+        <mat-expansion-panel-header>
+          <mat-icon>receipt_long</mat-icon>
+          <span>Invoice</span>
+        </mat-expansion-panel-header>
         <a mat-button routerLink="/invoice">Go to Invoice</a>
       </mat-expansion-panel>
       <mat-expansion-panel>
         <mat-expansion-panel-header>
-          Files and Permits
+          <mat-icon>folder</mat-icon>
+          <span>Files and Permits</span>
         </mat-expansion-panel-header>
         <a mat-button routerLink="/files-and-permits"
           >Go to Files and Permits</a
@@ -87,18 +103,25 @@
       </mat-expansion-panel>
       <mat-expansion-panel>
         <mat-expansion-panel-header>
-          Fines and Penalties
+          <mat-icon>gavel</mat-icon>
+          <span>Fines and Penalties</span>
         </mat-expansion-panel-header>
         <a mat-button routerLink="/fines-and-penalties"
           >Go to Fines and Penalties</a
         >
       </mat-expansion-panel>
       <mat-expansion-panel>
-        <mat-expansion-panel-header> Report Center </mat-expansion-panel-header>
+        <mat-expansion-panel-header>
+          <mat-icon>assessment</mat-icon>
+          <span>Report Center</span>
+        </mat-expansion-panel-header>
         <a mat-button routerLink="/report-center">Go to Report Center</a>
       </mat-expansion-panel>
       <mat-expansion-panel>
-        <mat-expansion-panel-header> Settings </mat-expansion-panel-header>
+        <mat-expansion-panel-header>
+          <mat-icon>settings</mat-icon>
+          <span>Settings</span>
+        </mat-expansion-panel-header>
         <a mat-button routerLink="/settings">Go to Settings</a>
       </mat-expansion-panel>
     </mat-accordion>
