@@ -1,4 +1,4 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { ReactiveFormsModule, FormControl } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -24,7 +24,7 @@ import { MatIcon } from '@angular/material/icon';
     MatIcon
   ],
   templateUrl: './search-bar.component.html',
-  styleUrl: './search-bar.component.scss'
+  styleUrls: ['./search-bar.component.scss']
 })
 export class SearchBarComponent {
   private dialog = inject(MatDialog);
@@ -32,13 +32,13 @@ export class SearchBarComponent {
   searchControl = new FormControl('');
   filteredOptions: any[] = [];
 
-  records = [
-    { type: 'user', name: 'Alice Johnson', role: 'Admin', city: 'New York' },
-    { type: 'invoice', id: 1023, customer: 'Bob Smith', total: 250.75 },
-    { type: 'route', id: 'R23', origin: 'Chicago', destination: 'Houston' },
-    { type: 'user', name: 'Charlie Lee', role: 'User', city: 'Boston' },
-    { type: 'invoice', id: 2021, customer: 'Diana Prince', total: 980.5 }
-  ];
+records = [
+  { type: 'user', name: 'Alice Johnson', role: 'Admin', city: 'New York', createdAt: new Date('2024-04-01') },
+  { type: 'invoice', id: 1023, customer: 'Bob Smith', total: 250.75, createdAt: new Date('2024-05-15') },
+  { type: 'route', id: 'R23', origin: 'Chicago', destination: 'Houston', createdAt: new Date('2024-02-20') },
+  { type: 'user', name: 'Charlie Lee', role: 'User', city: 'Boston', createdAt: new Date('2024-06-10') },
+  { type: 'invoice', id: 2021, customer: 'Diana Prince', total: 980.5, createdAt: new Date('2024-01-05') }
+];
 
   constructor() {
     this.searchControl.valueChanges
@@ -51,16 +51,23 @@ export class SearchBarComponent {
       .subscribe(results => this.filteredOptions = results);
   }
 
-  displayFn(item: any): string {
-    if (!item) return '';
-    return item.type === 'user'
-      ? item.name
-      : item.type === 'invoice'
-      ? `Invoice #${item.id}`
-      : item.type === 'route'
-      ? `Route ${item.id}`
-      : 'Unknown';
-  }
+displayFn(item: any): string {
+  if (!item) return '';
+
+  const formattedDate = item.createdAt
+    ? new Intl.DateTimeFormat('en-US', { year: 'numeric', month: 'short', day: 'numeric' }).format(item.createdAt)
+    : '';
+
+  let baseText = item.type === 'user'
+    ? item.name
+    : item.type === 'invoice'
+    ? `Invoice #${item.id}`
+    : item.type === 'route'
+    ? `Route ${item.id}`
+    : 'Unknown';
+
+  return `${baseText} — ${formattedDate}`;
+}
 
   private _filter(query: string): any[] {
     const q = query.toLowerCase();

@@ -1,10 +1,10 @@
 @use '../../../variables' as *;
 
 .search-box {
-  background: $light-blue;
+  background: $white;
   border-radius: 12px;
   padding: 0 16px;
-  max-width: 500px;
+  max-width: 600px;
   width: 100%;
   display: flex;
   align-items: center;
@@ -63,8 +63,32 @@
     box-shadow: none !important;
   }
 }
+
 ::ng-deep .mdc-notched-outline,
 ::ng-deep .mat-mdc-form-field-outline {
   display: none !important;
   border: none !important;
+}
+
+/* New styles for autocomplete options */
+.option-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.option-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.option-type {
+  font-size: 12px;
+  font-weight: 600;
+  color: $deep-blue;
+  text-transform: capitalize;
+  margin-left: 8px;
+  flex-shrink: 0;
 }

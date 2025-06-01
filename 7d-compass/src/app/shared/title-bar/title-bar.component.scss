@@ -1,10 +1,8 @@
 @use '../../../variables' as *;
 
-
-
 .title-bar {
   width: 100%;
-  background: $light-purple;
+  background: $light-purple;   // blue-ish container background
   border-radius: 12px;
   padding: 0 24px;
   box-sizing: border-box;
@@ -31,6 +29,12 @@
 
   .spacer {
     flex: 1;
+  }
+
+  app-search-bar {
+    flex-grow: 1;
+    max-width: 800px;
+    margin: 0 16px;
   }
 
   .notification-button {

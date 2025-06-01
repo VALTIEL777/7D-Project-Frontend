@@ -7,12 +7,12 @@
     [matAutocomplete]="auto"
     placeholder="How can I help you?"
   />
-  <mat-autocomplete
-    #auto="matAutocomplete"
-    [displayWith]="displayFn.bind(this)"
-  >
+  <mat-autocomplete #auto="matAutocomplete" [displayWith]="displayFn.bind(this)">
     <mat-option *ngFor="let item of filteredOptions" [value]="item">
-      {{ displayFn(item) }}
+      <div class="option-content">
+        <span class="option-label">{{ displayFn(item) }}</span>
+        <span class="option-type">{{ item.type }}</span>
+      </div>
     </mat-option>
   </mat-autocomplete>
 </mat-form-field>
