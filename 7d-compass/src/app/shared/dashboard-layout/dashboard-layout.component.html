@@ -1,3 +1,13 @@
-<app-side-navbar>
-  <h2>dashboardlayout</h2>
-</app-side-navbar>
+<div class="layout-container">
+  <app-side-navbar></app-side-navbar>
+
+  <div class="main-content">
+    <app-title-bar></app-title-bar>
+
+    <div class="page-container">
+      <mat-card class="full-card">
+        <ng-content></ng-content>
+      </mat-card>
+    </div>
+  </div>
+</div>
