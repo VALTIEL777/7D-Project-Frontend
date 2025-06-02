@@ -6,23 +6,42 @@
   <div class="right-panel">
     <mat-card class="login-box">
       <h2>Log In</h2>
-      <form>
+
+      <form [formGroup]="loginForm" (ngSubmit)="login()">
         <mat-form-field appearance="outline" class="full-width">
-          <mat-label>Email</mat-label>
-          <input matInput type="email" placeholder="Email" />
+          <mat-label>Email o Usuario</mat-label>
+          <input matInput formControlName="identifier" placeholder="Email o usuario" />
+          <mat-error *ngIf="loginForm.get('identifier')?.hasError('required')">
+            Campo requerido
+          </mat-error>
+          <mat-error *ngIf="loginForm.get('identifier')?.hasError('minlength')">
+            Mínimo 4 caracteres
+          </mat-error>
         </mat-form-field>
 
         <mat-form-field appearance="outline" class="full-width">
           <mat-label>Password</mat-label>
-          <input matInput type="password" placeholder="Password" />
+          <input matInput type="password" formControlName="password" placeholder="Password" />
+          <mat-error *ngIf="loginForm.get('password')?.hasError('required')">
+            Campo requerido
+          </mat-error>
+          <mat-error *ngIf="loginForm.get('password')?.hasError('minlength')">
+            Mínimo 6 caracteres
+          </mat-error>
         </mat-form-field>
 
         <div class="options">
           <mat-checkbox>Remember me</mat-checkbox>
-          <a href="#">Forgot Password?</a>
+          <a (click)="redirectToForgotPassword()" style="cursor: pointer;">Forgot Password?</a>
         </div>
 
-        <button type="submit">Log in</button>
+        <button mat-raised-button color="primary" type="submit" class="full-width" routelink>
+          Log in
+        </button>
+
+        <div *ngIf="errorMessage" class="error-message">
+          {{ errorMessage }}
+        </div>
 
         <div class="logo">
           <img src="assets/imgs/logo.jpg" alt="7D Logo" />
