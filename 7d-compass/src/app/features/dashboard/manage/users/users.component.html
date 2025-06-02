@@ -1,2 +1,13 @@
+<!-- users.component.html -->
 <app-dashboard-layout>
+  <app-card-with-button title="User Management" [showEyeButton]="false">
+    <app-data-table
+      [title]="'User Management'"
+      [data]="tableData"
+      [columns]="columns"
+      [pageSizeOptions]="[5, 10, 20]"
+      (edit)="onEdit($event)"
+      (delete)="onDelete($event)">
+    </app-data-table>
+  </app-card-with-button>
 </app-dashboard-layout>
