@@ -1,19 +1,23 @@
 <app-dashboard-layout>
 
-  <app-card-with-button
+<app-card-with-button
   [title]="'Sales Overview'"
   [description]="'Details of monthly sales'"
   [percentage]="12"
   [isPositive]="true"
   [showEyeButton]="true"
-  ></app-card-with-button>
-    <app-card-with-button
+  [showLabel]="true"
+></app-card-with-button>
+
+<app-card-with-button
   [title]="'Inventory Status'"
   [description]="'Current stock levels'"
   [percentage]="-5"
   [isPositive]="false"
   [showEditButton]="true"
-  ></app-card-with-button>
+  [showLabel]="true"
+></app-card-with-button>
+
 
 <app-card-with-button title="User Table" [showEyeButton]="true">
   <table mat-table [dataSource]="tableData" class="mat-elevation-z1" style="width: 100%">

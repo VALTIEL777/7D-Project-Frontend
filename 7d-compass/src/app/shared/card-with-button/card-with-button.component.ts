@@ -17,4 +17,8 @@ export class CardWithButtonComponent {
   // Control which buttons to show:
   @Input() showEyeButton = false;
   @Input() showEditButton = false;
+
+
+  @Input() showLabel = false;
+
 }
