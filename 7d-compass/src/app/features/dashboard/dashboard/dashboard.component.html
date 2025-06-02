@@ -1,6 +1,5 @@
 <app-dashboard-layout>
-  <h1>Dashboard</h1>
-  <p>Dashboard page is owrking.</p>
+
   <app-card-with-button
   [title]="'Sales Overview'"
   [description]="'Details of monthly sales'"
@@ -16,10 +15,24 @@
   [showEditButton]="true"
   ></app-card-with-button>
 
-      <app-card-with-button
-  [title]="'Basic Report'"
-  [description]="'No actions available'"
-  [percentage]="0"
-  [isPositive]="true"
-  ></app-card-with-button>
+<app-card-with-button title="User Table" [showEyeButton]="true">
+  <table mat-table [dataSource]="data" class="mat-elevation-z1" style="width: 100%">
+
+    <!-- Name Column -->
+    <ng-container matColumnDef="name">
+      <th mat-header-cell *matHeaderCellDef>Name</th>
+      <td mat-cell *matCellDef="let user">{{ user.name }}</td>
+    </ng-container>
+
+    <!-- Email Column -->
+    <ng-container matColumnDef="email">
+      <th mat-header-cell *matHeaderCellDef>Email</th>
+      <td mat-cell *matCellDef="let user">{{ user.email }}</td>
+    </ng-container>
+
+    <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+    <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+  </table>
+</app-card-with-button>
+
 </app-dashboard-layout>
