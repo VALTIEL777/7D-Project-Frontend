@@ -5,13 +5,15 @@ import { LogOutComponent } from './log-out/log-out.component';
 import { ForgotPasswordComponent } from './forgot-password/forgot-password.component';
 import { ResetPasswordComponent } from './reset-password/reset-password.component';
 import { ConfirmEmailComponent } from './confirm-email/confirm-email.component';
+import { AuthGuard } from '../../core/guards/auth.guard';
 
 const routes: Routes = [
   { path: '', component: LoginComponent },
+  { path: 'login', component: LoginComponent },
   { path: 'logout', component: LogOutComponent },
   { path: 'forgot-password', component: ForgotPasswordComponent },
-  { path: 'reset-password', component: ResetPasswordComponent },
-  { path: 'confirm-email', component: ConfirmEmailComponent },
+  { path: 'reset-password', component: ResetPasswordComponent, canActivate: [AuthGuard] },
+  { path: 'confirm-email', component: ConfirmEmailComponent, canActivate: [AuthGuard] },
 ];
 
 @NgModule({
