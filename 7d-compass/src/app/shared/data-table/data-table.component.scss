@@ -1,4 +1,5 @@
-@use '../../../../../variables' as *;
+/* data-table.component.scss */
+@use '../../../variables' as *;
 @use "sass:color";
 
 .table-container {
@@ -6,21 +7,19 @@
   overflow: auto;
 }
 
-/* Actions Column Cell */
-.mat-column-actions {
+.actions-cell {
   width: 120px;
   padding: 0 8px !important;
-
-  .actions-container {
-    display: flex;
-    justify-content: space-around;
-    align-items: center;
-    width: 100%;
-    gap: 8px;
-  }
 }
 
-/* Button Styles */
+.actions-container {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  width: 100%;
+  gap: 8px;
+}
+
 .mat-icon-button {
   display: inline-flex !important;
   align-items: center !important;
@@ -45,11 +44,9 @@
   }
 }
 
-/* Edit Button (Yellow) */
 .edit-button {
   color: #ffc107;
   border: none !important;
-
   background-color: rgba(255, 193, 7, 0.1);
 
   &:hover {
@@ -58,11 +55,9 @@
   }
 }
 
-/* Delete Button (Red) */
 .delete-button {
   color: #f44336;
-    border: none !important;
-
+  border: none !important;
   background-color: rgba(244, 67, 54, 0.1);
 
   &:hover {
@@ -71,7 +66,6 @@
   }
 }
 
-/* Paginator Styles */
 mat-paginator {
   margin-top: 16px;
   background: transparent;

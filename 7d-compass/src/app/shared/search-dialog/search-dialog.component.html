@@ -1,103 +1,37 @@
 <h2 mat-dialog-title>{{ dialogTitle }}</h2>
 
-
 <mat-dialog-content>
-  <ng-container [ngSwitch]="type">
-
-    <!-- USER -->
-    <div *ngSwitchCase="'user'">
-      <ng-container *ngIf="!isEditMode; else editUser">
-        <p><strong>Name:</strong> {{ data.name }}</p>
-        <p><strong>Role:</strong> {{ data.role }}</p>
-        <p><strong>City:</strong> {{ data.city }}</p>
-      </ng-container>
-
-      <ng-template #editUser>
-        <form [formGroup]="form">
-          <mat-form-field appearance="fill" class="full-width">
-            <mat-label>Name</mat-label>
-            <input matInput formControlName="name" />
-          </mat-form-field>
-
-          <mat-form-field appearance="fill" class="full-width">
-            <mat-label>Role</mat-label>
-            <input matInput formControlName="role" />
-          </mat-form-field>
-
-          <mat-form-field appearance="fill" class="full-width">
-            <mat-label>City</mat-label>
-            <input matInput formControlName="city" />
-          </mat-form-field>
-        </form>
-      </ng-template>
+<ng-container *ngIf="!isEditMode; else editMode">
+  <!-- Improved single column view for display mode -->
+  <div class="display-container">
+    <div *ngFor="let field of fields" class="field-item">
+      <div class="field-label">{{field.label}}</div>
+      <div class="field-value">{{originalData[field.key] || '—'}}</div>
     </div>
+  </div>
+</ng-container>
 
-    <!-- INVOICE -->
-    <div *ngSwitchCase="'invoice'">
-      <ng-container *ngIf="!isEditMode; else editInvoice">
-        <p><strong>Invoice ID:</strong> {{ data.id }}</p>
-        <p><strong>Customer:</strong> {{ data.customer }}</p>
-        <p><strong>Total:</strong> ${{ data.total }}</p>
-      </ng-container>
-
-      <ng-template #editInvoice>
-        <form [formGroup]="form">
-          <mat-form-field appearance="fill" class="full-width">
-            <mat-label>Invoice ID</mat-label>
-            <input matInput formControlName="id" [disabled]="true" />
-          </mat-form-field>
-
-          <mat-form-field appearance="fill" class="full-width">
-            <mat-label>Customer</mat-label>
-            <input matInput formControlName="customer" />
-          </mat-form-field>
-
-          <mat-form-field appearance="fill" class="full-width">
-            <mat-label>Total</mat-label>
-            <input matInput type="number" formControlName="total" />
-          </mat-form-field>
-        </form>
-      </ng-template>
-    </div>
-
-    <!-- ROUTE -->
-    <div *ngSwitchCase="'route'">
-      <ng-container *ngIf="!isEditMode; else editRoute">
-        <p><strong>Route ID:</strong> {{ data.id }}</p>
-        <p><strong>Origin:</strong> {{ data.origin }}</p>
-        <p><strong>Destination:</strong> {{ data.destination }}</p>
-      </ng-container>
-
-      <ng-template #editRoute>
-        <form [formGroup]="form">
-          <mat-form-field appearance="fill" class="full-width">
-            <mat-label>Route ID</mat-label>
-            <input matInput formControlName="id" [disabled]="true" />
-          </mat-form-field>
-
-          <mat-form-field appearance="fill" class="full-width">
-            <mat-label>Origin</mat-label>
-            <input matInput formControlName="origin" />
-          </mat-form-field>
-
-          <mat-form-field appearance="fill" class="full-width">
-            <mat-label>Destination</mat-label>
-            <input matInput formControlName="destination" />
-          </mat-form-field>
-        </form>
-      </ng-template>
-    </div>
-
-    <!-- DEFAULT -->
-    <div *ngSwitchDefault>
-      <p>No detail available for this item.</p>
-    </div>
-
-  </ng-container>
+  <ng-template #editMode>
+    <form [formGroup]="form">
+      <div class="two-column-form">
+        <div class="form-column" *ngFor="let column of columnFields">
+          <div *ngFor="let field of column">
+            <mat-form-field appearance="fill" class="full-width">
+              <mat-label>{{field.label}}</mat-label>
+              <input
+                matInput
+                [formControlName]="field.key"
+                [type]="field.type || 'text'"
+                [disabled]="field.disabled ?? false">
+            </mat-form-field>
+          </div>
+        </div>
+      </div>
+    </form>
+  </ng-template>
 </mat-dialog-content>
 
 <mat-dialog-actions align="end">
-
   <ng-container *ngIf="!isEditMode; else editActions">
     <button mat-button (click)="onClose()">Close</button>
     <button mat-flat-button color="primary" (click)="enableEdit()">Edit</button>
@@ -107,5 +41,4 @@
     <button mat-button (click)="cancelEdit()">Cancel</button>
     <button mat-flat-button color="primary" [disabled]="form.invalid" (click)="onSave()">Save</button>
   </ng-template>
-
 </mat-dialog-actions>
