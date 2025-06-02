@@ -1,14 +1,69 @@
-
 <div class="page-container">
   <div class="title-bar">
     <mat-toolbar class="title-bar-toolbar">
       <span class="toolbar-title">{{ pageTitle }}</span>
       <span class="spacer"></span>
       <app-search-bar></app-search-bar>
-      <button mat-icon-button aria-label="Notifications" class="notification-button">
-        <mat-icon>notifications</mat-icon>
-      </button>
-      <img class="user-photo" src="../../../..//public/assets/imgs/profile-placeholder.png" alt="User Photo" />
+
+      <!-- Notification Button with Material Badge -->
+<!-- Replace matBadge="3" with binding to a property -->
+<button
+  mat-icon-button
+  [matMenuTriggerFor]="notificationMenu"
+  aria-label="Notifications"
+  class="notification-button"
+  [matBadge]="notificationCount"
+  matBadgeColor="warn"
+  matBadgePosition="above after">
+  <mat-icon>notifications</mat-icon>
+</button>
+
+<mat-menu #notificationMenu="matMenu" class="notification-menu">
+  <div class="notification-list">
+    <ng-container *ngIf="notifications.length > 0; else noNotifications">
+      <div
+        class="notification-item"
+        *ngFor="let notif of notifications"
+        (click)="openNotificationDialog(notif)">
+        {{ notif.message }}
+      </div>
+    </ng-container>
+    <ng-template #noNotifications>
+      <div class="notification-item no-items">No notifications</div>
+    </ng-template>
+  </div>
+</mat-menu>
+
+
+
+
+<button
+  mat-icon-button
+  [matMenuTriggerFor]="userMenu"
+  aria-label="User menu"
+  class="user-icon-button"
+>
+  <mat-icon>account_circle</mat-icon>
+</button>
+
+<mat-menu #userMenu="matMenu" class="user-menu">
+  <button mat-menu-item (click)="changeProfilePicture()">
+    <mat-icon>photo_camera</mat-icon>
+    <span>Change Profile Picture</span>
+  </button>
+  <button mat-menu-item (click)="editUserInfo()">
+    <mat-icon>edit</mat-icon>
+    <span>Edit User Info</span>
+  </button>
+  <button mat-menu-item (click)="logout()">
+    <mat-icon>logout</mat-icon>
+    <span>Log Out</span>
+  </button>
+</mat-menu>
+
+
+
+
     </mat-toolbar>
   </div>
 </div>
