@@ -63,6 +63,8 @@
   width: 350px;
   max-height: 500px;
   padding: 0;
+  background-color: white; // ✅ Add this line
+
   overflow-x: hidden;
 
   .notification-header {
