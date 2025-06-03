@@ -1,0 +1,186 @@
+.locations-wrapper {
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  gap: 16px;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.custom-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: #0d47a1; /* Deep blue */
+  color: white;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-weight: bold;
+  font-size: 1.25rem;
+  z-index: 2; /* para que esté encima del sidebar */
+  position: relative;
+}
+
+.photo-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 40px 0; /* Margen arriba y abajo */
+}
+
+.photo-section .icon {
+  font-size: 28px;
+  margin-bottom: 12px; /* Espacio entre el icono y el botón */
+  color: #fafafa; /* Opcional: color rojo como el botón */
+}
+
+
+.icon-left,
+.icon-right {
+  font-size: 25px;
+  cursor: pointer;
+  user-select: none;
+}
+
+/* sidebar fullscreen cuando esté abierto */
+.app-sidenav {
+width: 280px; /* ancho fijo para el sidebar */
+  max-width: 80vw; /* para que no sea demasiado ancho en móviles */
+  height: 100vh;  height: 100vh; /* para ocupar toda la pantalla vertical */
+  padding: 20px;
+  background-color: #0d47a1;
+  color: white;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-sizing: border-box;
+  overflow-y: auto; /* para scroll si el contenido es muy largo */
+}
+
+.sidebar-content h3 {
+  margin: 0 0 8px 0;
+}
+
+.sidebar-content p {
+  margin: 0 0 16px 0;
+  font-weight: 600;
+}
+
+.sidebar-content ul {
+  list-style-type: disc;
+  padding-left: 20px;
+  margin: 0 0 32px 0;
+}
+
+.sidebar-content li {
+  margin-bottom: 6px;
+}
+
+.logout-button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px; /* espacio entre icono y texto */
+  justify-content: flex-start; /* para que queden a la izquierda */
+  font-weight: 600;
+  background-color: #96bae3;
+  color: #f0f0f0;
+}
+
+.logout-button mat-icon {
+  font-size: 20px;
+    color: #f0f0f0;
+
+}
+
+
+
+
+.map-container {
+  width: 100%;
+  height: 300px;
+  border-radius: 12px;
+  overflow: hidden;
+  background-color: #f0f0f0;
+
+  .map-placeholder {
+    text-align: center;
+    padding: 40px;
+    color: gray;
+  }
+}
+
+.tabs-container {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  gap: 12px;
+    flex-wrap: nowrap;    // ✅ evita que se apilen
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.tab-button {
+  background-color: #e0e0e0; // Desactivado (gris claro)
+  color: #333;
+    flex: 1 1 auto;         // ✅ distribuye el espacio entre botones
+  border-radius: 20px;
+  padding: 8px 16px;
+  min-width: 100px;
+  white-space: nowrap;
+  border: none;
+  transition: background-color 0.2s ease, color 0.2s ease;
+
+  &:hover {
+    background-color: #d6d6d6;
+  }
+
+  &.active {
+    background-color: #0d47a1; // Azul profundo
+    color: white;
+  }
+
+  @media (max-width: 600px) {
+  .tab-button {
+    font-size: 0.75rem;
+    padding: 6px 8px;
+  }
+}
+
+}
+
+
+
+
+
+
+.section-title {
+  font-size: 1.4rem;
+  font-weight: bold;
+  margin: 0;
+}
+
+.location-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+// RESPONSIVE DESIGN
+@media screen and (max-width: 600px) {
+  .map-container {
+    height: 200px;
+  }
+
+  .tabs-container {
+    flex-direction: column;
+    gap: 8px;
+    .tab {
+      width: 100%;
+    }
+  }
+
+  .section-title {
+    font-size: 1.2rem;
+  }
+}

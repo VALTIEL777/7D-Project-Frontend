@@ -1,0 +1,62 @@
+<app-sitejob-layout></app-sitejob-layout>
+
+<div class="content-wrapper">
+<!-- Ya tienes el layout y tabs fuera -->
+<h2 class="section-title">Current Location - {{ location.address }}</h2>
+
+<!-- General Info -->
+<h3 class="sub-title">General Info</h3>
+<ul class="info-list">
+  <li><strong>Job:</strong> {{ location.job }}</li>
+  <li><strong>Size:</strong> {{ location.size }}</li>
+  <li><strong>Material:</strong> {{ location.material }}</li>
+</ul>
+    <mat-divider></mat-divider>
+
+<!-- Activities -->
+<h3 class="sub-title">Activities</h3>
+<ul class="info-list">
+  <li *ngFor="let activity of location.activities">
+    <mat-checkbox checked>{{ activity }}</mat-checkbox>
+  </li>
+</ul>
+<!-- Upload Image & Issue -->
+<div class="issue-section">
+  <div class="upload-container">
+       <label class="upload-button">
+        <input type="file" accept="image/jpeg, image/png, image/gif, image/webp" hidden (change)="onFileSelected($event)" />
+    <mat-icon style="font-size: 25px;">camera_enhance</mat-icon>
+        </label>
+    <span>Upload Image</span>
+  </div>
+  <mat-form-field appearance="outline" class="comment-field">
+    <mat-label>Issue</mat-label>
+    <mat-select>
+      <mat-option *ngFor="let issue of location.issues" [value]="issue">
+        {{ issue }}
+      </mat-option>
+    </mat-select>
+  </mat-form-field>
+</div>
+
+<!-- Send Button -->
+<button mat-raised-button color="primary">Send</button>
+<a class="report-link">report issue</a>
+
+<!-- Permits -->
+<h3 class="sub-title">Permits</h3>
+<div class="permits">
+  <div *ngFor="let permit of location.permits" class="permit">
+    <span>{{ permit }}</span>
+    <button mat-raised-button color="primary">Download</button>
+  </div>
+</div>
+<br>
+    <mat-divider></mat-divider>
+
+<!-- Contact Supervisor -->
+<h3 class="sub-title">Contact supervisor</h3>
+<p><strong>name:</strong> {{ location.supervisor.name }}</p>
+<p><strong>phone:</strong> {{ location.supervisor.phone }}</p>
+    <mat-divider></mat-divider>
+</div>
