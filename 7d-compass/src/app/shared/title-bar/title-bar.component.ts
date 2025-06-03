@@ -115,8 +115,27 @@ export class TitleBarComponent {
 
   private setPageTitle(url: string) {
     const routeMap: Record<string, string> = {
-      '/overview': 'Overview',
-      // ... other routes
+    '/overview': 'Overview',
+    '/rtr-processing': 'RTR Processing',
+    '/misc-generation': 'Misc Generation',
+    '/report-center': 'Report Center',
+    '/files-permits': 'Files & Permits',
+    '/route-generator': 'Route Generator',
+    '/route-history': 'Route History',
+    '/route-tracker': 'Route Tracker',
+    '/income': 'Income',
+    '/fines-penalties': 'Fines & Penalties',
+    '/users': 'Users',
+    '/contract-units': 'Contract Units',
+    '/payments': 'Payments',
+    '/invoices': 'Invoices',
+    '/fines': 'Fines',
+    '/supervisors': 'Supervisors',
+    '/inventory': 'Inventory',
+    '/suppliers': 'Suppliers',
+    '/equipment': 'Equipment',
+    '/crews': 'Crews',
+    '/ticket': 'Ticket'
     };
     this.pageTitle = routeMap[url] || 'Dashboard';
   }
