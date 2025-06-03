@@ -1,9 +1,10 @@
-// data-table.component.ts
 import { Component, Input, Output, EventEmitter, ViewChild, AfterViewInit } from '@angular/core';
 import { MatTableDataSource, MatTableModule } from '@angular/material/table';
 import { MatPaginator } from '@angular/material/paginator';
 import { MatIconModule } from '@angular/material/icon';
 import { CommonModule } from '@angular/common';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
 
 export interface ColumnDefinition {
   name: string;
@@ -16,11 +17,14 @@ export interface ColumnDefinition {
   selector: 'app-data-table',
   templateUrl: './data-table.component.html',
   styleUrls: ['./data-table.component.scss'],
+  standalone: true,
   imports: [
     MatIconModule,
     MatPaginator,
     CommonModule,
-    MatTableModule
+    MatTableModule,
+    MatFormFieldModule,
+    MatInputModule
   ],
 })
 export class DataTableComponent<T> implements AfterViewInit {
@@ -49,4 +53,12 @@ export class DataTableComponent<T> implements AfterViewInit {
     this.displayedColumns = this.columns.map(c => c.name);
   }
 
+  applyFilter(event: Event) {
+    const filterValue = (event.target as HTMLInputElement).value;
+    this.dataSource.filter = filterValue.trim().toLowerCase();
+
+    if (this.dataSource.paginator) {
+      this.dataSource.paginator.firstPage();
+    }
+  }
 }

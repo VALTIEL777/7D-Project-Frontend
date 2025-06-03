@@ -1,5 +1,13 @@
-<!-- data-table.component.html -->
 <div class="table-container">
+<div class="table-container">
+  <mat-form-field appearance="outline" class="search-bar">
+    <mat-label>Search</mat-label>
+    <input matInput (keyup)="applyFilter($event)" placeholder="Filter">
+    <mat-icon matSuffix class="search-icon">search</mat-icon>
+  </mat-form-field>
+  <!-- rest of your table code -->
+</div>
+
   <table mat-table [dataSource]="dataSource" class="mat-elevation-z1">
     <ng-container *ngFor="let column of columns" [matColumnDef]="column.name">
       <th mat-header-cell *matHeaderCellDef>{{ column.header }}</th>
