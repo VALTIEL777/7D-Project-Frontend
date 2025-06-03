@@ -28,9 +28,12 @@
       <p class="custom-row"><strong>Description</strong><br>
         {{ fine.description }}</p>
     </div>
-    <div class="button-table">
-        <button class="fine-button" >Upload Photo</button>
-    </div>
+      <div class="button-table">
+   <label class="fine-button">
+        <input type="file" accept="image/jpeg, image/png, image/gif, image/webp" hidden (change)="onFileSelected($event)" />
+        Upload Photo
+        </label>    
+      </div>
   </div>
       </app-card-with-button>
 
@@ -46,12 +49,13 @@
     </div>
      <div class="button-table">
    <label class="fine-button">
-        <input type="file" hidden (change)="onFileSelected($event)" />
+        <input type="file" accept="image/jpeg, image/png, image/gif, image/webp" hidden (change)="onFileSelected($event)" />
         Upload Photo
-        </label>    </div>
+        </label>    
+      </div>
   </div>
-      </app-card-with-button>
 
+      </app-card-with-button>
     <app-card-with-button title="Fine" [showEditButton]="true">
       <div>
     <div *ngFor="let fine of Fine_table">
@@ -62,9 +66,12 @@
       <p class="custom-row"><strong>Description</strong><br>
         {{ fine.description }}</p>
     </div>
-     <div class="button-table">
-        <button class="fine-button" >Upload Photo</button>
-    </div>
+       <div class="button-table">
+   <label class="fine-button">
+        <input type="file" accept="image/jpeg, image/png, image/gif, image/webp" hidden (change)="onFileSelected($event)" />
+        Upload Photo
+        </label>    
+      </div>
   </div>
       </app-card-with-button>
 
