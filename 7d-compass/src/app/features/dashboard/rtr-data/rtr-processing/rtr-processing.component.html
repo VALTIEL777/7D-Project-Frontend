@@ -1,2 +1,134 @@
 <app-dashboard-layout>
+  <!-- CONTENEDOR GENERAL -->
+  <div class="dashboard-wrapper">
+    
+    <!-- TÍTULO-->
+    <div class="section-title">
+      <h2>RTR Data</h2>
+    </div>
+
+    <!-- GRID PRINCIPAL -->
+    <div class="dashboard-grid">
+
+      <!-- Subida de nuevo RTR -->
+      <app-card-with-button title="Upload new RTR" [showEyeButton]="false">
+        <div style="text-align: center;">
+        <label class="upload-button">
+        <input type="file" hidden (change)="onFileSelected($event)" />
+        <mat-icon>cloud</mat-icon>
+        </label>
+            <p><strong>Choose a file or drag & drop it here</strong></p>
+          <p>JPEG, PNG, PDF, and MP4 formats, up to 50MB</p>
+        </div>
+      </app-card-with-button>
+
+      <!-- Descargar RTR -->
+      <app-card-with-button title="Download RTR" [showEyeButton]="true">
+        <div style="text-align: center;">
+          <button class="History-button">
+            <mat-icon>file_download</mat-icon> 
+          </button>
+          <h4>Download our latest RTR</h4>
+        </div>
+      </app-card-with-button>
+
+      <!-- Historial de RTR recibidos -->
+      <app-card-with-button title="Received RTR History" [showEyeButton]="true">
+        <div *ngFor="let rtr of receivedRTRs" class="history-item">
+          <div class="history-content">
+            <h4 class="history-title">{{ rtr.date }}</h4>
+            <button class="History-button">Download RTR</button>
+          </div>
+          <hr class="custom-divider">
+        </div>
+      </app-card-with-button>
+
+      <!-- Historial de RTR enviados -->
+      <app-card-with-button title="Sent RTR History" [showEyeButton]="true">
+        <div *ngFor="let rtr of sentRTRs" class="history-item">
+          <div class="history-content">
+            <h4 class="history-title">{{ rtr.date }}</h4>
+            <button class="History-button">Download RTR</button>
+          </div>
+          <hr class="custom-divider">
+        </div>
+      </app-card-with-button>
+
+<div class="section-title grid-span-2">
+  <h2>Updated data</h2>
+</div>
+
+
+
+      <!-- Datos actualizados -->
+      <app-card-with-button title="New Comments" [showEyeButton]="true">
+        <table class="custom-table">
+          <thead>
+            <tr>
+              <th>Ticket</th>
+              <th>Comment</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let comment of comments" class="custom-row">
+              <td>{{ comment.ticket }}</td>
+              <td>{{ comment.comment }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </app-card-with-button>
+
+      <!-- Permisos renovados -->
+      <app-card-with-button title="Renovated Permits" [showEyeButton]="true">
+        <table class="custom-table">
+          <thead>
+            <tr>
+              <th>Ticket</th>
+              <th>Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let permit of permits" class="custom-row">
+              <td>{{ permit.ticket }}</td>
+              <td>{{ permit.date }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </app-card-with-button>
+
+      <!-- Inconsistencias -->
+      <app-card-with-button title="RTR Inconsistencies" [showEditButton]="false" class="inconsistencies-card">
+        <table class="custom-table">
+          <thead>
+            <tr>
+              <th>Location</th>
+              <th>Ticket</th>
+              <th>Column</th>
+              <th>Incoming RTR Value</th>
+              <th>Our DB Value</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let inconsistency of inconsistencies" class="custom-row">
+              <td>{{ inconsistency.location }}</td>
+              <td>{{ inconsistency.ticket }}</td>
+              <td>{{ inconsistency.column }}</td>
+              <td>{{ inconsistency.rtrValue }}</td>
+              <td>{{ inconsistency.dbValue }}</td>
+              <td>
+                <button class="History-button" >Keep or value</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="inconsistency-actions">
+          <button mat-button color="warn">Reset</button>
+          <button class="History-button" color="primary">Update Database</button>
+        </div>
+      </app-card-with-button>
+
+    </div> <!-- cierre de .dashboard-grid -->
+  </div> <!-- cierre de .dashboard-wrapper -->
 </app-dashboard-layout>
