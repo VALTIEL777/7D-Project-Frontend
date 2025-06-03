@@ -4,6 +4,9 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatCardModule } from '@angular/material/card';
+import { MatSelectModule } from '@angular/material/select';
+import { MatSidenavModule } from '@angular/material/sidenav';
+
 
 export const MATERIAL_MODULES = [
   MatButtonModule,
@@ -11,5 +14,7 @@ export const MATERIAL_MODULES = [
   MatCheckboxModule,
   MatFormFieldModule,
   MatIconModule,
-  MatCardModule
+  MatCardModule,
+  MatSelectModule,
+  MatSidenavModule
 ];

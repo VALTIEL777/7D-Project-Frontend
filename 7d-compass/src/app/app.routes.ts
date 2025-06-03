@@ -164,4 +164,27 @@ export const routes: Routes = [
         (m) => m.TicketComponent
       ),
   },
+
+  {
+    path: 'current',
+    loadComponent: () =>
+      import('./features/site-job/current/current.component').then(
+        (m) => m.CurrentComponent
+      ),
+  },
+  {
+    path: 'upcoming',
+    loadComponent: () =>
+      import('./features/site-job/upcoming/upcoming.component').then(
+        (m) => m.UpcomingComponent
+      ),
+  },
+  {
+    path: 'completed',
+    loadComponent: () =>
+      import('./features/site-job/completed/completed.component').then(
+        (m) => m.CompletedComponent
+      ),
+  },
+
 ];
