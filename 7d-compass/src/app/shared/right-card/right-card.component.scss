@@ -11,7 +11,7 @@
   flex-direction: column;
   gap: 12px;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-  flex: 1 1 auto; 
+  flex: 1 1 auto; // <--- esto permite que crezca dentro del grid
   height: 100%;
 }
 
