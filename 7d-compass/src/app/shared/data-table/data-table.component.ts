@@ -48,4 +48,5 @@ export class DataTableComponent<T> implements AfterViewInit {
     this.dataSource.data = this.data;
     this.displayedColumns = this.columns.map(c => c.name);
   }
+
 }

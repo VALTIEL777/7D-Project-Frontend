@@ -2,13 +2,13 @@
 
 .title-bar {
   width: 100%;
-  background: $light-purple;   // blue-ish container background
+  background: $light-purple;
   border-radius: 12px;
   padding: 0 24px;
   box-sizing: border-box;
   display: flex;
   align-items: center;
-  height: 64px; // Adjust as needed
+  height: 64px;
 }
 
 .title-bar-toolbar {
@@ -56,39 +56,40 @@
   }
 }
 
-/* Notification menu styles */
+/* Notification menu styles - Horizontal scroll removed */
 ::ng-deep .notification-menu {
   max-width: 300px;
-  overflow-x: hidden;
+  width: 300px; // Fixed width prevents horizontal expansion
+  overflow-x: hidden !important; // Force hide horizontal scroll
+}
+
+::ng-deep .notification-menu .mat-menu-content {
+  padding: 0 !important; // Remove default padding that might cause overflow
+  width: 100% !important;
 }
 
 ::ng-deep .notification-menu .notification-list {
   max-height: 250px;
   overflow-y: auto;
-  overflow-x: hidden;  // Prevent horizontal scroll
-  width: 300px;
+  overflow-x: hidden; // Explicitly hide horizontal scroll
+  width: 100%;
   padding: 8px 0;
-  white-space: normal;
-  word-wrap: break-word;
-  word-break: break-word;
-  box-sizing: border-box;
 }
 
 ::ng-deep .notification-menu .notification-item {
-  max-width: 100%;             // Keep inside container width
   padding: 8px 16px;
   font-size: 14px;
   cursor: pointer;
+  width: calc(100% - 32px); // Account for padding
   white-space: normal;
-  word-wrap: break-word;
   word-break: break-word;
-  overflow-wrap: anywhere;     // Break very long words anywhere
+  overflow-wrap: break-word;
   box-sizing: border-box;
-}
 
-/* Ensure child elements inside notification items don’t overflow */
-::ng-deep .notification-menu .notification-item * {
-  max-width: 100%;
-  word-break: break-word;
-  overflow-wrap: anywhere;
+  // Ensure no child elements cause overflow
+  * {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
 }

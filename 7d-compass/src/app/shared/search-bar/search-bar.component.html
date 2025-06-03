@@ -7,8 +7,10 @@
     [matAutocomplete]="auto"
     placeholder="How can I help you?"
   />
-  <mat-autocomplete #auto="matAutocomplete" [displayWith]="displayFn.bind(this)">
-    <mat-option *ngFor="let item of filteredOptions" [value]="item">
+  <mat-autocomplete #auto="matAutocomplete" [displayWith]="displayFn.bind(this)" (optionSelected)="onOptionSelected($event)">
+    <mat-option
+      *ngFor="let item of filteredOptions"
+      [value]="item">
       <div class="option-content">
         <span class="option-label">{{ displayFn(item) }}</span>
         <span class="option-type">{{ item.type }}</span>

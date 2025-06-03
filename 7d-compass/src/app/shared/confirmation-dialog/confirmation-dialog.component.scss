@@ -1,0 +1,58 @@
+.confirmation-dialog-container {
+  padding: 24px;
+  max-width: 400px;
+
+  .dialog-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 16px;
+
+    .warning-icon {
+      margin-right: 12px;
+      font-size: 32px;
+      width: 32px;
+      height: 32px;
+    }
+
+    .dialog-title {
+      margin: 0;
+      font-weight: 500;
+      color: rgba(0, 0, 0, 0.87);
+    }
+  }
+
+  .dialog-message {
+    margin: 0;
+    color: rgba(0, 0, 0, 0.6);
+    font-size: 16px;
+    line-height: 1.5;
+  }
+
+  mat-dialog-actions {
+    padding: 8px 24px 24px 24px;
+    margin: 0 -24px -24px -24px;
+    border-top: 1px solid rgba(0, 0, 0, 0.12);
+    justify-content: flex-end;
+
+    button {
+      margin-left: 8px;
+      min-width: 100px;
+
+      mat-icon {
+        margin-left: 8px;
+        font-size: 18px;
+        height: 18px;
+        width: 18px;
+      }
+    }
+
+    .mat-stroked-button {
+      background-color: rgba(0, 0, 0, 0.04);
+      color: rgba(0, 0, 0, 0.87);
+
+      &:hover {
+        background-color: rgba(0, 0, 0, 0.08);
+      }
+    }
+  }
+}

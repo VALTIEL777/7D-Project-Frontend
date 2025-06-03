@@ -4,6 +4,7 @@ import { CardWithButtonComponent } from '../../../../shared/card-with-button/car
 import { MatDialog } from '@angular/material/dialog';
 import { SearchDialogComponent } from '../../../../shared/search-dialog/search-dialog.component';
 import { DataTableComponent } from '../../../../shared/data-table/data-table.component'; // Import the component
+import { ConfirmationDialogComponent } from '../../../../shared/confirmation-dialog/confirmation-dialog.component';
 
 // Define ColumnDefinition interface if not already defined in DataTableComponent
 interface ColumnDefinition {
@@ -19,7 +20,8 @@ interface ColumnDefinition {
   imports: [
     DashboardLayoutComponent,
     CardWithButtonComponent,
-    DataTableComponent // Add to imports
+    DataTableComponent,
+
   ],
   templateUrl: './users.component.html',
   styleUrl: './users.component.scss'
@@ -225,8 +227,30 @@ export class UsersComponent {
     });
   }
 
-  onDelete(user: any) {
-    console.log('Deleting user:', user);
-    // Implement delete logic
-  }
+onDelete(user: any) {
+  const dialogRef = this.dialog.open(ConfirmationDialogComponent, {
+    width: '450px',
+    disableClose: true, // Prevent closing by clicking outside
+    panelClass: 'confirmation-dialog',
+    data: {
+      title: 'Delete User Account',
+      message: `You are about to permanently delete ${user.firstname} ${user.lastname}'s account (${user.username}). This action cannot be undone.`,
+      confirmText: 'Delete',
+      cancelText: 'Keep User'
+    }
+  });
+
+  dialogRef.afterClosed().subscribe(confirmed => {
+    if (confirmed) {
+      // Remove the user from the array
+      this.tableData = this.tableData.filter(u => u.username !== user.username);
+
+      // In a real app, you would call your API service here
+      console.log('User deleted:', user);
+
+      // Optional: Show a success notification
+      // this.snackBar.open('User deleted successfully', 'Close', { duration: 3000 });
+    }
+  });
+}
 }
