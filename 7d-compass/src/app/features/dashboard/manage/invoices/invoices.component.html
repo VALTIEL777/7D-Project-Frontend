@@ -1,2 +1,12 @@
 <app-dashboard-layout>
+  <app-card-with-button title="Invoices Management" [showEyeButton]="false">
+    <app-data-table
+      [title]="'Invoices Management'"
+      [data]="tableData"
+      [columns]="columns"
+      [pageSizeOptions]="[5, 10, 20]"
+      (edit)="onEdit($event)"
+      (delete)="onDelete($event)">
+    </app-data-table>
+  </app-card-with-button>
 </app-dashboard-layout>
