@@ -10,20 +10,36 @@
   [matMenuTriggerFor]="notificationMenu"
   aria-label="Notifications"
   class="notification-button"
-  [matBadge]="notificationCount"
-  matBadgeColor="warn"
-  matBadgePosition="above after">
+  (menuOpened)="onNotificationsOpened()">
   <mat-icon>notifications</mat-icon>
+  <span class="notification-badge" *ngIf="hasUnreadNotifications && notificationCount > 0">
+    {{ notificationCount }}
+  </span>
 </button>
 
 <mat-menu #notificationMenu="matMenu" class="notification-menu">
+  <div class="notification-header">
+    <h3>Notifications</h3>
+    <span class="notification-count">{{ notificationCount }} unread</span>
+  </div>
   <div class="notification-list">
     <ng-container *ngIf="notifications.length > 0; else noNotifications">
       <div
         class="notification-item"
         *ngFor="let notif of notifications"
-        (click)="openNotificationDialog(notif)">
-        {{ notif.message }}
+        (click)="openNotificationDialog(notif)"
+        [class.read]="notif.read">
+        <mat-icon
+          class="notification-icon"
+          [style.color]="getNotificationColor(notif.type)">
+          {{ getNotificationIcon(notif.type) }}
+        </mat-icon>
+        <div class="notification-content">
+          <div class="notification-message">{{ notif.message }}</div>
+          <div class="notification-meta">
+            <span class="notification-type">{{ notif.type | titlecase }}</span>
+          </div>
+        </div>
       </div>
     </ng-container>
     <ng-template #noNotifications>
