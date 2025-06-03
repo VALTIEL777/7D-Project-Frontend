@@ -1,0 +1,48 @@
+<!-- Button -->
+<button mat-raised-button class="plus-button" (click)="openSearchDialog()">
+  <div class="title">{{ title }}</div>
+  <mat-icon>add</mat-icon>
+</button>
+
+<!-- Dialog -->
+<ng-template #dialogTemplate>
+  <h2 mat-dialog-title>{{ title }}</h2>
+  <div mat-dialog-content>
+
+    <!-- Form Mode -->
+    <form *ngIf="mode === 'form'" #form="ngForm">
+      <ng-container *ngFor="let key of objectKeys(data)">
+        <div *ngIf="!excludedFields.includes(key)" class="form-group">
+          <label [for]="key">{{ key }}</label>
+          <input
+            [(ngModel)]="formData[key]"
+            [name]="key"
+            [id]="key"
+            class="form-control"
+            type="text"
+          />
+        </div>
+      </ng-container>
+    </form>
+
+    <!-- Select Mode -->
+    <div *ngIf="mode === 'select'">
+      <p>Select fields to include (using existing values):</p>
+      <div *ngFor="let key of objectKeys(data)">
+        <mat-checkbox
+          [(ngModel)]="selectedFieldsMap[key]"
+          [name]="'field_' + key"
+          *ngIf="!excludedFields.includes(key)"
+        >
+          {{ key }}
+        </mat-checkbox>
+      </div>
+    </div>
+
+  </div>
+
+  <div mat-dialog-actions align="end">
+    <button mat-button (click)="closeDialog()">Cancel</button>
+    <button mat-raised-button color="primary" (click)="submitForm()">Create</button>
+  </div>
+</ng-template>
