@@ -1,0 +1,17 @@
+<app-sitejob-layout></app-sitejob-layout>
+<div class="content-wrapper">
+  <h2 class="section-title">Remaining Locations</h2>
+
+  <div *ngFor="let location of remainingLocations" class="location-card">
+    <p class="address"> <strong>{{ location.address }}</strong></p>
+
+    <h3 class="sub-title">General Info</h3>
+    <ul class="info-list">
+      <li>Job: {{ location.job }}</li>
+      <li>Size: {{ location.size }}</li>
+      <li>Material: {{ location.material }}</li>
+    </ul>
+
+    <hr class="divider" />
+  </div>
+</div>

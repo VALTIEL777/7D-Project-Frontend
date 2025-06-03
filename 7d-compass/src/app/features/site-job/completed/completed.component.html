@@ -1,0 +1,21 @@
+<app-sitejob-layout></app-sitejob-layout>
+<div class="content-wrapper">
+  <h2 class="section-title">Previous Locations</h2>
+
+  <div *ngFor="let location of previousLocations" class="location-card">
+    <p class="address"> <strong>{{ location.address }}</strong></p>
+
+    <ul class="info-list">
+      <li *ngFor="let action of location.actions">
+        <mat-icon class="icon">check_box</mat-icon> {{ action }}
+      </li>
+    </ul>
+
+    <div class="photo-comment">
+      <img  [src]="location.imageUrl" alt="location image" class="location-image" />
+      <button mat-stroked-button color="primary">{{ location.comment }}</button>
+    </div>
+
+    <hr class="divider" />
+  </div>
+</div>

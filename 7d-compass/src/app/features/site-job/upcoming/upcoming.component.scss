@@ -1,0 +1,103 @@
+.content-wrapper {
+  padding: 0 16px;
+
+  @media (min-width: 768px) {
+    padding: 0 32px;
+  }
+
+  @media (min-width: 1200px) {
+    padding: 0 64px;
+  }
+}
+
+.section-title {
+  font-size: 1.4rem;
+  font-weight: bold;
+  margin-bottom: 12px;
+}
+
+.sub-title {
+  font-weight: bold;
+  margin-top: 20px;
+}
+
+.info-list {
+  list-style: none;
+  padding-left: 0;
+  margin-bottom: 12px;
+}
+
+.issue-section {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+
+  .upload-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border: 2px dashed #ccc;
+    border-radius: 8px;
+    width: 100px;
+    height: 100px;
+    text-align: center;
+
+    mat-icon {
+      font-size: 40px;
+    }
+  }
+
+  .comment-field {
+    flex: 1;
+    min-width: 200px;
+  }
+}
+
+.report-link {
+  font-size: 0.85rem;
+  margin-left: 12px;
+  color: #6c757d;
+  cursor: pointer;
+}
+
+.permits {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+
+  .permit {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    width: 150px;
+  }
+}
+
+.upload-button {
+  padding: 10px 20px;
+  background-color: #ffffff;
+  border: none;
+  color: #005cbb;
+  font-weight: bold;
+  border-radius: 8px;
+  cursor: pointer;
+  width: auto;
+  margin: 0;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+}
+
+.upload-button:hover {
+  background-color: #d3d4d4;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 10px rgba(0, 0, 0, 0.25);
+}
+
+.upload-button:active {
+  transform: scale(0.95);
+  box-shadow: 0 3px 5px rgba(0, 0, 0, 0.2);
+}
