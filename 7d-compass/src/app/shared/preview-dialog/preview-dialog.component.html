@@ -1,0 +1,35 @@
+<h2 mat-dialog-title>Preview: {{ data.properties['title'] || 'Untitled' }}</h2>
+
+<mat-dialog-content class="preview-content">
+
+  <!-- Preview section -->
+  <ng-container *ngIf="data.previewUrl">
+    <img *ngIf="isImage" [src]="data.previewUrl" alt="Preview Image" class="preview-image" />
+    <iframe *ngIf="isPdf" [src]="data.previewUrl | safeUrl" class="preview-document"></iframe>
+  </ng-container>
+
+  <!-- Properties Table -->
+  <table mat-table [dataSource]="objectEntries()" class="mat-elevation-z8" style="width: 100%; margin-top: 16px;">
+    <!-- Property Column -->
+    <ng-container matColumnDef="property">
+      <th mat-header-cell *matHeaderCellDef> Property </th>
+      <td mat-cell *matCellDef="let element"> {{ element.key }} </td>
+    </ng-container>
+
+    <!-- Value Column -->
+    <ng-container matColumnDef="value">
+      <th mat-header-cell *matHeaderCellDef> Value </th>
+      <td mat-cell *matCellDef="let element"> {{ element.value }} </td>
+    </ng-container>
+
+    <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+    <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+  </table>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <a mat-button [href]="data.downloadUrl" target="_blank" download>
+    Download
+  </a>
+  <button mat-button mat-dialog-close>Close</button>
+</mat-dialog-actions>
