@@ -5,6 +5,8 @@
     color="primary"
     class="fab-button"
     aria-label="View"
+    [disableRipple]="true"
+
   >
     <mat-icon>visibility</mat-icon>
   </button>
@@ -15,23 +17,29 @@
     color="accent"
     class="fab-button"
     aria-label="Edit"
+    [disableRipple]="true"
+
   >
     <mat-icon>edit</mat-icon>
   </button>
 
   <div class="card-content">
-    <h2 class="card-title">{{ title }}</h2>
+    <h2 class="card-title" [class.with-fab]="showEyeButton || showEditButton">
+      {{ title }}
+    </h2>
 
     <div
       class="card-label"
       *ngIf="showLabel"
-      [ngClass]="{ 'positive': isPositive, 'negative': !isPositive }"
+      [ngClass]="{ positive: isPositive, negative: !isPositive }"
     >
       {{ percentage }}%
-      <span>{{ isPositive ? 'Increase' : 'Decrease' }}</span>
+      <span>{{ isPositive ? "Increase" : "Decrease" }}</span>
     </div>
 
-    <p class="card-description" *ngIf="description?.trim()">{{ description }}</p>
+    <p class="card-description" *ngIf="description?.trim()">
+      {{ description }}
+    </p>
     <ng-content></ng-content>
   </div>
 </div>

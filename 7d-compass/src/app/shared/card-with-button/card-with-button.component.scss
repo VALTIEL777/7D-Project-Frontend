@@ -11,7 +11,7 @@
   flex-direction: column;
   gap: 12px;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-  flex: 1 1 auto; 
+  flex: 1 1 auto;
   height: 100%;
 }
 
@@ -36,12 +36,11 @@
     box-shadow: none;
   }
 
-  &::ng-deep .mat-ripple-element {
-    display: none !important;
-  }
-}
 
-// Position each button differently if both are shown, otherwise default top-right
+}
+.fab-button::ng-deep .mat-ripple-element {
+  display: none !important;
+}
 .fab-eye {
   right: -5px;
 }
@@ -54,10 +53,18 @@
 }
 
 .card-title {
-  font-size: 20px;
+  font-size: 24px;         // bigger title
   font-weight: 600;
   margin: 0;
+  padding-right: 0;        // default no padding
+
+  &.with-fab {
+    padding-right: 40px;       // leave space on the right for fab
+    overflow-wrap: break-word; // wrap if near fab
+  }
 }
+
+
 
 .card-label {
   font-size: 14px;
@@ -84,4 +91,11 @@
 .card-description {
   font-size: 14px;
   color: #555;
+}
+.fab-button:hover,
+.fab-button:focus,
+.fab-button.cdk-focused,
+.fab-button.cdk-program-focused {
+  box-shadow: none !important;
+  outline: none !important;
 }

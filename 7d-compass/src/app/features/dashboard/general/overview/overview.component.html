@@ -1,2 +1,274 @@
 <app-dashboard-layout>
+    <div class="full-layout-container">
+
+  <div class="dashboard-container">
+    <div class="dashboard-wrapper">
+      <!-- TÍTULO -->
+      <div class="section-title">
+        <h4>RTR Data</h4>
+      </div>
+
+      <!-- GRID PRINCIPAL -->
+      <div class="dashboard-grid">
+        <!-- New Tickets -->
+        <app-card-with-button
+          [title]="'New Tickets'"
+          [description]="'Tickets created recently'"
+          [percentage]="5"
+          [isPositive]="true"
+          [showEyeButton]="true"
+          [showLabel]="true"
+        ></app-card-with-button>
+
+        <!-- Tickets in Progress -->
+        <app-card-with-button
+          [title]="'Tickets in Progress'"
+          [description]="'Currently being addressed'"
+          [percentage]="8"
+          [isPositive]="true"
+          [showEyeButton]="true"
+          [showLabel]="true"
+        ></app-card-with-button>
+
+        <!-- Tickets on Standby -->
+        <app-card-with-button
+          [title]="'Tickets on Standby'"
+          [description]="'Waiting for external input'"
+          [percentage]="-3"
+          [isPositive]="false"
+          [showEyeButton]="true"
+          [showLabel]="true"
+        ></app-card-with-button>
+
+        <!-- SECTION TITLE: Pending and Submission -->
+        <div class="section-title full-span">
+          <h4>Pending and Submission</h4>
+        </div>
+
+        <!-- Invoicing -->
+        <app-card-with-button
+          [title]="'Invoicing'"
+          [description]="'Pending invoices to be submitted'"
+          [percentage]="10"
+          [isPositive]="true"
+          [showEyeButton]="true"
+          [showLabel]="true"
+        ></app-card-with-button>
+
+        <!-- Digger Permit -->
+        <app-card-with-button
+          [title]="'Digger Permit'"
+          [description]="'Permits awaiting approval'"
+          [percentage]="-2"
+          [isPositive]="false"
+          [showEyeButton]="true"
+          [showLabel]="true"
+        ></app-card-with-button>
+
+        <!-- Carry Over -->
+        <app-card-with-button
+          [title]="'Carry Over'"
+          [description]="'Tasks carried over from previous cycles'"
+          [percentage]="3"
+          [isPositive]="false"
+          [showEyeButton]="true"
+          [showLabel]="true"
+        ></app-card-with-button>
+
+        <!-- SECTION TITLE: Ticket Status -->
+        <div class="section-title full-span">
+          <h4>Ticket Status</h4>
+        </div>
+
+        <!-- Table Card -->
+        <app-card-with-button title="Ticket Overview" [showEyeButton]="true" class="full-span">
+          <table mat-table [dataSource]="ticketData" class="mat-elevation-z1" style="width: 100%">
+            <!-- Location Column -->
+            <ng-container matColumnDef="location">
+              <th mat-header-cell *matHeaderCellDef>Location</th>
+              <td mat-cell *matCellDef="let ticket">{{ ticket.location }}</td>
+            </ng-container>
+
+            <!-- Phase Column -->
+            <ng-container matColumnDef="phase">
+              <th mat-header-cell *matHeaderCellDef>Phase</th>
+              <td mat-cell *matCellDef="let ticket">{{ ticket.phase }}</td>
+            </ng-container>
+
+            <!-- Status Column -->
+            <ng-container matColumnDef="status">
+              <th mat-header-cell *matHeaderCellDef>Status</th>
+              <td mat-cell *matCellDef="let ticket">
+                <span class="status-label" [ngClass]="ticket.status.toLowerCase()">{{ ticket.status }}</span>
+              </td>
+            </ng-container>
+
+            <!-- Start Date Column -->
+            <ng-container matColumnDef="startDate">
+              <th mat-header-cell *matHeaderCellDef>Start Date</th>
+              <td mat-cell *matCellDef="let ticket">{{ ticket.startDate | date }}</td>
+            </ng-container>
+
+            <!-- Actions Column -->
+            <ng-container matColumnDef="actions">
+              <th mat-header-cell *matHeaderCellDef>Actions</th>
+              <td mat-cell *matCellDef="let ticket">
+                <button mat-button color="primary">View</button>
+              </td>
+            </ng-container>
+
+            <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+            <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+          </table>
+        </app-card-with-button>
+      </div>
+      <!-- cierre de .dashboard-grid -->
+    </div>
+    <!-- cierre de .dashboard-wrapper -->
+
+    <!-- Today's Routes Card -->
+    <app-card-with-button title="Today's Routes" class="todays-routes-card">
+      <div class="map-container">
+        <iframe
+          loading="lazy"
+          allowfullscreen
+          referrerpolicy="no-referrer-when-downgrade"
+          src="https://maps.google.com/maps?q=Chicago%2C%20Illinois&t=&z=13&ie=UTF8&iwloc=&output=embed"
+        >
+        </iframe>
+      </div>
+    </app-card-with-button>
+
+  </div>
+
+
+<div class="extra-cards-row">
+<app-card-with-button
+  [title]="'Completed Jobs'"
+  [showEyeButton]="true"
+  [showLabel]="false"
+
+>
+  <div class="tabs">
+    <button
+      *ngFor="let tab of timeRanges"
+      (click)="selectRange(tab)"
+      [class.active]="selectedRange === tab"
+    >
+      {{ tab }}
+    </button>
+  </div>
+
+<div style="height: 200px;">
+  <ngx-charts-bar-vertical
+    [results]="chartData"
+    [xAxis]="true"
+    [yAxis]="true"
+    [legend]="false"
+    [showXAxisLabel]="true"
+    Max value on x-axis scale.
+
+    [showGridLines]="true"
+    [showDataLabel]="true"
+    [showYAxisLabel]="true"
+    xAxisLabel="Category"
+    yAxisLabel="Count"
+    [scheme]="'cool'"
+  >
+  </ngx-charts-bar-vertical>
+</div>
+
+</app-card-with-button>
+
+
+  <app-card-with-button
+    [title]="'Permit Status'"
+    [percentage]="-4"
+    [showEyeButton]="false"
+    [showLabel]="false"
+  >
+<div class="cards-container">
+
+<!-- Expired Permits -->
+<app-card-with-button
+  [title]="'Expired'"
+  [showEyeButton]="false"
+  [showLabel]="false"
+>
+  <div class="scrollable-permits">
+    <ng-container *ngFor="let permit of expiredPermits; let i = index">
+      <div class="permit-item">
+        <mat-icon class="icon-red">cancel</mat-icon>
+        <div class="permit-text">
+          <div class="code">{{ permit.code }}</div>
+          <div class="date">{{ permit.date }}</div>
+        </div>
+      </div>
+      <mat-divider *ngIf="i < expiredPermits.length - 1"></mat-divider>
+    </ng-container>
+  </div>
+</app-card-with-button>
+
+<!-- Near to Expire Permits -->
+<app-card-with-button
+  [title]="'Expiring Soon'"
+  [showEyeButton]="false"
+  [showLabel]="false"
+>
+  <div class="scrollable-permits">
+    <ng-container *ngFor="let permit of nearToExpirePermits; let i = index">
+      <div class="permit-item">
+        <mat-icon class="icon-yellow">warning</mat-icon>
+        <div class="permit-text">
+          <div class="code">{{ permit.code }}</div>
+          <div class="date">{{ permit.date }}</div>
+        </div>
+      </div>
+      <mat-divider *ngIf="i < nearToExpirePermits.length - 1"></mat-divider>
+    </ng-container>
+  </div>
+</app-card-with-button>
+
+
+</div>
+
+
+
+
+
+</app-card-with-button>
+
+<app-card-with-button title="Unresolved Issues" [showEyeButton]="true" class="uniform-card">
+  <!-- Header Row -->
+  <div style="display: flex; align-items: center; padding: 0 16px; margin: 8px 0; font-weight: 500;">
+    <div style="flex: 3;">Location</div>
+    <div style="flex: 5; text-align: left;">Comment</div>
+    <div style="flex: 1; text-align: center;">Action</div>
+  </div>
+  <mat-divider></mat-divider>
+
+  <!-- Scrollable Content -->
+  <div class="scrollable-issues">
+    <div *ngFor="let issue of unresolvedIssues">
+      <div style="display: flex; padding: 8px 16px; align-items: flex-start;">
+        <div style="flex: 3;">{{ issue.location }}</div>
+        <div style="flex: 5; text-align: left; white-space: normal; word-break: break-word;">
+          {{ issue.comment }}
+        </div>
+        <div style="flex: 1; display: flex; justify-content: center;">
+          <button mat-raised-button color="primary" style="min-width: 64px; font-size: 12px; padding: 2px 8px;">
+            View
+          </button>
+        </div>
+      </div>
+      <mat-divider></mat-divider>
+    </div>
+  </div>
+</app-card-with-button>
+
+
+</div>
+
+  </div>
+
 </app-dashboard-layout>
