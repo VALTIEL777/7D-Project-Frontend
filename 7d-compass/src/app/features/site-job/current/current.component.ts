@@ -5,10 +5,11 @@ import { MatTableModule } from '@angular/material/table';
 import { MatDividerModule } from '@angular/material/divider';
 import { CommonModule } from '@angular/common';
 import { MATERIAL_MODULES } from '../../../material';
+import { SitejobSidenavbarComponent } from '../../../shared/sitejob-sidenavbar/sitejob-sidenavbar.component';
 
 @Component({
   selector: 'app-current',
-  imports: [SitejobLayoutComponent,MatTableModule, MatDividerModule,CommonModule,MATERIAL_MODULES],
+  imports: [SitejobLayoutComponent,MatTableModule, MatDividerModule,CommonModule,MATERIAL_MODULES,SitejobSidenavbarComponent],
   templateUrl: './current.component.html',
   styleUrl: './current.component.scss'
 })
