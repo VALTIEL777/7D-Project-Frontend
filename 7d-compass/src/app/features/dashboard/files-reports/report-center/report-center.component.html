@@ -1,0 +1,158 @@
+<app-dashboard-layout>
+  <!-- Card: Invoices -->
+  <app-card-with-button title="Invoices" [showEyeButton]="true" class="uniform-card">
+    <div style="display: flex; align-items: center; padding: 0 16px; margin: 8px 0; font-weight: 500;">
+      <div style="flex: 3;">Date</div>
+      <div style="flex: 2; text-align: center;">Code</div>
+      <div style="flex: 1; text-align: center;">Action</div>
+    </div>
+    <mat-divider></mat-divider>
+    <div *ngFor="let item of invoiceReports">
+      <div style="display: flex; padding: 8px 16px; align-items: center;">
+        <div style="flex: 3;">{{ item.date }}</div>
+        <div style="flex: 2; text-align: center;">{{ item.code }}</div>
+        <div style="flex: 1; display: flex; justify-content: flex-end;">
+        <button mat-raised-button color="accent" style="min-width: 64px; font-size: 12px; padding: 2px 8px;">Download</button>
+
+        </div>
+      </div>
+      <mat-divider></mat-divider>
+    </div>
+  </app-card-with-button>
+
+  <!-- Card: Revenue -->
+  <app-card-with-button title="Revenue" [showEyeButton]="true" class="uniform-card">
+    <!-- Same structure as above -->
+    <div style="display: flex; align-items: center; padding: 0 16px; margin: 8px 0; font-weight: 500;">
+      <div style="flex: 3;">Date</div>
+      <div style="flex: 2; text-align: center;">Code</div>
+      <div style="flex: 1; text-align: center;">Action</div>
+    </div>
+    <mat-divider></mat-divider>
+    <div *ngFor="let item of revenueReports">
+      <div style="display: flex; padding: 8px 16px; align-items: center;">
+        <div style="flex: 3;">{{ item.date }}</div>
+        <div style="flex: 2; text-align: center;">{{ item.code }}</div>
+        <div style="flex: 1; display: flex; justify-content: flex-end;">
+        <button mat-raised-button color="accent" style="min-width: 64px; font-size: 12px; padding: 2px 8px;">Download</button>
+
+        </div>
+      </div>
+      <mat-divider></mat-divider>
+    </div>
+  </app-card-with-button>
+
+  <!-- Card: Digger Request -->
+  <app-card-with-button title="Digger Request" [showEyeButton]="true" class="uniform-card">
+    <!-- Repeat structure -->
+    <div style="display: flex; align-items: center; padding: 0 16px; margin: 8px 0; font-weight: 500;">
+      <div style="flex: 3;">Date</div>
+      <div style="flex: 2; text-align: center;">Code</div>
+      <div style="flex: 1; text-align: center;">Action</div>
+    </div>
+    <mat-divider></mat-divider>
+    <div *ngFor="let item of diggerRequests">
+      <div style="display: flex; padding: 8px 16px; align-items: center;">
+        <div style="flex: 3;">{{ item.date }}</div>
+        <div style="flex: 2; text-align: center;">{{ item.code }}</div>
+        <div style="flex: 1; display: flex; justify-content: flex-end;">
+        <button mat-raised-button color="accent" style="min-width: 64px; font-size: 12px; padding: 2px 8px;">Download</button>
+
+        </div>
+      </div>
+      <mat-divider></mat-divider>
+    </div>
+  </app-card-with-button>
+
+  <!-- Card: Spotters -->
+  <app-card-with-button title="Spotters" [showEyeButton]="true" class="uniform-card">
+    <!-- Same template -->
+    <div style="display: flex; align-items: center; padding: 0 16px; margin: 8px 0; font-weight: 500;">
+      <div style="flex: 3;">Date</div>
+      <div style="flex: 2; text-align: center;">Code</div>
+      <div style="flex: 1; text-align: center;">Action</div>
+    </div>
+    <mat-divider></mat-divider>
+    <div *ngFor="let item of spottersReports">
+      <div style="display: flex; padding: 8px 16px; align-items: center;">
+        <div style="flex: 3;">{{ item.date }}</div>
+        <div style="flex: 2; text-align: center;">{{ item.code }}</div>
+        <div style="flex: 1; display: flex; justify-content: flex-end;">
+        <button mat-raised-button color="accent" style="min-width: 64px; font-size: 12px; padding: 2px 8px;">Download</button>
+        </div>
+      </div>
+      <mat-divider></mat-divider>
+    </div>
+  </app-card-with-button>
+
+  <!-- Card: All Issues -->
+  <app-card-with-button title="All Issues" [showEyeButton]="true" class="uniform-card">
+    <div style="display: flex; align-items: center; padding: 0 16px; margin: 8px 0; font-weight: 500;">
+      <div style="flex: 3;">Date</div>
+      <div style="flex: 2; text-align: center;">Code</div>
+      <div style="flex: 1; text-align: center;">Action</div>
+    </div>
+    <mat-divider></mat-divider>
+    <div *ngFor="let item of issuesReports">
+      <div style="display: flex; padding: 8px 16px; align-items: center;">
+        <div style="flex: 3;">{{ item.date }}</div>
+        <div style="flex: 2; text-align: center;">{{ item.code }}</div>
+        <div style="flex: 1; display: flex; justify-content: flex-end;">
+        <button mat-raised-button color="accent" style="min-width: 64px; font-size: 12px; padding: 2px 8px;">Download</button>
+
+        </div>
+      </div>
+      <mat-divider></mat-divider>
+    </div>
+  </app-card-with-button>
+
+  <!-- Card: Daily Team Leader -->
+  <app-card-with-button title="Daily Team Leader" [showEyeButton]="true" class="uniform-card">
+    <div style="display: flex; align-items: center; padding: 0 16px; margin: 8px 0; font-weight: 500;">
+      <div style="flex: 3;">Date</div>
+      <div style="flex: 2; text-align: center;">Code</div>
+      <div style="flex: 1; text-align: center;">Action</div>
+    </div>
+    <mat-divider></mat-divider>
+    <div *ngFor="let item of teamLeaderReports">
+      <div style="display: flex; padding: 8px 16px; align-items: center;">
+        <div style="flex: 3;">{{ item.date }}</div>
+        <div style="flex: 2; text-align: center;">{{ item.code }}</div>
+        <div style="flex: 1; display: flex; justify-content: flex-end;">
+        <button mat-raised-button color="accent" style="min-width: 64px; font-size: 12px; padding: 2px 8px;">Download</button>
+
+        </div>
+      </div>
+      <mat-divider></mat-divider>
+    </div>
+  </app-card-with-button>
+
+  <!-- Card: Ticket Evidence -->
+  <app-card-with-button title="Ticket Evidence" [showEyeButton]="true" class="uniform-card">
+    <div style="display: flex; align-items: center; padding: 0 16px; margin: 8px 0; font-weight: 500;">
+      <div style="flex: 3;">Date</div>
+      <div style="flex: 2; text-align: center;">Code</div>
+      <div style="flex: 1; text-align: center;">Action</div>
+    </div>
+    <mat-divider></mat-divider>
+    <div *ngFor="let item of ticketEvidenceReports">
+      <div style="display: flex; padding: 8px 16px; align-items: center;">
+        <div style="flex: 3;">{{ item.date }}</div>
+        <div style="flex: 2; text-align: center;">{{ item.code }}</div>
+        <div style="flex: 1; display: flex; justify-content: flex-end;">
+        <button mat-raised-button color="accent" style="min-width: 64px; font-size: 12px; padding: 2px 8px;">Download</button>
+
+        </div>
+      </div>
+      <mat-divider></mat-divider>
+    </div>
+  </app-card-with-button>
+  <app-plus-button
+    [title]="'Select Existing Fields'"
+    [data]="myData"
+    [excludedFields]="['id']"
+    [mode]="'select'"
+    (objectCreated)="handleResult($event)">
+  </app-plus-button>
+
+</app-dashboard-layout>

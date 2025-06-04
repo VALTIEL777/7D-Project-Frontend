@@ -1,0 +1,15 @@
+<div class="layout-container">
+  <app-side-navbar></app-side-navbar>
+
+  <div class="main-content">
+    <app-title-bar></app-title-bar>
+
+    <div class="page-container">
+      <mat-card class="full-card">
+        <app-card-grid>
+          <ng-content></ng-content>
+        </app-card-grid>
+      </mat-card>
+    </div>
+  </div>
+</div>

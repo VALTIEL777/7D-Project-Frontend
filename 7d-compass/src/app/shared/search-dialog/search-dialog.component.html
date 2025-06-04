@@ -1,0 +1,44 @@
+<h2 mat-dialog-title>{{ dialogTitle }}</h2>
+
+<mat-dialog-content>
+<ng-container *ngIf="!isEditMode; else editMode">
+  <!-- Improved single column view for display mode -->
+  <div class="display-container">
+    <div *ngFor="let field of fields" class="field-item">
+      <div class="field-label">{{field.label}}</div>
+      <div class="field-value">{{originalData[field.key] || '—'}}</div>
+    </div>
+  </div>
+</ng-container>
+
+  <ng-template #editMode>
+    <form [formGroup]="form">
+      <div class="two-column-form">
+        <div class="form-column" *ngFor="let column of columnFields">
+          <div *ngFor="let field of column">
+            <mat-form-field appearance="fill" class="full-width">
+              <mat-label>{{field.label}}</mat-label>
+              <input
+                matInput
+                [formControlName]="field.key"
+                [type]="field.type || 'text'"
+                [disabled]="field.disabled ?? false">
+            </mat-form-field>
+          </div>
+        </div>
+      </div>
+    </form>
+  </ng-template>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <ng-container *ngIf="!isEditMode; else editActions">
+    <button mat-button (click)="onClose()">Close</button>
+    <button mat-flat-button color="primary" (click)="enableEdit()">Edit</button>
+  </ng-container>
+
+  <ng-template #editActions>
+    <button mat-button (click)="cancelEdit()">Cancel</button>
+    <button mat-flat-button color="primary" [disabled]="form.invalid" (click)="onSave()">Save</button>
+  </ng-template>
+</mat-dialog-actions>

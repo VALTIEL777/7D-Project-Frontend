@@ -1,0 +1,101 @@
+@use '../../../variables' as *;
+
+.analytics-card {
+  position: relative;
+  background: $gradient-blue;
+  border-radius: 16px;
+  padding: 24px;
+  width: 100%;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  flex: 1 1 auto;
+  height: 100%;
+}
+
+.fab-button {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  box-shadow: none;
+  border: 10px solid $light-purple;
+  background: $gradient-blue;
+  outline: none;
+
+  mat-icon {
+    font-size: 25px;
+  }
+
+  &:focus {
+    outline: none;
+    box-shadow: none;
+  }
+
+
+}
+.fab-button::ng-deep .mat-ripple-element {
+  display: none !important;
+}
+.fab-eye {
+  right: -5px;
+}
+
+
+.card-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.card-title {
+  font-size: 24px;         // bigger title
+  font-weight: 600;
+  margin: 0;
+  padding-right: 0;        // default no padding
+
+  &.with-fab {
+    padding-right: 40px;       // leave space on the right for fab
+    overflow-wrap: break-word; // wrap if near fab
+  }
+}
+
+
+
+.card-label {
+  font-size: 14px;
+  font-weight: 500;
+  background-color: $white;
+  padding: 4px 8px;
+  border-radius: 8px;
+  width: fit-content;
+
+  span {
+    margin-left: 4px;
+    font-weight: normal;
+  }
+
+  &.positive {
+    color: green;
+  }
+
+  &.negative {
+    color: red;
+  }
+}
+
+.card-description {
+  font-size: 14px;
+  color: #555;
+}
+.fab-button:hover,
+.fab-button:focus,
+.fab-button.cdk-focused,
+.fab-button.cdk-program-focused {
+  box-shadow: none !important;
+  outline: none !important;
+}

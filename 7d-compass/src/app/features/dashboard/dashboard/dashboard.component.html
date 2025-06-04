@@ -1,1 +1,81 @@
-<p>dashboard works!</p>
+<app-dashboard-layout>
+
+  <!-- Existing Cards -->
+  <app-card-with-button
+    [title]="'Sales Overview'"
+    [description]="'Details of monthly sales'"
+    [percentage]="12"
+    [isPositive]="true"
+    [showEyeButton]="true"
+    [showLabel]="true"
+  ></app-card-with-button>
+
+  <app-card-with-button
+    [title]="'Inventory Status'"
+    [description]="'Current stock levels'"
+    [percentage]="-5"
+    [isPositive]="false"
+    [showEditButton]="true"
+    [showLabel]="true"
+  ></app-card-with-button>
+
+  <!-- Table Card -->
+  <app-card-with-button title="User Table" [showEyeButton]="true">
+    <table mat-table [dataSource]="tableData" class="mat-elevation-z1" style="width: 100%">
+      <!-- Name Column -->
+      <ng-container matColumnDef="name">
+        <th mat-header-cell *matHeaderCellDef>Name</th>
+        <td mat-cell *matCellDef="let user">{{ user.name }}</td>
+      </ng-container>
+
+      <!-- Email Column -->
+      <ng-container matColumnDef="email">
+        <th mat-header-cell *matHeaderCellDef>Email</th>
+        <td mat-cell *matCellDef="let user">{{ user.email }}</td>
+      </ng-container>
+
+      <!-- Status Column -->
+      <ng-container matColumnDef="status">
+        <th mat-header-cell *matHeaderCellDef>Status</th>
+        <td mat-cell *matCellDef="let user">{{ user.status }}</td>
+      </ng-container>
+
+      <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+      <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+    </table>
+  </app-card-with-button>
+
+  <!-- Financial Overview -->
+  <app-card-with-button title="Financial Overview" [showEditButton]="true">
+    <div *ngFor="let item of dividerItems">
+      <h4 style="margin-bottom: 4px;">{{ item.label }}</h4>
+      <p>{{ item.value }}</p>
+      <mat-divider></mat-divider>
+    </div>
+  </app-card-with-button>
+
+  <!-- ▶ Plus Button in Form Mode -->
+  <app-plus-button
+    [title]="'Add New Item (Form)'"
+    [data]="myData"
+    [excludedFields]="['id']"
+    [mode]="'form'"
+    (objectCreated)="handleResult($event)">
+  </app-plus-button>
+
+  <!-- ▶ Plus Button in Select Mode -->
+  <app-plus-button
+    [title]="'Select Existing Fields'"
+    [data]="myData"
+    [excludedFields]="['id']"
+    [mode]="'select'"
+    (objectCreated)="handleResult($event)">
+  </app-plus-button>
+  <app-card-with-button title="Preview Example" [showEyeButton]="true">
+<button mat-raised-button color="primary" (click)="openPreviewDialog()">
+  Open Preview Dialog
+</button>
+</app-card-with-button>
+
+
+</app-dashboard-layout>

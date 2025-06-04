@@ -1,0 +1,45 @@
+<div class="analytics-card">
+  <button
+    *ngIf="showEyeButton"
+    mat-fab
+    color="primary"
+    class="fab-button"
+    aria-label="View"
+    [disableRipple]="true"
+
+  >
+    <mat-icon>visibility</mat-icon>
+  </button>
+
+  <button
+    *ngIf="showEditButton"
+    mat-fab
+    color="accent"
+    class="fab-button"
+    aria-label="Edit"
+    [disableRipple]="true"
+
+  >
+    <mat-icon>edit</mat-icon>
+  </button>
+
+  <div class="card-content">
+    <h2 class="card-title" [class.with-fab]="showEyeButton || showEditButton">
+      {{ title }}
+    </h2>
+
+    <div
+      class="card-label"
+      *ngIf="showLabel"
+      [ngClass]="{ positive: isPositive, negative: !isPositive }"
+    >
+      {{ percentage }}%
+      <span>{{ isPositive ? "Increase" : "Decrease" }}</span>
+    </div>
+
+    <p class="card-description" *ngIf="description?.trim()">
+      {{ description }}
+    </p>
+    <ng-content></ng-content>
+  </div>
+</div>

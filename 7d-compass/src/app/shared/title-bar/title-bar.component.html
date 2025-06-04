@@ -1,0 +1,83 @@
+<div class="page-container">
+  <div class="title-bar">
+    <mat-toolbar class="title-bar-toolbar">
+      <span class="toolbar-title">{{ pageTitle }}</span>
+      <span class="spacer"></span>
+      <app-search-bar></app-search-bar>
+
+<button
+  mat-icon-button
+  [matMenuTriggerFor]="notificationMenu"
+  aria-label="Notifications"
+  class="notification-button"
+  (menuOpened)="onNotificationsOpened()">
+  <mat-icon>notifications</mat-icon>
+  <span class="notification-badge" *ngIf="hasUnreadNotifications && notificationCount > 0">
+    {{ notificationCount }}
+  </span>
+</button>
+
+<mat-menu #notificationMenu="matMenu" class="notification-menu">
+  <div class="notification-header">
+    <h3>Notifications</h3>
+    <span class="notification-count">{{ notificationCount }} unread</span>
+  </div>
+  <div class="notification-list">
+    <ng-container *ngIf="notifications.length > 0; else noNotifications">
+      <div
+        class="notification-item"
+        *ngFor="let notif of notifications"
+        (click)="openNotificationDialog(notif)"
+        [class.read]="notif.read">
+        <mat-icon
+          class="notification-icon"
+          [style.color]="getNotificationColor(notif.type)">
+          {{ getNotificationIcon(notif.type) }}
+        </mat-icon>
+        <div class="notification-content">
+          <div class="notification-message">{{ notif.message }}</div>
+          <div class="notification-meta">
+            <span class="notification-type">{{ notif.type | titlecase }}</span>
+          </div>
+        </div>
+      </div>
+    </ng-container>
+    <ng-template #noNotifications>
+      <div class="notification-item no-items">No notifications</div>
+    </ng-template>
+  </div>
+</mat-menu>
+
+
+
+
+<button
+  mat-icon-button
+  [matMenuTriggerFor]="userMenu"
+  aria-label="User menu"
+  class="user-icon-button"
+>
+  <mat-icon>account_circle</mat-icon>
+</button>
+
+<mat-menu #userMenu="matMenu" class="user-menu">
+  <button mat-menu-item (click)="changeProfilePicture()">
+    <mat-icon>photo_camera</mat-icon>
+    <span>Change Profile Picture</span>
+  </button>
+  <button mat-menu-item (click)="editUserInfo()">
+    <mat-icon>edit</mat-icon>
+    <span>Edit User Info</span>
+  </button>
+  <button mat-menu-item (click)="logout()">
+    <mat-icon>logout</mat-icon>
+    <span>Log Out</span>
+  </button>
+</mat-menu>
+
+
+
+
+    </mat-toolbar>
+  </div>
+</div>
