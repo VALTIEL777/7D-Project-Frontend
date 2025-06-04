@@ -71,5 +71,11 @@
     [mode]="'select'"
     (objectCreated)="handleResult($event)">
   </app-plus-button>
+  <app-card-with-button title="Preview Example" [showEyeButton]="true">
+<button mat-raised-button color="primary" (click)="openPreviewDialog()">
+  Open Preview Dialog
+</button>
+</app-card-with-button>
+
 
 </app-dashboard-layout>

@@ -5,14 +5,22 @@ import { MatTableModule } from '@angular/material/table';
 import { MatDividerModule } from '@angular/material/divider';
 import { CommonModule } from '@angular/common';
 import { PlusButtonComponent } from '../../../shared/plus-button/plus-button.component';
+import { PreviewDialogComponent,PreviewData  } from '../../../shared/preview-dialog/preview-dialog.component';
+import { MatDialog } from '@angular/material/dialog';
+import { MatButtonModule } from '@angular/material/button';
+
 
 @Component({
   selector: 'app-dashboard',
-  imports: [DashboardLayoutComponent, CardWithButtonComponent,MatTableModule, MatDividerModule,CommonModule,PlusButtonComponent],
+  imports: [DashboardLayoutComponent, CardWithButtonComponent,MatTableModule, MatDividerModule,
+    CommonModule,PlusButtonComponent,
+    PreviewDialogComponent,MatButtonModule],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss'
 })
 export class DashboardComponent {
+  constructor(private dialog: MatDialog) {}
+
   displayedColumns: string[] = ['name', 'email'];
 
   tableData = [
@@ -39,4 +47,24 @@ export class DashboardComponent {
     console.log('Created Object:', result);
     // You can add it to a list or trigger a notification
   }
+  openPreviewDialog(): void {
+  const exampleData: PreviewData = {
+    previewUrl: 'assets/imgs/pic.JPG',
+    downloadUrl: 'https://example.com/sample.pdf',
+    properties: {
+      title: 'Monthly Report',
+      category: 'Finance',
+      createdBy: 'Admin',
+      status: 'Approved'
+    }
+  };
+
+  this.dialog.open(PreviewDialogComponent, {
+    data: exampleData,
+    width: '600px',
+    height: '80vh'
+  });
+}
+
+
 }
