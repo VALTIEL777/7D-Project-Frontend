@@ -115,12 +115,53 @@ inconsistencies = [
   }
 ];
 
-onFileSelected(event: Event) {
-  const input = event.target as HTMLInputElement;
-  if (input.files && input.files.length > 0) {
-    const file = input.files[0];
-    console.log('Archivo seleccionado:', file);
-  }
-}
+  // New properties for pasted data table
+  pastedDataSource: any[] = [];
+  pastedDisplayedColumns: string[] = [];
+  private pastedText: string = ''; // To store the raw pasted text
 
+  onFileSelected(event: Event) {
+    const input = event.target as HTMLInputElement;
+    if (input.files && input.files.length > 0) {
+      const file = input.files[0];
+      console.log('Archivo seleccionado:', file);
+    }
+  }
+
+  handlePaste(event: ClipboardEvent) {
+    const clipboardData = event.clipboardData;
+    if (clipboardData) {
+      this.pastedText = clipboardData.getData('text');
+    }
+  }
+
+  processPastedData() {
+    if (!this.pastedText) {
+      return; // No data to process
+    }
+
+    const rows = this.pastedText.split(/\r\n|\n/).filter(row => row.trim() !== ''); // Split by new line, remove empty lines
+    if (rows.length === 0) {
+      return; // No valid rows
+    }
+
+    const headers = rows[0].split('\t'); // Assume tab-separated for Excel paste
+    this.pastedDisplayedColumns = headers;
+    this.pastedDataSource = [];
+
+    for (let i = 1; i < rows.length; i++) {
+      const values = rows[i].split('\t');
+      const rowData: { [key: string]: string } = {};
+      headers.forEach((header, index) => {
+        rowData[header] = values[index] || ''; // Assign value or empty string if missing
+      });
+      this.pastedDataSource.push(rowData);
+    }
+  }
+
+  clearPastedData() {
+    this.pastedDataSource = [];
+    this.pastedDisplayedColumns = [];
+    this.pastedText = '';
+  }
 }

@@ -170,8 +170,8 @@ app-drag-drop-upload {
 
 .rtr-inconsistencies-table-wrapper {
   overflow-x: auto;
-  -webkit-overflow-scrolling: touch; /* for smoother scrolling on iOS */
-  max-height: 300px; /* Adjust as needed */
+  -webkit-overflow-scrolling: touch;
+  max-height: 680px; /* Adjusted to show approximately 7 rows */
   overflow-y: auto;
 }
 
@@ -219,14 +219,45 @@ app-drag-drop-upload {
 
 .combined-card-content {
   display: flex;
-  flex-direction: row; /* Ensure side-by-side display */
+  flex-direction: column; /* Changed to column to stack textarea and table */
   gap: 16px;
   flex-grow: 1;
   padding: 16px;
 
   @media (max-width: 768px) {
-    flex-direction: column; /* Keep vertical stacking on mobile */
+    flex-direction: column;
   }
+}
+
+.combined-card-content textarea {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  resize: vertical;
+  font-family: monospace;
+}
+
+.pasted-table-wrapper {
+  overflow-x: auto;
+  overflow-y: auto; /* Enable vertical scroll for table */
+  max-height: 150px; /* Reduced limit height of the table */
+  flex-grow: 1; /* Allow table wrapper to grow */
+}
+
+/* Ensure table takes full width inside wrapper */
+.pasted-table-wrapper .custom-table {
+  width: 100%;
+  min-width: max-content; /* Allow table to grow to content width */
+}
+
+/* Style for the button container in the combined card */
+.card-actions {
+  display: flex;
+  justify-content: space-between;
+  padding: 1px;
+  /* border-top: 1px solid #eee; */
+  /* margin-top: auto; */ /* Removed to bring buttons closer to table */
 }
 
 .new-comments-section {
