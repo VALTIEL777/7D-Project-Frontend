@@ -1,41 +1,19 @@
+/* Remove all content of the file if not already empty, then remove this comment. */
+
 @use '../../../variables' as *;
 
-.layout-container {
-  display: flex;
-  flex-direction: row;
-  width: 100%;
-  height: 100vh;
-}
-
-app-side-navbar {
-  width: 240px; // Or whatever width your sidebar uses
-  flex-shrink: 0;
-}
-
 .main-content {
-  flex: 1 1 auto;
   display: flex;
   flex-direction: column;
-  padding: 15px 30px; // Only horizontal padding applied here
-  gap: 12px;
-  box-sizing: border-box;
-  overflow-y: auto;
+  flex-grow: 1;
 }
-
 
 .page-container {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  box-sizing: border-box;
-  // ❌ No padding here, uses .main-content’s horizontal padding
+  flex-grow: 1;
+  overflow: auto;
+  padding: 2px;
 }
 
-
 .full-card {
-  width: 100%;
-  height: 100%;
-  border-radius: 12px;
   background: $light-purple;
-  padding : 20px;
 }

@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, HostListener, OnInit } from '@angular/core';
 import { DashboardLayoutComponent } from '../../../../shared/dashboard-layout/dashboard-layout.component';
 import { CardWithButtonComponent } from '../../../../shared/card-with-button/card-with-button.component';
 import { MatTableModule } from '@angular/material/table';
@@ -24,51 +24,53 @@ import { NgxChartsModule } from '@swimlane/ngx-charts';
   templateUrl: './overview.component.html',
   styleUrl: './overview.component.scss',
 })
-export class OverviewComponent {
-ticketData = [
-  {
-    location: 'Chicago',
-    phase: 'Planning',
-    status: 'Open',
-    startDate: new Date('2025-06-01'),
-  },
-  {
-    location: 'New York',
-    phase: 'Execution',
-    status: 'In Progress',
-    startDate: new Date('2025-05-28'),
-  },
-  {
-    location: 'Los Angeles',
-    phase: 'Review',
-    status: 'Closed',
-    startDate: new Date('2025-05-20'),
-  },
-  {
-    location: 'San Francisco',
-    phase: 'Planning',
-    status: 'Open',
-    startDate: new Date('2025-06-05'),
-  },
-  {
-    location: 'Miami',
-    phase: 'Execution',
-    status: 'In Progress',
-    startDate: new Date('2025-06-02'),
-  },
-  {
-    location: 'Seattle',
-    phase: 'Review',
-    status: 'Closed',
-    startDate: new Date('2025-05-25'),
-  },
-  {
-    location: 'Boston',
-    phase: 'Planning',
-    status: 'Open',
-    startDate: new Date('2025-06-03'),
-  },
-];
+export class OverviewComponent implements OnInit {
+  isMobile: boolean = false;
+
+  ticketData = [
+    {
+      location: 'Chicago',
+      phase: 'Planning',
+      status: 'Open',
+      startDate: new Date('2025-06-01'),
+    },
+    {
+      location: 'New York',
+      phase: 'Execution',
+      status: 'In Progress',
+      startDate: new Date('2025-05-28'),
+    },
+    {
+      location: 'Los Angeles',
+      phase: 'Review',
+      status: 'Closed',
+      startDate: new Date('2025-05-20'),
+    },
+    {
+      location: 'San Francisco',
+      phase: 'Planning',
+      status: 'Open',
+      startDate: new Date('2025-06-05'),
+    },
+    {
+      location: 'Miami',
+      phase: 'Execution',
+      status: 'In Progress',
+      startDate: new Date('2025-06-02'),
+    },
+    {
+      location: 'Seattle',
+      phase: 'Review',
+      status: 'Closed',
+      startDate: new Date('2025-05-25'),
+    },
+    {
+      location: 'Boston',
+      phase: 'Planning',
+      status: 'Open',
+      startDate: new Date('2025-06-03'),
+    },
+  ];
 
 
   displayedColumns: string[] = [
@@ -114,6 +116,29 @@ ticketData = [
 
   constructor() {
     this.selectRange(this.selectedRange);
+    this.checkMobile();
+  }
+
+  ngOnInit() {
+    this.updateDisplayedColumns();
+  }
+
+  @HostListener('window:resize', ['$event'])
+  onResize(event: Event) {
+    this.checkMobile();
+    this.updateDisplayedColumns();
+  }
+
+  checkMobile() {
+    this.isMobile = window.innerWidth <= 768;
+  }
+
+  updateDisplayedColumns() {
+    if (this.isMobile) {
+      this.displayedColumns = ['location', 'status'];
+    } else {
+      this.displayedColumns = ['location', 'phase', 'status', 'startDate', 'actions'];
+    }
   }
 
   selectRange(range: 'Year' | 'Month' | 'Week') {

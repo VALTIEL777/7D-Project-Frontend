@@ -29,6 +29,7 @@
 
   mat-icon {
     font-size: 25px;
+    z-index:0;
   }
 
   &:focus {
@@ -36,8 +37,8 @@
     box-shadow: none;
   }
 
-
 }
+
 .fab-button::ng-deep .mat-ripple-element {
   display: none !important;
 }
