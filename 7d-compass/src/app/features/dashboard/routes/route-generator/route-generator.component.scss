@@ -1,18 +1,38 @@
 @use '../../../../../variables' as *;
 
+.full-layout-container {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
 .dashboard-container {
   display: flex;
-  gap: 1rem; /* space between dashboard and map */
+  gap: 1rem;
+  flex-grow: 1;
+  height: 100%;
 
   @media (max-width: 768px) {
     flex-direction: column;
   }
 }
 
-.dashboard-wrapper,
+.dashboard-wrapper {
+  flex: 1 1 50%;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+
+  @media (max-width: 768px) {
+    flex: 1 1 100%;
+  }
+}
+
 .todays-routes-card {
   flex: 1 1 50%;
   box-sizing: border-box;
+  height: 100%;
 
   @media (max-width: 768px) {
     flex: 1 1 100%;
@@ -70,11 +90,11 @@
 .map-container {
   width: 100%;
   height: 100%; /* fill parent */
-  min-height: 400px; /* minimum height for map */
   padding: 0;
   margin: 0;
   display: flex;
   flex-direction: column;
+  flex-grow: 1;
 }
 
 .map-container iframe {
