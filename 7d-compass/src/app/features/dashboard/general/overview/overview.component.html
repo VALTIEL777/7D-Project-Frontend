@@ -90,7 +90,7 @@
             </ng-container>
 
             <!-- Phase Column -->
-            <ng-container matColumnDef="phase">
+            <ng-container matColumnDef="phase" *ngIf="!isMobile">
               <th mat-header-cell *matHeaderCellDef>Phase</th>
               <td mat-cell *matCellDef="let ticket">{{ ticket.phase }}</td>
             </ng-container>
@@ -104,13 +104,13 @@
             </ng-container>
 
             <!-- Start Date Column -->
-            <ng-container matColumnDef="startDate">
+            <ng-container matColumnDef="startDate" *ngIf="!isMobile">
               <th mat-header-cell *matHeaderCellDef>Start Date</th>
               <td mat-cell *matCellDef="let ticket">{{ ticket.startDate | date }}</td>
             </ng-container>
 
             <!-- Actions Column -->
-            <ng-container matColumnDef="actions">
+            <ng-container matColumnDef="actions" *ngIf="!isMobile">
               <th mat-header-cell *matHeaderCellDef>Actions</th>
               <td mat-cell *matCellDef="let ticket">
                 <button mat-button color="primary">View</button>
