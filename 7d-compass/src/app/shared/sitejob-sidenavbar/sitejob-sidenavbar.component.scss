@@ -1,0 +1,100 @@
+.custom-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: #0d47a1; 
+  color: white;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-weight: bold;
+  font-size: 1.25rem;
+  z-index: 2; 
+  position: relative;
+}
+
+.icon-left,
+.icon-right {
+  font-size: 25px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.photo-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 40px 0;
+
+  .icon {
+    font-size: 28px;
+    margin-bottom: 12px;
+    color: #fafafa;
+  }
+}
+
+// Sidebar estilo general
+.app-sidenav {
+  width: 280px;
+  max-width: 80vw;
+  height: 100vh;
+  padding: 20px;
+  background-color: #0d47a1;
+  color: white;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  overflow-y: auto;
+}
+
+// Contenedor del sidebar
+.sidebar-content {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+
+  h3 {
+    margin: 0 0 8px;
+  }
+
+  p {
+    margin: 0 0 16px;
+    font-weight: 600;
+  }
+
+  ul {
+    list-style-type: disc;
+    padding-left: 20px;
+    margin: 0 0 32px;
+
+    li {
+      margin-bottom: 6px;
+    }
+  }
+}
+
+// Parte superior del contenido
+.sidebar-main {
+  flex: 1;
+}
+
+// Parte inferior con botón pegado abajo
+.sidebar-footer {
+  margin-top: auto;
+}
+
+// Botón de logout
+.logout-button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: flex-start;
+  font-weight: 600;
+  background-color: #96bae3;
+  color: #0d47a1;
+
+  mat-icon {
+    font-size: 20px;
+    color: #0d47a1;
+  }
+}
