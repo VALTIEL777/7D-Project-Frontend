@@ -1,39 +1,3 @@
-<mat-sidenav-container class="sidenav-container">
-
-  <!-- Sidebar -->
-  <mat-sidenav #drawer mode="over" class="app-sidenav">
-    <div class="sidebar-content">
-  <h3>Team Leader:</h3>
-  <p>{{ teamLeader }}</p>
-
-  <h3>Team:</h3>
-  <ul>
-    <li *ngFor="let member of teamMembers">{{ member }}</li>
-  </ul>
-
- <div class="photo-section">
-  <mat-icon class="icon">camera_enhance</mat-icon>
-  <button mat-raised-button color="warn" >
-    Take attendance photo
-  </button>
-</div>
-
-
-
-      <button mat-button color="warn" class="logout-button" routerLink="/logout">
-  <mat-icon>logout</mat-icon>
-  <span class="logout-text">Log out</span>
-</button>
-
-    </div>
-  </mat-sidenav>
-
-  <!-- Contenido principal -->
-  <mat-sidenav-content>
-    <header class="custom-header">
-      <mat-icon class="icon-left" (click)="drawer.toggle()">menu</mat-icon>
-      <mat-icon class="icon-right">settings</mat-icon>
-    </header>
 
     <div class="locations-wrapper">
       <!-- Mapa -->
@@ -83,6 +47,3 @@
 
       
     </div>
-  </mat-sidenav-content>
-
-</mat-sidenav-container>

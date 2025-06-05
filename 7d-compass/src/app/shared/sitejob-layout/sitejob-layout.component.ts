@@ -1,7 +1,7 @@
 import { Component } from '@angular/core';
 import { MATERIAL_MODULES } from '../../material';
 import { CommonModule, NgClass } from '@angular/common';
-import { RouterLink, RouterModule } from '@angular/router';
+import { RouterModule } from '@angular/router';
 
 @Component({
   selector: 'app-sitejob-layout',
