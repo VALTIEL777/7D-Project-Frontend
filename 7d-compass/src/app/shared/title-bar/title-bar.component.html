@@ -1,21 +1,84 @@
 <div class="page-container">
   <div class="title-bar">
     <mat-toolbar class="title-bar-toolbar">
-      <span class="toolbar-title">{{ pageTitle }}</span>
-      <span class="spacer"></span>
-      <app-search-bar></app-search-bar>
+      <!-- LEFT SECTION -->
+      <div class="left-section">
+        <button
+          class="mobile-menu-button"
+          mat-icon-button
+          (click)="toggleSidebar.emit()"
+        >
+          <mat-icon>menu</mat-icon>
+        </button>
 
-<button
-  mat-icon-button
-  [matMenuTriggerFor]="notificationMenu"
-  aria-label="Notifications"
-  class="notification-button"
-  (menuOpened)="onNotificationsOpened()">
-  <mat-icon>notifications</mat-icon>
-  <span class="notification-badge" *ngIf="hasUnreadNotifications && notificationCount > 0">
-    {{ notificationCount }}
-  </span>
-</button>
+        <span class="toolbar-title">{{ pageTitle }}</span>
+
+        <!-- Right section content moved here ONLY on mobile -->
+<ng-container *ngIf="isMobile">
+  <div class="mobile-right-buttons">
+    <button
+      mat-icon-button
+      [matMenuTriggerFor]="notificationMenu"
+      aria-label="Notifications"
+      class="notification-button"
+      (menuOpened)="onNotificationsOpened()"
+    >
+      <mat-icon>notifications</mat-icon>
+      <span
+        class="notification-badge"
+        *ngIf="hasUnreadNotifications && notificationCount > 0"
+      >
+        {{ notificationCount }}
+      </span>
+    </button>
+
+    <button
+      mat-icon-button
+      [matMenuTriggerFor]="userMenu"
+      aria-label="User menu"
+      class="user-icon-button"
+    >
+      <mat-icon>account_circle</mat-icon>
+    </button>
+  </div>
+</ng-container>
+      </div>
+
+      <!-- CENTER SECTION -->
+      <div class="center-section">
+        <app-search-bar></app-search-bar>
+      </div>
+
+      <!-- RIGHT SECTION (only visible on desktop) -->
+      <div class="right-section" *ngIf="!isMobile">
+        <button
+          mat-icon-button
+          [matMenuTriggerFor]="notificationMenu"
+          aria-label="Notifications"
+          class="notification-button"
+          (menuOpened)="onNotificationsOpened()"
+        >
+          <mat-icon>notifications</mat-icon>
+          <span
+            class="notification-badge"
+            *ngIf="hasUnreadNotifications && notificationCount > 0"
+          >
+            {{ notificationCount }}
+          </span>
+        </button>
+
+        <button
+          mat-icon-button
+          [matMenuTriggerFor]="userMenu"
+          aria-label="User menu"
+          class="user-icon-button"
+        >
+          <mat-icon>account_circle</mat-icon>
+        </button>
+      </div>
+    </mat-toolbar>
+  </div>
+</div>
 
 <mat-menu #notificationMenu="matMenu" class="notification-menu">
   <div class="notification-header">
@@ -28,10 +91,12 @@
         class="notification-item"
         *ngFor="let notif of notifications"
         (click)="openNotificationDialog(notif)"
-        [class.read]="notif.read">
+        [class.read]="notif.read"
+      >
         <mat-icon
           class="notification-icon"
-          [style.color]="getNotificationColor(notif.type)">
+          [style.color]="getNotificationColor(notif.type)"
+        >
           {{ getNotificationIcon(notif.type) }}
         </mat-icon>
         <div class="notification-content">
@@ -48,18 +113,6 @@
   </div>
 </mat-menu>
 
-
-
-
-<button
-  mat-icon-button
-  [matMenuTriggerFor]="userMenu"
-  aria-label="User menu"
-  class="user-icon-button"
->
-  <mat-icon>account_circle</mat-icon>
-</button>
-
 <mat-menu #userMenu="matMenu" class="user-menu">
   <button mat-menu-item (click)="changeProfilePicture()">
     <mat-icon>photo_camera</mat-icon>
@@ -74,10 +127,3 @@
     <span>Log Out</span>
   </button>
 </mat-menu>
-
-
-
-
-    </mat-toolbar>
-  </div>
-</div>

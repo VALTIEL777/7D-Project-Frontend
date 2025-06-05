@@ -3,18 +3,30 @@
 .dashboard-container {
   display: flex;
   gap: 1rem; /* space between dashboard and map */
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+  }
 }
 
 .dashboard-wrapper,
 .todays-routes-card {
   flex: 1 1 50%;
   box-sizing: border-box;
+
+  @media (max-width: 768px) {
+    flex: 1 1 100%;
+  }
 }
 
 .dashboard-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 1rem;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
 }
 
 .full-span {
@@ -74,6 +86,10 @@
   grid-template-columns: repeat(3, 1fr);
   gap: 1rem;
   margin-top: 2rem; // space between sections
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
 }
 
 .extra-card {
@@ -111,6 +127,10 @@ ngx-charts-bar-vertical {
   display: grid;
   grid-template-columns: repeat(2, 1fr); /* 3 columns */
   gap: 1rem;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
 }
 .permit-item {
   display: flex;

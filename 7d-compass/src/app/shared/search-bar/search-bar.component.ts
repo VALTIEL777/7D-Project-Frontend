@@ -129,4 +129,6 @@ export class SearchBarComponent {
       default: return 'Details';
     }
   }
+
+
 }
