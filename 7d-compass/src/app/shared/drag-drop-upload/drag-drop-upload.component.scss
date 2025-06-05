@@ -3,14 +3,14 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 20px;
+  padding: 10px 20px;
   border: 2px dashed rgb(82, 82, 82);
   border-radius: 40px;
   box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
   transition: background-color 0.3s;
   user-select: none;
   position: relative;
-  min-height: 120px;
+  min-height: 60px;
   overflow-x: auto;
 
   input[type='file'] {
@@ -26,7 +26,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
   text-align: center;
   color: rgb(82, 82, 82);
   width: 100%;
@@ -36,7 +36,15 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
+
+  svg {
+    height: 0.8em; /* Reduced SVG height */
+  }
+
+  p {
+    font-size: 0.8em; /* Reduced font size */
+  }
 }
 
 .preview-list-inline {
@@ -83,23 +91,27 @@
 }
 
 .preview-img-inline {
-  width: 80px;
-  height: 80px;
+  width: 60px;
+  height: 60px;
   border-radius: 10px;
   object-fit: cover;
   margin-bottom: 4px;
 }
 .preview-item-inline mat-icon {
-  width: 80px;
-  height: 80px;
-  font-size: 48px; // Tamaño del ícono en sí
-  line-height: 80px;
+  width: 60px;
+  height: 60px;
+  font-size: 36px;
+  line-height: 60px;
   text-align: center;
-  background: #f0f0f0; // Fondo opcional, para parecerse a las imágenes
+  background: #f0f0f0;
   border-radius: 10px;
   margin-bottom: 4px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #555; // Color del ícono
+  color: #555;
+}
+
+.browse-button {
+  font-size: 0.8em; /* Reduced font size */
 }

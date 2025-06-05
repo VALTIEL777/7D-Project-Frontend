@@ -17,11 +17,13 @@
 
       <!-- Descargar RTR -->
       <app-card-with-button title="Download RTR" [showEyeButton]="true">
-        <div style="text-align: center;">
-          <button class="History-button">
-            <mat-icon>file_download</mat-icon>
+        <div class="download-card-content">
+          <svg xmlns="http://www.w3.org/2000/svg" x="0px" y="0px" width="100" height="100" viewBox="0 0 48 48">
+            <path fill="#4CAF50" d="M41,10H25v28h16c0.553,0,1-0.447,1-1V11C42,10.447,41.553,10,41,10z"></path><path fill="#FFF" d="M32 15H39V18H32zM32 25H39V28H32zM32 30H39V33H32zM32 20H39V23H32zM25 15H30V18H25zM25 25H30V28H25zM25 30H30V33H25zM25 20H30V23H25z"></path><path fill="#2E7D32" d="M27 42L6 38 6 10 27 6z"></path><path fill="#FFF" d="M19.129,31l-2.411-4.561c-0.092-0.171-0.186-0.483-0.284-0.938h-0.037c-0.046,0.215-0.154,0.541-0.324,0.979L13.652,31H9.895l4.462-7.001L10.274,17h3.837l2.001,4.196c0.156,0.331,0.296,0.725,0.42,1.179h0.04c0.078-0.271,0.224-0.68,0.439-1.22L19.237,17h3.515l-4.199,6.939l4.316,7.059h-3.74V31z"></path>
+            </svg>
+          <button mat-raised-button color="primary">
+            <mat-icon>file_download</mat-icon> Download
           </button>
-          <h4>Download our latest RTR</h4>
         </div>
       </app-card-with-button>
 
@@ -30,7 +32,7 @@
         <div *ngFor="let rtr of receivedRTRs" class="history-item">
           <div class="history-content">
             <h4 class="history-title">{{ rtr.date }}</h4>
-            <button class="History-button">Download RTR</button>
+            <button mat-raised-button>Download RTR</button>
           </div>
           <hr class="custom-divider">
         </div>
@@ -41,7 +43,7 @@
         <div *ngFor="let rtr of sentRTRs" class="history-item">
           <div class="history-content">
             <h4 class="history-title">{{ rtr.date }}</h4>
-            <button class="History-button">Download RTR</button>
+            <button mat-raised-button>Download RTR</button>
           </div>
           <hr class="custom-divider">
         </div>
@@ -91,34 +93,39 @@
 
       <!-- Inconsistencias -->
       <app-card-with-button title="RTR Inconsistencies" [showEditButton]="false" class="inconsistencies-card">
-        <table class="custom-table">
-          <thead>
-            <tr>
-              <th>Location</th>
-              <th>Ticket</th>
-              <th>Column</th>
-              <th>Incoming RTR Value</th>
-              <th>Our DB Value</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let inconsistency of inconsistencies" class="custom-row">
-              <td>{{ inconsistency.location }}</td>
-              <td>{{ inconsistency.ticket }}</td>
-              <td>{{ inconsistency.column }}</td>
-              <td>{{ inconsistency.rtrValue }}</td>
-              <td>{{ inconsistency.dbValue }}</td>
-              <td>
-                <button class="History-button" >Keep or value</button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+        <div class="rtr-inconsistencies-table-wrapper">
+          <table class="custom-table">
+            <thead>
+              <tr>
+                <th>Location</th>
+                <th>Ticket</th>
+                <th>Column</th>
+                <th>Incoming RTR Value</th>
+                <th>Our DB Value</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let inconsistency of inconsistencies" class="custom-row">
+                <td>{{ inconsistency.location }}</td>
+                <td>{{ inconsistency.ticket }}</td>
+                <td>{{ inconsistency.column }}</td>
+                <td>{{ inconsistency.rtrValue }}</td>
+                <td>{{ inconsistency.dbValue }}</td>
+                <td>
+                  <div style="display: flex; flex-direction: column; gap: 8px;">
+                    <button mat-raised-button color="primary">Keep Value</button>
+                    <button mat-raised-button color="accent">Receive Change</button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
 
         <div class="inconsistency-actions">
-          <button mat-button color="warn">Reset</button>
-          <button class="History-button" color="primary">Update Database</button>
+          <button mat-raised-button color="warn">Reset</button>
+          <button mat-raised-button color="primary">Update Database</button>
         </div>
       </app-card-with-button>
 
