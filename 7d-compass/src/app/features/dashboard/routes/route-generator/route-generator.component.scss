@@ -1,0 +1,280 @@
+@use '../../../../../variables' as *;
+
+.dashboard-container {
+  display: flex;
+  gap: 1rem; /* space between dashboard and map */
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+  }
+}
+
+.dashboard-wrapper,
+.todays-routes-card {
+  flex: 1 1 50%;
+  box-sizing: border-box;
+
+  @media (max-width: 768px) {
+    flex: 1 1 100%;
+  }
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.full-span {
+  grid-column: 1 / -1;
+}
+
+.section-title.full-span {
+  margin: 0;
+  padding: 0;
+  height: auto;
+}
+
+.section-title.full-span h4 {
+  margin: 0;
+  padding: 0;
+  line-height: 1;
+}
+
+.status-label {
+  padding: 2px 8px;
+  border-radius: 12px;
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: capitalize;
+}
+
+.status-label.open {
+  background-color: $success-color;
+}
+
+.status-label.progress {
+  background-color: $warning-color;
+}
+
+.status-label.closed {
+  background-color: $error-color;
+}
+
+/* Map container and iframe fill their container fully */
+.map-container {
+  width: 100%;
+  height: 100%; /* fill parent */
+  min-height: 400px; /* minimum height for map */
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.map-container iframe {
+  width: 100%;
+  height: 100%; /* Make the iframe fill its parent container */
+  border: 0;
+  display: block;
+}
+.extra-cards-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin-top: 2rem; // space between sections
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.extra-card {
+  background: white;
+  padding: 1rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+.tabs {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1rem;
+
+  button {
+    background: #f0f0f0;
+    border: none;
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+    border-radius: 6px;
+
+    &.active {
+      background: #007acc;
+      color: white;
+    }
+  }
+}
+ngx-charts-bar-vertical {
+  height: 300px !important; /* or any fixed height you want */
+  max-height: 150px !important;
+  min-height: 100px;
+  display: block;
+  margin: 0 auto;
+}
+.cards-container {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr); /* 3 columns */
+  gap: 1rem;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+}
+.permit-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 12px 0;
+}
+
+.permit-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+}
+
+.code {
+  font-weight: 600;
+}
+
+.date {
+  font-size: 0.9em;
+  color: #666;
+}
+app-card-with-button .scrollable-permits {
+  max-height: 140px; /* adjust based on visual preference */
+  overflow-y: auto;
+  padding-right: 8px;
+  margin-top: 0.5rem;
+}
+.icon-red {
+  color: $error-color;
+}
+
+.icon-yellow {
+  color: $warning-color /* Material Yellow 500 */
+}
+/* Make tbody scrollable */
+table.mat-elevation-z1 {
+  display: block;
+  max-height: 200px;       /* limit table height */
+  overflow-y: auto;        /* enable vertical scroll */
+  width: 100%;
+}
+
+/* Make thead sticky */
+table.mat-elevation-z1 thead,
+table.mat-elevation-z1 th {
+  position: sticky;
+  top: 0;
+  background: white;       /* or your header background */
+  z-index: 10;
+  box-shadow: 0 2px 2px -1px rgba(0,0,0,0.4);
+}
+
+/* tbody rows */
+table.mat-elevation-z1 tbody,
+table.mat-elevation-z1 tr {
+  display: table;
+  width: 100%;
+  table-layout: fixed;
+}
+.scrollable-issues {
+  max-height: 190px;  /* Adjust height as needed */
+  overflow-y: auto;
+  padding-right: 8px; /* To prevent content hiding behind scrollbar */
+}
+
+.route-detail-item {
+  padding: 4px 0;
+  cursor: grab;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.queue-number {
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.location-and-reason {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  flex-grow: 1;
+}
+
+.route-location {
+  margin: 0;
+  font-size: 14px;
+}
+
+.hold-off-reason {
+  margin: 0;
+  font-size: 12px;
+  color: #888;
+  text-align: right;
+}
+
+.mat-divider {
+  margin: 0 !important;
+}
+
+.cdk-drag-preview {
+  cursor: grabbing !important;
+}
+
+.cdk-drag-active {
+  cursor: grabbing !important;
+}
+
+.cdk-drop-list-dragging .cdk-drag {
+  transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+body.cdk-grabbing {
+  cursor: grabbing !important;
+}
+
+.buttons-container {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+app-card-with-button .route-list-container {
+  max-height: 150px; /* Adjust as needed */
+  overflow-y: auto;
+  padding-right: 8px; /* To prevent content hiding behind scrollbar */
+}
+
+.route-detail-item mat-divider {
+  height: 1px; /* Make the divider tiny */
+  border-top-width: 1px; /* Ensure it's visible */
+}
+
+.two-column-span {
+  grid-column: span 2;
+}
+
+.todays-routes-card ::ng-deep .card-content {
+  flex-grow: 1;
+}

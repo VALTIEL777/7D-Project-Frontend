@@ -1,2 +1,120 @@
 <app-dashboard-layout>
+  <div class="full-layout-container">
+
+    <div class="dashboard-container">
+      <div class="dashboard-wrapper">
+
+
+        <!-- GRID PRINCIPAL -->
+        <div cdkDropListGroup class="dashboard-grid">
+          <!-- Active Routes -->
+          <div class="section-title full-span">
+            <h4>Active Routes</h4>
+          </div>
+          <app-card-with-button
+            *ngFor="let route of activeRoutes"
+            [title]="route.code"
+            [showEyeButton]="true"
+          >
+            <div
+              cdkDropList
+              [cdkDropListData]="route.details"
+              (cdkDropListDropped)="drop($event)"
+              class="route-list-container"
+            >
+              <div *ngFor="let location of route.details; let i = index" cdkDrag class="route-detail-item">
+                <span class="queue-number">{{ i + 1 }}.</span>
+                <p class="route-location">{{ location }}</p>
+                <mat-divider></mat-divider>
+              </div>
+            </div>
+          </app-card-with-button>
+
+          <!-- Generated Routes -->
+          <div class="section-title full-span">
+            <h4>Generated Routes</h4>
+          </div>
+          <app-card-with-button
+            *ngFor="let route of generatedRoutes"
+            [title]="route.code"
+            [showEyeButton]="true"
+          >
+            <div
+              cdkDropList
+              [cdkDropListData]="route.details"
+              (cdkDropListDropped)="drop($event)"
+              class="route-list-container"
+            >
+              <div *ngFor="let location of route.details; let i = index" cdkDrag class="route-detail-item">
+                <span class="queue-number">{{ i + 1 }}.</span>
+                <p class="route-location">{{ location }}</p>
+                <mat-divider></mat-divider>
+              </div>
+            </div>
+          </app-card-with-button>
+
+          <app-plus-button [title]="'Generate New Route'"></app-plus-button>
+
+          <div class="section-title full-span">
+            <h4>Issue Locations</h4>
+          </div>
+
+          <!-- Issue Location Cards -->
+          <app-card-with-button title="Location without route" [showEyeButton]="true">
+            <div
+              cdkDropList
+              [cdkDropListData]="locationsWithoutRoute"
+              (cdkDropListDropped)="drop($event)"
+              class="route-list-container"
+            >
+              <div *ngFor="let location of locationsWithoutRoute; let i = index" cdkDrag class="route-detail-item">
+                <span class="queue-number">{{ i + 1 }}.</span>
+                <p class="route-location">{{ location }}</p>
+                <mat-divider></mat-divider>
+              </div>
+            </div>
+          </app-card-with-button>
+          <app-card-with-button title="Locations on Hold off" [showEyeButton]="true" class="two-column-span">
+            <div
+              cdkDropList
+              [cdkDropListData]="locationsOnHoldOff"
+              (cdkDropListDropped)="drop($event)"
+              class="route-list-container"
+            >
+              <div *ngFor="let item of locationsOnHoldOff; let i = index" cdkDrag class="route-detail-item">
+                <span class="queue-number">{{ i + 1 }}.</span>
+                <div class="location-and-reason">
+                  <p class="route-location">{{ item.location }}</p>
+                  <p class="hold-off-reason">{{ item.reason }}</p>
+                </div>
+                <mat-divider></mat-divider>
+              </div>
+            </div>
+          </app-card-with-button>
+
+          <div class="full-span buttons-container">
+            <button mat-raised-button color="primary" (click)="saveChanges()">Save Changes</button>
+            <button mat-raised-button color="warn" (click)="resetLists()">Reset Lists</button>
+          </div>
+        </div>
+
+        <!-- cierre de .dashboard-grid -->
+      </div>
+      <!-- cierre de .dashboard-wrapper -->
+
+      <!-- Today's Routes Card -->
+      <app-card-with-button title="Today's Routes" class="todays-routes-card">
+        <div class="map-container">
+          <iframe
+            loading="lazy"
+            allowfullscreen
+            referrerpolicy="no-referrer-when-downgrade"
+            src="https://maps.google.com/maps?q=Chicago%2C%20Illinois&t=&z=13&ie=UTF8&iwloc=&output=embed"
+          >
+          </iframe>
+        </div>
+      </app-card-with-button>
+
+    </div>
+  </div>
 </app-dashboard-layout>
