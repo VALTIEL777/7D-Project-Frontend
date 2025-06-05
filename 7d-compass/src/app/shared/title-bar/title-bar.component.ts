@@ -243,4 +243,14 @@ addNewNotification(newNotification: any) {
   logout() {
     console.log('Log Out clicked');
   }
+  isMobile: boolean = false;
+
+ngOnInit() {
+  this.checkScreenSize();
+  window.addEventListener('resize', () => this.checkScreenSize());
+}
+
+checkScreenSize() {
+  this.isMobile = window.innerWidth < 768;
+}
 }

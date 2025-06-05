@@ -62,6 +62,11 @@
     display: none !important;
     box-shadow: none !important;
   }
+
+  @media (max-width: 767px) {
+    max-width: 600px;
+    width: 90%;
+  }
 }
 
 ::ng-deep .mdc-notched-outline,
