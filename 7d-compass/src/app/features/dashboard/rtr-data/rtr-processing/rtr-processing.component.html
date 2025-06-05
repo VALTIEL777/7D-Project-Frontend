@@ -2,10 +2,7 @@
   <!-- CONTENEDOR GENERAL -->
   <div class="dashboard-wrapper">
 
-    <!-- TÍTULO-->
-    <div class="section-title">
-      <h2>RTR Data</h2>
-    </div>
+
 
     <!-- GRID PRINCIPAL -->
     <div class="dashboard-grid">
@@ -29,67 +26,34 @@
 
       <!-- Historial de RTR recibidos -->
       <app-card-with-button title="Received RTR History" [showEyeButton]="true">
-        <div *ngFor="let rtr of receivedRTRs" class="history-item">
-          <div class="history-content">
-            <h4 class="history-title">{{ rtr.date }}</h4>
-            <button mat-raised-button>Download RTR</button>
+        <div class="history-scrollable-content">
+          <div *ngFor="let rtr of receivedRTRs" class="history-item">
+            <div class="history-content">
+              <h4 class="history-title">{{ rtr.date }}</h4>
+              <button mat-raised-button>Download RTR</button>
+            </div>
+            <hr class="custom-divider">
           </div>
-          <hr class="custom-divider">
         </div>
       </app-card-with-button>
 
       <!-- Historial de RTR enviados -->
       <app-card-with-button title="Sent RTR History" [showEyeButton]="true">
-        <div *ngFor="let rtr of sentRTRs" class="history-item">
-          <div class="history-content">
-            <h4 class="history-title">{{ rtr.date }}</h4>
-            <button mat-raised-button>Download RTR</button>
+        <div class="history-scrollable-content">
+          <div *ngFor="let rtr of sentRTRs" class="history-item">
+            <div class="history-content">
+              <h4 class="history-title">{{ rtr.date }}</h4>
+              <button mat-raised-button>Download RTR</button>
+            </div>
+            <hr class="custom-divider">
           </div>
-          <hr class="custom-divider">
         </div>
       </app-card-with-button>
 
-<div class="section-title grid-span-2">
-  <h2>Updated data</h2>
-</div>
 
+<app-card-with-button id="data-insert-card" title="" [showEyeButton]="true" class="combined-comments-permits-card">
 
-
-      <!-- Datos actualizados -->
-      <app-card-with-button title="New Comments" [showEyeButton]="true">
-        <table class="custom-table">
-          <thead>
-            <tr>
-              <th>Ticket</th>
-              <th>Comment</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let comment of comments" class="custom-row">
-              <td>{{ comment.ticket }}</td>
-              <td>{{ comment.comment }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </app-card-with-button>
-
-      <!-- Permisos renovados -->
-      <app-card-with-button title="Renovated Permits" [showEyeButton]="true">
-        <table class="custom-table">
-          <thead>
-            <tr>
-              <th>Ticket</th>
-              <th>Date</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let permit of permits" class="custom-row">
-              <td>{{ permit.ticket }}</td>
-              <td>{{ permit.date }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </app-card-with-button>
+</app-card-with-button>
 
       <!-- Inconsistencias -->
       <app-card-with-button title="RTR Inconsistencies" [showEditButton]="false" class="inconsistencies-card">

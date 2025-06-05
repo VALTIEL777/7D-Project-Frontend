@@ -131,7 +131,7 @@ app-card-with-button {
   height: 100%;
   display: flex;
   flex-direction: column;
-  overflow: hidden; /* Evita que el contenido agrande la card */
+  /* overflow: hidden; */ /* Removed to prevent content cutting */
 }
 
 /* Hace crecer el contenido interno si es necesario */
@@ -178,7 +178,7 @@ app-drag-drop-upload {
 /* Igualar tamaño de "Datos actualizados" y "Permisos renovados" */
 .dashboard-grid > app-card-with-button:nth-child(1),
 .dashboard-grid > app-card-with-button:nth-child(2) {
-  height: 250px; /* Adjust this value as needed */
+  height: 230px; /* Further adjusted height */
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -210,4 +210,103 @@ app-drag-drop-upload {
   font-weight: 600;
   margin: 0;
   color: #333;
+}
+
+.history-scrollable-content {
+  overflow-y: auto;
+  max-height: 180px; /* Adjust based on desired visible items */
+}
+
+.combined-card-content {
+  display: flex;
+  flex-direction: row; /* Ensure side-by-side display */
+  gap: 16px;
+  flex-grow: 1;
+  padding: 16px;
+
+  @media (max-width: 768px) {
+    flex-direction: column; /* Keep vertical stacking on mobile */
+  }
+}
+
+.new-comments-section {
+  flex: 2; /* Takes up 2 parts of available space */
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+
+  h3 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    font-size: 1.1em;
+    color: #333;
+  }
+
+  .custom-table {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .custom-table thead,
+  .custom-table tbody {
+    display: block;
+    width: 100%;
+  }
+
+  .custom-table tbody {
+    overflow-y: auto;
+    /* max-height: calc(100% - 40px); */ /* Removed to prevent cutting */
+  }
+
+  .custom-table th,
+  .custom-table td {
+    white-space: nowrap;
+  }
+}
+
+.renovated-permits-section {
+  flex: 1; /* Takes up 1 part of available space */
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+
+  h3 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    font-size: 1.1em;
+    color: #333;
+  }
+
+  .custom-table {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .custom-table thead,
+  .custom-table tbody {
+    display: block;
+    width: 100%;
+  }
+
+  .custom-table tbody {
+    overflow-y: auto;
+    /* max-height: calc(100% - 40px); */ /* Removed to prevent cutting */
+  }
+
+  .custom-table th,
+  .custom-table td {
+    white-space: nowrap;
+  }
+}
+
+.combined-comments-permits-card {
+  grid-column: 1 / span 2;
+  display: flex;
+  flex-direction: column;
+
+  @media (max-width: 768px) {
+    grid-column: 1 / -1;
+  }
 }
