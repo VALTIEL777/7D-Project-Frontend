@@ -1,0 +1,105 @@
+.file-upload-label {
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px;
+  border: 2px dashed rgb(82, 82, 82);
+  border-radius: 40px;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+  transition: background-color 0.3s;
+  user-select: none;
+  position: relative;
+  min-height: 120px;
+  overflow-x: auto;
+
+  input[type='file'] {
+    display: none;
+  }
+
+  &:hover {
+    background-color: #f0f0f0;
+  }
+}
+
+.file-upload-design {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+  color: rgb(82, 82, 82);
+  width: 100%;
+}
+
+.upload-prompt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.preview-list-inline {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  overflow-x: auto;
+  max-width: 100%;
+  padding: 10px 0;
+}
+
+.preview-item-inline {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 80px;
+
+  button {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    background: rgba(255, 255, 255, 0.85);
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    min-width: 24px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0 4px rgba(0, 0, 0, 0.15);
+  }
+
+  button mat-icon {
+  font-size: 16px;
+  line-height: 1;             /* reset line height */
+  display: block;             /* block helps center better */
+  margin: auto;               /* center inside the button */
+  width: 16px;
+  height: 16px;
+
+  }
+}
+
+.preview-img-inline {
+  width: 80px;
+  height: 80px;
+  border-radius: 10px;
+  object-fit: cover;
+  margin-bottom: 4px;
+}
+.preview-item-inline mat-icon {
+  width: 80px;
+  height: 80px;
+  font-size: 48px; // Tamaño del ícono en sí
+  line-height: 80px;
+  text-align: center;
+  background: #f0f0f0; // Fondo opcional, para parecerse a las imágenes
+  border-radius: 10px;
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #555; // Color del ícono
+}

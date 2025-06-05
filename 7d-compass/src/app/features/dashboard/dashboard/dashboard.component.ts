@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, EventEmitter, Output } from '@angular/core';
 import { DashboardLayoutComponent } from '../../../shared/dashboard-layout/dashboard-layout.component';
 import { CardWithButtonComponent } from "../../../shared/card-with-button/card-with-button.component";
 import { MatTableModule } from '@angular/material/table';
@@ -8,13 +8,15 @@ import { PlusButtonComponent } from '../../../shared/plus-button/plus-button.com
 import { PreviewDialogComponent,PreviewData  } from '../../../shared/preview-dialog/preview-dialog.component';
 import { MatDialog } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
+import { DragDropUploadComponent } from '../../../shared/drag-drop-upload/drag-drop-upload.component';
 
 
 @Component({
   selector: 'app-dashboard',
   imports: [DashboardLayoutComponent, CardWithButtonComponent,MatTableModule, MatDividerModule,
     CommonModule,PlusButtonComponent,
-    PreviewDialogComponent,MatButtonModule],
+    PreviewDialogComponent,MatButtonModule,
+  DragDropUploadComponent],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss'
 })
@@ -65,6 +67,7 @@ export class DashboardComponent {
     height: '80vh'
   });
 }
+
 
 
 }
