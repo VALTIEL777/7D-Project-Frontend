@@ -2,7 +2,7 @@
 <mat-sidenav
   #sidenav
   [mode]="isMobile ? 'over' : 'side'"
-  [opened]="!isMobile"
+  [opened]="!isMobile || isSidenavOpen"
   fixedInViewport="true"
   class="app-sidenav"
 >
@@ -40,7 +40,7 @@
           <mat-icon>dashboard</mat-icon>
           <span>Overview</span>
         </mat-expansion-panel-header>
-        <a mat-button routerLink="/overview" routerLinkActive="active-link">Overview</a>
+        <a mat-button routerLink="/overview" routerLinkActive="active-link" (click)="closeSidenav()">Overview</a>
       </mat-expansion-panel>
 
       <!-- RTR Data -->
@@ -49,8 +49,8 @@
           <mat-icon>storage</mat-icon>
           <span>RTR Data</span>
         </mat-expansion-panel-header>
-        <a mat-button routerLink="/rtr-processing" routerLinkActive="active-link">RTR Processing</a>
-        <a mat-button routerLink="/misc-generation" routerLinkActive="active-link">Misc Generation</a>
+        <a mat-button routerLink="/rtr-processing" routerLinkActive="active-link" (click)="closeSidenav()">RTR Processing</a>
+        <a mat-button routerLink="/misc-generation" routerLinkActive="active-link" (click)="closeSidenav()">Misc Generation</a>
       </mat-expansion-panel>
 
       <!-- Files & Reports -->
@@ -59,8 +59,8 @@
           <mat-icon>folder</mat-icon>
           <span>Files & Reports</span>
         </mat-expansion-panel-header>
-        <a mat-button routerLink="/report-center" routerLinkActive="active-link">Report Center</a>
-        <a mat-button routerLink="/files-permits" routerLinkActive="active-link">Files & Permits</a>
+        <a mat-button routerLink="/report-center" routerLinkActive="active-link" (click)="closeSidenav()">Report Center</a>
+        <a mat-button routerLink="/files-permits" routerLinkActive="active-link" (click)="closeSidenav()">Files & Permits</a>
       </mat-expansion-panel>
 
       <!-- Routes -->
@@ -69,9 +69,9 @@
           <mat-icon>alt_route</mat-icon>
           <span>Routes</span>
         </mat-expansion-panel-header>
-        <a mat-button routerLink="/route-generator" routerLinkActive="active-link">Route Generator</a>
-        <a mat-button routerLink="/route-history" routerLinkActive="active-link">Route History</a>
-        <a mat-button routerLink="/route-tracker" routerLinkActive="active-link">Route Tracker</a>
+        <a mat-button routerLink="/route-generator" routerLinkActive="active-link" (click)="closeSidenav()">Route Generator</a>
+        <a mat-button routerLink="/route-history" routerLinkActive="active-link" (click)="closeSidenav()">Route History</a>
+        <a mat-button routerLink="/route-tracker" routerLinkActive="active-link" (click)="closeSidenav()">Route Tracker</a>
       </mat-expansion-panel>
 
       <!-- Revenue -->
@@ -80,8 +80,8 @@
           <mat-icon>payments</mat-icon>
           <span>Revenue</span>
         </mat-expansion-panel-header>
-        <a mat-button routerLink="/income" routerLinkActive="active-link">Income</a>
-        <a mat-button routerLink="/fines-penalties" routerLinkActive="active-link">Fines & Penalties</a>
+        <a mat-button routerLink="/income" routerLinkActive="active-link" (click)="closeSidenav()">Income</a>
+        <a mat-button routerLink="/fines-penalties" routerLinkActive="active-link" (click)="closeSidenav()">Fines & Penalties</a>
       </mat-expansion-panel>
 
       <!-- Manage -->
@@ -94,17 +94,17 @@
           <mat-icon>manage_accounts</mat-icon>
           <span>Manage</span>
         </mat-expansion-panel-header>
-        <a mat-button routerLink="/users" routerLinkActive="active-link">Users</a>
-        <a mat-button routerLink="/contract-units" routerLinkActive="active-link">Contract Units</a>
-        <a mat-button routerLink="/payments" routerLinkActive="active-link">Payments</a>
-        <a mat-button routerLink="/invoices" routerLinkActive="active-link">Invoices</a>
-        <a mat-button routerLink="/fines" routerLinkActive="active-link">Fines</a>
-        <a mat-button routerLink="/supervisors" routerLinkActive="active-link">Supervisors</a>
-        <a mat-button routerLink="/inventory" routerLinkActive="active-link">Inventory</a>
-        <a mat-button routerLink="/suppliers" routerLinkActive="active-link">Suppliers</a>
-        <a mat-button routerLink="/equipment" routerLinkActive="active-link">Equipment</a>
-        <a mat-button routerLink="/crews" routerLinkActive="active-link">Crews</a>
-        <a mat-button routerLink="/ticket" routerLinkActive="active-link">Ticket</a>
+        <a mat-button routerLink="/users" routerLinkActive="active-link" (click)="closeSidenav()">Users</a>
+        <a mat-button routerLink="/contract-units" routerLinkActive="active-link" (click)="closeSidenav()">Contract Units</a>
+        <a mat-button routerLink="/payments" routerLinkActive="active-link" (click)="closeSidenav()">Payments</a>
+        <a mat-button routerLink="/invoices" routerLinkActive="active-link" (click)="closeSidenav()">Invoices</a>
+        <a mat-button routerLink="/fines" routerLinkActive="active-link" (click)="closeSidenav()">Fines</a>
+        <a mat-button routerLink="/supervisors" routerLinkActive="active-link" (click)="closeSidenav()">Supervisors</a>
+        <a mat-button routerLink="/inventory" routerLinkActive="active-link" (click)="closeSidenav()">Inventory</a>
+        <a mat-button routerLink="/suppliers" routerLinkActive="active-link" (click)="closeSidenav()">Suppliers</a>
+        <a mat-button routerLink="/equipment" routerLinkActive="active-link" (click)="closeSidenav()">Equipment</a>
+        <a mat-button routerLink="/crews" routerLinkActive="active-link" (click)="closeSidenav()">Crews</a>
+        <a mat-button routerLink="/ticket" routerLinkActive="active-link" (click)="closeSidenav()">Ticket</a>
       </mat-expansion-panel>
 
     </mat-accordion>

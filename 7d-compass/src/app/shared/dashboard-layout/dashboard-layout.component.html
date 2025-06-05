@@ -1,8 +1,6 @@
-<div class="layout-container">
-<app-side-navbar #sidebar></app-side-navbar>
-
+<app-side-navbar #sidebar>
   <div class="main-content">
-<app-title-bar (toggleSidebar)="sidebar.toggle()"></app-title-bar>
+    <app-title-bar (toggleSidebar)="sidebar.toggle()"></app-title-bar>
 
     <div class="page-container">
       <mat-card class="full-card">
@@ -12,4 +10,4 @@
       </mat-card>
     </div>
   </div>
-</div>
+</app-side-navbar>

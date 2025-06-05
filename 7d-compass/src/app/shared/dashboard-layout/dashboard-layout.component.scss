@@ -1,45 +1,19 @@
+/* Remove all content of the file if not already empty, then remove this comment. */
+
 @use '../../../variables' as *;
 
-.layout-container {
-  display: flex;
-  flex-direction: row;
-  width: 100%;
-  height: 100vh;
-}
-
-app-side-navbar {
-  flex-shrink: 0;
-}
-
 .main-content {
-  flex: 1 1 auto;
   display: flex;
   flex-direction: column;
-  padding: 15px 30px; // Default (desktop/tablet)
-  gap: 12px;
-  box-sizing: border-box;
-  overflow-y: auto;
-
-  @media (max-width: 767px) {
-    padding: 6px 6px; // ✅ Smaller padding for mobile
-  }
+  flex-grow: 1;
 }
-
-
 
 .page-container {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  box-sizing: border-box;
-  // ❌ No padding here, uses .main-content’s horizontal padding
+  flex-grow: 1;
+  overflow: auto;
+  padding: 2px;
 }
 
-
 .full-card {
-  width: 100%;
-  height: 100%;
-  border-radius: 12px;
   background: $light-purple;
-  padding : 20px;
 }

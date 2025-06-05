@@ -71,12 +71,16 @@ export class SideNavbarComponent {
   }
 
   toggle() {
+    if (this.isMobile) {
+      this.isSidenavOpen = !this.isSidenavOpen;
+    }
     this.sidenav.toggle();
   }
 
   closeSidenav() {
     if (this.isMobile) {
       this.isSidenavOpen = false;
+      this.sidenav.close();
     }
   }
 }
