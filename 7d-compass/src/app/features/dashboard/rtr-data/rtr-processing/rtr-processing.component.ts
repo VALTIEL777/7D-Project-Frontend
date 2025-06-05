@@ -5,10 +5,13 @@ import { MatDividerModule } from '@angular/material/divider';
 import { MatTableModule } from '@angular/material/table';
 import { CommonModule } from '@angular/common';
 import { MATERIAL_MODULES } from '../../../../material';
+import { DragDropUploadComponent } from '../../../../shared/drag-drop-upload/drag-drop-upload.component';
 
 @Component({
   selector: 'app-rtr-processing',
-  imports: [DashboardLayoutComponent, CardWithButtonComponent, MatTableModule, MatDividerModule, CommonModule, MATERIAL_MODULES, ],
+  imports: [DashboardLayoutComponent,
+    DragDropUploadComponent,
+     CardWithButtonComponent, MatTableModule, MatDividerModule, CommonModule, MATERIAL_MODULES, ],
   templateUrl: './rtr-processing.component.html',
   styleUrl: './rtr-processing.component.scss'
 })

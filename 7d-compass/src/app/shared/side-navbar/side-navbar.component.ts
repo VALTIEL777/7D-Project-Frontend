@@ -1,5 +1,5 @@
-import { Component } from '@angular/core';
-import { MatSidenavModule } from '@angular/material/sidenav';
+import { Component, ViewChild } from '@angular/core';
+import { MatSidenav, MatSidenavModule } from '@angular/material/sidenav';
 import { MatSidenavContainer } from '@angular/material/sidenav';
 import { MatSidenavContent } from '@angular/material/sidenav';
 import { RouterModule } from '@angular/router';
@@ -38,18 +38,32 @@ import { Router, NavigationEnd } from '@angular/router';
   styleUrl: './side-navbar.component.scss'
 })
 export class SideNavbarComponent {
+  isMobile = false;
+
   selectedCompany = 'option1';
 
   currentRoute = '';
 
-  constructor(private router: Router) {
-    // Watch for route changes
-    this.router.events.subscribe(event => {
-      if (event instanceof NavigationEnd) {
-        this.currentRoute = event.urlAfterRedirects;
-      }
-    });
-  }
+  @ViewChild('sidenav') sidenav!: MatSidenav;
+
+toggle() {
+  this.sidenav.toggle();
+}
+
+constructor(private router: Router) {
+  this.router.events.subscribe(event => {
+    if (event instanceof NavigationEnd) {
+      this.currentRoute = event.urlAfterRedirects;
+    }
+  });
+
+  // Responsive check
+  this.checkScreenSize();
+  window.addEventListener('resize', () => this.checkScreenSize());
+}
+checkScreenSize() {
+  this.isMobile = window.innerWidth <= 768;
+}
 
   isExpanded(routes: string[]): boolean {
     const currentUrl = this.router.url;
@@ -57,4 +71,5 @@ export class SideNavbarComponent {
     // Return true if currentUrl matches exactly or starts with one of the routes
     return routes.some(route => currentUrl === route || currentUrl.startsWith(route + '/'));
   }
+
 }

@@ -1,11 +1,11 @@
 <mat-sidenav-container class="app-container">
-  <mat-sidenav
-    #sidenav
-    mode="side"
-    opened
-    fixedInViewport="true"
-    class="app-sidenav"
-  >
+<mat-sidenav
+  #sidenav
+  [mode]="isMobile ? 'over' : 'side'"
+  [opened]="!isMobile"
+  fixedInViewport="true"
+  class="app-sidenav"
+>
     <div class="sidebar-title">
       <img src="assets/svg/7Compass-blue.svg" alt="Compass Logo" class="sidebar-logo" />
       <span class="sidebar-title-text">Compass</span>

@@ -8,7 +8,6 @@
 }
 
 app-side-navbar {
-  width: 240px; // Or whatever width your sidebar uses
   flex-shrink: 0;
 }
 
@@ -16,11 +15,16 @@ app-side-navbar {
   flex: 1 1 auto;
   display: flex;
   flex-direction: column;
-  padding: 15px 30px; // Only horizontal padding applied here
+  padding: 15px 30px; // Default (desktop/tablet)
   gap: 12px;
   box-sizing: border-box;
   overflow-y: auto;
+
+  @media (max-width: 767px) {
+    padding: 6px 6px; // ✅ Smaller padding for mobile
+  }
 }
+
 
 
 .page-container {

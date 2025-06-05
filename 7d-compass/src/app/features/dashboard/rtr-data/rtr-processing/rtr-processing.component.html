@@ -11,16 +11,9 @@
     <div class="dashboard-grid">
 
       <!-- Subida de nuevo RTR -->
-      <app-card-with-button title="Upload new RTR" [showEyeButton]="false">
-        <div style="text-align: center;">
-        <label class="upload-button">
-        <input type="file" hidden (change)="onFileSelected($event)" />
-        <mat-icon>cloud</mat-icon>
-        </label>
-            <p><strong>Choose a file or drag & drop it here</strong></p>
-          <p>JPEG, PNG, PDF, and MP4 formats, up to 50MB</p>
-        </div>
-      </app-card-with-button>
+  <app-card-with-button title="Upload Files" [showEyeButton]="true">
+<app-drag-drop-upload [maxFiles]="1"></app-drag-drop-upload>
+  </app-card-with-button>
 
       <!-- Descargar RTR -->
       <app-card-with-button title="Download RTR" [showEyeButton]="true">

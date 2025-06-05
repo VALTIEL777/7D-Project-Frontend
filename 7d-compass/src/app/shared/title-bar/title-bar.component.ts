@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, EventEmitter, Output } from '@angular/core';
 import { Router, NavigationEnd } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
@@ -33,6 +33,8 @@ import { SearchDialogComponent } from '../search-dialog/search-dialog.component'
   styleUrl: './title-bar.component.scss',
 })
 export class TitleBarComponent {
+  @Output() toggleSidebar = new EventEmitter<void>();
+
   hasUnreadNotifications: boolean = true;
   pageTitle: string = 'Dashboard';
   notificationCount: number = 11;

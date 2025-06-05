@@ -157,3 +157,10 @@
 ::ng-deep .mat-badge-hidden .mat-badge-content {
   display: none;
 }
+.mobile-menu-button {
+  display: inline-flex; // default (visible on mobile)
+
+  @media (min-width: 768px) {
+    display: none; // hide on tablets and up
+  }
+}
