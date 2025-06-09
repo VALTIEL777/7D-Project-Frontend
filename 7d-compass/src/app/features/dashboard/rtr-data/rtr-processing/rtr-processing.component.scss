@@ -36,21 +36,17 @@
 
 .dashboard-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr)) 2.5fr;
-  grid-template-rows: auto auto 1.5fr; /* fila 3 toma más espacio */
-  gap: 16px;
-  padding: 16px;
-  width: 100%;
-  box-sizing: border-box;
-
-
+  grid-template-columns: repeat(3, 1fr);
+  gap: 15px;
+  padding: 10px;
 
   @media (max-width: 768px) {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto;
-
+    display: block;
   }
 }
+
+
+
 
 
 
@@ -66,13 +62,6 @@
   height: 100%;
   box-sizing: border-box;
 
-  @media (max-width: 768px) {
-    grid-column: 1 / -1; /* Occupies the full width on mobile */
-    grid-row: auto;
-
-    /* Ensure table in inconsistencies card is responsive */
-
-  }
 }
 
 
@@ -99,12 +88,6 @@
   white-space: nowrap; /* Optional: prevents text wrapping */
 }
 
-
-.dashboard-wrapper {
-  width: 100%;
-  max-width: 100%;
-  overflow-x: hidden; /* Previene desbordamiento horizontal */
-}
 
 
 
@@ -166,3 +149,17 @@
   }
 }
 
+@media (max-width: 768px) {
+  .dashboard-grid {
+    display: block;
+    padding-bottom: 20px;
+
+  }
+
+
+  app-card-with-button {
+    display: block;
+    margin-top: 20px !important;
+    margin-bottom: 20px !important;
+  }
+}
