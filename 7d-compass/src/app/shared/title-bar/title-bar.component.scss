@@ -281,20 +281,6 @@
     }
   }
 
-  mat-chip-listbox {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-
-    mat-chip-option {
-      cursor: pointer;
-      transition: background-color 0.2s;
-
-      &:hover {
-        background-color: #e0e0e0;
-      }
-    }
-  }
 }
 ::ng-deep .mat-mdc-standard-chip .mdc-evolution-chip__graphic {
   display: none !important;
