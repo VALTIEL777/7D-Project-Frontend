@@ -6,67 +6,13 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  padding-bottom: 1px;
+  padding-top:  1px;
 }
 
-.history-title {
-  margin-bottom: 4px;
-}
 
-.custom-divider {
-  border: 0;
-  height: 1px;
-  background-color: #eee; /* Light gray color for the divider */
-  margin: 4px 0; /* Further reduced top and bottom margin */
-}
 
-.History-button {
-  padding: 10px 20px;
-  background-color: #005cbb;
-  border: none;
-  color: white;
-  font-weight: bold;
-  border-radius: 8px;
-  cursor: pointer;
-  width: auto;
-  margin: 0;
-  transition: all 0.2s ease;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
-}
 
-.History-button:hover {
-  background-color: #0073e6;
-  transform: translateY(-2px);
-  box-shadow: 0 6px 10px rgba(0, 0, 0, 0.25);
-}
-
-.History-button:active {
-  transform: scale(0.95);
-  box-shadow: 0 3px 5px rgba(0, 0, 0, 0.2);
-}
-
-.upload-button {
-  padding: 10px 20px;
-  background-color: #ffffff;
-  border: none;
-  color: #005cbb;
-  font-weight: bold;
-  border-radius: 8px;
-  cursor: pointer;
-  width: auto;
-  margin: 0;
-  transition: all 0.2s ease;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
-}
-
-.upload-button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 10px rgba(0, 0, 0, 0.25);
-}
-
-.upload-button:active {
-  transform: scale(0.95);
-  box-shadow: 0 3px 5px rgba(0, 0, 0, 0.2);
-}
 
 .download-card-content {
   display: flex;
@@ -77,73 +23,34 @@
 }
 
 .custom-table {
-  width: 100%;
   border-collapse: collapse;
 }
 
-.custom-table th,
-.custom-table td {
-  padding: 8px;
-  text-align: left;
-}
+
 
 .custom-row {
   border-bottom: 1px solid #000000;
 }
 
-.custom-table thead tr {
-  border-bottom: 2px solid #000000;
-  flex-grow: 1;
-  overflow-y: auto;
-  max-height: 100%;
-}
+
 
 .dashboard-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr)) 2.5fr;
-  grid-template-rows: auto auto 1.5fr; /* fila 3 toma más espacio */
-  gap: 16px;
-  padding: 16px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 15px;
+  padding: 10px;
 
   @media (max-width: 768px) {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto;
-  }
-}
-.grid-span-2 {
-  grid-column: 1 / span 2;
-  grid-row: 3; /* fija el título en la fila 3 para no afectar filas 1 y 2 */
-  padding-left: 8px; /* igual que tus otros títulos */
-  margin: 8px 16px 0;
-  display: flex;
-  align-items: center;
-
-  @media (max-width: 768px) {
-    grid-column: 1 / -1;
-    grid-row: auto;
+    display: block;
   }
 }
 
-/* Asegura que todas las cards tengan tamaño uniforme */
-app-card-with-button {
-  width: 100%;
-  box-sizing: border-box;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  /* overflow: hidden; */ /* Removed to prevent content cutting */
-}
 
-/* Hace crecer el contenido interno si es necesario */
-app-card-with-button > * {
-  flex-grow: 1;
-}
 
-app-drag-drop-upload {
-  width: 200px; /* Adjust as needed */
-  height: 60px; /* Adjusted height */
-  margin: auto; /* Center the component */
-}
+
+
+
+
 
 /* Card de inconsistencias: columna 3, fila completa */
 .inconsistencies-card {
@@ -155,79 +62,41 @@ app-drag-drop-upload {
   height: 100%;
   box-sizing: border-box;
 
-  @media (max-width: 768px) {
-    grid-column: 1 / -1;
-    grid-row: auto;
-  }
 }
-.inconsistency-actions {
-  margin-top: auto; /* empuja hacia abajo si el contenedor es flexible */
-  display: flex;
-  justify-content: center; /* centra horizontalmente */
-  gap: 16px; /* espacio entre botones */
-  padding-top: 16px;
-}
+
 
 .rtr-inconsistencies-table-wrapper {
-  overflow-x: auto;
   -webkit-overflow-scrolling: touch;
-  max-height: 680px; /* Adjusted to show approximately 7 rows */
+  max-height: 680px;
   overflow-y: auto;
+  overflow-x: auto; /* Allow horizontal scroll if needed */
+  width: 100%; /* Ensure wrapper uses full width */
+  box-sizing: border-box;
 }
 
-/* Igualar tamaño de "Datos actualizados" y "Permisos renovados" */
-.dashboard-grid > app-card-with-button:nth-child(1),
-.dashboard-grid > app-card-with-button:nth-child(2) {
-  height: 230px; /* Further adjusted height */
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
+.rtr-inconsistencies-table-wrapper table {
+  width: 100%; /* Make table fill the container */
+  table-layout: auto; /* Or 'fixed' if you want equal width columns */
+  border-collapse: collapse;
 }
 
-.dashboard-grid > app-card-with-button:nth-child(3),
-.dashboard-grid > app-card-with-button:nth-child(4) {
-  height: 100%;
-  min-height: 250px;
-  display: flex;
-  flex-direction: column;
+.rtr-inconsistencies-table-wrapper th,
+.rtr-inconsistencies-table-wrapper td {
+  padding: 8px;
+  text-align: left;
+  border-bottom: 1px solid #ccc;
+  white-space: nowrap; /* Optional: prevents text wrapping */
 }
 
-.dashboard-wrapper {
-  display: flex;
-  flex-direction: column;
-}
 
-.section-title {
-  margin: 8px 16px 0;
-  padding-left: 8px;
-  display: flex;
-  align-items: center;
-}
 
-.section-title h2 {
-  font-size: 20px;
-  font-weight: 600;
-  margin: 0;
-  color: #333;
-}
 
 .history-scrollable-content {
   overflow-y: auto;
   max-height: 180px; /* Adjust based on desired visible items */
 }
 
-.combined-card-content {
-  display: flex;
-  flex-direction: column; /* Changed to column to stack textarea and table */
-  gap: 16px;
-  flex-grow: 1;
-  padding: 16px;
 
-  @media (max-width: 768px) {
-    flex-direction: column;
-  }
-}
 
 .combined-card-content textarea {
   width: 100%;
@@ -238,63 +107,8 @@ app-drag-drop-upload {
   font-family: monospace;
 }
 
-.pasted-table-wrapper {
-  overflow-x: auto;
-  overflow-y: auto; /* Enable vertical scroll for table */
-  max-height: 150px; /* Reduced limit height of the table */
-  flex-grow: 1; /* Allow table wrapper to grow */
-}
 
-/* Ensure table takes full width inside wrapper */
-.pasted-table-wrapper .custom-table {
-  width: 100%;
-  min-width: max-content; /* Allow table to grow to content width */
-}
 
-/* Style for the button container in the combined card */
-.card-actions {
-  display: flex;
-  justify-content: space-between;
-  padding: 1px;
-  /* border-top: 1px solid #eee; */
-  /* margin-top: auto; */ /* Removed to bring buttons closer to table */
-}
-
-.new-comments-section {
-  flex: 2; /* Takes up 2 parts of available space */
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-
-  h3 {
-    margin-top: 0;
-    margin-bottom: 10px;
-    font-size: 1.1em;
-    color: #333;
-  }
-
-  .custom-table {
-    flex-grow: 1;
-    display: flex;
-    flex-direction: column;
-  }
-
-  .custom-table thead,
-  .custom-table tbody {
-    display: block;
-    width: 100%;
-  }
-
-  .custom-table tbody {
-    overflow-y: auto;
-    /* max-height: calc(100% - 40px); */ /* Removed to prevent cutting */
-  }
-
-  .custom-table th,
-  .custom-table td {
-    white-space: nowrap;
-  }
-}
 
 .renovated-permits-section {
   flex: 1; /* Takes up 1 part of available space */
@@ -315,29 +129,37 @@ app-drag-drop-upload {
     flex-direction: column;
   }
 
-  .custom-table thead,
-  .custom-table tbody {
-    display: block;
-    width: 100%;
-  }
+
 
   .custom-table tbody {
     overflow-y: auto;
+    overflow-x: auto;
     /* max-height: calc(100% - 40px); */ /* Removed to prevent cutting */
   }
 
-  .custom-table th,
-  .custom-table td {
-    white-space: nowrap;
-  }
-}
 
+}
 .combined-comments-permits-card {
   grid-column: 1 / span 2;
   display: flex;
   flex-direction: column;
 
   @media (max-width: 768px) {
-    grid-column: 1 / -1;
+    grid-column: 1 / -1; /* Occupies the full width on mobile */
+  }
+}
+
+@media (max-width: 768px) {
+  .dashboard-grid {
+    display: block;
+    padding-bottom: 20px;
+
+  }
+
+
+  app-card-with-button {
+    display: block;
+    margin-top: 20px !important;
+    margin-bottom: 20px !important;
   }
 }

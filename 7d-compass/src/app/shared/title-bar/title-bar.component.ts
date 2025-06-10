@@ -13,6 +13,7 @@ import { filter } from 'rxjs/operators';
 import { MatBadgeModule } from '@angular/material/badge';
 import { MatDialog } from '@angular/material/dialog';
 import { SearchDialogComponent } from '../search-dialog/search-dialog.component';
+import { MatChipsModule } from '@angular/material/chips';
 
 @Component({
   selector: 'app-title-bar',
@@ -28,6 +29,7 @@ import { SearchDialogComponent } from '../search-dialog/search-dialog.component'
     MatInputModule,
     SearchBarComponent,
     MatBadgeModule,
+    MatChipsModule,
   ],
   templateUrl: './title-bar.component.html',
   styleUrl: './title-bar.component.scss',
@@ -38,6 +40,16 @@ export class TitleBarComponent {
   hasUnreadNotifications: boolean = true;
   pageTitle: string = 'Dashboard';
   notificationCount: number = 11;
+  showFilterBar: boolean = false;
+
+  filterOptions = [
+    { name: 'Shop', options: ['North', 'Central'] },
+    { name: 'Status', options: ['Open', 'Closed', 'In Progress', 'On Hold'] },
+    { name: 'Date Range', options: ['Today', 'Last Week', 'Last Month'] },
+
+  ];
+
+  selectedFilters: string[] = [];
 
   notifications = [
     {
@@ -154,25 +166,25 @@ export class TitleBarComponent {
     this.pageTitle = routeMap[url] || 'Dashboard';
   }
 
-onNotificationsOpened() {
-  if (this.hasUnreadNotifications) {
-    this.hasUnreadNotifications = false;
-    this.notifications = this.notifications.map(notif => ({
-      ...notif,
-      read: true
-    }));
-    this.notificationCount = 0;
+  onNotificationsOpened() {
+    if (this.hasUnreadNotifications) {
+      this.hasUnreadNotifications = false;
+      this.notifications = this.notifications.map(notif => ({
+        ...notif,
+        read: true
+      }));
+      this.notificationCount = 0;
 
-    // Force change detection by creating a new array reference
-    this.notifications = [...this.notifications];
+      // Force change detection by creating a new array reference
+      this.notifications = [...this.notifications];
+    }
   }
-}
-addNewNotification(newNotification: any) {
-  this.notifications = [...this.notifications, { ...newNotification, read: false }];
-  this.notificationCount++;
-  this.hasUnreadNotifications = true;
-}
 
+  addNewNotification(newNotification: any) {
+    this.notifications = [...this.notifications, { ...newNotification, read: false }];
+    this.notificationCount++;
+    this.hasUnreadNotifications = true;
+  }
 
   openNotificationDialog(notification: any): void {
     if (!notification.data) {
@@ -243,14 +255,30 @@ addNewNotification(newNotification: any) {
   logout() {
     console.log('Log Out clicked');
   }
+
   isMobile: boolean = false;
 
-ngOnInit() {
-  this.checkScreenSize();
-  window.addEventListener('resize', () => this.checkScreenSize());
-}
+  ngOnInit() {
+    this.checkScreenSize();
+    window.addEventListener('resize', () => this.checkScreenSize());
+  }
 
-checkScreenSize() {
-  this.isMobile = window.innerWidth < 768;
-}
+  checkScreenSize() {
+    this.isMobile = window.innerWidth < 768;
+  }
+
+  toggleFilterBar() {
+    this.showFilterBar = !this.showFilterBar;
+  }
+
+  toggleFilter(option: string) {
+    const index = this.selectedFilters.indexOf(option);
+    if (index > -1) {
+      this.selectedFilters.splice(index, 1);
+    } else {
+      this.selectedFilters.push(option);
+    }
+    console.log('Selected Filters:', this.selectedFilters);
+    // Here you would typically apply the filter to your data
+  }
 }

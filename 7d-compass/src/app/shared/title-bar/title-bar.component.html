@@ -40,6 +40,10 @@
     >
       <mat-icon>account_circle</mat-icon>
     </button>
+
+    <button mat-icon-button (click)="toggleFilterBar()" aria-label="Filter">
+      <mat-icon>{{ showFilterBar ? 'filter_alt_off' : 'filter_alt' }}</mat-icon>
+    </button>
   </div>
 </ng-container>
       </div>
@@ -75,8 +79,28 @@
         >
           <mat-icon>account_circle</mat-icon>
         </button>
+
+        <button mat-icon-button (click)="toggleFilterBar()" aria-label="Filter">
+          <mat-icon>{{ showFilterBar ? 'filter_alt_off' : 'filter_alt' }}</mat-icon>
+        </button>
       </div>
     </mat-toolbar>
+  </div>
+
+  <div *ngIf="showFilterBar" class="filter-bar">
+    <mat-chip-listbox multiple aria-label="Filter selection">
+      <div *ngFor="let filterGroup of filterOptions" class="filter-group">
+        <div class="filter-group-name">{{ filterGroup.name }}:</div>
+        <mat-chip-option
+          *ngFor="let option of filterGroup.options"
+          [value]="option"
+          [selected]="selectedFilters.includes(option)"
+          (selectionChange)="toggleFilter(option)"
+        >
+          {{ option }}
+        </mat-chip-option>
+      </div>
+    </mat-chip-listbox>
   </div>
 </div>
 
