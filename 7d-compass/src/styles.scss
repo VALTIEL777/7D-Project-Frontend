@@ -5,6 +5,20 @@ body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
 
 html, body { height: 100%; }
 body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
+::-webkit-scrollbar {
+  width: 6px; /* Change width here */
+  height: 8px; /* For horizontal scrollbars */
+}
+
+::-webkit-scrollbar-track {
+  background-color: rgba(109, 168, 212, 0.2);
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: #6da8d4; /* Change to your desired color */
+  border-radius: 10px;
+  background-clip: content-box;
+}
 
 mat-expansion-panel.mat-expanded.mat-expansion-panel-spacing {
   margin-top: 0 !important;

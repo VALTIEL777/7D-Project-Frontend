@@ -1,88 +1,147 @@
 <app-dashboard-layout>
   <!-- CONTENEDOR GENERAL -->
   <div class="dashboard-wrapper">
-
-
-
     <!-- GRID PRINCIPAL -->
     <div class="dashboard-grid">
-
       <!-- Subida de nuevo RTR -->
-  <app-card-with-button title="Upload Files" [showEyeButton]="true">
-<app-drag-drop-upload [maxFiles]="1"></app-drag-drop-upload>
-  </app-card-with-button>
+      <app-card-with-button title="Upload Files" [showEyeButton]="true" class="spaced-card">
+        <app-drag-drop-upload [maxFiles]="1"></app-drag-drop-upload>
+      </app-card-with-button>
 
       <!-- Descargar RTR -->
-      <app-card-with-button title="Download RTR" [showEyeButton]="true">
+      <app-card-with-button title="Download RTR" [showEyeButton]="true" class="spaced-card">
         <div class="download-card-content">
-          <svg xmlns="http://www.w3.org/2000/svg" x="0px" y="0px" width="100" height="100" viewBox="0 0 48 48">
-            <path fill="#4CAF50" d="M41,10H25v28h16c0.553,0,1-0.447,1-1V11C42,10.447,41.553,10,41,10z"></path><path fill="#FFF" d="M32 15H39V18H32zM32 25H39V28H32zM32 30H39V33H32zM32 20H39V23H32zM25 15H30V18H25zM25 25H30V28H25zM25 30H30V33H25zM25 20H30V23H25z"></path><path fill="#2E7D32" d="M27 42L6 38 6 10 27 6z"></path><path fill="#FFF" d="M19.129,31l-2.411-4.561c-0.092-0.171-0.186-0.483-0.284-0.938h-0.037c-0.046,0.215-0.154,0.541-0.324,0.979L13.652,31H9.895l4.462-7.001L10.274,17h3.837l2.001,4.196c0.156,0.331,0.296,0.725,0.42,1.179h0.04c0.078-0.271,0.224-0.68,0.439-1.22L19.237,17h3.515l-4.199,6.939l4.316,7.059h-3.74V31z"></path>
-            </svg>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            x="0px"
+            y="0px"
+            width="100"
+            height="100"
+            viewBox="0 0 48 48"
+          >
+            <path
+              fill="#4CAF50"
+              d="M41,10H25v28h16c0.553,0,1-0.447,1-1V11C42,10.447,41.553,10,41,10z"
+            ></path>
+            <path
+              fill="#FFF"
+              d="M32 15H39V18H32zM32 25H39V28H32zM32 30H39V33H32zM32 20H39V23H32zM25 15H30V18H25zM25 25H30V28H25zM25 30H30V33H25zM25 20H30V23H25z"
+            ></path>
+            <path fill="#2E7D32" d="M27 42L6 38 6 10 27 6z"></path>
+            <path
+              fill="#FFF"
+              d="M19.129,31l-2.411-4.561c-0.092-0.171-0.186-0.483-0.284-0.938h-0.037c-0.046,0.215-0.154,0.541-0.324,0.979L13.652,31H9.895l4.462-7.001L10.274,17h3.837l2.001,4.196c0.156,0.331,0.296,0.725,0.42,1.179h0.04c0.078-0.271,0.224-0.68,0.439-1.22L19.237,17h3.515l-4.199,6.939l4.316,7.059h-3.74V31z"
+            ></path>
+          </svg>
           <button mat-raised-button color="primary">
             <mat-icon>file_download</mat-icon> Download
           </button>
         </div>
       </app-card-with-button>
+      
 
       <!-- Historial de RTR recibidos -->
-      <app-card-with-button title="Received RTR History" [showEyeButton]="true">
+      <app-card-with-button class="rtr-history-card" title="Received RTR History" [showEyeButton]="true">
+        <div class="search-container">
+  <mat-form-field appearance="fill" class="search-bar">
+    <mat-label>Search Received RTRs</mat-label>
+    <input matInput (keyup)="applyReceivedFilter($event)" placeholder="e.g., 05-25-25">
+    <mat-icon matSuffix>search</mat-icon>
+  </mat-form-field>
+</div>
         <div class="history-scrollable-content">
-          <div *ngFor="let rtr of receivedRTRs" class="history-item">
+          <div *ngFor="let rtr of filteredReceivedRTRs" class="history-item">
             <div class="history-content">
               <h4 class="history-title">{{ rtr.date }}</h4>
               <button mat-raised-button>Download RTR</button>
             </div>
-            <hr class="custom-divider">
+            <hr class="custom-divider" />
           </div>
         </div>
       </app-card-with-button>
 
       <!-- Historial de RTR enviados -->
-      <app-card-with-button title="Sent RTR History" [showEyeButton]="true">
+      <app-card-with-button class="rtr-history-card" title="Sent RTR History" [showEyeButton]="true">
+        <div class="search-container">
+  <mat-form-field appearance="fill" class="search-bar">
+    <mat-label>Search Sent RTRs</mat-label>
+    <input matInput (keyup)="applySentFilter($event)" placeholder="e.g., 05-10-25">
+    <mat-icon matSuffix>search</mat-icon>
+  </mat-form-field>
+</div>
         <div class="history-scrollable-content">
-          <div *ngFor="let rtr of sentRTRs" class="history-item">
+          <div *ngFor="let rtr of filteredSentRTRs" class="history-item">
             <div class="history-content">
               <h4 class="history-title">{{ rtr.date }}</h4>
               <button mat-raised-button>Download RTR</button>
             </div>
-            <hr class="custom-divider">
+            <hr class="custom-divider" />
           </div>
         </div>
       </app-card-with-button>
 
-
-<app-card-with-button id="data-insert-card" title="Paste Excel Data" [showEyeButton]="true" class="combined-comments-permits-card">
-  <div class="combined-card-content">
-
-    <textarea #pasteArea (paste)="handlePaste($event)" placeholder="Example:
+      <app-card-with-button
+        id="data-insert-card"
+        title="Paste Excel Data"
+        [showEyeButton]="true"
+        class="combined-comments-permits-card"
+      >
+        <div class="combined-card-content">
+          <textarea
+            #pasteArea
+            (paste)="handlePaste($event)"
+            placeholder="Example:
 Location	Ticket	Job	Width	Length
 Austin, TX	P123	JobA	10	20
-Dallas, TX	P456	JobB	15	25" rows="7"></textarea>
+Dallas, TX	P456	JobB	15	25"
+            rows="7"
+          ></textarea>
 
-    <div *ngIf="pastedDataSource.length > 0" class="pasted-table-wrapper">
-      <table mat-table [dataSource]="pastedDataSource" class="custom-table">
+          <div *ngIf="pastedDataSource.length > 0" class="pasted-table-wrapper">
+            <table
+              mat-table
+              [dataSource]="pastedDataSource"
+              class="custom-table"
+            >
+              <!-- Dynamic Columns -->
+              <ng-container
+                *ngFor="let col of pastedDisplayedColumns"
+                [matColumnDef]="col"
+              >
+                <th mat-header-cell *matHeaderCellDef>{{ col }}</th>
+                <td mat-cell *matCellDef="let element">{{ element[col] }}</td>
+              </ng-container>
 
-        <!-- Dynamic Columns -->
-        <ng-container *ngFor="let col of pastedDisplayedColumns" [matColumnDef]="col">
-          <th mat-header-cell *matHeaderCellDef>{{ col }}</th>
-          <td mat-cell *matCellDef="let element">{{ element[col] }}</td>
-        </ng-container>
-
-        <tr mat-header-row *matHeaderRowDef="pastedDisplayedColumns"></tr>
-        <tr mat-row *matRowDef="let row; columns: pastedDisplayedColumns;"></tr>
-      </table>
-    </div>
-    <div class="card-actions">
-      <button mat-raised-button color="warn" (click)="clearPastedData()">Clear All</button>
-      <button mat-raised-button color="accent" (click)="processPastedData()">Process Data</button>
-    </div>
-  </div>
-</app-card-with-button>
+              <tr mat-header-row *matHeaderRowDef="pastedDisplayedColumns"></tr>
+              <tr
+                mat-row
+                *matRowDef="let row; columns: pastedDisplayedColumns"
+              ></tr>
+            </table>
+          </div>
+          <div class="card-actions">
+            <button mat-raised-button color="warn" (click)="clearPastedData()">
+              Clear All
+            </button>
+            <button
+              mat-raised-button
+              color="accent"
+              (click)="processPastedData()"
+            >
+              Process Data
+            </button>
+          </div>
+        </div>
+      </app-card-with-button>
 
       <!-- Inconsistencias -->
-      <app-card-with-button title="RTR Inconsistencies" [showEditButton]="false" class="inconsistencies-card">
+      <app-card-with-button
+        title="RTR Inconsistencies"
+        [showEditButton]="false"
+        class="inconsistencies-card"
+      >
         <div class="rtr-inconsistencies-table-wrapper">
-          <table class="custom-table">
+          <table>
             <thead>
               <tr>
                 <th>Location</th>
@@ -94,16 +153,23 @@ Dallas, TX	P456	JobB	15	25" rows="7"></textarea>
               </tr>
             </thead>
             <tbody>
-              <tr *ngFor="let inconsistency of inconsistencies" class="custom-row">
+              <tr
+                *ngFor="let inconsistency of inconsistencies"
+                class="custom-row"
+              >
                 <td>{{ inconsistency.location }}</td>
                 <td>{{ inconsistency.ticket }}</td>
                 <td>{{ inconsistency.column }}</td>
                 <td>{{ inconsistency.rtrValue }}</td>
                 <td>{{ inconsistency.dbValue }}</td>
                 <td>
-                  <div style="display: flex; flex-direction: column; gap: 8px;">
-                    <button mat-raised-button color="primary">Keep Value</button>
-                    <button mat-raised-button color="accent">Receive Change</button>
+                  <div style="display: flex; flex-direction: column; gap: 8px">
+                    <button mat-raised-button color="primary">
+                      Keep Value
+                    </button>
+                    <button mat-raised-button color="accent">
+                      Receive Change
+                    </button>
                   </div>
                 </td>
               </tr>
@@ -116,7 +182,8 @@ Dallas, TX	P456	JobB	15	25" rows="7"></textarea>
           <button mat-raised-button color="primary">Update Database</button>
         </div>
       </app-card-with-button>
-
-    </div> <!-- cierre de .dashboard-grid -->
-  </div> <!-- cierre de .dashboard-wrapper -->
+    </div>
+    <!-- cierre de .dashboard-grid -->
+  </div>
+  <!-- cierre de .dashboard-wrapper -->
 </app-dashboard-layout>

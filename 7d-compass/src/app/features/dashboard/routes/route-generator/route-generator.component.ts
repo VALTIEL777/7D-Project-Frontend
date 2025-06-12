@@ -149,6 +149,16 @@ export class RouteGeneratorComponent implements OnInit {
     if (event.previousContainer === event.container) {
       moveItemInArray(event.container.data, event.previousIndex, event.currentIndex);
     } else {
+      // Prevent routes from becoming empty
+      const isSourceActiveOrGeneratedRoute =
+        this.activeRoutes.some(route => route.details === event.previousContainer.data) ||
+        this.generatedRoutes.some(route => route.details === event.previousContainer.data);
+
+      if (isSourceActiveOrGeneratedRoute && event.previousContainer.data.length === 1) {
+        alert('Routes cannot be empty. At least one location must remain.');
+        return;
+      }
+
       transferArrayItem(
         event.previousContainer.data,
         event.container.data,

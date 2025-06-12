@@ -1,108 +1,65 @@
 <app-dashboard-layout>
-  <!-- CONTENEDOR GENERAL -->
-  <div class="dashboard-wrapper">
-    
-    <!-- TÍTULO-->
-    <div class="section-title">
-      <h2>Fines and Penalties</h2>
+<app-card-with-button title="Fine History" [showEditButton]="false" class="inconsistencies-card">
+
+        <div class="rtr-inconsistencies-table-wrapper">
+<div class="search-container">
+  <mat-form-field appearance="fill" class="search-bar">
+    <mat-icon matSuffix>search</mat-icon>
+    <mat-label>Search</mat-label>
+    <input matInput (keyup)="applyFilter($event)" placeholder="Filter" />
+  </mat-form-field>
+</div>
+          <table class="custom-table">
+            <thead>
+              <tr>
+                <th>Location</th>
+                <th>Ticket</th>
+                <th>#Fine</th>
+                <th>Amount</th>
+                <th>Status</th>
+                <th>Description</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let fine of filteredFines; let i = index" class="custom-row">
+                <td>{{ fine.location }}</td>
+                <td>{{ fine.ticket }}</td>
+                <td>{{ fine.fine }}</td>
+                <td>{{ fine.amount }}</td>
+                <td>{{ fine.status }}</td>
+                <td>{{ fine.description }}</td>
+                <td>
+                  <div style="display: flex; flex-direction: column; gap: 8px;">
+      <!-- Botón para descargar -->
+      <button mat-raised-button color="primary" 
+              [disabled]="!fine.evidence"
+              (click)="downloadEvidence(fine)">
+        Download Evidence
+      </button>
+
+      <!-- Botón para subir -->
+      <button mat-raised-button color="accent" 
+              [disabled]="!!fine.evidence"
+              (click)="triggerFileUpload(i)">
+        Upload Evidence
+      </button>
+
+      <!-- Input file oculto, uno por fila -->
+      <input type="file" accept="image/*" 
+             hidden
+             [id]="'fileInput-' + i"
+             (change)="onFileSelected($event, fine)" />
     </div>
 
-    <!-- GRID PRINCIPAL -->
-    <div class="dashboard-grid">
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
 
-      <!-- Add button -->
-     <div class="add-button" style="text-align: center;">
-          <button class="fine-button"><h4>Register new fine</h4>
-            <mat-icon class="icon-add">add</mat-icon> 
-          </button>
-    </div>
-
-    
-      <app-card-with-button title="Fine" [showEditButton]="true" [isPositive]="true">
-      <div>
-    <div *ngFor="let fine of Fine_table">
-      <p class="custom-row"><strong>Location</strong> {{ fine.location }}</p>
-      <p class="custom-row"><strong>Fine</strong> {{ fine.fine }}</p>
-      <p class="custom-row"><strong>Amount</strong> ${{ fine.amount }}</p>
-      <p class="custom-row"><strong>Status</strong> {{ fine.status }}</p>
-      <p class="custom-row"><strong>Description</strong><br>
-        {{ fine.description }}</p>
-    </div>
-      <div class="button-table">
-   <label class="fine-button">
-        <input type="file" accept="image/jpeg, image/png, image/gif, image/webp" hidden (change)="onFileSelected($event)" />
-        Upload Photo
-        </label>    
-      </div>
-  </div>
+        <div class="inconsistency-actions">
+          <button mat-raised-button color="primary">Register new Fine <mat-icon>add</mat-icon></button>
+        </div>
       </app-card-with-button>
-
-    <app-card-with-button title="Fine" [showEditButton]="true">
-      <div>
-    <div *ngFor="let fine of Fine_table">
-      <p class="custom-row"><strong>Location</strong> {{ fine.location }}</p>
-      <p class="custom-row"><strong>Fine</strong> {{ fine.fine }}</p>
-      <p class="custom-row"><strong>Amount</strong> ${{ fine.amount }}</p>
-      <p class="custom-row"><strong>Status</strong> {{ fine.status }}</p>
-      <p class="custom-row"><strong>Description</strong><br>
-        {{ fine.description }}</p>
-    </div>
-     <div class="button-table">
-   <label class="fine-button">
-        <input type="file" accept="image/jpeg, image/png, image/gif, image/webp" hidden (change)="onFileSelected($event)" />
-        Upload Photo
-        </label>    
-      </div>
-  </div>
-
-      </app-card-with-button>
-    <app-card-with-button title="Fine" [showEditButton]="true">
-      <div>
-    <div *ngFor="let fine of Fine_table">
-      <p class="custom-row"><strong>Location</strong> {{ fine.location }}</p>
-      <p class="custom-row"><strong>Fine</strong> {{ fine.fine }}</p>
-      <p class="custom-row"><strong>Amount</strong> ${{ fine.amount }}</p>
-      <p class="custom-row"><strong>Status</strong> {{ fine.status }}</p>
-      <p class="custom-row"><strong>Description</strong><br>
-        {{ fine.description }}</p>
-    </div>
-       <div class="button-table">
-   <label class="fine-button">
-        <input type="file" accept="image/jpeg, image/png, image/gif, image/webp" hidden (change)="onFileSelected($event)" />
-        Upload Photo
-        </label>    
-      </div>
-  </div>
-      </app-card-with-button>
-
-      <!-- History Fines -->
-      <app-card-with-button title="Fine history" [showEditButton]="false" class="inconsistencies-card">
-        <table class="custom-table">
-          <thead>
-            <tr>
-              <th>Location</th>
-              <th>#Fine</th>
-              <th>Amount</th>
-              <th>Status</th>
-              <th>Description</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let fines of fines" class="custom-row">
-              <td>{{ fines.location }}</td>
-              <td>{{ fines.fine }}</td>
-              <td>{{ fines.amount }}</td>
-              <td>{{ fines.status }}</td>
-              <td>{{ fines.description }}</td>
-              <td>
-                <button class="fine-button" >Download evidence</button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </app-card-with-button>
-
-    </div> 
-  </div> 
 </app-dashboard-layout>

@@ -164,4 +164,25 @@ inconsistencies = [
     this.pastedDisplayedColumns = [];
     this.pastedText = '';
   }
+
+  receivedSearchTerm: string = '';
+sentSearchTerm: string = '';
+
+filteredReceivedRTRs = [...this.receivedRTRs];
+filteredSentRTRs = [...this.sentRTRs];
+
+applyReceivedFilter(event: Event): void {
+  const value = (event.target as HTMLInputElement).value.toLowerCase().trim();
+  this.filteredReceivedRTRs = this.receivedRTRs.filter(rtr =>
+    rtr.date.toLowerCase().includes(value)
+  );
+}
+
+applySentFilter(event: Event): void {
+  const value = (event.target as HTMLInputElement).value.toLowerCase().trim();
+  this.filteredSentRTRs = this.sentRTRs.filter(rtr =>
+    rtr.date.toLowerCase().includes(value)
+  );
+}
+
 }

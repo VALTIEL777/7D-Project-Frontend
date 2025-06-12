@@ -1,16 +1,14 @@
 <app-dashboard-layout>
   <div class="full-layout-container">
-
     <div class="dashboard-container">
       <div class="dashboard-wrapper">
-
-
+        <div class="section-title full-span">
+          <h4>Active Routes</h4>
+        </div>
         <!-- GRID PRINCIPAL -->
-        <div cdkDropListGroup class="dashboard-grid">
+        <div cdkDropListGroup class="dashboard-grid vertical-list">
           <!-- Active Routes -->
-          <div class="section-title full-span">
-            <h4>Active Routes</h4>
-          </div>
+
           <app-card-with-button
             *ngFor="let route of activeRoutes"
             [title]="route.code"
@@ -22,18 +20,24 @@
               (cdkDropListDropped)="drop($event)"
               class="route-list-container"
             >
-              <div *ngFor="let location of route.details; let i = index" cdkDrag class="route-detail-item">
+              <div
+                *ngFor="let location of route.details; let i = index"
+                cdkDrag
+                class="route-detail-item"
+              >
                 <span class="queue-number">{{ i + 1 }}.</span>
                 <p class="route-location">{{ location }}</p>
                 <mat-divider></mat-divider>
               </div>
             </div>
           </app-card-with-button>
-
+        </div>
           <!-- Generated Routes -->
           <div class="section-title full-span">
             <h4>Generated Routes</h4>
           </div>
+
+          <div cdkDropListGroup class="dashboard-grid vertical-list">
           <app-card-with-button
             *ngFor="let route of generatedRoutes"
             [title]="route.code"
@@ -45,7 +49,11 @@
               (cdkDropListDropped)="drop($event)"
               class="route-list-container"
             >
-              <div *ngFor="let location of route.details; let i = index" cdkDrag class="route-detail-item">
+              <div
+                *ngFor="let location of route.details; let i = index"
+                cdkDrag
+                class="route-detail-item"
+              >
                 <span class="queue-number">{{ i + 1 }}.</span>
                 <p class="route-location">{{ location }}</p>
                 <mat-divider></mat-divider>
@@ -55,33 +63,45 @@
 
           <app-plus-button [title]="'Generate New Route'"></app-plus-button>
 
+          </div>
+          
           <div class="section-title full-span">
             <h4>Issue Locations</h4>
           </div>
 
+          <div cdkDropListGroup class="dashboard-grid">
           <!-- Issue Location Cards -->
-          <app-card-with-button title="Location without route" [showEyeButton]="true">
+          <app-card-with-button
+            title="Location without route"
+            [showEyeButton]="true"
+          >
             <div
               cdkDropList
               [cdkDropListData]="locationsWithoutRoute"
               (cdkDropListDropped)="drop($event)"
               class="route-list-container"
             >
-              <div *ngFor="let location of locationsWithoutRoute; let i = index" cdkDrag class="route-detail-item">
+              <div
+                *ngFor="let location of locationsWithoutRoute; let i = index"
+                cdkDrag
+                class="route-detail-item"
+              >
                 <span class="queue-number">{{ i + 1 }}.</span>
                 <p class="route-location">{{ location }}</p>
                 <mat-divider></mat-divider>
               </div>
             </div>
           </app-card-with-button>
-          <app-card-with-button title="Locations on Hold off" [showEyeButton]="true" class="two-column-span">
-            <div
-              cdkDropList
-              [cdkDropListData]="locationsOnHoldOff"
-              (cdkDropListDropped)="drop($event)"
-              class="route-list-container"
-            >
-              <div *ngFor="let item of locationsOnHoldOff; let i = index" cdkDrag class="route-detail-item">
+          <app-card-with-button
+            title="Locations on Hold off"
+            [showEyeButton]="true"
+            class="two-column-span"
+          >
+            <div class="route-list-container">
+              <div
+                *ngFor="let item of locationsOnHoldOff; let i = index"
+                class="route-detail-item"
+              >
                 <span class="queue-number">{{ i + 1 }}.</span>
                 <div class="location-and-reason">
                   <p class="route-location">{{ item.location }}</p>
@@ -93,8 +113,12 @@
           </app-card-with-button>
 
           <div class="full-span buttons-container">
-            <button mat-raised-button color="primary" (click)="saveChanges()">Save Changes</button>
-            <button mat-raised-button color="warn" (click)="resetLists()">Reset Lists</button>
+            <button mat-raised-button color="primary" (click)="saveChanges()">
+              Save Changes
+            </button>
+            <button mat-raised-button color="warn" (click)="resetLists()">
+              Reset Lists
+            </button>
           </div>
         </div>
 
@@ -114,7 +138,6 @@
           </iframe>
         </div>
       </app-card-with-button>
-
     </div>
   </div>
 </app-dashboard-layout>

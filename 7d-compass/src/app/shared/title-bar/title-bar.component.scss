@@ -254,5 +254,38 @@
   .mobile-right-buttons {
     display: flex;
     gap: 12px; // spacing between buttons
+    visibility: visible !important;
+    opacity: 1 !important;
   }
+}
+
+.filter-bar {
+  width: 100%;
+  background-color: #f0f0f0; /* Light background for the filter bar */
+  padding: 12px 24px;
+  box-sizing: border-box;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  .filter-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-right: 16px; /* Space between filter groups */
+
+    .filter-group-name {
+      font-weight: 600;
+      color: #333;
+    }
+  }
+
+}
+::ng-deep .mat-mdc-standard-chip .mdc-evolution-chip__graphic {
+  display: none !important;
+}
+
+::ng-deep .mat-mdc-standard-chip .mdc-evolution-chip__text-label:not(:only-child) {
+  padding-left: 12px;
 }
