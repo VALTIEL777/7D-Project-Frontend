@@ -6,6 +6,8 @@ import { MatDividerModule } from '@angular/material/divider';
 import { MatButtonModule } from '@angular/material/button';
 import { PlusButtonComponent } from '../../../../shared/plus-button/plus-button.component';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { FormsModule } from '@angular/forms';
+import { MATERIAL_MODULES } from '../../../../material';
 
 @Component({
   selector: 'app-report-center',
@@ -16,8 +18,9 @@ import { MatDialog, MatDialogModule } from '@angular/material/dialog';
     CardWithButtonComponent,
     MatDividerModule,
     MatButtonModule,
-    PlusButtonComponent,
-    MatDialogModule
+    FormsModule,
+    MatDialogModule,
+    MATERIAL_MODULES
   ],
   templateUrl: './report-center.component.html',
   styleUrls: ['./report-center.component.scss']
@@ -85,6 +88,73 @@ export class ReportCenterComponent {
     console.log('Created Object:', result);
     // You can add it to a list or trigger a notification
   }
+
+// En tu componente TS:
+
+invoiceFilter = '';
+revenueFilter = '';
+diggerFilter = '';
+spottersFilter = '';
+issuesFilter = '';
+teamLeaderFilter = '';
+ticketEvidenceFilter = '';
+
+filteredInvoiceReports = [...this.invoiceReports];
+filteredRevenueReports = [...this.revenueReports];
+filteredDiggerRequests = [...this.diggerRequests];
+filteredSpottersReports = [...this.spottersReports];
+filteredIssuesReports = [...this.issuesReports];
+filteredTeamLeaderReports = [...this.teamLeaderReports];
+filteredTicketEvidenceReports = [...this.ticketEvidenceReports];
+
+applyInvoiceFilter(): void {
+  const val = this.invoiceFilter.toLowerCase().trim();
+  this.filteredInvoiceReports = this.invoiceReports.filter(r =>
+    r.date.toLowerCase().includes(val) || r.code.toLowerCase().includes(val)
+  );
+}
+
+applyRevenueFilter(): void {
+  const val = this.revenueFilter.toLowerCase().trim();
+  this.filteredRevenueReports = this.revenueReports.filter(r =>
+    r.date.toLowerCase().includes(val) || r.code.toLowerCase().includes(val)
+  );
+}
+
+applyDiggerFilter(): void {
+  const val = this.diggerFilter.toLowerCase().trim();
+  this.filteredDiggerRequests = this.diggerRequests.filter(r =>
+    r.date.toLowerCase().includes(val) || r.code.toLowerCase().includes(val)
+  );
+}
+
+applySpottersFilter(): void {
+  const val = this.spottersFilter.toLowerCase().trim();
+  this.filteredSpottersReports = this.spottersReports.filter(r =>
+    r.date.toLowerCase().includes(val) || r.code.toLowerCase().includes(val)
+  );
+}
+
+applyIssuesFilter(): void {
+  const val = this.issuesFilter.toLowerCase().trim();
+  this.filteredIssuesReports = this.issuesReports.filter(r =>
+    r.date.toLowerCase().includes(val) || r.code.toLowerCase().includes(val)
+  );
+}
+
+applyTeamLeaderFilter(): void {
+  const val = this.teamLeaderFilter.toLowerCase().trim();
+  this.filteredTeamLeaderReports = this.teamLeaderReports.filter(r =>
+    r.date.toLowerCase().includes(val) || r.code.toLowerCase().includes(val)
+  );
+}
+
+applyTicketEvidenceFilter(): void {
+  const val = this.ticketEvidenceFilter.toLowerCase().trim();
+  this.filteredTicketEvidenceReports = this.ticketEvidenceReports.filter(r =>
+    r.date.toLowerCase().includes(val) || r.code.toLowerCase().includes(val)
+  );
+}
 
 
 }

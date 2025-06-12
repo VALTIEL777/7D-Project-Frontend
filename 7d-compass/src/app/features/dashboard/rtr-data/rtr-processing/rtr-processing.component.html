@@ -38,12 +38,19 @@
           </button>
         </div>
       </app-card-with-button>
+      
 
       <!-- Historial de RTR recibidos -->
-      <app-card-with-button title="Received RTR History" [showEyeButton]="true"  class="spaced-card"
->
+      <app-card-with-button class="rtr-history-card" title="Received RTR History" [showEyeButton]="true">
+        <div class="search-container">
+  <mat-form-field appearance="fill" class="search-bar">
+    <mat-label>Search Received RTRs</mat-label>
+    <input matInput (keyup)="applyReceivedFilter($event)" placeholder="e.g., 05-25-25">
+    <mat-icon matSuffix>search</mat-icon>
+  </mat-form-field>
+</div>
         <div class="history-scrollable-content">
-          <div *ngFor="let rtr of receivedRTRs" class="history-item">
+          <div *ngFor="let rtr of filteredReceivedRTRs" class="history-item">
             <div class="history-content">
               <h4 class="history-title">{{ rtr.date }}</h4>
               <button mat-raised-button>Download RTR</button>
@@ -54,9 +61,16 @@
       </app-card-with-button>
 
       <!-- Historial de RTR enviados -->
-      <app-card-with-button title="Sent RTR History" [showEyeButton]="true">
+      <app-card-with-button class="rtr-history-card" title="Sent RTR History" [showEyeButton]="true">
+        <div class="search-container">
+  <mat-form-field appearance="fill" class="search-bar">
+    <mat-label>Search Sent RTRs</mat-label>
+    <input matInput (keyup)="applySentFilter($event)" placeholder="e.g., 05-10-25">
+    <mat-icon matSuffix>search</mat-icon>
+  </mat-form-field>
+</div>
         <div class="history-scrollable-content">
-          <div *ngFor="let rtr of sentRTRs" class="history-item">
+          <div *ngFor="let rtr of filteredSentRTRs" class="history-item">
             <div class="history-content">
               <h4 class="history-title">{{ rtr.date }}</h4>
               <button mat-raised-button>Download RTR</button>

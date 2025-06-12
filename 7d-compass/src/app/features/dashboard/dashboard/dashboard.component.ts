@@ -15,7 +15,7 @@ import { DragDropUploadComponent } from '../../../shared/drag-drop-upload/drag-d
   selector: 'app-dashboard',
   imports: [DashboardLayoutComponent, CardWithButtonComponent,MatTableModule, MatDividerModule,
     CommonModule,PlusButtonComponent,
-    PreviewDialogComponent,MatButtonModule,
+    MatButtonModule,
   DragDropUploadComponent],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss'

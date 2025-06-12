@@ -1,2 +1,32 @@
 <app-dashboard-layout>
+      <div style="display: flex; flex-direction: column; gap: 1rem;">
+
+      <app-card-with-button title="Crew Payment" [showEyeButton]="false">
+        <app-data-table
+        [title]="'Team'"
+        [data]="ticketData"
+        [columns]="ticketColumns"
+        (edit)="onEditTicket($event)"
+        (delete)="onDeleteTicket($event)">
+        </app-data-table>
+
+         <div class="total-row" style="text-align: right; margin-top: 1rem; padding-right: 1rem;">
+    <strong>Total general:</strong> ${{ totalGeneral }}
+  </div>
+      </app-card-with-button>
+      
+      
+        <app-card-with-button title="Crew Payment" [showEyeButton]="false">
+        <app-data-table
+        [title]="'Team'"
+        [data]="invoiceData"
+        [columns]="invoiceColumns"
+        (edit)="onEditTicket($event)"
+        (delete)="onDeleteTicket($event)">
+        </app-data-table>
+      </app-card-with-button>
+
+      </div>
+
+      
 </app-dashboard-layout>
