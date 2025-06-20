@@ -46,18 +46,18 @@ export class MiscGenerationComponent {
 
   // Dummy data (replace with actual API data if needed)
   employeeList = [
-    { name: 'Alice' },
-    { name: 'Bob' },
-    { name: 'Charlie' }
+    { name: 'Alice Hernandez' },
+    { name: 'Bob Doe' },
+    { name: 'Charlie Brown' }
   ];
 
-skillList = ['Leadership', 'Welding', 'Electrical', 'Plumbing'];
+skillList = ['Driver', 'Tool', 'Machine', 'Measure'];
 
   skillIcons: { [key: string]: string } = {
-  Leadership: 'directions_car',
-  Welding: 'build',
-  Electrical: 'precision_manufacturing',
-  Plumbing: 'square_foot'
+  Driver: 'directions_car',
+  Tool: 'build',
+  Machine: 'precision_manufacturing',
+  Measure: 'square_foot'
 };
 
   constructor(private fb: FormBuilder, private dialog: MatDialog) {
@@ -216,16 +216,16 @@ addEmployee() {
 }
 
 
- onDeleteEmployee(employee: any) {
+onDeleteEmployee(employee: any) {
   const dialogRef = this.dialog.open(ConfirmationDialogComponent, {
     width: '450px',
     disableClose: true,
     panelClass: 'confirmation-dialog',
     data: {
-      title: 'Eliminar empleado',
-      message: `¿Estás seguro de eliminar a ${employee.firstname} ${employee.lastname}? Esta acción no se puede deshacer.`,
-      confirmText: 'Eliminar',
-      cancelText: 'Cancelar'
+      title: 'Delete Employee',
+      message: `Are you sure you want to delete ${employee.firstname} ${employee.lastname}? This action cannot be undone.`,
+      confirmText: 'Delete',
+      cancelText: 'Cancel'
     }
   });
 
@@ -236,11 +236,12 @@ addEmployee() {
       );
       if (index !== -1) {
         this.employees.removeAt(index);
-        console.log('Empleado eliminado:', employee);
+        console.log('Employee deleted!', employee);
       }
     }
   });
 }
+
 
 
 //MATERIALS
@@ -370,7 +371,7 @@ onDeleteMaterial(material: any) {
 
 //EQUIPMENT
 equipmentOptions: string[] = ['Bulldozer', 'Excavator', 'Crane', 'Loader'];
-supplierOptions: string[] = ['CAT', 'Komatsu', 'Volvo', 'Hitachi'];
+supplierOptions: string[] = ['CAT', 'Komatsu', 'Volvo', 'Hitachi','7D-Construction'];
 
 
 equipmentColumns: ColumnDefinition[] = [

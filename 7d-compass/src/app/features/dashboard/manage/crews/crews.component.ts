@@ -1,10 +1,11 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
+import { MatDialog } from '@angular/material/dialog';
 import { DashboardLayoutComponent } from "../../../../shared/dashboard-layout/dashboard-layout.component";
 import { CardWithButtonComponent } from '../../../../shared/card-with-button/card-with-button.component';
-import { MatDialog } from '@angular/material/dialog';
 import { DataTableComponent } from '../../../../shared/data-table/data-table.component';
 import { ConfirmationDialogComponent } from '../../../../shared/confirmation-dialog/confirmation-dialog.component';
 import { SearchDialogComponent } from '../../../../shared/search-dialog/search-dialog.component';
+import { CrewsService } from '../../../../core/services/human-resources/crew.service';
 
 interface ColumnDefinition {
   name: string;
@@ -24,132 +25,54 @@ interface ColumnDefinition {
   templateUrl: './crews.component.html',
   styleUrl: './crews.component.scss'
 })
-export class CrewsComponent {
+export class CrewsComponent implements OnInit {
   columns: ColumnDefinition[] = [
-    {
-      name: 'crewId',
-      header: 'ID',
-      cell: (crew: any) => crew.crewId
-    },
-    {
-      name: 'type',
-      header: 'Type',
-      cell: (crew: any) => crew.type
-    },
-    {
-      name: 'employees',
-      header: 'Team Members',
-      cell: (crew: any) => this.formatEmployees(crew.employees)
-    },
-    {
-      name: 'leader',
-      header: 'Team Leader',
-      cell: (crew: any) => this.getLeader(crew.employees)
-    },
-    {
-      name: 'workedHours',
-      header: 'Worked Hours',
-      cell: (crew: any) => crew.workedHours?.toString() || '0'
-    },
-    {
-      name: 'equipment',
-      header: 'Assigned Equipment',
-      cell: (crew: any) => this.formatEquipment(crew.equipment)
-    },
-    {
-      name: 'actions',
-      header: 'Actions',
-      cell: () => '',
-      isActionColumn: true
-    }
+    { name: 'crewId', header: 'ID', cell: (crew) => `${crew.crewid ?? ''}` },
+    { name: 'type', header: 'Type', cell: (crew) => crew.type },
+    { name: 'employees', header: 'Team Members', cell: (crew) => this.formatEmployees(crew.employees) },
+    { name: 'leader', header: 'Team Leader', cell: (crew) => this.getLeader(crew.employees) },
+    { name: 'workedHours', header: 'Worked Hours',cell: (crew: any) => {
+    const hours = typeof crew.workedhours === 'number'
+      ? crew.workedhours
+      : parseFloat(crew.workedhours);
+    return !isNaN(hours) ? hours.toFixed(2) : '0.00';
+  }},
+    { name: 'equipment', header: 'Assigned Equipment', cell: (crew) => this.formatEquipment(crew.equipment) },
+    { name: 'actions', header: 'Actions', cell: () => '', isActionColumn: true }
   ];
 
-  tableData = [
-    {
-      crewId: 1,
-      type: 'Excavation',
-      photo: 'excavation-team.jpg',
-      workedHours: 120.5,
-      employees: [
-        { employeeId: 101, firstname: 'John', lastname: 'Doe', crewLeader: true },
-        { employeeId: 102, firstname: 'Jane', lastname: 'Smith', crewLeader: false },
-        { employeeId: 103, firstname: 'Robert', lastname: 'Johnson', crewLeader: false }
-      ],
-      equipment: [
-        { equipmentId: 1, equipmentName: 'Excavator', type: 'machine' },
-        { equipmentId: 2, equipmentName: 'Truck', type: 'vehicle' }
-      ]
-    },
-    {
-      crewId: 2,
-      type: 'Paving',
-      photo: 'paving-team.jpg',
-      workedHours: 85.25,
-      employees: [
-        { employeeId: 104, firstname: 'Emily', lastname: 'Williams', crewLeader: true },
-        { employeeId: 105, firstname: 'Michael', lastname: 'Brown', crewLeader: false },
-        { employeeId: 106, firstname: 'Sarah', lastname: 'Davis', crewLeader: false }
-      ],
-      equipment: [
-        { equipmentId: 3, equipmentName: 'Paving Machine', type: 'machine' },
-        { equipmentId: 4, equipmentName: 'Roller', type: 'machine' }
-      ]
-    },
-    {
-      crewId: 3,
-      type: 'Concrete',
-      photo: 'concrete-team.jpg',
-      workedHours: 65.75,
-      employees: [
-        { employeeId: 107, firstname: 'David', lastname: 'Miller', crewLeader: true },
-        { employeeId: 108, firstname: 'Jessica', lastname: 'Wilson', crewLeader: false }
-      ],
-      equipment: [
-        { equipmentId: 5, equipmentName: 'Concrete Mixer', type: 'machine' }
-      ]
-    },
-    {
-      crewId: 4,
-      type: 'Survey',
-      photo: 'survey-team.jpg',
-      workedHours: 42.0,
-      employees: [
-        { employeeId: 109, firstname: 'Thomas', lastname: 'Moore', crewLeader: true },
-        { employeeId: 110, firstname: 'Lisa', lastname: 'Taylor', crewLeader: false }
-      ],
-      equipment: [
-        { equipmentId: 6, equipmentName: 'Survey Equipment', type: 'tool' }
-      ]
-    },
-    {
-      crewId: 5,
-      type: 'Maintenance',
-      photo: 'maintenance-team.jpg',
-      workedHours: 110.0,
-      employees: [
-        { employeeId: 111, firstname: 'Daniel', lastname: 'Anderson', crewLeader: true },
-        { employeeId: 112, firstname: 'Megan', lastname: 'Thomas', crewLeader: false },
-        { employeeId: 113, firstname: 'Andrew', lastname: 'Jackson', crewLeader: false }
-      ],
-      equipment: [
-        { equipmentId: 7, equipmentName: 'Service Truck', type: 'vehicle' },
-        { equipmentId: 8, equipmentName: 'Tool Set', type: 'tool' }
-      ]
-    }
-  ];
+  tableData: any[] = [];
 
-  constructor(private dialog: MatDialog) {}
+  constructor(
+    private dialog: MatDialog,
+    private crewsService: CrewsService
+  ) {}
 
-  private formatEmployees(employees: any[]): string {
-    return employees.map(e => `${e.firstname} ${e.lastname}`).join(', ');
+  ngOnInit(): void {
+    this.loadCrews();
   }
 
-  private getLeader(employees: any[]): string {
+  private loadCrews(): void {
+    this.crewsService.getCrewsWithEmployees().subscribe({
+      next: (data) => {
+        this.tableData = data;
+      },
+      error: (error) => {
+        console.error('Error loading crews:', error);
+      }
+    });
+  }
+
+  private formatEmployees(employees: any[] = []): string {
+    return employees.map(e => `${e.fullName || e.firstname + ' ' + e.lastname}`).join(', ');
+  }
+
+  private getLeader(employees: any[] = []): string {
     const leader = employees.find(e => e.crewLeader);
-    return leader ? `${leader.firstname} ${leader.lastname}` : 'No leader';
+    return leader ? (leader.fullName || `${leader.firstname} ${leader.lastname}`) : 'No leader';
   }
 
-  private formatEquipment(equipment: any[]): string {
+  private formatEquipment(equipment: any[] = []): string {
     return equipment.map(e => e.equipmentName).join(', ');
   }
 
@@ -160,7 +83,6 @@ export class CrewsComponent {
         title: `Edit Crew: ${crew.type}`,
         data: {
           ...crew,
-          // Flatten some data for the form
           teamMembers: this.formatEmployees(crew.employees),
           equipmentList: this.formatEquipment(crew.equipment)
         },
@@ -200,6 +122,7 @@ export class CrewsComponent {
       if (confirmed) {
         this.tableData = this.tableData.filter(c => c.crewId !== crew.crewId);
         console.log('Crew deleted:', crew);
+        // Aquí podrías también llamar a this.crewsService.deleteCrew(crew.crewId)
       }
     });
   }

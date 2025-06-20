@@ -299,7 +299,7 @@ invoiceData = [
     startdate: '05/06/2025',
     enddate: '05/26/2025',
     our: 265,
-    invoiceweb: 267,
+    invoiceweb: 1538,
     income:''
   },
    {
@@ -307,7 +307,7 @@ invoiceData = [
     startdate: '05/07/2025',
     enddate: '05/27/2025',
     our: 270,
-    invoiceweb: 270,
+    invoiceweb: 7270,
     income: ''
   },
   {
@@ -347,7 +347,7 @@ invoiceData = [
     startdate: '05/12/2025',
     enddate: '06/01/2025',
     our: 2789,
-    invoiceweb: 788,
+    invoiceweb: 7788,
     income: ''
   }
 ];
