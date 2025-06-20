@@ -1,10 +1,11 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { DashboardLayoutComponent } from "../../../../shared/dashboard-layout/dashboard-layout.component";
 import { CardWithButtonComponent } from '../../../../shared/card-with-button/card-with-button.component';
 import { MatDialog } from '@angular/material/dialog';
 import { SearchDialogComponent } from '../../../../shared/search-dialog/search-dialog.component';
 import { DataTableComponent } from '../../../../shared/data-table/data-table.component';
 import { ConfirmationDialogComponent } from '../../../../shared/confirmation-dialog/confirmation-dialog.component';
+import { SupplierService } from '../../../../core/services/material/supplier.service';
 
 interface ColumnDefinition {
   name: string;
@@ -24,27 +25,27 @@ interface ColumnDefinition {
   templateUrl: './suppliers.component.html',
   styleUrl: './suppliers.component.scss'
 })
-export class SuppliersComponent {
+export class SuppliersComponent implements OnInit {
   columns: ColumnDefinition[] = [
     {
       name: 'name',
       header: 'Supplier Name',
-      cell: (supplier: any) => supplier.name
+      cell: (s: any) => s.name
     },
     {
       name: 'phone',
       header: 'Phone',
-      cell: (supplier: any) => supplier.phone
+      cell: (s: any) => s.phone
     },
     {
       name: 'email',
       header: 'Email',
-      cell: (supplier: any) => supplier.email
+      cell: (s: any) => s.email
     },
     {
       name: 'address',
       header: 'Address',
-      cell: (supplier: any) => supplier.address
+      cell: (s: any) => s.address
     },
     {
       name: 'actions',
@@ -54,66 +55,33 @@ export class SuppliersComponent {
     }
   ];
 
-  tableData = [
-    {
-      supplierId: 1,
-      name: 'ABC Construction Supplies',
-      phone: '5551234567',
-      email: 'contact@abcconstruction.com',
-      address: '123 Main St, Denver, CO'
-    },
-    {
-      supplierId: 2,
-      name: 'XYZ Building Materials',
-      phone: '5552345678',
-      email: 'sales@xyzmaterials.com',
-      address: '456 Oak Ave, Boulder, CO'
-    },
-    {
-      supplierId: 3,
-      name: 'Quality Tools Inc.',
-      phone: '5553456789',
-      email: 'info@qualitytools.com',
-      address: '789 Pine Rd, Aurora, CO'
-    },
-    {
-      supplierId: 4,
-      name: 'Global Equipment',
-      phone: '5554567890',
-      email: 'support@globalequip.com',
-      address: '321 Elm Blvd, Colorado Springs, CO'
-    },
-    {
-      supplierId: 5,
-      name: 'Safety First Supplies',
-      phone: '5555678901',
-      email: 'orders@safetyfirst.com',
-      address: '654 Cedar Ln, Fort Collins, CO'
-    },
-    {
-      supplierId: 6,
-      name: 'Precision Parts Co.',
-      phone: '5556789012',
-      email: 'service@precisionparts.com',
-      address: '987 Maple Dr, Lakewood, CO'
-    },
-    {
-      supplierId: 7,
-      name: 'Heavy Machinery Ltd.',
-      phone: '5557890123',
-      email: 'rentals@heavymachinery.com',
-      address: '159 Birch St, Littleton, CO'
-    },
-    {
-      supplierId: 8,
-      name: 'Eco-Friendly Materials',
-      phone: '5558901234',
-      email: 'green@ecofriendly.com',
-      address: '753 Spruce Ave, Englewood, CO'
-    }
-  ];
+  tableData: any[] = [];
 
-  constructor(private dialog: MatDialog) {}
+  constructor(
+    private dialog: MatDialog,
+    private supplierService: SupplierService
+  ) {}
+
+  ngOnInit(): void {
+    this.loadSuppliers();
+  }
+
+  loadSuppliers(): void {
+    this.supplierService.getAllSuppliers().subscribe({
+      next: (suppliers) => {
+        this.tableData = suppliers.map(s => ({
+          supplierid: s.supplierId,
+          name: s.name,
+          phone: s.phone,
+          email: s.email,
+          address: s.address,
+          createdby: s.createdBy,
+          updatedby: s.updatedBy
+        }) as any);
+      },
+      error: (err) => console.error('Error loading suppliers', err)
+    });
+  }
 
   onEdit(supplier: any) {
     const dialogRef = this.dialog.open(SearchDialogComponent, {
@@ -121,13 +89,13 @@ export class SuppliersComponent {
       data: {
         title: `Edit Supplier: ${supplier.name}`,
         data: supplier,
-        excludedFields: ['supplierId']
+        excludedFields: ['supplierid']
       }
     });
 
     dialogRef.afterClosed().subscribe(result => {
       if (result) {
-        const index = this.tableData.findIndex(s => s.supplierId === supplier.supplierId);
+        const index = this.tableData.findIndex(s => s.supplierid === supplier.supplierid);
         if (index !== -1) {
           this.tableData[index] = {
             ...this.tableData[index],
@@ -153,8 +121,13 @@ export class SuppliersComponent {
 
     dialogRef.afterClosed().subscribe(confirmed => {
       if (confirmed) {
-        this.tableData = this.tableData.filter(s => s.supplierId !== supplier.supplierId);
-        console.log('Supplier deleted:', supplier);
+        this.supplierService.deleteSupplier(supplier.supplierid).subscribe({
+          next: () => {
+            this.tableData = this.tableData.filter(s => s.supplierid !== supplier.supplierid);
+            console.log('Supplier deleted:', supplier);
+          },
+          error: err => console.error('Error deleting supplier', err)
+        });
       }
     });
   }

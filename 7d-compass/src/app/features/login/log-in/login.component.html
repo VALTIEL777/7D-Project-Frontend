@@ -35,8 +35,9 @@
           <a (click)="redirectToForgotPassword()" style="cursor: pointer;">Forgot Password?</a>
         </div>
 
-        <button mat-raised-button color="primary" type="submit" class="full-width" routelink>
-          Log in
+        <button mat-raised-button color="primary" type="submit" class="full-width" [disabled]="isLoading || loginForm.invalid">
+          <mat-spinner *ngIf="isLoading" diameter="20" strokeWidth="3"></mat-spinner>
+          <span *ngIf="!isLoading">Log in</span>
         </button>
 
         <div *ngIf="errorMessage" class="error-message">

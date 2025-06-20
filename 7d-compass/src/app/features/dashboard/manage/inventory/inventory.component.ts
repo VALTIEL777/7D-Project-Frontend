@@ -1,10 +1,11 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { DashboardLayoutComponent } from "../../../../shared/dashboard-layout/dashboard-layout.component";
 import { CardWithButtonComponent } from '../../../../shared/card-with-button/card-with-button.component';
 import { MatDialog } from '@angular/material/dialog';
 import { SearchDialogComponent } from '../../../../shared/search-dialog/search-dialog.component';
 import { DataTableComponent } from '../../../../shared/data-table/data-table.component';
 import { ConfirmationDialogComponent } from '../../../../shared/confirmation-dialog/confirmation-dialog.component';
+import { InventoryService } from '../../../../core/services/material/inventory.service';
 
 interface ColumnDefinition {
   name: string;
@@ -24,7 +25,7 @@ interface ColumnDefinition {
   templateUrl: './inventory.component.html',
   styleUrl: './inventory.component.scss'
 })
-export class InventoryComponent {
+export class InventoryComponent implements OnInit {
   columns: ColumnDefinition[] = [
     {
       name: 'name',
@@ -34,12 +35,15 @@ export class InventoryComponent {
     {
       name: 'supplier',
       header: 'Supplier',
-      cell: (item: any) => item.supplierName
+      cell: (item: any) => item.suppliername || 'N/A'
     },
     {
-      name: 'cost',
+      name: 'costperunit',
       header: 'Cost Per Unit',
-      cell: (item: any) => `$${item.costPerUnit.toFixed(2)}`
+      cell: (item: any) =>
+  !isNaN(parseFloat(item.costperunit))
+    ? `$${parseFloat(item.costperunit).toFixed(2)}`
+    : 'N/A'
     },
     {
       name: 'unit',
@@ -59,100 +63,27 @@ export class InventoryComponent {
     }
   ];
 
-  tableData = [
-    {
-      inventoryId: 1,
-      name: 'No Parking Signs',
-      supplierName: 'Safety Supplies Co.',
-      costPerUnit: 24.99,
-      unit: 'each',
-      category: 'Signage',
-      supplierId: 1
-    },
-    {
-      inventoryId: 2,
-      name: 'Asphalt Mix',
-      supplierName: 'Paving Materials Inc.',
-      costPerUnit: 85.50,
-      unit: 'ton',
-      category: 'Paving Materials',
-      supplierId: 2
-    },
-    {
-      inventoryId: 3,
-      name: 'Concrete Mix',
-      supplierName: 'Construction Supply Ltd.',
-      costPerUnit: 120.75,
-      unit: 'cubic yard',
-      category: 'Paving Materials',
-      supplierId: 3
-    },
-    {
-      inventoryId: 4,
-      name: 'Traffic Cones',
-      supplierName: 'Safety Supplies Co.',
-      costPerUnit: 12.95,
-      unit: 'each',
-      category: 'Traffic Control',
-      supplierId: 1
-    },
-    {
-      inventoryId: 5,
-      name: 'Rebar',
-      supplierName: 'Construction Supply Ltd.',
-      costPerUnit: 3.25,
-      unit: 'foot',
-      category: 'Construction Materials',
-      supplierId: 3
-    },
-    {
-      inventoryId: 6,
-      name: 'Road Paint',
-      supplierName: 'Paving Materials Inc.',
-      costPerUnit: 45.80,
-      unit: 'gallon',
-      category: 'Paving Materials',
-      supplierId: 2
-    },
-    {
-      inventoryId: 7,
-      name: 'Safety Vests',
-      supplierName: 'Safety Supplies Co.',
-      costPerUnit: 8.99,
-      unit: 'each',
-      category: 'Safety Equipment',
-      supplierId: 1
-    },
-    {
-      inventoryId: 8,
-      name: 'Gravel',
-      supplierName: 'Paving Materials Inc.',
-      costPerUnit: 15.30,
-      unit: 'ton',
-      category: 'Paving Materials',
-      supplierId: 2
-    },
-    {
-      inventoryId: 9,
-      name: 'Caution Tape',
-      supplierName: 'Safety Supplies Co.',
-      costPerUnit: 5.45,
-      unit: 'roll',
-      category: 'Safety Equipment',
-      supplierId: 1
-    },
-    {
-      inventoryId: 10,
-      name: 'Steel Plates',
-      supplierName: 'Construction Supply Ltd.',
-      costPerUnit: 210.00,
-      unit: 'each',
-      category: 'Construction Materials',
-      supplierId: 3
-    }
-  ];
+  tableData: any[] = [];
 
-  constructor(private dialog: MatDialog) {}
+  constructor(
+    private dialog: MatDialog,
+    private inventoryService: InventoryService
+  ) {}
+
+  ngOnInit(): void {
+    this.loadInventory();
+  }
+
+  loadInventory(): void {
+    this.inventoryService.getAllInventory().subscribe({
+      next: (data) => {
+        this.tableData = data;
+      },
+      error: (err) => {
+        console.error('Error loading inventory:', err);
+      }
+    });
+  }
 
   onEdit(item: any) {
     const dialogRef = this.dialog.open(SearchDialogComponent, {
@@ -161,20 +92,20 @@ export class InventoryComponent {
         title: `Edit: ${item.name}`,
         data: {
           ...item,
-          costPerUnit: item.costPerUnit.toString() // Convert to string for editing
+          costperunit: item.costperunit.toString()
         },
-        excludedFields: ['inventoryId', 'supplierName']
+        excludedFields: ['inventoryid', 'suppliername']
       }
     });
 
     dialogRef.afterClosed().subscribe(result => {
       if (result) {
-        const index = this.tableData.findIndex(i => i.inventoryId === item.inventoryId);
+        const index = this.tableData.findIndex(i => i.inventoryid === item.inventoryid);
         if (index !== -1) {
           this.tableData[index] = {
             ...this.tableData[index],
             ...result,
-            costPerUnit: parseFloat(result.costPerUnit)
+            costperunit: parseFloat(result.costperunit)
           };
         }
       }
@@ -196,8 +127,15 @@ export class InventoryComponent {
 
     dialogRef.afterClosed().subscribe(confirmed => {
       if (confirmed) {
-        this.tableData = this.tableData.filter(i => i.inventoryId !== item.inventoryId);
-        console.log('Inventory item deleted:', item);
+        this.inventoryService.deleteInventory(item.inventoryid).subscribe({
+          next: () => {
+            this.tableData = this.tableData.filter(i => i.inventoryid !== item.inventoryid);
+            console.log('Deleted:', item);
+          },
+          error: (err) => {
+            console.error('Error deleting item:', err);
+          }
+        });
       }
     });
   }
