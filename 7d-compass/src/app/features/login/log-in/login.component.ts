@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
-import { Router, RouterLinkActive, RouterModule } from '@angular/router';
+import { Router, RouterModule } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
 import { MATERIAL_MODULES } from '../../../material';
 import { CommonModule } from '@angular/common';
@@ -10,11 +10,12 @@ import { CommonModule } from '@angular/common';
   standalone: true,
   imports: [MATERIAL_MODULES, ReactiveFormsModule, CommonModule, RouterModule],
   templateUrl: './login.component.html',
-  styleUrl: './login.component.scss'
+  styleUrls: ['./login.component.scss'] // corregido de styleUrl a styleUrls
 })
 export class LoginComponent implements OnInit {
   loginForm!: FormGroup;
   errorMessage = '';
+  isLoading = false;
 
   constructor(
     private formB: FormBuilder,
@@ -30,27 +31,42 @@ export class LoginComponent implements OnInit {
   }
 
   login(): void {
-    if (this.loginForm.invalid) {
-      this.errorMessage = 'Todos los campos son requeridos';
-      return;
-    }
-
-    const { identifier, password } = this.loginForm.value;
-
-    const credentials = identifier.includes('@')
-      ? { email: identifier, password }
-      : { username: identifier, password };
-
-    this.authService.login(credentials).subscribe({
-      next: (response) => {
-        this.authService.handleLoginResponse(response);
-        this.router.navigate(['/dashboard']);
-      },
-      error: (error) => {
-        this.errorMessage = error.error?.message || 'Credenciales inválidas';
-      },
-    });
+  if (this.loginForm.invalid) {
+    this.errorMessage = 'Todos los campos son requeridos';
+    return;
   }
+
+  this.isLoading = true;
+  this.errorMessage = '';
+
+  const { identifier, password } = this.loginForm.value;
+
+  const credentials = identifier.includes('@')
+    ? { email: identifier, password }
+    : { username: identifier, password };
+
+  this.authService.login(credentials).subscribe({
+    next: (response) => {
+      this.authService.handleLoginResponse(response);
+
+      const role = response.user?.role?.toLowerCase();
+
+      // Redirige según el rol
+      if (role === 'operario') {
+        this.router.navigate(['/current']);
+      } else {
+        this.router.navigate(['/dashboard']);
+      }
+    },
+    error: (error) => {
+      this.errorMessage = error.error?.message || 'Credenciales inválidas';
+    },
+    complete: () => {
+      this.isLoading = false;
+    }
+  });
+}
+
 
   redirectToForgotPassword(): void {
     this.router.navigate(['/forgot-password']);

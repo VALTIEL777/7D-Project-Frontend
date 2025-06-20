@@ -1,0 +1,58 @@
+.grid-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr; /* Ambos lados iguales */
+  grid-template-rows: 1fr 1fr;
+  gap: 1rem;
+  height: 100vh;
+  padding: 1rem;
+  box-sizing: border-box;
+}
+
+.card-1 {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.card-2 {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.card-map {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+
+  app-card-with-button {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+
+    ::ng-deep .card-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .map-wrapper {
+      flex: 1;
+      display: flex;
+      position: relative;
+    }
+
+    .map-frame {
+      border: 0;
+      width: 100%;
+      height: 100%;
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+  }
+}
+
+
+
+

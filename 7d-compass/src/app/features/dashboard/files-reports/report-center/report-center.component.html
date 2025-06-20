@@ -1,158 +1,250 @@
-<app-dashboard-layout>
+<app-dashboard-layout >
+
+<div style="display: flex; flex-direction: column; gap: 16px; width: 100%;">
+
   <!-- Card: Invoices -->
   <app-card-with-button title="Invoices" [showEyeButton]="true" class="uniform-card">
-    <div style="display: flex; align-items: center; padding: 0 16px; margin: 8px 0; font-weight: 500;">
-      <div style="flex: 3;">Date</div>
-      <div style="flex: 2; text-align: center;">Code</div>
-      <div style="flex: 1; text-align: center;">Action</div>
+
+  <!-- Filtro -->
+  <div style="padding: 0 16px; margin: 8px 0;">
+    <mat-form-field appearance="fill" style="width: 100%;">
+      <mat-label>Search Invoices</mat-label>
+      <input matInput [(ngModel)]="invoiceFilter" (keyup)="applyInvoiceFilter()" placeholder="e.g., 2025-05-01 or INV-001">
+      <mat-icon matSuffix>search</mat-icon>
+    </mat-form-field>
+  </div>
+
+  <!-- Header columnas -->
+  <div style="display: flex; align-items: center; padding: 0 16px; margin-bottom: 8px; font-weight: 500;">
+    <div style="flex: 3;">Date</div>
+    <div style="flex: 2; text-align: center;">Code</div>
+    <div style="flex: 1; text-align: center;">Action</div>
+  </div>
+  <mat-divider></mat-divider>
+
+  <!-- Lista filtrada -->
+  <div *ngFor="let item of filteredInvoiceReports">
+    <div style="display: flex; padding: 8px 16px; align-items: center;">
+      <div style="flex: 3;">{{ item.date }}</div>
+      <div style="flex: 2; text-align: center;">{{ item.code }}</div>
+      <div style="flex: 1; display: flex; justify-content: flex-end;">
+        <button mat-raised-button color="accent" style="min-width: 64px; font-size: 12px; padding: 2px 8px;">
+          Download
+        </button>
+      </div>
     </div>
     <mat-divider></mat-divider>
-    <div *ngFor="let item of invoiceReports">
-      <div style="display: flex; padding: 8px 16px; align-items: center;">
-        <div style="flex: 3;">{{ item.date }}</div>
-        <div style="flex: 2; text-align: center;">{{ item.code }}</div>
-        <div style="flex: 1; display: flex; justify-content: flex-end;">
-        <button mat-raised-button color="accent" style="min-width: 64px; font-size: 12px; padding: 2px 8px;">Download</button>
+  </div>
 
-        </div>
+</app-card-with-button>
+
+
+ <app-card-with-button title="Revenue" [showEyeButton]="true" class="uniform-card">
+  
+  <!-- Filtro -->
+  <div style="padding: 0 16px; margin: 8px 0;">
+    <mat-form-field appearance="fill" style="width: 100%;">
+      <mat-label>Search Revenue</mat-label>
+      <input matInput [(ngModel)]="revenueFilter" (keyup)="applyRevenueFilter()" placeholder="e.g., 2025-05-10 or REV-2025A">
+      <mat-icon matSuffix>search</mat-icon>
+    </mat-form-field>
+  </div>
+
+  <!-- Header columnas -->
+  <div style="display: flex; align-items: center; padding: 0 16px; margin-bottom: 8px; font-weight: 500;">
+    <div style="flex: 3;">Date</div>
+    <div style="flex: 2; text-align: center;">Code</div>
+    <div style="flex: 1; text-align: center;">Action</div>
+  </div>
+  <mat-divider></mat-divider>
+
+  <!-- Lista filtrada -->
+  <div *ngFor="let item of filteredRevenueReports">
+    <div style="display: flex; padding: 8px 16px; align-items: center;">
+      <div style="flex: 3;">{{ item.date }}</div>
+      <div style="flex: 2; text-align: center;">{{ item.code }}</div>
+      <div style="flex: 1; display: flex; justify-content: flex-end;">
+        <button mat-raised-button color="accent" style="min-width: 64px; font-size: 12px; padding: 2px 8px;">
+          Download
+        </button>
       </div>
-      <mat-divider></mat-divider>
-    </div>
-  </app-card-with-button>
-
-  <!-- Card: Revenue -->
-  <app-card-with-button title="Revenue" [showEyeButton]="true" class="uniform-card">
-    <!-- Same structure as above -->
-    <div style="display: flex; align-items: center; padding: 0 16px; margin: 8px 0; font-weight: 500;">
-      <div style="flex: 3;">Date</div>
-      <div style="flex: 2; text-align: center;">Code</div>
-      <div style="flex: 1; text-align: center;">Action</div>
     </div>
     <mat-divider></mat-divider>
-    <div *ngFor="let item of revenueReports">
-      <div style="display: flex; padding: 8px 16px; align-items: center;">
-        <div style="flex: 3;">{{ item.date }}</div>
-        <div style="flex: 2; text-align: center;">{{ item.code }}</div>
-        <div style="flex: 1; display: flex; justify-content: flex-end;">
-        <button mat-raised-button color="accent" style="min-width: 64px; font-size: 12px; padding: 2px 8px;">Download</button>
+  </div>
 
-        </div>
+</app-card-with-button>
+
+
+ <app-card-with-button title="Digger Request" [showEyeButton]="true" class="uniform-card">
+
+  <!-- Filtro -->
+  <div style="padding: 0 16px; margin: 8px 0;">
+    <mat-form-field appearance="fill" style="width: 100%;">
+      <mat-label>Search Digger Requests</mat-label>
+      <input matInput [(ngModel)]="diggerFilter" (keyup)="applyDiggerFilter()" placeholder="e.g., 2025-04-20 or DIG-001">
+      <mat-icon matSuffix>search</mat-icon>
+    </mat-form-field>
+  </div>
+
+  <!-- Encabezados -->
+  <div style="display: flex; align-items: center; padding: 0 16px; margin-bottom: 8px; font-weight: 500;">
+    <div style="flex: 3;">Date</div>
+    <div style="flex: 2; text-align: center;">Code</div>
+    <div style="flex: 1; text-align: center;">Action</div>
+  </div>
+  <mat-divider></mat-divider>
+
+  <!-- Lista filtrada -->
+  <div *ngFor="let item of filteredDiggerRequests">
+    <div style="display: flex; padding: 8px 16px; align-items: center;">
+      <div style="flex: 3;">{{ item.date }}</div>
+      <div style="flex: 2; text-align: center;">{{ item.code }}</div>
+      <div style="flex: 1; display: flex; justify-content: flex-end;">
+        <button mat-raised-button color="accent" style="min-width: 64px; font-size: 12px; padding: 2px 8px;">
+          Download
+        </button>
       </div>
-      <mat-divider></mat-divider>
-    </div>
-  </app-card-with-button>
-
-  <!-- Card: Digger Request -->
-  <app-card-with-button title="Digger Request" [showEyeButton]="true" class="uniform-card">
-    <!-- Repeat structure -->
-    <div style="display: flex; align-items: center; padding: 0 16px; margin: 8px 0; font-weight: 500;">
-      <div style="flex: 3;">Date</div>
-      <div style="flex: 2; text-align: center;">Code</div>
-      <div style="flex: 1; text-align: center;">Action</div>
     </div>
     <mat-divider></mat-divider>
-    <div *ngFor="let item of diggerRequests">
-      <div style="display: flex; padding: 8px 16px; align-items: center;">
-        <div style="flex: 3;">{{ item.date }}</div>
-        <div style="flex: 2; text-align: center;">{{ item.code }}</div>
-        <div style="flex: 1; display: flex; justify-content: flex-end;">
+  </div>
+
+</app-card-with-button>
+
+ <app-card-with-button title="Spotters" [showEyeButton]="true" class="uniform-card">
+
+  <!-- Filtro -->
+  <div style="padding: 0 16px; margin: 8px 0;">
+    <mat-form-field appearance="fill" style="width: 100%;">
+      <mat-label>Search Spotters</mat-label>
+      <input matInput [(ngModel)]="spottersFilter" (keyup)="applySpottersFilter()" placeholder="e.g., 2025-04-18 or SPT-001">
+      <mat-icon matSuffix>search</mat-icon>
+    </mat-form-field>
+  </div>
+
+  <!-- Encabezados -->
+  <div style="display: flex; align-items: center; padding: 0 16px; margin-bottom: 8px; font-weight: 500;">
+    <div style="flex: 3;">Date</div>
+    <div style="flex: 2; text-align: center;">Code</div>
+    <div style="flex: 1; text-align: center;">Action</div>
+  </div>
+  <mat-divider></mat-divider>
+
+  <!-- Lista filtrada -->
+  <div *ngFor="let item of filteredSpottersReports">
+    <div style="display: flex; padding: 8px 16px; align-items: center;">
+      <div style="flex: 3;">{{ item.date }}</div>
+      <div style="flex: 2; text-align: center;">{{ item.code }}</div>
+      <div style="flex: 1; display: flex; justify-content: flex-end;">
         <button mat-raised-button color="accent" style="min-width: 64px; font-size: 12px; padding: 2px 8px;">Download</button>
-
-        </div>
       </div>
-      <mat-divider></mat-divider>
-    </div>
-  </app-card-with-button>
-
-  <!-- Card: Spotters -->
-  <app-card-with-button title="Spotters" [showEyeButton]="true" class="uniform-card">
-    <!-- Same template -->
-    <div style="display: flex; align-items: center; padding: 0 16px; margin: 8px 0; font-weight: 500;">
-      <div style="flex: 3;">Date</div>
-      <div style="flex: 2; text-align: center;">Code</div>
-      <div style="flex: 1; text-align: center;">Action</div>
     </div>
     <mat-divider></mat-divider>
-    <div *ngFor="let item of spottersReports">
-      <div style="display: flex; padding: 8px 16px; align-items: center;">
-        <div style="flex: 3;">{{ item.date }}</div>
-        <div style="flex: 2; text-align: center;">{{ item.code }}</div>
-        <div style="flex: 1; display: flex; justify-content: flex-end;">
-        <button mat-raised-button color="accent" style="min-width: 64px; font-size: 12px; padding: 2px 8px;">Download</button>
-        </div>
-      </div>
-      <mat-divider></mat-divider>
-    </div>
-  </app-card-with-button>
+  </div>
 
-  <!-- Card: All Issues -->
+</app-card-with-button>
+
+
   <app-card-with-button title="All Issues" [showEyeButton]="true" class="uniform-card">
-    <div style="display: flex; align-items: center; padding: 0 16px; margin: 8px 0; font-weight: 500;">
-      <div style="flex: 3;">Date</div>
-      <div style="flex: 2; text-align: center;">Code</div>
-      <div style="flex: 1; text-align: center;">Action</div>
+
+  <!-- Filtro -->
+  <div style="padding: 0 16px; margin: 8px 0;">
+    <mat-form-field appearance="fill" style="width: 100%;">
+      <mat-label>Search Issues</mat-label>
+      <input matInput [(ngModel)]="issuesFilter" (keyup)="applyIssuesFilter()" placeholder="e.g., 2025-05-05 or ISS-001">
+      <mat-icon matSuffix>search</mat-icon>
+    </mat-form-field>
+  </div>
+
+  <!-- Encabezados -->
+  <div style="display: flex; align-items: center; padding: 0 16px; margin-bottom: 8px; font-weight: 500;">
+    <div style="flex: 3;">Date</div>
+    <div style="flex: 2; text-align: center;">Code</div>
+    <div style="flex: 1; text-align: center;">Action</div>
+  </div>
+  <mat-divider></mat-divider>
+
+  <!-- Lista filtrada -->
+  <div *ngFor="let item of filteredIssuesReports">
+    <div style="display: flex; padding: 8px 16px; align-items: center;">
+      <div style="flex: 3;">{{ item.date }}</div>
+      <div style="flex: 2; text-align: center;">{{ item.code }}</div>
+      <div style="flex: 1; display: flex; justify-content: flex-end;">
+        <button mat-raised-button color="accent" style="min-width: 64px; font-size: 12px; padding: 2px 8px;">Download</button>
+      </div>
     </div>
     <mat-divider></mat-divider>
-    <div *ngFor="let item of issuesReports">
-      <div style="display: flex; padding: 8px 16px; align-items: center;">
-        <div style="flex: 3;">{{ item.date }}</div>
-        <div style="flex: 2; text-align: center;">{{ item.code }}</div>
-        <div style="flex: 1; display: flex; justify-content: flex-end;">
+  </div>
+
+</app-card-with-button>
+
+
+ <app-card-with-button title="Daily Team Leader" [showEyeButton]="true" class="uniform-card">
+
+  <!-- Filtro -->
+  <div style="padding: 0 16px; margin: 8px 0;">
+    <mat-form-field appearance="fill" style="width: 100%;">
+      <mat-label>Search Team Leader Reports</mat-label>
+      <input matInput [(ngModel)]="teamLeaderFilter" (keyup)="applyTeamLeaderFilter()" placeholder="e.g., 2025-05-01 or DTL-001">
+      <mat-icon matSuffix>search</mat-icon>
+    </mat-form-field>
+  </div>
+
+  <!-- Encabezados -->
+  <div style="display: flex; align-items: center; padding: 0 16px; margin-bottom: 8px; font-weight: 500;">
+    <div style="flex: 3;">Date</div>
+    <div style="flex: 2; text-align: center;">Code</div>
+    <div style="flex: 1; text-align: center;">Action</div>
+  </div>
+  <mat-divider></mat-divider>
+
+  <!-- Lista filtrada -->
+  <div *ngFor="let item of filteredTeamLeaderReports">
+    <div style="display: flex; padding: 8px 16px; align-items: center;">
+      <div style="flex: 3;">{{ item.date }}</div>
+      <div style="flex: 2; text-align: center;">{{ item.code }}</div>
+      <div style="flex: 1; display: flex; justify-content: flex-end;">
         <button mat-raised-button color="accent" style="min-width: 64px; font-size: 12px; padding: 2px 8px;">Download</button>
-
-        </div>
       </div>
-      <mat-divider></mat-divider>
-    </div>
-  </app-card-with-button>
-
-  <!-- Card: Daily Team Leader -->
-  <app-card-with-button title="Daily Team Leader" [showEyeButton]="true" class="uniform-card">
-    <div style="display: flex; align-items: center; padding: 0 16px; margin: 8px 0; font-weight: 500;">
-      <div style="flex: 3;">Date</div>
-      <div style="flex: 2; text-align: center;">Code</div>
-      <div style="flex: 1; text-align: center;">Action</div>
     </div>
     <mat-divider></mat-divider>
-    <div *ngFor="let item of teamLeaderReports">
-      <div style="display: flex; padding: 8px 16px; align-items: center;">
-        <div style="flex: 3;">{{ item.date }}</div>
-        <div style="flex: 2; text-align: center;">{{ item.code }}</div>
-        <div style="flex: 1; display: flex; justify-content: flex-end;">
+  </div>
+
+</app-card-with-button>
+
+
+<app-card-with-button title="Ticket Evidence" [showEyeButton]="true" class="uniform-card">
+
+  <!-- Filtro -->
+  <div style="padding: 0 16px; margin: 8px 0;">
+    <mat-form-field appearance="fill" style="width: 100%;">
+      <mat-label>Search Ticket Evidence Reports</mat-label>
+      <input matInput [(ngModel)]="ticketEvidenceFilter" (keyup)="applyTicketEvidenceFilter()" placeholder="e.g., 2025-06-12 or TE-123">
+      <mat-icon matSuffix>search</mat-icon>
+    </mat-form-field>
+  </div>
+
+  <!-- Encabezados -->
+  <div style="display: flex; align-items: center; padding: 0 16px; margin-bottom: 8px; font-weight: 500;">
+    <div style="flex: 3;">Date</div>
+    <div style="flex: 2; text-align: center;">Code</div>
+    <div style="flex: 1; text-align: center;">Action</div>
+  </div>
+  <mat-divider></mat-divider>
+
+  <!-- Lista filtrada -->
+  <div *ngFor="let item of filteredTicketEvidenceReports">
+    <div style="display: flex; padding: 8px 16px; align-items: center;">
+      <div style="flex: 3;">{{ item.date }}</div>
+      <div style="flex: 2; text-align: center;">{{ item.code }}</div>
+      <div style="flex: 1; display: flex; justify-content: flex-end;">
         <button mat-raised-button color="accent" style="min-width: 64px; font-size: 12px; padding: 2px 8px;">Download</button>
-
-        </div>
       </div>
-      <mat-divider></mat-divider>
-    </div>
-  </app-card-with-button>
-
-  <!-- Card: Ticket Evidence -->
-  <app-card-with-button title="Ticket Evidence" [showEyeButton]="true" class="uniform-card">
-    <div style="display: flex; align-items: center; padding: 0 16px; margin: 8px 0; font-weight: 500;">
-      <div style="flex: 3;">Date</div>
-      <div style="flex: 2; text-align: center;">Code</div>
-      <div style="flex: 1; text-align: center;">Action</div>
     </div>
     <mat-divider></mat-divider>
-    <div *ngFor="let item of ticketEvidenceReports">
-      <div style="display: flex; padding: 8px 16px; align-items: center;">
-        <div style="flex: 3;">{{ item.date }}</div>
-        <div style="flex: 2; text-align: center;">{{ item.code }}</div>
-        <div style="flex: 1; display: flex; justify-content: flex-end;">
-        <button mat-raised-button color="accent" style="min-width: 64px; font-size: 12px; padding: 2px 8px;">Download</button>
+  </div>
 
-        </div>
-      </div>
-      <mat-divider></mat-divider>
-    </div>
-  </app-card-with-button>
-  <app-plus-button
-    [title]="'Select Existing Fields'"
-    [data]="myData"
-    [excludedFields]="['id']"
-    [mode]="'select'"
-    (objectCreated)="handleResult($event)">
-  </app-plus-button>
+</app-card-with-button>
 
+ 
+  </div>
 </app-dashboard-layout>

@@ -11,6 +11,8 @@ export interface ColumnDefinition {
   header: string;
   cell: (element: any) => string;
   isActionColumn?: boolean;
+    isHtml?: boolean; 
+
 }
 
 @Component({

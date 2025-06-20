@@ -1,2 +1,174 @@
 <app-dashboard-layout>
+  <app-card-with-button title="Crew" [showEyeButton]="false">
+    <form [formGroup]="form">
+      <!-- EMPLOYEE SECTION -->
+      <div class="form-row">
+        <mat-form-field appearance="fill">
+          <mat-label>Name</mat-label>
+          <mat-select formControlName="selectedEmployee">
+            <mat-option *ngFor="let employee of employeeList" [value]="employee">{{ employee.name }}</mat-option>
+          </mat-select>
+          <mat-error *ngIf="form.get('selectedEmployee')?.hasError('required')">
+        Employee is required
+        </mat-error>
+        </mat-form-field>
+
+       <mat-form-field appearance="fill">
+  <mat-label>Skills</mat-label>
+  <mat-select formControlName="selectedSkills" multiple>
+    <mat-option *ngFor="let skill of skillList" [value]="skill">
+     <mat-icon class="mr-2" aria-hidden="false" [attr.aria-label]="skill + ' icon'">
+  {{ skillIcons[skill] }}
+</mat-icon>
+
+      {{ skill }}
+    </mat-option>
+  </mat-select>
+  <mat-error *ngIf="form.get('selectedSkills')?.hasError('required')">
+  Please select at least one skill
+</mat-error>
+
+</mat-form-field>
+
+<mat-slide-toggle color="accent" formControlName="isLeader"> Mark as Leader </mat-slide-toggle>
+
+
+        <button mat-fab color="primary" (click)="addEmployee()" type="button">
+          <mat-icon>add</mat-icon>
+        </button>
+      </div>
+
+<app-data-table
+  [title]="'Team'"
+  [data]="employeeDataa"
+  [columns]="employeecolumns"
+  (edit)="onEditEmployee($event)"
+  (delete)="onDeleteEmployee($event)">
+</app-data-table>
+
+
+      <!-- MATERIALS SECTION -->
+      <h2>Materials</h2>
+      <div class="form-row">
+      <mat-form-field appearance="fill">
+  <mat-label>Material</mat-label>
+  <mat-select formControlName="newMaterialName">
+   <mat-option *ngFor="let option of materialOptions" [value]="option.value">
+  {{ option.viewValue }}
+</mat-option>
+  </mat-select>
+  <mat-error *ngIf="form.get('newMaterialName')?.hasError('required')">
+  Material is required
+</mat-error>
+
+</mat-form-field>
+
+<mat-form-field appearance="fill">
+  <mat-label>Unit</mat-label>
+  <mat-select formControlName="newMaterialUnit">
+    <mat-option *ngFor="let unit of unitOptions" [value]="unit">
+      {{ unit }}
+    </mat-option>
+  </mat-select>
+  <mat-error *ngIf="form.get('newMaterialUnit')?.hasError('required')">
+  Unit is required
+</mat-error>
+
+</mat-form-field>
+
+        <mat-form-field>
+          <mat-label>Quantity</mat-label>
+          <input matInput type="number" formControlName="newMaterialQuantity" />
+           <mat-error *ngIf="form.get('newMaterialQuantity')?.hasError('required')">
+            Quantity is required
+            </mat-error>
+            <mat-error *ngIf="form.get('newMaterialQuantity')?.hasError('min')">
+            Quantity must be greater than 0
+            </mat-error>
+        </mat-form-field>
+       
+
+        <button mat-fab color="primary" (click)="addMaterial()" type="button">
+          <mat-icon>add</mat-icon>
+        </button>
+      </div>
+
+         <app-data-table
+  [title]="'Materials'"
+  [data]="materialDataa"
+  [columns]="materialColumns"
+  (edit)="onEditMaterial($event)"
+  (delete)="onDeleteMaterial($event)">
+</app-data-table>
+
+      <!-- EQUIPMENT SECTION -->
+      <h2>Equipment</h2>
+      <div class="form-row">
+          <mat-form-field>
+    <mat-label>Equipment</mat-label>
+    <mat-select formControlName="newEquipmentName">
+      <mat-option *ngFor="let eq of equipmentOptions" [value]="eq">
+        {{ eq }}
+      </mat-option>
+    </mat-select>
+    <mat-error *ngIf="form.get('newEquipmentName')?.hasError('required')">
+  Equipment is required
+</mat-error>
+  </mat-form-field>
+
+        <mat-form-field>
+          <mat-label>Quantity</mat-label>
+          <input matInput type="number" formControlName="newEquipmentQuantity" />
+          <mat-error *ngIf="form.get('newEquipmentQuantity')?.hasError('required')">
+  Quantity is required
+</mat-error>
+<mat-error *ngIf="form.get('newEquipmentQuantity')?.hasError('min')">
+  Quantity must be greater than 0
+</mat-error>
+
+        </mat-form-field>
+
+         <mat-form-field>
+    <mat-label>Supplier</mat-label>
+    <mat-select formControlName="newEquipmentSupplier">
+      <mat-option *ngFor="let s of supplierOptions" [value]="s">
+        {{ s }}
+      </mat-option>
+    </mat-select>
+    <mat-error *ngIf="form.get('newEquipmentSupplier')?.hasError('required')">
+  Supplier is required
+</mat-error>
+  </mat-form-field>
+        <button mat-fab color="primary" (click)="addEquipment()" type="button">
+          <mat-icon>add</mat-icon>
+        </button>
+      </div>
+
+       <app-data-table
+  [title]="'Equipment'"
+  [data]="equipmentDataa"
+  [columns]="equipmentColumns"
+  (edit)="onEditEquipment($event)"
+  (delete)="onDeleteEquipment($event)">
+</app-data-table>
+
+      <!-- ROUTE SECTION -->
+      <h2>Route</h2>
+      <mat-form-field appearance="fill">
+        <mat-label>Route</mat-label>
+        <mat-select formControlName="route">
+          <mat-option value="route1">Route 1</mat-option>
+          <mat-option value="route2">Route 2</mat-option>
+        </mat-select>
+        <mat-error *ngIf="form.get('route')?.hasError('required')">
+  Route is required
+</mat-error>
+
+      </mat-form-field>
+
+      <div class="submit-btn">
+        <button mat-flat-button color="primary" type="submit">Save</button>
+      </div>
+    </form>
+  </app-card-with-button>
 </app-dashboard-layout>

@@ -6,8 +6,12 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatCardModule } from '@angular/material/card';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSidenavModule } from '@angular/material/sidenav';
+import { MatTableModule } from '@angular/material/table';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';  // <-- Agrega esta línea
+
 
 
 export const MATERIAL_MODULES = [
@@ -19,6 +23,9 @@ export const MATERIAL_MODULES = [
   MatCardModule,
   MatSelectModule,
   MatSidenavModule,
-  MatDatepickerModule,
-  MatNativeDateModule
+  MatTableModule,
+  MatSlideToggleModule,
+   MatDatepickerModule,
+  MatNativeDateModule,
+  MatProgressSpinnerModule 
 ];

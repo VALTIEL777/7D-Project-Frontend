@@ -16,8 +16,10 @@
         [class.actions-cell]="column.isActionColumn"
       >
         <ng-container *ngIf="!column.isActionColumn; else actions">
-          {{ column.cell(element) }}
-        </ng-container>
+ <span *ngIf="!column.isHtml">
+    {{ column.cell(element) }}
+  </span>
+  <span *ngIf="column.isHtml" [innerHTML]="column.cell(element)"></span>        </ng-container>
         <ng-template #actions>
           <div class="actions-container">
             <button
@@ -36,6 +38,14 @@
             >
               <mat-icon>delete</mat-icon>
             </button>
+
+             <button
+      *ngIf="column.name === 'show'"
+  mat-icon-button
+  class="show-button"
+  matTooltip="Show Route">
+    <mat-icon>visibility</mat-icon>
+    </button>
           </div>
         </ng-template>
       </td>

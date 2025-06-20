@@ -6,7 +6,7 @@
           <h4>Active Routes</h4>
         </div>
         <!-- GRID PRINCIPAL -->
-        <div cdkDropListGroup class="dashboard-grid">
+        <div cdkDropListGroup class="dashboard-grid vertical-list">
           <!-- Active Routes -->
 
           <app-card-with-button
@@ -37,7 +37,7 @@
             <h4>Generated Routes</h4>
           </div>
 
-          <div cdkDropListGroup class="dashboard-grid">
+          <div cdkDropListGroup class="dashboard-grid vertical-list">
           <app-card-with-button
             *ngFor="let route of generatedRoutes"
             [title]="route.code"
