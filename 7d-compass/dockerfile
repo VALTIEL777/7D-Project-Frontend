@@ -1,4 +1,4 @@
-# Step 1: Build Angular app
+# Build Angular app
 FROM node:18 AS build
 
 WORKDIR /app
@@ -7,19 +7,19 @@ RUN npm install
 COPY . .
 RUN npm run build --prod
 
-# Step 2: Serve with Nginx
-FROM nginx:stable-alpine
+# Production stage with lightweight HTTP server
+FROM node:18-alpine
 
-# Remove default Nginx static files
-RUN rm -rf /usr/share/nginx/html/*
+WORKDIR /app
 
-# Copy built Angular app (browser folder) to Nginx directory
-COPY --from=build /app/dist/7d-compass/browser /usr/share/nginx/html
+# Install http-server globally
+RUN npm install -g http-server
 
-# Fix permissions so Nginx can serve the files
-RUN chmod -R 755 /usr/share/nginx/html
+# Copy built Angular app
+COPY --from=build /app/dist/7d-compass/browser ./dist
 
-# Expose port 80
-EXPOSE 80
+# Expose port 3005
+EXPOSE 3005
 
-CMD ["nginx", "-g", "daemon off;"]
+# Start http-server with specific configuration to prevent redirects
+CMD ["http-server", "dist", "-p", "3005", "-a", "0.0.0.0", "--cors", "-P", "http://localhost:3005?"]
