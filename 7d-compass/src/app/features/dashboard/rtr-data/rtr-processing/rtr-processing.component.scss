@@ -10,9 +10,23 @@
   padding-top:  1px;
 }
 
+.history-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
 
+.history-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 500;
+}
 
-
+.history-date {
+  margin: 0;
+  font-size: 12px;
+  color: #666;
+}
 
 .download-card-content {
   display: flex;
@@ -26,13 +40,9 @@
   border-collapse: collapse;
 }
 
-
-
 .custom-row {
   border-bottom: 1px solid #000000;
 }
-
-
 
 .dashboard-grid {
   display: grid;
@@ -45,12 +55,80 @@
   }
 }
 
+/* Loading and empty states */
+.loading-state, .empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  gap: 10px;
+  color: #666;
+}
 
+.loading-state {
+  flex-direction: row;
+  gap: 10px;
+}
 
+.empty-state mat-icon {
+  font-size: 48px;
+  width: 48px;
+  height: 48px;
+  color: #ccc;
+}
 
+/* Upload progress */
+.upload-progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 10px;
+  background-color: #f5f5f5;
+  border-radius: 4px;
+}
 
+/* Analysis summary */
+.analysis-summary {
+  display: flex;
+  justify-content: space-around;
+  margin-bottom: 20px;
+  padding: 15px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
 
+.summary-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+}
 
+.summary-label {
+  font-size: 12px;
+  color: #666;
+  font-weight: 500;
+}
+
+.summary-value {
+  font-size: 18px;
+  font-weight: bold;
+
+  &.new {
+    color: #28a745;
+  }
+
+  &.inconsistent {
+    color: #ffc107;
+  }
+
+  &.matching {
+    color: #17a2b8;
+  }
+}
 
 /* Card de inconsistencias: columna 3, fila completa */
 .inconsistencies-card {
@@ -61,9 +139,7 @@
   width: 100%;
   height: 100%;
   box-sizing: border-box;
-
 }
-
 
 .rtr-inconsistencies-table-wrapper {
   -webkit-overflow-scrolling: touch;
@@ -88,15 +164,22 @@
   white-space: nowrap; /* Optional: prevents text wrapping */
 }
 
+/* Button toggle styles */
+mat-button-toggle-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
 
-
+mat-button-toggle {
+  font-size: 12px;
+  min-width: 80px;
+}
 
 .history-scrollable-content {
   overflow-y: auto;
   max-height: 180px; /* Adjust based on desired visible items */
 }
-
-
 
 .combined-card-content textarea {
   width: 100%;
@@ -106,9 +189,6 @@
   resize: vertical;
   font-family: monospace;
 }
-
-
-
 
 .renovated-permits-section {
   flex: 1; /* Takes up 1 part of available space */
@@ -129,16 +209,13 @@
     flex-direction: column;
   }
 
-
-
   .custom-table tbody {
     overflow-y: auto;
     overflow-x: auto;
     /* max-height: calc(100% - 40px); */ /* Removed to prevent cutting */
   }
-
-
 }
+
 .combined-comments-permits-card {
   grid-column: 1 / span 2;
   display: flex;
@@ -153,9 +230,7 @@
   .dashboard-grid {
     display: block;
     padding-bottom: 20px;
-
   }
-
 
   app-card-with-button {
     display: block;

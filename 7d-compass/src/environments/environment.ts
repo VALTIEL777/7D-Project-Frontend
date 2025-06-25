@@ -9,5 +9,6 @@ export const environment = {
   supplierServiceUrl: 'http://localhost:3000/api/suppliers',
   fineServiceUrl: 'http://localhost:3000/api/fines',
   invoiceServiceUrl: 'http://localhost:3000/api/invoices',
-  diggerServiceUrl: 'http://localhost:3000/api/diggers'
+  diggerServiceUrl: 'http://localhost:3000/api/diggers',
+  rtrServiceUrl: 'http://localhost:3000/api/rtr'
 };

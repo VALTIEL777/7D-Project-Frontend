@@ -4,6 +4,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatIconModule } from '@angular/material/icon';
 import { MatListModule } from '@angular/material/list';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 
 interface PreviewUrl {
   url: string;
@@ -17,10 +18,12 @@ interface PreviewUrl {
   standalone: true,
   templateUrl: './drag-drop-upload.component.html',
   styleUrls: ['./drag-drop-upload.component.scss'],
-  imports: [CommonModule, MatIconModule, MatDividerModule, MatListModule, MatButtonModule]
+  imports: [CommonModule, MatIconModule, MatDividerModule, MatListModule, MatButtonModule, MatProgressSpinnerModule]
 })
 export class DragDropUploadComponent {
   @Input() maxFiles = 5;  // default max files
+  @Input() isLoading = false;  // loading state input
+  @Input() currentFileName = '';  // current file being uploaded
   @Output() filesDropped = new EventEmitter<File[]>();
 
   selectedFiles: File[] = [];

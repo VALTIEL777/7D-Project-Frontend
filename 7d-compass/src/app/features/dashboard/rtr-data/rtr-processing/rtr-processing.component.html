@@ -5,7 +5,12 @@
     <div class="dashboard-grid">
       <!-- Subida de nuevo RTR -->
       <app-card-with-button title="Upload Files" [showEyeButton]="true" class="spaced-card">
-        <app-drag-drop-upload [maxFiles]="1"></app-drag-drop-upload>
+        <app-drag-drop-upload
+          [maxFiles]="1"
+          [isLoading]="isUploading"
+          [currentFileName]="currentUploadFileName"
+          (filesDropped)="onFilesDropped($event)">
+        </app-drag-drop-upload>
       </app-card-with-button>
 
       <!-- Descargar RTR -->
@@ -33,27 +38,40 @@
               d="M19.129,31l-2.411-4.561c-0.092-0.171-0.186-0.483-0.284-0.938h-0.037c-0.046,0.215-0.154,0.541-0.324,0.979L13.652,31H9.895l4.462-7.001L10.274,17h3.837l2.001,4.196c0.156,0.331,0.296,0.725,0.42,1.179h0.04c0.078-0.271,0.224-0.68,0.439-1.22L19.237,17h3.515l-4.199,6.939l4.316,7.059h-3.74V31z"
             ></path>
           </svg>
-          <button mat-raised-button color="primary">
-            <mat-icon>file_download</mat-icon> Download
+          <button mat-raised-button color="primary" (click)="loadRTRFiles()">
+            <mat-icon>refresh</mat-icon> Refresh List
           </button>
         </div>
       </app-card-with-button>
-      
+
 
       <!-- Historial de RTR recibidos -->
       <app-card-with-button class="rtr-history-card" title="Received RTR History" [showEyeButton]="true">
         <div class="search-container">
-  <mat-form-field appearance="fill" class="search-bar">
-    <mat-label>Search Received RTRs</mat-label>
-    <input matInput (keyup)="applyReceivedFilter($event)" placeholder="e.g., 05-25-25">
-    <mat-icon matSuffix>search</mat-icon>
-  </mat-form-field>
-</div>
+          <mat-form-field appearance="fill" class="search-bar">
+            <mat-label>Search Received RTRs</mat-label>
+            <input matInput (keyup)="applyReceivedFilter($event)" placeholder="Search by name or date">
+            <mat-icon matSuffix>search</mat-icon>
+          </mat-form-field>
+        </div>
         <div class="history-scrollable-content">
+          <div *ngIf="isLoadingRTRs" class="loading-state">
+            <mat-spinner diameter="20"></mat-spinner>
+            <span>Loading RTR files...</span>
+          </div>
+          <div *ngIf="!isLoadingRTRs && filteredReceivedRTRs.length === 0" class="empty-state">
+            <mat-icon>folder_open</mat-icon>
+            <span>No RTR files found</span>
+          </div>
           <div *ngFor="let rtr of filteredReceivedRTRs" class="history-item">
             <div class="history-content">
-              <h4 class="history-title">{{ rtr.date }}</h4>
-              <button mat-raised-button>Download RTR</button>
+              <div class="history-info">
+                <h4 class="history-title">{{ rtr.name }}</h4>
+                <p class="history-date">{{ formatDate(rtr.createdAt) }}</p>
+              </div>
+              <button mat-raised-button (click)="downloadRTR(rtr.rtrId, rtr.name)">
+                <mat-icon>file_download</mat-icon> Download
+              </button>
             </div>
             <hr class="custom-divider" />
           </div>
@@ -63,17 +81,30 @@
       <!-- Historial de RTR enviados -->
       <app-card-with-button class="rtr-history-card" title="Sent RTR History" [showEyeButton]="true">
         <div class="search-container">
-  <mat-form-field appearance="fill" class="search-bar">
-    <mat-label>Search Sent RTRs</mat-label>
-    <input matInput (keyup)="applySentFilter($event)" placeholder="e.g., 05-10-25">
-    <mat-icon matSuffix>search</mat-icon>
-  </mat-form-field>
-</div>
+          <mat-form-field appearance="fill" class="search-bar">
+            <mat-label>Search Sent RTRs</mat-label>
+            <input matInput (keyup)="applySentFilter($event)" placeholder="Search by name or date">
+            <mat-icon matSuffix>search</mat-icon>
+          </mat-form-field>
+        </div>
         <div class="history-scrollable-content">
+          <div *ngIf="isLoadingRTRs" class="loading-state">
+            <mat-spinner diameter="20"></mat-spinner>
+            <span>Loading RTR files...</span>
+          </div>
+          <div *ngIf="!isLoadingRTRs && filteredSentRTRs.length === 0" class="empty-state">
+            <mat-icon>folder_open</mat-icon>
+            <span>No RTR files found</span>
+          </div>
           <div *ngFor="let rtr of filteredSentRTRs" class="history-item">
             <div class="history-content">
-              <h4 class="history-title">{{ rtr.date }}</h4>
-              <button mat-raised-button>Download RTR</button>
+              <div class="history-info">
+                <h4 class="history-title">{{ rtr.name }}</h4>
+                <p class="history-date">{{ formatDate(rtr.createdAt) }}</p>
+              </div>
+              <button mat-raised-button (click)="downloadRTR(rtr.rtrId, rtr.name)">
+                <mat-icon>file_download</mat-icon> Download
+              </button>
             </div>
             <hr class="custom-divider" />
           </div>
@@ -91,9 +122,8 @@
             #pasteArea
             (paste)="handlePaste($event)"
             placeholder="Example:
-Location	Ticket	Job	Width	Length
-Austin, TX	P123	JobA	10	20
-Dallas, TX	P456	JobB	15	25"
+RESTN_WO_NUM	TASK_WO_NUM	PGL ComD:Wments	Contractor Comments	SHOP	SQ_MI	Earliest_Rpt_Dt	ADDRESS	STREET_FROM_RES	STREET_TO_RES	NOTES2_RES	SAP_ITEM_NUM	LOCATION2_RES	length_x_width	AGENCY_NO	ILL_ONLY	START_DATE	EXP_DATE
+P123	T456	Test comment	Contractor note	Shop1	1.5	2025-01-15	123 Main St	Oak St	Pine St	Notes	ITEM001	Austin, TX	10x20	12345	N	2025-02-01	2025-03-01"
             rows="7"
           ></textarea>
 
@@ -127,8 +157,16 @@ Dallas, TX	P456	JobB	15	25"
               mat-raised-button
               color="accent"
               (click)="processPastedData()"
-            >
-              Process Data
+              [disabled]="isAnalyzing">
+              <mat-spinner *ngIf="isAnalyzing" diameter="16"></mat-spinner>
+              {{ isAnalyzing ? 'Analyzing...' : 'Process Data' }}
+            </button>
+            <button
+              mat-raised-button
+              color="primary"
+              (click)="generateMockAnalysis()"
+              style="margin-left: 10px;">
+              Test Analysis
             </button>
           </div>
         </div>
@@ -140,46 +178,81 @@ Dallas, TX	P456	JobB	15	25"
         [showEditButton]="false"
         class="inconsistencies-card"
       >
+        <div *ngIf="analysisResult" class="analysis-summary">
+          <div class="summary-item">
+            <span class="summary-label">Total:</span>
+            <span class="summary-value">{{ analysisResult.analysis.summary.total }}</span>
+          </div>
+          <div class="summary-item">
+            <span class="summary-label">New:</span>
+            <span class="summary-value new">{{ analysisResult.analysis.summary.new }}</span>
+          </div>
+          <div class="summary-item">
+            <span class="summary-label">Inconsistent:</span>
+            <span class="summary-value inconsistent">{{ analysisResult.analysis.summary.inconsistent }}</span>
+          </div>
+          <div class="summary-item">
+            <span class="summary-label">Matching:</span>
+            <span class="summary-value matching">{{ analysisResult.analysis.summary.matching }}</span>
+          </div>
+        </div>
+
         <div class="rtr-inconsistencies-table-wrapper">
-          <table>
+          <table *ngIf="inconsistentTickets.length > 0">
             <thead>
               <tr>
-                <th>Location</th>
                 <th>Ticket</th>
-                <th>Column</th>
-                <th>Incoming RTR Value</th>
-                <th>Our DB Value</th>
-                <th>Action</th>
+                <th>Field</th>
+                <th>Excel Value</th>
+                <th>Database Value</th>
+                <th>Decision</th>
               </tr>
             </thead>
             <tbody>
               <tr
-                *ngFor="let inconsistency of inconsistencies"
+                *ngFor="let ticket of inconsistentTickets"
                 class="custom-row"
               >
-                <td>{{ inconsistency.location }}</td>
-                <td>{{ inconsistency.ticket }}</td>
-                <td>{{ inconsistency.column }}</td>
-                <td>{{ inconsistency.rtrValue }}</td>
-                <td>{{ inconsistency.dbValue }}</td>
-                <td>
-                  <div style="display: flex; flex-direction: column; gap: 8px">
-                    <button mat-raised-button color="primary">
-                      Keep Value
-                    </button>
-                    <button mat-raised-button color="accent">
-                      Receive Change
-                    </button>
-                  </div>
-                </td>
+                <ng-container *ngFor="let inconsistency of ticket.inconsistencies; let first = first">
+                  <tr *ngIf="first" [attr.rowspan]="ticket.inconsistencies.length">
+                    <td>{{ ticket.ticketCode }}</td>
+                  </tr>
+                  <tr>
+                    <td>{{ inconsistency.field }}</td>
+                    <td>{{ inconsistency.excelValue }}</td>
+                    <td>{{ inconsistency.databaseValue }}</td>
+                    <td>
+                      <mat-button-toggle-group
+                        [value]="userDecisions[ticket.ticketId.toString()]?.[inconsistency.field] || 'database'"
+                        (valueChange)="onDecisionChange(ticket.ticketId, inconsistency.field, $event)">
+                        <mat-button-toggle value="excel">Excel</mat-button-toggle>
+                        <mat-button-toggle value="database">Database</mat-button-toggle>
+                      </mat-button-toggle-group>
+                    </td>
+                  </tr>
+                </ng-container>
               </tr>
             </tbody>
           </table>
+
+          <div *ngIf="inconsistentTickets.length === 0 && !analysisResult" class="empty-state">
+            <mat-icon>check_circle</mat-icon>
+            <span>No inconsistencies found. Process data to see results.</span>
+          </div>
         </div>
 
-        <div class="inconsistency-actions">
-          <button mat-raised-button color="warn">Reset</button>
-          <button mat-raised-button color="primary">Update Database</button>
+        <div class="inconsistency-actions" *ngIf="analysisResult">
+          <button mat-raised-button color="warn" (click)="resetInconsistencies()">
+            Reset
+          </button>
+          <button
+            mat-raised-button
+            color="primary"
+            (click)="saveWithDecisions()"
+            [disabled]="isProcessing">
+            <mat-spinner *ngIf="isProcessing" diameter="16"></mat-spinner>
+            {{ isProcessing ? 'Processing...' : 'Update Database' }}
+          </button>
         </div>
       </app-card-with-button>
     </div>
