@@ -1,10 +1,12 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { DashboardLayoutComponent } from "../../../../shared/dashboard-layout/dashboard-layout.component";
 import { CardWithButtonComponent } from '../../../../shared/card-with-button/card-with-button.component';
 import { MatDialog } from '@angular/material/dialog';
 import { SearchDialogComponent } from '../../../../shared/search-dialog/search-dialog.component';
 import { DataTableComponent } from '../../../../shared/data-table/data-table.component';
 import { ConfirmationDialogComponent } from '../../../../shared/confirmation-dialog/confirmation-dialog.component';
+import { BaseDashboardComponent } from '../../../../shared/base-dashboard.component';
+import { FilterService } from '../../../../core/services/filter.service';
 
 interface ColumnDefinition {
   name: string;
@@ -24,7 +26,7 @@ interface ColumnDefinition {
   templateUrl: './supervisors.component.html',
   styleUrls: ['./supervisors.component.scss']
 })
-export class SupervisorsComponent {
+export class SupervisorsComponent extends BaseDashboardComponent implements OnInit {
   columns: ColumnDefinition[] = [
     {
       name: 'name',
@@ -99,7 +101,43 @@ export class SupervisorsComponent {
     { quadrantId: 4, name: 'C12', supervisorId: 3 }
   ];
 
-  constructor(private dialog: MatDialog) {}
+  constructor(
+    private dialog: MatDialog,
+    filterService: FilterService
+  ) {
+    super(filterService);
+  }
+
+  override ngOnInit(): void {
+    super.ngOnInit();
+    this.loadData();
+  }
+
+  protected override loadData(): void {
+    // Initialize data for filtering
+    this.allData = [...this.tableData];
+    this.filteredData = [...this.allData];
+  }
+
+  // Override text search to include supervisor fields
+  protected override matchesTextSearch(item: any, searchTerm: string): boolean {
+    const searchableFields = ['name', 'phone', 'email', 'role'];
+
+    return searchableFields.some(field => {
+      const value = this.getNestedValue(item, field);
+      if (value) {
+        return String(value).toLowerCase().includes(searchTerm);
+      }
+      return false;
+    }) ||
+    // Also search in assigned quadrants
+    this.getQuadrantNames(item.supervisorId).toLowerCase().includes(searchTerm);
+  }
+
+  // Getter for filtered supervisor data
+  get filteredSupervisorData() {
+    return this.filteredData;
+  }
 
   // Helper function to get quadrant names for a supervisor
   getQuadrantNames(supervisorId: number): string {
@@ -113,6 +151,7 @@ export class SupervisorsComponent {
       data: {
         title: `Edit Supervisor: ${supervisor.name}`,
         data: supervisor,
+        excludedFields: ['supervisorId', 'deletedat', 'updatedat', 'createdat', 'createdby', 'updatedby'],
         fields: [
           { name: 'name', label: 'Full Name', type: 'text', required: true },
           { name: 'phone', label: 'Phone', type: 'tel', required: true },
@@ -136,6 +175,8 @@ export class SupervisorsComponent {
         const index = this.tableData.findIndex(s => s.supervisorId === supervisor.supervisorId);
         if (index !== -1) {
           this.tableData[index] = { ...supervisor, ...result };
+          this.allData = [...this.tableData];
+          this.applyFilters();
         }
       }
     });
@@ -158,6 +199,8 @@ export class SupervisorsComponent {
       if (confirmed) {
         // Remove the supervisor from the array
         this.tableData = this.tableData.filter(s => s.supervisorId !== supervisor.supervisorId);
+        this.allData = [...this.tableData];
+        this.applyFilters();
 
         // In a real app, you would call your API service here
         console.log('Supervisor deleted:', supervisor);

@@ -1,8 +1,8 @@
 <app-dashboard-layout>
-  <app-card-with-button title="Supervisors Management" [showEyeButton]="false">
+  <app-card-with-button title="Supervisor Management" [showEyeButton]="false">
     <app-data-table
-      [title]="'Supervisors List'"
-      [data]="tableData"
+      [title]="'Supervisor Management'"
+      [data]="filteredSupervisorData"
       [columns]="columns"
       [pageSizeOptions]="[5, 10, 20]"
       (edit)="onEdit($event)"

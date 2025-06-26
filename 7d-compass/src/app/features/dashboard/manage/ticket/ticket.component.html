@@ -2,7 +2,7 @@
   <app-card-with-button title="Ticket Management" [showEyeButton]="false">
     <app-data-table
       [title]="'Ticket Management'"
-      [data]="tableData"
+      [data]="filteredTicketData"
       [columns]="columns"
       [pageSizeOptions]="[5, 10, 20]"
       (edit)="onEdit($event)"

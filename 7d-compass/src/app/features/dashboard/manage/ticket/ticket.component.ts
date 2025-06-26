@@ -1,10 +1,12 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { DashboardLayoutComponent } from "../../../../shared/dashboard-layout/dashboard-layout.component";
 import { CardWithButtonComponent } from '../../../../shared/card-with-button/card-with-button.component';
 import { MatDialog } from '@angular/material/dialog';
 import { DataTableComponent } from '../../../../shared/data-table/data-table.component';
 import { ConfirmationDialogComponent } from '../../../../shared/confirmation-dialog/confirmation-dialog.component';
 import { SearchDialogComponent } from '../../../../shared/search-dialog/search-dialog.component';
+import { BaseDashboardComponent } from '../../../../shared/base-dashboard.component';
+import { FilterService } from '../../../../core/services/filter.service';
 
 interface ColumnDefinition {
   name: string;
@@ -24,7 +26,7 @@ interface ColumnDefinition {
   templateUrl: './ticket.component.html',
   styleUrl: './ticket.component.scss'
 })
-export class TicketComponent {
+export class TicketComponent extends BaseDashboardComponent implements OnInit {
   columns: ColumnDefinition[] = [
     {
       name: 'ticketCode',
@@ -200,7 +202,7 @@ export class TicketComponent {
       quadrantId: 1,
       quadrantName: 'Southwest',
       quantity: 6,
-      amountToPay: 2550.75,
+      amountToPay: 1850.60,
       status: 'Pending',
       ticketType: 'regular',
       daysOutstanding: 4,
@@ -210,28 +212,62 @@ export class TicketComponent {
       ticketId: 10,
       ticketCode: 'TCK-010',
       incidentId: 1010,
-      contractUnitId: 12,
-      contractUnitName: 'Utility Cut Repair',
+      contractUnitId: 13,
+      contractUnitName: 'Street Sweeping',
       quadrantId: 3,
       quadrantName: 'Northwest',
       quantity: 1,
-      amountToPay: 420.00,
-      status: 'In Progress',
-      ticketType: 'regular',
-      daysOutstanding: 2,
+      amountToPay: 280.00,
+      status: 'Completed',
+      ticketType: 'mobilization',
+      daysOutstanding: 0,
       contractNumber: 'CNTR-2023-010'
     }
   ];
 
-  constructor(private dialog: MatDialog) {}
+  constructor(
+    private dialog: MatDialog,
+    filterService: FilterService
+  ) {
+    super(filterService);
+  }
+
+  override ngOnInit(): void {
+    super.ngOnInit();
+    this.loadData();
+  }
+
+  protected override loadData(): void {
+    // Initialize data for filtering
+    this.allData = [...this.tableData];
+    this.filteredData = [...this.allData];
+  }
+
+  // Override text search to include ticket fields
+  protected override matchesTextSearch(item: any, searchTerm: string): boolean {
+    const searchableFields = ['ticketCode', 'incidentId', 'contractUnitName', 'quadrantName', 'status', 'contractNumber'];
+
+    return searchableFields.some(field => {
+      const value = this.getNestedValue(item, field);
+      if (value) {
+        return String(value).toLowerCase().includes(searchTerm);
+      }
+      return false;
+    });
+  }
+
+  // Getter for filtered ticket data
+  get filteredTicketData() {
+    return this.filteredData;
+  }
 
   onEdit(ticket: any) {
     const dialogRef = this.dialog.open(SearchDialogComponent, {
-      width: '600px',
+      width: '500px',
       data: {
         title: `Edit Ticket: ${ticket.ticketCode}`,
-        data: ticket,
-        excludedFields: ['ticketId', 'ticketCode', 'incidentId']
+        data: { ...ticket },
+        excludedFields: ['ticketId', 'ticketCode', 'incidentId', 'deletedat', 'updatedat', 'createdat', 'createdby', 'updatedby']
       }
     });
 
@@ -243,6 +279,8 @@ export class TicketComponent {
             ...this.tableData[index],
             ...result
           };
+          this.allData = [...this.tableData];
+          this.applyFilters();
         }
       }
     });
@@ -255,15 +293,17 @@ export class TicketComponent {
       panelClass: 'confirmation-dialog',
       data: {
         title: 'Delete Ticket',
-        message: `You are about to delete ticket ${ticket.ticketCode} (MX-${ticket.incidentId}). This action cannot be undone.`,
+        message: `Are you sure you want to delete ticket ${ticket.ticketCode}? This action cannot be undone.`,
         confirmText: 'Delete',
-        cancelText: 'Cancel'
+        cancelText: 'Keep Ticket'
       }
     });
 
     dialogRef.afterClosed().subscribe(confirmed => {
       if (confirmed) {
         this.tableData = this.tableData.filter(t => t.ticketId !== ticket.ticketId);
+        this.allData = [...this.tableData];
+        this.applyFilters();
         console.log('Ticket deleted:', ticket);
       }
     });

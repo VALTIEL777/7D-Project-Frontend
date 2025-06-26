@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { DashboardLayoutComponent } from "../../../../shared/dashboard-layout/dashboard-layout.component";
 import { DataTableComponent } from '../../../../shared/data-table/data-table.component';
 import { CardWithButtonComponent } from '../../../../shared/card-with-button/card-with-button.component';
@@ -6,6 +6,8 @@ import { ConfirmationDialogComponent } from '../../../../shared/confirmation-dia
 import { SearchDialogComponent } from '../../../../shared/search-dialog/search-dialog.component';
 import { MatDialog } from '@angular/material/dialog';
 import { DomSanitizer } from '@angular/platform-browser';
+import { BaseDashboardComponent } from '../../../../shared/base-dashboard.component';
+import { FilterService } from '../../../../core/services/filter.service';
 
 
 interface ColumnDefinition {
@@ -13,7 +15,7 @@ interface ColumnDefinition {
   header: string;
   cell: (element: any) => string;
   isActionColumn?: boolean;
-  isHtml?: boolean; 
+  isHtml?: boolean;
 }
 
 @Component({
@@ -22,11 +24,98 @@ interface ColumnDefinition {
   templateUrl: './income.component.html',
   styleUrl: './income.component.scss'
 })
-export class IncomeComponent {
-  constructor(private dialog: MatDialog,
-    private sanitizer: DomSanitizer
-   ) {}
+export class IncomeComponent extends BaseDashboardComponent implements OnInit {
+  constructor(
+    private dialog: MatDialog,
+    private sanitizer: DomSanitizer,
+    filterService: FilterService
+  ) {
+    super(filterService);
+  }
 
+  override ngOnInit(): void {
+    super.ngOnInit();
+    this.initializeData();
+  }
+
+  protected override loadData(): void {
+    // Combine ticket and invoice data for filtering
+    const allData = [
+      ...this.ticketData.map(ticket => ({ ...ticket, type: 'ticket' })),
+      ...this.invoiceData.map(invoice => ({ ...invoice, type: 'invoice' }))
+    ];
+
+    this.allData = allData;
+    this.filteredData = [...this.allData];
+  }
+
+  // Override text search to include ticket and invoice fields
+  protected override matchesTextSearch(item: any, searchTerm: string): boolean {
+    const searchableFields = ['ticketnum', 'crew', 'startdate', 'enddate', 'invoicenum'];
+
+    return searchableFields.some(field => {
+      const value = this.getNestedValue(item, field);
+      if (value) {
+        return String(value).toLowerCase().includes(searchTerm);
+      }
+      return false;
+    });
+  }
+
+  // Override date range to use startdate for tickets and invoice date for invoices
+  protected override matchesDateRange(item: any, cutoffDate: Date): boolean {
+    if (item.type === 'ticket' && item.startdate) {
+      const itemDate = new Date(item.startdate);
+      if (!isNaN(itemDate.getTime()) && itemDate >= cutoffDate) {
+        return true;
+      }
+    } else if (item.type === 'invoice' && item.invoicedate) {
+      const itemDate = new Date(item.invoicedate);
+      if (!isNaN(itemDate.getTime()) && itemDate >= cutoffDate) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  // Getter for filtered ticket data
+  get filteredTicketData() {
+    return this.filteredData.filter(item => item.type === 'ticket');
+  }
+
+  // Getter for filtered invoice data
+  get filteredInvoiceData() {
+    return this.filteredData.filter(item => item.type === 'invoice');
+  }
+
+  private initializeData(): void {
+    // Calcular total general de tickets
+    this.totalGeneral = 0;
+    this.ticketData.forEach(ticket => {
+      const m = Number(ticket.mcost) || 0;
+      const w = Number(ticket.wcost) || 0;
+      const e = Number(ticket.ecost) || 0;
+
+      const totalTicket = m + w + e;
+      ticket.total = totalTicket.toString();
+      this.totalGeneral += totalTicket;
+    });
+
+    // Sincronizar "total" con "our"
+    this.invoiceData = this.invoiceData.map(invoice => {
+      const matchedTicket = this.ticketData.find(t => t.ticketnum === invoice.ticketnum);
+      if (matchedTicket) {
+        invoice.our = Number(matchedTicket.total); // Asegura que se pase como número
+      }
+      const diff = invoice.invoiceweb - invoice.our;
+      invoice.income = `${diff > 0 ? '+' : diff < 0 ? '-' : ''}$${Math.abs(diff)}`;
+      this.totalIncome += diff;
+      return invoice;
+    });
+
+    // Initialize filtering data
+    this.loadData();
+  }
 
   ticketColumns: ColumnDefinition[] = [
   {
@@ -161,34 +250,6 @@ ticketData = [
 totalGeneral: number = 0;
     totalIncome: number = 0;
 
- ngOnInit(): void {
-  // Calcular total general de tickets
-  this.totalGeneral = 0;
-  this.ticketData.forEach(ticket => {
-    const m = Number(ticket.mcost) || 0;
-    const w = Number(ticket.wcost) || 0;
-    const e = Number(ticket.ecost) || 0;
-
-    const totalTicket = m + w + e;
-    ticket.total = totalTicket.toString();
-    this.totalGeneral += totalTicket;
-  });
-
-  // Sincronizar "total" con "our"
-  this.invoiceData = this.invoiceData.map(invoice => {
-    const matchedTicket = this.ticketData.find(t => t.ticketnum === invoice.ticketnum);
-    if (matchedTicket) {
-      invoice.our = Number(matchedTicket.total); // Asegura que se pase como número
-    }
-    const diff = invoice.invoiceweb - invoice.our;
-    invoice.income = `${diff > 0 ? '+' : diff < 0 ? '-' : ''}$${Math.abs(diff)}`;
-    this.totalIncome += diff;
-    return invoice;
-  });
-}
-
-
-
   onEditTicket(ticket: any): void {
     const dialogRef = this.dialog.open(SearchDialogComponent, {
       width: '500px',
@@ -277,7 +338,7 @@ totalGeneral: number = 0;
 }
 ,
 
-  
+
   {
     name: 'actions',
     header: 'Actions',

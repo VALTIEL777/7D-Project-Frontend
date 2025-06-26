@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { DashboardLayoutComponent } from "../../../../shared/dashboard-layout/dashboard-layout.component";
 import { CardWithButtonComponent } from '../../../../shared/card-with-button/card-with-button.component';
 import { MatDialog } from '@angular/material/dialog';
@@ -6,6 +6,9 @@ import { SearchDialogComponent } from '../../../../shared/search-dialog/search-d
 import { DataTableComponent } from '../../../../shared/data-table/data-table.component';
 import { ConfirmationDialogComponent } from '../../../../shared/confirmation-dialog/confirmation-dialog.component';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { PaymentsService, Payment } from '../../../../core/services/payments/payments.service';
+import { BaseDashboardComponent } from '../../../../shared/base-dashboard.component';
+import { FilterService } from '../../../../core/services/filter.service';
 
 interface ColumnDefinition {
   name: string;
@@ -25,7 +28,7 @@ interface ColumnDefinition {
   templateUrl: './payments.component.html',
   styleUrl: './payments.component.scss'
 })
-export class PaymentsComponent {
+export class PaymentsComponent extends BaseDashboardComponent implements OnInit {
   columns: ColumnDefinition[] = [
     {
       name: 'paymentNumber',
@@ -55,77 +58,68 @@ export class PaymentsComponent {
     }
   ];
 
-  tableData = [
-    {
-      checkId: 1,
-      paymentNumber: 'PYM-2023-001',
-      datePaid: '2023-01-15',
-      amountPaid: 1250.75,
-      status: 'Processed',
-      paymentURL: 'https://example.com/payments/1'
-    },
-    {
-      checkId: 2,
-      paymentNumber: 'PYM-2023-002',
-      datePaid: '2023-02-20',
-      amountPaid: 850.50,
-      status: 'Processed',
-      paymentURL: 'https://example.com/payments/2'
-    },
-    {
-      checkId: 3,
-      paymentNumber: 'PYM-2023-003',
-      datePaid: '2023-03-10',
-      amountPaid: 2200.00,
-      status: 'Pending',
-      paymentURL: 'https://example.com/payments/3'
-    },
-    {
-      checkId: 4,
-      paymentNumber: 'PYM-2023-004',
-      datePaid: '2023-04-05',
-      amountPaid: 1750.25,
-      status: 'Rejected',
-      paymentURL: 'https://example.com/payments/4'
-    },
-    {
-      checkId: 5,
-      paymentNumber: 'PYM-2023-005',
-      datePaid: '2023-05-18',
-      amountPaid: 950.00,
-      status: 'Processed',
-      paymentURL: 'https://example.com/payments/5'
-    },
-    {
-      checkId: 6,
-      paymentNumber: 'PYM-2023-006',
-      datePaid: '2023-06-22',
-      amountPaid: 3200.50,
-      status: 'Pending',
-      paymentURL: 'https://example.com/payments/6'
-    },
-    {
-      checkId: 7,
-      paymentNumber: 'PYM-2023-007',
-      datePaid: '2023-07-30',
-      amountPaid: 1500.00,
-      status: 'Processed',
-      paymentURL: 'https://example.com/payments/7'
-    },
-    {
-      checkId: 8,
-      paymentNumber: 'PYM-2023-008',
-      datePaid: '2023-08-12',
-      amountPaid: 2750.75,
-      status: 'Processed',
-      paymentURL: 'https://example.com/payments/8'
-    }
-  ];
+  tableData: Payment[] = [];
 
   constructor(
     private dialog: MatDialog,
-    private snackBar: MatSnackBar
-  ) {}
+    private snackBar: MatSnackBar,
+    private paymentsService: PaymentsService,
+    filterService: FilterService
+  ) {
+    super(filterService);
+  }
+
+  override ngOnInit(): void {
+    super.ngOnInit();
+    this.loadPayments();
+  }
+
+  protected override loadData(): void {
+    // Initialize data for filtering
+    this.allData = [...this.tableData];
+    this.filteredData = [...this.allData];
+  }
+
+  // Override text search to include payment fields
+  protected override matchesTextSearch(item: any, searchTerm: string): boolean {
+    const searchableFields = ['paymentNumber', 'status'];
+
+    return searchableFields.some(field => {
+      const value = this.getNestedValue(item, field);
+      if (value) {
+        return String(value).toLowerCase().includes(searchTerm);
+      }
+      return false;
+    });
+  }
+
+  // Override date range to use payment date
+  protected override matchesDateRange(item: any, cutoffDate: Date): boolean {
+    const dateValue = item.datePaid;
+    if (dateValue) {
+      const itemDate = new Date(dateValue);
+      if (!isNaN(itemDate.getTime()) && itemDate >= cutoffDate) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  loadPayments(): void {
+    this.paymentsService.getAllPayments().subscribe({
+      next: data => {
+        this.tableData = data;
+        this.allData = [...data];
+        this.filteredData = [...data];
+      },
+      error: err => console.error('Error loading payments:', err)
+    });
+  }
+
+  // Getter for filtered payment data
+  get filteredPaymentData() {
+    return this.filteredData;
+  }
 
   private formatDate(dateString: string): string {
     const date = new Date(dateString);
@@ -143,7 +137,7 @@ export class PaymentsComponent {
     }).format(amount);
   }
 
-  onEdit(payment: any) {
+  onEdit(payment: Payment) {
     const dialogRef = this.dialog.open(SearchDialogComponent, {
       width: '500px',
       data: {
@@ -152,29 +146,48 @@ export class PaymentsComponent {
           ...payment,
           datePaid: new Date(payment.datePaid).toISOString().split('T')[0]
         },
-        excludedFields: ['checkId', 'paymentNumber', 'paymentURL'],
-        fieldTypes: {
-          datePaid: 'date',
-          amountPaid: 'currency'
-        }
+        excludedFields: ['checkId', 'paymentNumber', 'paymentURL', 'createdAt', 'updatedAt', 'createdBy', 'updatedBy'],
+        fields: [
+          { name: 'datePaid', label: 'Date Paid', type: 'date', required: true },
+          { name: 'amountPaid', label: 'Amount Paid', type: 'number', required: true },
+          { name: 'status', label: 'Status', type: 'select', required: true, options: [
+            { value: 'Pending', label: 'Pending' },
+            { value: 'Completed', label: 'Completed' },
+            { value: 'Failed', label: 'Failed' },
+            { value: 'Cancelled', label: 'Cancelled' }
+          ]}
+        ]
       }
     });
 
     dialogRef.afterClosed().subscribe(result => {
-      if (result) {
+      if (result && payment.checkId) {
         const index = this.tableData.findIndex(p => p.checkId === payment.checkId);
         if (index !== -1) {
-          this.tableData[index] = {
-            ...this.tableData[index],
-            ...result
+          const updatedPayment = {
+            ...payment,
+            ...result,
+            updatedBy: this.getCurrentUserId()
           };
-          this.snackBar.open('Payment updated successfully', 'Close', { duration: 3000 });
+
+          this.paymentsService.updatePayment(payment.checkId, updatedPayment).subscribe({
+            next: () => {
+              this.tableData[index] = updatedPayment;
+              this.allData = [...this.tableData];
+              this.applyFilters();
+              this.snackBar.open('Payment updated successfully', 'Close', { duration: 3000 });
+            },
+            error: err => {
+              console.error('Error updating payment:', err);
+              this.snackBar.open('Error updating payment', 'Close', { duration: 3000 });
+            }
+          });
         }
       }
     });
   }
 
-  onDelete(payment: any) {
+  onDelete(payment: Payment) {
     const dialogRef = this.dialog.open(ConfirmationDialogComponent, {
       width: '450px',
       disableClose: true,
@@ -188,10 +201,27 @@ export class PaymentsComponent {
     });
 
     dialogRef.afterClosed().subscribe(confirmed => {
-      if (confirmed) {
-        this.tableData = this.tableData.filter(p => p.checkId !== payment.checkId);
-        this.snackBar.open('Payment deleted successfully', 'Close', { duration: 3000 });
+      if (confirmed && payment.checkId) {
+        this.paymentsService.deletePayment(payment.checkId).subscribe({
+          next: () => {
+            this.tableData = this.tableData.filter(p => p.checkId !== payment.checkId);
+            this.allData = [...this.tableData];
+            this.applyFilters();
+            this.snackBar.open('Payment deleted successfully', 'Close', { duration: 3000 });
+          },
+          error: err => {
+            console.error('Error deleting payment:', err);
+            this.snackBar.open('Error deleting payment', 'Close', { duration: 3000 });
+          }
+        });
       }
     });
+  }
+
+  // Helper method to get current user ID (should be replaced with actual auth service)
+  private getCurrentUserId(): number {
+    // TODO: Implement this when auth service is available
+    // return this.authService.getCurrentUser()?.id || 1;
+    return 1; // Default for now
   }
 }

@@ -6,6 +6,8 @@ import { SearchDialogComponent } from '../../../../shared/search-dialog/search-d
 import { DataTableComponent } from '../../../../shared/data-table/data-table.component';
 import { ConfirmationDialogComponent } from '../../../../shared/confirmation-dialog/confirmation-dialog.component';
 import { InventoryService } from '../../../../core/services/material/inventory.service';
+import { BaseDashboardComponent } from '../../../../shared/base-dashboard.component';
+import { FilterService } from '../../../../core/services/filter.service';
 
 interface ColumnDefinition {
   name: string;
@@ -25,7 +27,7 @@ interface ColumnDefinition {
   templateUrl: './inventory.component.html',
   styleUrl: './inventory.component.scss'
 })
-export class InventoryComponent implements OnInit {
+export class InventoryComponent extends BaseDashboardComponent implements OnInit {
   columns: ColumnDefinition[] = [
     {
       name: 'name',
@@ -67,17 +69,47 @@ export class InventoryComponent implements OnInit {
 
   constructor(
     private dialog: MatDialog,
-    private inventoryService: InventoryService
-  ) {}
+    private inventoryService: InventoryService,
+    filterService: FilterService
+  ) {
+    super(filterService);
+  }
 
-  ngOnInit(): void {
+  override ngOnInit(): void {
+    super.ngOnInit();
     this.loadInventory();
+  }
+
+  protected override loadData(): void {
+    // Initialize data for filtering
+    this.allData = [...this.tableData];
+    this.filteredData = [...this.allData];
+  }
+
+  // Override text search to include inventory fields
+  protected override matchesTextSearch(item: any, searchTerm: string): boolean {
+    const searchableFields = ['name', 'suppliername', 'unit', 'category'];
+
+    return searchableFields.some(field => {
+      const value = this.getNestedValue(item, field);
+      if (value) {
+        return String(value).toLowerCase().includes(searchTerm);
+      }
+      return false;
+    });
+  }
+
+  // Getter for filtered inventory data
+  get filteredInventoryData() {
+    return this.filteredData;
   }
 
   loadInventory(): void {
     this.inventoryService.getAllInventory().subscribe({
       next: (data) => {
         this.tableData = data;
+        this.allData = [...this.tableData];
+        this.filteredData = [...this.allData];
       },
       error: (err) => {
         console.error('Error loading inventory:', err);
@@ -94,7 +126,7 @@ export class InventoryComponent implements OnInit {
           ...item,
           costperunit: item.costperunit.toString()
         },
-        excludedFields: ['inventoryid', 'suppliername']
+        excludedFields: ['inventoryid', 'suppliername', 'deletedat', 'updatedat', 'createdat', 'createdby', 'updatedby']
       }
     });
 
@@ -107,6 +139,8 @@ export class InventoryComponent implements OnInit {
             ...result,
             costperunit: parseFloat(result.costperunit)
           };
+          this.allData = [...this.tableData];
+          this.applyFilters();
         }
       }
     });
@@ -130,6 +164,8 @@ export class InventoryComponent implements OnInit {
         this.inventoryService.deleteInventory(item.inventoryid).subscribe({
           next: () => {
             this.tableData = this.tableData.filter(i => i.inventoryid !== item.inventoryid);
+            this.allData = [...this.tableData];
+            this.applyFilters();
             console.log('Deleted:', item);
           },
           error: (err) => {

@@ -5,8 +5,9 @@ import { MatButtonModule } from '@angular/material/button';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators, FormControl } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
 
-type FieldType = 'text' | 'number' | 'email' | 'password' | 'date' | 'checkbox';
+type FieldType = 'text' | 'number' | 'email' | 'password' | 'date' | 'checkbox' | 'textarea' | 'select';
 
 interface DialogField {
   key: string;
@@ -16,6 +17,7 @@ interface DialogField {
   type?: FieldType;
   required?: boolean;
   validators?: any[];
+  options?: { value: any; label: string }[];
 }
 
 @Component({
@@ -27,7 +29,8 @@ interface DialogField {
     MatButtonModule,
     ReactiveFormsModule,
     MatInputModule,
-    MatFormFieldModule
+    MatFormFieldModule,
+    MatSelectModule
   ],
   templateUrl: './search-dialog.component.html',
   styleUrls: ['./search-dialog.component.scss']
@@ -52,6 +55,21 @@ constructor(
 }
 
   private generateFields(data: any, excludedFields: string[]): DialogField[] {
+    // If custom fields are provided, use them
+    if (this.data.fields && Array.isArray(this.data.fields)) {
+      return this.data.fields.map((field: any) => ({
+        key: field.name,
+        label: field.label,
+        value: data[field.name] || '',
+        type: field.type || this.detectFieldType(data[field.name]),
+        disabled: field.disabled || false,
+        required: field.required || false,
+        validators: field.required ? [Validators.required, ...(field.validators || [])] : field.validators || [],
+        options: field.options || []
+      }));
+    }
+
+    // Otherwise, generate fields from data object (legacy behavior)
     return Object.keys(data)
       .filter(key => !excludedFields.includes(key))
       .map(key => ({
@@ -74,6 +92,8 @@ constructor(
     if (typeof value === 'boolean') return 'checkbox';
     if (value instanceof Date) return 'date';
     if (this.isEmail(value)) return 'email';
+    // For long text fields, we'll default to textarea
+    if (typeof value === 'string' && value.length > 100) return 'textarea';
     return 'text'; // default type
   }
 
@@ -86,7 +106,7 @@ constructor(
     this.fields.forEach(field => {
       group[field.key] = new FormControl(
         { value: field.value, disabled: field.disabled },
-        field.required ? [Validators.required, ...(field.validators || [])] : []
+        field.validators || []
       );
     });
     return this.fb.group(group);
@@ -103,10 +123,19 @@ constructor(
 
   onSave() {
     if (this.form.valid) {
+      const formValue = this.form.getRawValue();
       const updatedData = {
         ...this.originalData,
-        ...this.form.getRawValue()
+        ...formValue
       };
+
+      // Convert numeric fields to numbers
+      this.fields.forEach(field => {
+        if (field.type === 'number' && formValue[field.key] !== null && formValue[field.key] !== undefined) {
+          updatedData[field.key] = Number(formValue[field.key]);
+        }
+      });
+
       this.dialogRef.close(updatedData);
     }
   }

@@ -7,6 +7,8 @@ import { CommonModule } from '@angular/common';
 import { MATERIAL_MODULES } from '../../../../material';
 import { MatTabsModule } from '@angular/material/tabs';
 import { NgxChartsModule } from '@swimlane/ngx-charts';
+import { BaseDashboardComponent } from '../../../../shared/base-dashboard.component';
+import { FilterService } from '../../../../core/services/filter.service';
 
 @Component({
   selector: 'app-overview',
@@ -24,7 +26,7 @@ import { NgxChartsModule } from '@swimlane/ngx-charts';
   templateUrl: './overview.component.html',
   styleUrl: './overview.component.scss',
 })
-export class OverviewComponent implements OnInit {
+export class OverviewComponent extends BaseDashboardComponent implements OnInit {
   isMobile: boolean = false;
 
   ticketData = [
@@ -72,7 +74,6 @@ export class OverviewComponent implements OnInit {
     },
   ];
 
-
   displayedColumns: string[] = [
     'location',
     'phase',
@@ -80,7 +81,6 @@ export class OverviewComponent implements OnInit {
     'startDate',
     'actions',
   ];
-
 
   timeRanges = ['Year', 'Month', 'Week'] as const;
   selectedRange: 'Year' | 'Month' | 'Week' = 'Week';
@@ -114,13 +114,46 @@ export class OverviewComponent implements OnInit {
     ]
   };
 
-  constructor() {
+  constructor(filterService: FilterService) {
+    super(filterService);
     this.selectRange(this.selectedRange);
     this.checkMobile();
   }
 
-  ngOnInit() {
+  override ngOnInit() {
+    super.ngOnInit();
     this.updateDisplayedColumns();
+  }
+
+  protected override loadData(): void {
+    // Initialize data for filtering
+    this.allData = [...this.ticketData];
+    this.filteredData = [...this.allData];
+  }
+
+  // Override text search to include location and phase
+  protected override matchesTextSearch(item: any, searchTerm: string): boolean {
+    const searchableFields = ['location', 'phase', 'status'];
+
+    return searchableFields.some(field => {
+      const value = this.getNestedValue(item, field);
+      if (value) {
+        return String(value).toLowerCase().includes(searchTerm);
+      }
+      return false;
+    });
+  }
+
+  // Override date range to use startDate
+  protected override matchesDateRange(item: any, cutoffDate: Date): boolean {
+    const dateValue = item.startDate;
+    if (dateValue) {
+      const itemDate = new Date(dateValue);
+      if (!isNaN(itemDate.getTime()) && itemDate >= cutoffDate) {
+        return true;
+      }
+    }
+    return false;
   }
 
   @HostListener('window:resize', ['$event'])
@@ -145,6 +178,7 @@ export class OverviewComponent implements OnInit {
     this.selectedRange = range;
     this.chartData = this.dataSets[range];
   }
+
   expiredPermits = [
     { code: 'EXP-001', date: '2025-06-01' },
     { code: 'EXP-002', date: '2025-05-30' },
@@ -161,13 +195,17 @@ export class OverviewComponent implements OnInit {
     { code: 'NEXP-105', date: '2025-06-19' }
   ];
 
-unresolvedIssues = [
-  { location: 'Chicago', comment: 'Power outage in sector 7G' },
-  { location: 'New York', comment: 'Broken streetlight on 5th Ave' },
-  { location: 'Los Angeles', comment: 'Pothole causing traffic delays' },
-  { location: 'Chicago', comment: 'Power outage in sector 7G' },
-  { location: 'New York', comment: 'Broken streetlight on 5th Ave' },
-  { location: 'Los Angeles', comment: 'Pothole causing traffic delays' }
-];
+  unresolvedIssues = [
+    { location: 'Chicago', comment: 'Power outage in sector 7G' },
+    { location: 'New York', comment: 'Broken streetlight on 5th Ave' },
+    { location: 'Los Angeles', comment: 'Pothole causing traffic delays' },
+    { location: 'Chicago', comment: 'Power outage in sector 7G' },
+    { location: 'New York', comment: 'Broken streetlight on 5th Ave' },
+    { location: 'Los Angeles', comment: 'Pothole causing traffic delays' }
+  ];
 
+  // Getter for filtered ticket data
+  get filteredTicketData() {
+    return this.filteredData;
+  }
 }

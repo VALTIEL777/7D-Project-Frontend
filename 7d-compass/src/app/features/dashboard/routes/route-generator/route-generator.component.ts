@@ -10,6 +10,8 @@ import { DragDropModule } from '@angular/cdk/drag-drop';
 import { CdkDragDrop, moveItemInArray, transferArrayItem } from '@angular/cdk/drag-drop';
 import { MatButtonModule } from '@angular/material/button';
 import { PlusButtonComponent } from '../../../../shared/plus-button/plus-button.component';
+import { BaseDashboardComponent } from '../../../../shared/base-dashboard.component';
+import { FilterService } from '../../../../core/services/filter.service';
 
 @Component({
   selector: 'app-route-generator',
@@ -28,7 +30,7 @@ import { PlusButtonComponent } from '../../../../shared/plus-button/plus-button.
   templateUrl: './route-generator.component.html',
   styleUrl: './route-generator.component.scss'
 })
-export class RouteGeneratorComponent implements OnInit {
+export class RouteGeneratorComponent extends BaseDashboardComponent implements OnInit {
   isMobile: boolean = false;
 
   activeRoutes = [
@@ -117,14 +119,57 @@ export class RouteGeneratorComponent implements OnInit {
   private initialActiveRoutes: any[] = [];
   private initialGeneratedRoutes: any[] = [];
 
-  constructor() {
+  constructor(filterService: FilterService) {
+    super(filterService);
     this.checkMobile();
     this.initialActiveRoutes = [...this.activeRoutes];
     this.initialGeneratedRoutes = [...this.generatedRoutes];
   }
 
-  ngOnInit() {
+  override ngOnInit() {
+    super.ngOnInit();
     this.updateDisplayedColumns();
+  }
+
+  protected override loadData(): void {
+    // Initialize data for filtering - combine all route-related data
+    const allRouteData = [
+      ...this.activeRoutes.map(route => ({ ...route, type: 'active' })),
+      ...this.generatedRoutes.map(route => ({ ...route, type: 'generated' })),
+      ...this.locationsWithoutRoute.map(location => ({ code: location, details: [location], type: 'without-route' })),
+      ...this.locationsOnHoldOff.map(item => ({ code: item.location, details: [item.location], reason: item.reason, type: 'on-hold' })),
+      ...this.ticketData.map(ticket => ({ ...ticket, type: 'ticket' }))
+    ];
+
+    this.allData = allRouteData;
+    this.filteredData = [...this.allData];
+  }
+
+  // Override text search to include route and location fields
+  protected override matchesTextSearch(item: any, searchTerm: string): boolean {
+    const searchableFields = ['code', 'location', 'phase', 'status', 'reason'];
+
+    return searchableFields.some(field => {
+      const value = this.getNestedValue(item, field);
+      if (value) {
+        return String(value).toLowerCase().includes(searchTerm);
+      }
+      return false;
+    }) ||
+    // Also search in details arrays
+    (item.details && Array.isArray(item.details) &&
+     item.details.some((detail: string) => detail.toLowerCase().includes(searchTerm)));
+  }
+
+  // Override date range to use startDate for tickets
+  protected override matchesDateRange(item: any, cutoffDate: Date): boolean {
+    if (item.type === 'ticket' && item.startDate) {
+      const itemDate = new Date(item.startDate);
+      if (!isNaN(itemDate.getTime()) && itemDate >= cutoffDate) {
+        return true;
+      }
+    }
+    return false;
   }
 
   @HostListener('window:resize', ['$event'])
@@ -143,6 +188,31 @@ export class RouteGeneratorComponent implements OnInit {
     } else {
       this.displayedColumns = ['location', 'phase', 'status', 'startDate', 'actions'];
     }
+  }
+
+  // Getter for filtered ticket data
+  get filteredTicketData() {
+    return this.filteredData.filter(item => item.type === 'ticket');
+  }
+
+  // Getter for filtered route data
+  get filteredActiveRoutes() {
+    return this.filteredData.filter(item => item.type === 'active');
+  }
+
+  get filteredGeneratedRoutes() {
+    return this.filteredData.filter(item => item.type === 'generated');
+  }
+
+  get filteredLocationsWithoutRoute() {
+    return this.filteredData.filter(item => item.type === 'without-route').map(item => item.code);
+  }
+
+  get filteredLocationsOnHoldOff() {
+    return this.filteredData.filter(item => item.type === 'on-hold').map(item => ({
+      location: item.code,
+      reason: item.reason
+    }));
   }
 
   drop(event: CdkDragDrop<any[]>) {

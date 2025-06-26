@@ -82,7 +82,7 @@
 
         <!-- Table Card -->
         <app-card-with-button title="Ticket Overview" [showEyeButton]="true" class="full-span">
-          <table mat-table [dataSource]="ticketData" class="mat-elevation-z1" style="width: 100%">
+          <table mat-table [dataSource]="filteredTicketData" class="mat-elevation-z1" style="width: 100%">
             <!-- Location Column -->
             <ng-container matColumnDef="location">
               <th mat-header-cell *matHeaderCellDef>Location</th>

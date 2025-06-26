@@ -4,7 +4,7 @@
       <app-card-with-button title="Crew Payment" [showEyeButton]="false">
         <app-data-table
         [title]="'Team'"
-        [data]="ticketData"
+        [data]="filteredTicketData"
         [columns]="ticketColumns"
         (edit)="onEditTicket($event)"
         (delete)="onDeleteTicket($event)">
@@ -14,12 +14,12 @@
     <strong>Total general:</strong> ${{ totalGeneral }}
   </div>
       </app-card-with-button>
-      
-      
+
+
         <app-card-with-button title="Revenues" [showEyeButton]="false">
         <app-data-table
         [title]="'Team'"
-        [data]="invoiceData"
+        [data]="filteredInvoiceData"
         [columns]="invoiceColumns"
         (edit)="onEditTicket($event)"
         (delete)="onDeleteTicket($event)">
@@ -28,5 +28,5 @@
 
       </div>
 
-      
+
 </app-dashboard-layout>

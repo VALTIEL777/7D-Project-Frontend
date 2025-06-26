@@ -11,6 +11,16 @@
           [currentFileName]="currentUploadFileName"
           (filesDropped)="onFilesDropped($event)">
         </app-drag-drop-upload>
+
+        <!-- Download current uploaded file -->
+        <div *ngIf="currentRtrId && currentUploadFileName" class="upload-actions" style="margin-top: 15px; text-align: center;">
+          <button mat-raised-button color="accent" (click)="downloadCurrentUploadedFile()">
+            <mat-icon>file_download</mat-icon> Download Uploaded File
+          </button>
+          <p style="margin: 5px 0 0 0; font-size: 12px; color: #666;">
+            File: {{ currentUploadFileName }} (ID: {{ currentRtrId }})
+          </p>
+        </div>
       </app-card-with-button>
 
       <!-- Descargar RTR -->
@@ -47,29 +57,22 @@
 
       <!-- Historial de RTR recibidos -->
       <app-card-with-button class="rtr-history-card" title="Received RTR History" [showEyeButton]="true">
-        <div class="search-container">
-          <mat-form-field appearance="fill" class="search-bar">
-            <mat-label>Search Received RTRs</mat-label>
-            <input matInput (keyup)="applyReceivedFilter($event)" placeholder="Search by name or date">
-            <mat-icon matSuffix>search</mat-icon>
-          </mat-form-field>
-        </div>
         <div class="history-scrollable-content">
           <div *ngIf="isLoadingRTRs" class="loading-state">
             <mat-spinner diameter="20"></mat-spinner>
             <span>Loading RTR files...</span>
           </div>
-          <div *ngIf="!isLoadingRTRs && filteredReceivedRTRs.length === 0" class="empty-state">
+          <div *ngIf="!isLoadingRTRs && filteredData.length === 0" class="empty-state">
             <mat-icon>folder_open</mat-icon>
             <span>No RTR files found</span>
           </div>
-          <div *ngFor="let rtr of filteredReceivedRTRs" class="history-item">
+          <div *ngFor="let rtr of filteredData" class="history-item">
             <div class="history-content">
               <div class="history-info">
                 <h4 class="history-title">{{ rtr.name }}</h4>
-                <p class="history-date">{{ formatDate(rtr.createdAt) }}</p>
+                <p class="history-date">{{ formatDate(rtr.createdat) }}</p>
               </div>
-              <button mat-raised-button (click)="downloadRTR(rtr.rtrId, rtr.name)">
+              <button mat-raised-button (click)="downloadRTR(rtr.rtrid, rtr.name)">
                 <mat-icon>file_download</mat-icon> Download
               </button>
             </div>
@@ -80,29 +83,22 @@
 
       <!-- Historial de RTR enviados -->
       <app-card-with-button class="rtr-history-card" title="Sent RTR History" [showEyeButton]="true">
-        <div class="search-container">
-          <mat-form-field appearance="fill" class="search-bar">
-            <mat-label>Search Sent RTRs</mat-label>
-            <input matInput (keyup)="applySentFilter($event)" placeholder="Search by name or date">
-            <mat-icon matSuffix>search</mat-icon>
-          </mat-form-field>
-        </div>
         <div class="history-scrollable-content">
           <div *ngIf="isLoadingRTRs" class="loading-state">
             <mat-spinner diameter="20"></mat-spinner>
             <span>Loading RTR files...</span>
           </div>
-          <div *ngIf="!isLoadingRTRs && filteredSentRTRs.length === 0" class="empty-state">
+          <div *ngIf="!isLoadingRTRs && filteredData.length === 0" class="empty-state">
             <mat-icon>folder_open</mat-icon>
             <span>No RTR files found</span>
           </div>
-          <div *ngFor="let rtr of filteredSentRTRs" class="history-item">
+          <div *ngFor="let rtr of filteredData" class="history-item">
             <div class="history-content">
               <div class="history-info">
                 <h4 class="history-title">{{ rtr.name }}</h4>
-                <p class="history-date">{{ formatDate(rtr.createdAt) }}</p>
+                <p class="history-date">{{ formatDate(rtr.createdat) }}</p>
               </div>
-              <button mat-raised-button (click)="downloadRTR(rtr.rtrId, rtr.name)">
+              <button mat-raised-button (click)="downloadRTR(rtr.rtrid, rtr.name)">
                 <mat-icon>file_download</mat-icon> Download
               </button>
             </div>
@@ -238,6 +234,60 @@ P123	T456	Test comment	Contractor note	Shop1	1.5	2025-01-15	123 Main St	Oak St	P
           <div *ngIf="inconsistentTickets.length === 0 && !analysisResult" class="empty-state">
             <mat-icon>check_circle</mat-icon>
             <span>No inconsistencies found. Process data to see results.</span>
+          </div>
+        </div>
+
+        <!-- Matching Tickets Section -->
+        <div *ngIf="matchingTickets.length > 0" class="matching-tickets-section">
+          <h4>Matching Tickets ({{ matchingTickets.length }})</h4>
+          <div class="matching-tickets-list">
+            <div *ngFor="let ticket of matchingTickets" class="matching-ticket-item">
+              <div class="ticket-header">
+                <strong>{{ ticket.ticketCode }}</strong>
+                <span class="ticket-id">ID: {{ ticket.ticketId }}</span>
+              </div>
+              <div class="ticket-details">
+                <div class="detail-row">
+                  <span class="label">Address:</span>
+                  <span>{{ ticket.excelData.ADDRESS }}</span>
+                </div>
+                <div class="detail-row">
+                  <span class="label">SQ_MI:</span>
+                  <span>{{ ticket.excelData.SQ_MI }}</span>
+                </div>
+                <div class="detail-row" *ngIf="ticket.excelData['PGL ComD:Wments']">
+                  <span class="label">Comments:</span>
+                  <span>{{ ticket.excelData['PGL ComD:Wments'] }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- New Tickets Section -->
+        <div *ngIf="newTickets.length > 0" class="new-tickets-section">
+          <h4>New Tickets ({{ newTickets.length }})</h4>
+          <div class="new-tickets-list">
+            <div *ngFor="let ticket of newTickets" class="new-ticket-item">
+              <div class="ticket-header">
+                <strong>{{ ticket.ticketCode }}</strong>
+                <span class="status-badge new">New</span>
+              </div>
+              <div class="ticket-details">
+                <div class="detail-row">
+                  <span class="label">Address:</span>
+                  <span>{{ ticket.excelData.ADDRESS }}</span>
+                </div>
+                <div class="detail-row">
+                  <span class="label">SQ_MI:</span>
+                  <span>{{ ticket.excelData.SQ_MI }}</span>
+                </div>
+                <div class="detail-row" *ngIf="ticket.excelData['PGL ComD:Wments']">
+                  <span class="label">Comments:</span>
+                  <span>{{ ticket.excelData['PGL ComD:Wments'] }}</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 

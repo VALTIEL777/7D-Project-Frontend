@@ -6,10 +6,12 @@ import { MatTableModule } from '@angular/material/table';
 import { CommonModule } from '@angular/common';
 import { MATERIAL_MODULES } from '../../../../material';
 import { DragDropUploadComponent } from '../../../../shared/drag-drop-upload/drag-drop-upload.component';
-import { RTRService, RTRFile, RTRData, AnalysisResult, InconsistentTicket, NewTicket, SaveDecisionsRequest } from '../../../../core/services/rtr/rtr.service';
+import { RTRService, RTRFile, RTRData, AnalysisResult, InconsistentTicket, NewTicket, SaveDecisionsRequest, MatchingTicket } from '../../../../core/services/rtr/rtr.service';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialog } from '@angular/material/dialog';
 import { ConfirmationDialogComponent } from '../../../../shared/confirmation-dialog/confirmation-dialog.component';
+import { BaseDashboardComponent } from '../../../../shared/base-dashboard.component';
+import { FilterService } from '../../../../core/services/filter.service';
 
 @Component({
   selector: 'app-rtr-processing',
@@ -19,17 +21,16 @@ import { ConfirmationDialogComponent } from '../../../../shared/confirmation-dia
   templateUrl: './rtr-processing.component.html',
   styleUrl: './rtr-processing.component.scss'
 })
-export class RtrProcessingComponent implements OnInit {
+export class RtrProcessingComponent extends BaseDashboardComponent implements OnInit {
   // RTR Files from API
   receivedRTRs: RTRFile[] = [];
   sentRTRs: RTRFile[] = [];
-  filteredReceivedRTRs: RTRFile[] = [];
-  filteredSentRTRs: RTRFile[] = [];
 
   // Analysis results
   analysisResult: AnalysisResult | null = null;
   newTickets: NewTicket[] = [];
   inconsistentTickets: InconsistentTicket[] = [];
+  matchingTickets: MatchingTicket[] = [];
 
   // Loading states
   isLoadingRTRs = false;
@@ -37,6 +38,7 @@ export class RtrProcessingComponent implements OnInit {
   isAnalyzing = false;
   isProcessing = false;
   currentUploadFileName = '';  // Track current file being uploaded
+  currentRtrId: number | null = null;  // Track current RTR ID from upload
 
   // User decisions for inconsistencies
   userDecisions: { [ticketId: string]: { [field: string]: 'excel' | 'database' } } = {};
@@ -49,11 +51,14 @@ export class RtrProcessingComponent implements OnInit {
   constructor(
     private rtrService: RTRService,
     private snackBar: MatSnackBar,
-    private dialog: MatDialog
-  ) {}
+    private dialog: MatDialog,
+    filterService: FilterService
+  ) {
+    super(filterService);
+  }
 
-  ngOnInit() {
-    this.loadRTRFiles();
+  override ngOnInit() {
+    super.ngOnInit(); // Call parent ngOnInit to setup filters
 
     // Test API connectivity
     this.testApiConnectivity();
@@ -64,6 +69,11 @@ export class RtrProcessingComponent implements OnInit {
     }
   }
 
+  // Override the abstract loadData method
+  protected override loadData(): void {
+    this.loadRTRFiles();
+  }
+
   // Load RTR files from API
   loadRTRFiles() {
     this.isLoadingRTRs = true;
@@ -72,8 +82,10 @@ export class RtrProcessingComponent implements OnInit {
         if (response.success) {
           this.receivedRTRs = response.rtrs;
           this.sentRTRs = response.rtrs; // For now, using same data for both
-          this.filteredReceivedRTRs = [...this.receivedRTRs];
-          this.filteredSentRTRs = [...this.sentRTRs];
+
+          // Update the base component's data arrays
+          this.allData = [...this.receivedRTRs];
+          this.filteredData = [...this.allData];
         } else {
           this.addMockData(); // Use mock data if API returns failure
         }
@@ -92,32 +104,34 @@ export class RtrProcessingComponent implements OnInit {
   addMockData() {
     const mockRTRs: RTRFile[] = [
       {
-        rtrId: 1,
+        rtrid: 1,
         name: 'RTR_2025_01_15.xlsx',
         url: '/api/rtr/download/1',
-        createdAt: '2025-01-15T10:30:00Z',
-        updatedAt: '2025-01-15T10:30:00Z'
+        createdat: '2025-01-15T10:30:00Z',
+        updatedat: '2025-01-15T10:30:00Z'
       },
       {
-        rtrId: 2,
+        rtrid: 2,
         name: 'RTR_2025_01_10.xlsx',
         url: '/api/rtr/download/2',
-        createdAt: '2025-01-10T14:20:00Z',
-        updatedAt: '2025-01-10T14:20:00Z'
+        createdat: '2025-01-10T14:20:00Z',
+        updatedat: '2025-01-10T14:20:00Z'
       },
       {
-        rtrId: 3,
+        rtrid: 3,
         name: 'RTR_2025_01_05.xlsx',
         url: '/api/rtr/download/3',
-        createdAt: '2025-01-05T09:15:00Z',
-        updatedAt: '2025-01-05T09:15:00Z'
+        createdat: '2025-01-05T09:15:00Z',
+        updatedat: '2025-01-05T09:15:00Z'
       }
     ];
 
     this.receivedRTRs = mockRTRs;
     this.sentRTRs = mockRTRs;
-    this.filteredReceivedRTRs = [...this.receivedRTRs];
-    this.filteredSentRTRs = [...this.sentRTRs];
+
+    // Update the base component's data arrays
+    this.allData = [...this.receivedRTRs];
+    this.filteredData = [...this.allData];
   }
 
   // Generate mock analysis data for testing
@@ -127,11 +141,11 @@ export class RtrProcessingComponent implements OnInit {
       analysis: {
         newTickets: [
           {
-            ticketCode: 'P123456',
+            ticketCode: 'WO123456',
             excelData: {
-              RESTN_WO_NUM: 'R123',
-              TASK_WO_NUM: 'T456',
-              'PGL ComD:Wments': 'New ticket comment',
+              RESTN_WO_NUM: 'WO123456',
+              TASK_WO_NUM: 'TASK789',
+              'PGL ComD:Wments': 'Sample comment',
               'Contractor Comments': 'Contractor note',
               SHOP: 'Shop1',
               SQ_MI: 1.5,
@@ -146,17 +160,18 @@ export class RtrProcessingComponent implements OnInit {
               AGENCY_NO: 12345,
               ILL_ONLY: 'N',
               START_DATE: '2025-02-01',
-              EXP_DATE: '2025-03-01'
+              EXP_DATE: '2025-03-01',
+              ticketType: 'regular'
             }
           }
         ],
         inconsistentTickets: [
           {
-            ticketId: 1,
-            ticketCode: 'P789012',
+            ticketId: 2,
+            ticketCode: 'WO789012',
             excelData: {
-              RESTN_WO_NUM: 'R789',
-              TASK_WO_NUM: 'T012',
+              RESTN_WO_NUM: 'WO789012',
+              TASK_WO_NUM: 'TASK012',
               'PGL ComD:Wments': 'Updated comment',
               'Contractor Comments': 'Updated contractor note',
               SHOP: 'Shop2',
@@ -172,20 +187,26 @@ export class RtrProcessingComponent implements OnInit {
               AGENCY_NO: 67890,
               ILL_ONLY: 'Y',
               START_DATE: '2025-02-15',
-              EXP_DATE: '2025-03-15'
+              EXP_DATE: '2025-03-15',
+              ticketType: 'regular'
             },
-            databaseData: {},
+            databaseData: {
+              ticketId: 2,
+              ticketCode: 'WO789012',
+              comment7d: 'Old comment',
+              quantity: 1.8
+            },
             inconsistencies: [
               {
-                field: 'ADDRESS',
-                databaseField: 'address',
-                excelValue: '456 Oak Ave',
-                databaseValue: '456 Oak Street',
-                type: 'string'
+                field: 'PGL ComD:Wments',
+                databaseField: 'comment7d',
+                excelValue: 'Updated comment',
+                databaseValue: 'Old comment',
+                type: 'text'
               },
               {
                 field: 'SQ_MI',
-                databaseField: 'square_miles',
+                databaseField: 'quantity',
                 excelValue: 2.0,
                 databaseValue: 1.8,
                 type: 'number'
@@ -193,11 +214,30 @@ export class RtrProcessingComponent implements OnInit {
             ]
           }
         ],
+        matchingTickets: [
+          {
+            ticketId: 3,
+            ticketCode: 'WO345678',
+            excelData: {
+              RESTN_WO_NUM: 'WO345678',
+              'PGL ComD:Wments': 'Matching comment',
+              SQ_MI: 1.5,
+              Earliest_Rpt_Dt: '2025-01-25',
+              ADDRESS: '789 Pine St'
+            },
+            databaseData: {
+              ticketId: 3,
+              ticketCode: 'WO345678',
+              comment7d: 'Matching comment',
+              quantity: 1.5
+            }
+          }
+        ],
         summary: {
-          total: 2,
+          total: 3,
           new: 1,
           inconsistent: 1,
-          matching: 0
+          matching: 1
         }
       }
     };
@@ -205,6 +245,7 @@ export class RtrProcessingComponent implements OnInit {
     this.analysisResult = mockAnalysis;
     this.newTickets = mockAnalysis.analysis.newTickets;
     this.inconsistentTickets = mockAnalysis.analysis.inconsistentTickets;
+    this.matchingTickets = mockAnalysis.analysis.matchingTickets || [];
 
     // Initialize user decisions
     this.userDecisions = {};
@@ -227,7 +268,7 @@ export class RtrProcessingComponent implements OnInit {
     }
   }
 
-  // Upload RTR file
+  // Enhanced file upload with analysis
   uploadRTRFile(file: File) {
     // Validate file type
     const allowedTypes = [
@@ -258,12 +299,39 @@ export class RtrProcessingComponent implements OnInit {
 
     this.isUploading = true;
     this.currentUploadFileName = file.name;
+    this.currentRtrId = null; // Reset RTR ID
     console.log('Starting upload for file:', file.name);
 
     this.rtrService.uploadRTR(file).subscribe({
       next: (response) => {
         console.log('Upload response:', response);
+
+        // Analyze the response structure for debugging
+        this.testUploadResponseStructure(response);
+
         if (response.success) {
+          // Extract RTR ID from response if available - check multiple possible field names
+          if (response.rtrid) {
+            this.currentRtrId = response.rtrid;
+            console.log('RTR ID from upload (rtrid):', this.currentRtrId);
+          } else if (response.rtrId) {
+            this.currentRtrId = response.rtrId;
+            console.log('RTR ID from upload (rtrId):', this.currentRtrId);
+          } else if (response.id) {
+            this.currentRtrId = response.id;
+            console.log('RTR ID from upload (id):', this.currentRtrId);
+          } else if (response.fileId) {
+            this.currentRtrId = response.fileId;
+            console.log('RTR ID from upload (fileId):', this.currentRtrId);
+          } else if (response.uploadId) {
+            this.currentRtrId = response.uploadId;
+            console.log('RTR ID from upload (uploadId):', this.currentRtrId);
+          } else {
+            console.warn('No RTR ID found in upload response. Available fields:', Object.keys(response));
+            // If no RTR ID is available, we can't download the file later
+            this.currentRtrId = null;
+          }
+
           this.snackBar.open(
             `File "${file.name}" uploaded successfully! ${response.sheetCount} sheets processed.`,
             'Close',
@@ -298,14 +366,25 @@ export class RtrProcessingComponent implements OnInit {
         );
         this.isUploading = false;
         this.currentUploadFileName = '';
+        this.currentRtrId = null;
       }
     });
   }
 
   // Download RTR file
   downloadRTR(rtrId: number, fileName: string) {
+    // Validate RTR ID
+    if (!rtrId || rtrId === undefined) {
+      console.error('Invalid RTR ID for download:', rtrId);
+      this.snackBar.open('Invalid RTR ID for download', 'Close', { duration: 3000 });
+      return;
+    }
+
+    console.log('Downloading RTR file with ID:', rtrId, 'FileName:', fileName);
+
     this.rtrService.downloadRTR(rtrId).subscribe({
       next: (blob) => {
+        console.log('Download successful, blob size:', blob.size);
         const url = window.URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
@@ -321,6 +400,24 @@ export class RtrProcessingComponent implements OnInit {
         this.createMockDownload(fileName);
       }
     });
+  }
+
+  // Download current uploaded file
+  downloadCurrentUploadedFile() {
+    if (!this.currentRtrId) {
+      console.error('No RTR ID available for current uploaded file');
+      this.snackBar.open('No file available for download. Please upload a file first.', 'Close', { duration: 3000 });
+      return;
+    }
+
+    if (!this.currentUploadFileName) {
+      console.error('No filename available for current uploaded file');
+      this.snackBar.open('No filename available for download.', 'Close', { duration: 3000 });
+      return;
+    }
+
+    console.log('Downloading current uploaded file with ID:', this.currentRtrId, 'FileName:', this.currentUploadFileName);
+    this.downloadRTR(this.currentRtrId, this.currentUploadFileName);
   }
 
   // Create mock download for testing
@@ -410,6 +507,7 @@ Location: Austin, TX`;
         this.analysisResult = result;
         this.newTickets = result.analysis.newTickets;
         this.inconsistentTickets = result.analysis.inconsistentTickets;
+        this.matchingTickets = result.analysis.matchingTickets || [];
 
         // Initialize user decisions with database as default
         this.userDecisions = {};
@@ -547,6 +645,7 @@ Location: Austin, TX`;
     this.analysisResult = null;
     this.newTickets = [];
     this.inconsistentTickets = [];
+    this.matchingTickets = [];
     this.userDecisions = {};
     this.clearPastedData();
   }
@@ -561,23 +660,6 @@ Location: Austin, TX`;
       });
     });
     this.snackBar.open('Inconsistencies reset to default values', 'Close', { duration: 3000 });
-  }
-
-  // Filter functions
-  applyReceivedFilter(event: Event): void {
-    const value = (event.target as HTMLInputElement).value.toLowerCase().trim();
-    this.filteredReceivedRTRs = this.receivedRTRs.filter(rtr =>
-      rtr.name.toLowerCase().includes(value) ||
-      rtr.createdAt.toLowerCase().includes(value)
-    );
-  }
-
-  applySentFilter(event: Event): void {
-    const value = (event.target as HTMLInputElement).value.toLowerCase().trim();
-    this.filteredSentRTRs = this.sentRTRs.filter(rtr =>
-      rtr.name.toLowerCase().includes(value) ||
-      rtr.createdAt.toLowerCase().includes(value)
-    );
   }
 
   // Pasted data functions
@@ -620,7 +702,7 @@ Location: Austin, TX`;
       return { isValid: false, errors };
     }
 
-    if (!this.newTickets && !this.inconsistentTickets) {
+    if (!this.newTickets && !this.inconsistentTickets && !this.matchingTickets) {
       errors.push('No tickets to process');
       return { isValid: false, errors };
     }
@@ -649,6 +731,18 @@ Location: Austin, TX`;
       });
     }
 
+    // Validate matching tickets
+    if (this.matchingTickets) {
+      this.matchingTickets.forEach((ticket, index) => {
+        if (!ticket.ticketId) {
+          errors.push(`Matching ticket ${index + 1}: Missing ticket ID`);
+        }
+        if (!ticket.excelData) {
+          errors.push(`Matching ticket ${index + 1}: Missing excel data`);
+        }
+      });
+    }
+
     return { isValid: errors.length === 0, errors };
   }
 
@@ -671,5 +765,34 @@ Location: Austin, TX`;
         );
       }
     });
+  }
+
+  // Test upload response structure
+  testUploadResponseStructure(response: any) {
+    console.log('🔍 Upload Response Structure Analysis:');
+    console.log('Response type:', typeof response);
+    console.log('Response keys:', Object.keys(response));
+    console.log('Full response:', response);
+
+    // Check for common ID field patterns
+    const possibleIdFields = ['rtrid', 'rtrId', 'id', 'fileId', 'uploadId', 'file_id', 'upload_id'];
+    const foundIdFields = possibleIdFields.filter(field => response[field] !== undefined);
+
+    if (foundIdFields.length > 0) {
+      console.log('✅ Found ID fields:', foundIdFields);
+      foundIdFields.forEach(field => {
+        console.log(`  ${field}:`, response[field]);
+      });
+    } else {
+      console.log('❌ No ID fields found in response');
+    }
+
+    // Check for file information
+    if (response.results && Array.isArray(response.results)) {
+      console.log('📁 Results array found with', response.results.length, 'items');
+      response.results.forEach((result: any, index: number) => {
+        console.log(`  Result ${index}:`, result);
+      });
+    }
   }
 }

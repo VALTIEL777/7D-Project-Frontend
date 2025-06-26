@@ -1,10 +1,12 @@
-import { Component, ElementRef, ViewChild } from '@angular/core';
+import { Component, ElementRef, ViewChild, OnInit } from '@angular/core';
 import { DashboardLayoutComponent } from "../../../../shared/dashboard-layout/dashboard-layout.component";
 import { CardWithButtonComponent } from '../../../../shared/card-with-button/card-with-button.component';
 import { MatTableModule } from '@angular/material/table';
 import { MatDividerModule } from '@angular/material/divider';
 import { CommonModule } from '@angular/common';
 import { MATERIAL_MODULES } from '../../../../material';
+import { BaseDashboardComponent } from '../../../../shared/base-dashboard.component';
+import { FilterService } from '../../../../core/services/filter.service';
 
 @Component({
   selector: 'app-fines-penalties',
@@ -12,9 +14,9 @@ import { MATERIAL_MODULES } from '../../../../material';
   templateUrl: './fines-penalties.component.html',
   styleUrl: './fines-penalties.component.scss'
 })
-export class FinesPenaltiesComponent {
+export class FinesPenaltiesComponent extends BaseDashboardComponent implements OnInit {
 
-  
+
 Fine_table = [
   {
     location: '2354123',
@@ -84,15 +86,40 @@ fines = [
     status: 'Unpaid',
     description: 'failed to yield at crosswalk',
   },
-].map(f => ({ ...f, evidence: null }));;
+].map(f => ({ ...f, evidence: null }));
 
-filterText: string = '';
-filteredFines: any[] = [];
-
-ngOnInit() {
-  this.filteredFines = [...this.fines]; // Inicialmente sin filtros
+constructor(filterService: FilterService) {
+  super(filterService);
 }
 
+override ngOnInit() {
+  super.ngOnInit();
+  this.loadData();
+}
+
+protected override loadData(): void {
+  // Initialize data for filtering
+  this.allData = [...this.fines];
+  this.filteredData = [...this.allData];
+}
+
+// Override text search to include fine fields
+protected override matchesTextSearch(item: any, searchTerm: string): boolean {
+  const searchableFields = ['location', 'ticket', 'fine', 'status', 'description'];
+
+  return searchableFields.some(field => {
+    const value = this.getNestedValue(item, field);
+    if (value) {
+      return String(value).toLowerCase().includes(searchTerm);
+    }
+    return false;
+  });
+}
+
+// Getter for filtered fines data
+get filteredFinesData() {
+  return this.filteredData;
+}
 
   evidence: File | null = null;
 
@@ -124,15 +151,10 @@ downloadEvidence(fine: any) {
   URL.revokeObjectURL(url);
 }
 
+// Legacy filter method - now handled by BaseDashboardComponent
 applyFilter(event: Event) {
-  const filterValue = (event.target as HTMLInputElement).value.trim().toLowerCase();
-
-  this.filteredFines = this.fines.filter(fine =>
-    Object.values(fine).some(value =>
-      value?.toString().toLowerCase().includes(filterValue)
-    )
-  );
+  // This method is now handled by the BaseDashboardComponent filtering system
+  // The filter bar in the title bar will handle all filtering automatically
 }
-
 
 }

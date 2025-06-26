@@ -10,7 +10,7 @@
           <!-- Active Routes -->
 
           <app-card-with-button
-            *ngFor="let route of activeRoutes"
+            *ngFor="let route of filteredActiveRoutes"
             [title]="route.code"
             [showEyeButton]="true"
           >
@@ -39,7 +39,7 @@
 
           <div cdkDropListGroup class="dashboard-grid vertical-list">
           <app-card-with-button
-            *ngFor="let route of generatedRoutes"
+            *ngFor="let route of filteredGeneratedRoutes"
             [title]="route.code"
             [showEyeButton]="true"
           >
@@ -64,7 +64,7 @@
           <app-plus-button [title]="'Generate New Route'"></app-plus-button>
 
           </div>
-          
+
           <div class="section-title full-span">
             <h4>Issue Locations</h4>
           </div>
@@ -77,12 +77,12 @@
           >
             <div
               cdkDropList
-              [cdkDropListData]="locationsWithoutRoute"
+              [cdkDropListData]="filteredLocationsWithoutRoute"
               (cdkDropListDropped)="drop($event)"
               class="route-list-container"
             >
               <div
-                *ngFor="let location of locationsWithoutRoute; let i = index"
+                *ngFor="let location of filteredLocationsWithoutRoute; let i = index"
                 cdkDrag
                 class="route-detail-item"
               >
@@ -99,7 +99,7 @@
           >
             <div class="route-list-container">
               <div
-                *ngFor="let item of locationsOnHoldOff; let i = index"
+                *ngFor="let item of filteredLocationsOnHoldOff; let i = index"
                 class="route-detail-item"
               >
                 <span class="queue-number">{{ i + 1 }}.</span>
