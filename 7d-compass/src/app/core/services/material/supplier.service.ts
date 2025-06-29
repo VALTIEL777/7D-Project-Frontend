@@ -4,41 +4,44 @@ import { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 
 export interface Supplier {
-  supplierId?: number;
+  supplierid?: number;
   name: string;
   phone: string;
   email: string;
   address: string;
-  createdBy: number;
-  updatedBy: number;
+  createdat?: string;
+  updatedat?: string;
+  deletedat?: string | null;
+  createdby?: number;
+  updatedby?: number;
 }
 
 @Injectable({
   providedIn: 'root'
 })
 export class SupplierService {
-  private baseUrl = environment.supplierServiceUrl;
+  private baseUrl = `${environment.apiUrl}/suppliers`;
 
   constructor(private http: HttpClient) {}
 
   // Get all suppliers
   getAllSuppliers(): Observable<Supplier[]> {
-    return this.http.get<any[]>(this.baseUrl);
+    return this.http.get<Supplier[]>(this.baseUrl);
   }
 
   // Get a supplier by ID
   getSupplierById(id: number): Observable<Supplier> {
-    return this.http.get<any>(`${this.baseUrl}/${id}`);
+    return this.http.get<Supplier>(`${this.baseUrl}/${id}`);
   }
 
   // Create a new supplier
   createSupplier(supplier: Supplier): Observable<Supplier> {
-    return this.http.post<any>(this.baseUrl, supplier);
+    return this.http.post<Supplier>(this.baseUrl, supplier);
   }
 
   // Update a supplier
   updateSupplier(id: number, supplier: Partial<Supplier>): Observable<Supplier> {
-    return this.http.put<any>(`${this.baseUrl}/${id}`, supplier);
+    return this.http.put<Supplier>(`${this.baseUrl}/${id}`, supplier);
   }
 
   // Delete a supplier

@@ -4,12 +4,11 @@ import { Observable, map, catchError, throwError } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 
 export interface RTRFile {
-  rtrid: number;
   name: string;
+  size: number;
+  lastModified: string;
+  type: 'uploaded' | 'generated';
   url: string;
-  createdat: string;
-  updatedat: string;
-  deletedat?: string | null;
 }
 
 export interface RTRData {
@@ -159,13 +158,34 @@ export class RTRService {
 
   constructor(private http: HttpClient) {}
 
-  // Upload an RTR Excel file
-  uploadRTR(file: File): Observable<any> {
+  // Health check - matches API documentation
+  healthCheck(): Observable<any> {
+    return this.http.get<any>(`${this.baseUrl}/health`).pipe(
+      map(response => {
+        console.log('Health check response:', response);
+        return response;
+      }),
+      catchError(error => {
+        console.error('Health check error:', error);
+        return throwError(() => error);
+      })
+    );
+  }
+
+  // Upload an RTR Excel file - matches API documentation exactly
+  uploadRTR(file: File, createdBy: number = 1, updatedBy: number = 1): Observable<any> {
     const formData = new FormData();
     formData.append('file', file);
+    formData.append('createdBy', createdBy.toString());
+    formData.append('updatedBy', updatedBy.toString());
+
+    console.log('🚀 Uploading to:', `${this.baseUrl}/`);
+    console.log('📁 File:', file.name, 'Size:', file.size, 'Type:', file.type);
 
     return this.http.post<any>(`${this.baseUrl}/`, formData).pipe(
       map(response => {
+        console.log('✅ Upload response:', response);
+
         // Handle different response formats
         if (response.success !== undefined) {
           return response;
@@ -179,8 +199,28 @@ export class RTRService {
         };
       }),
       catchError(error => {
-        console.error('Upload error:', error);
-        return throwError(() => error);
+        console.error('❌ Upload error:', error);
+
+        // Provide more detailed error information
+        let errorMessage = 'Upload failed';
+        if (error.status === 500) {
+          errorMessage = 'Server error - please check backend logs';
+        } else if (error.status === 413) {
+          errorMessage = 'File too large for server';
+        } else if (error.status === 415) {
+          errorMessage = 'Unsupported file type';
+        } else if (error.status === 0) {
+          errorMessage = 'Network error - please check your connection';
+        } else if (error.error?.error) {
+          errorMessage = error.error.error;
+        } else if (error.message) {
+          errorMessage = error.message;
+        }
+
+        return throwError(() => ({
+          ...error,
+          userMessage: errorMessage
+        }));
       })
     );
   }
@@ -215,51 +255,51 @@ export class RTRService {
     );
   }
 
-  // Legacy method for backward compatibility
+  // Legacy save method for backward compatibility
   saveWithDecisionsLegacy(request: SaveRequest): Observable<SaveResult> {
-    return this.http.post<any>(`${this.baseUrl}/save-with-decisions`, request).pipe(
+    return this.http.post<SaveResult>(`${this.baseUrl}/save-with-decisions`, request).pipe(
       map(response => {
-        // Handle different response formats
-        if (response.success !== undefined) {
-          return response as SaveResult;
-        }
-        // If response doesn't have success property, assume it's successful
-        return {
-          success: true,
-          results: response.results || {
-            newTicketsCreated: response.newTicketsCreated || [],
-            ticketsUpdated: response.ticketsUpdated || [],
-            errors: response.errors || []
-          },
-          ...response
-        } as SaveResult;
+        console.log('Legacy save response:', response);
+        return response;
       }),
       catchError(error => {
-        console.error('Save error:', error);
+        console.error('Legacy save error:', error);
         return throwError(() => error);
       })
     );
   }
 
-  // List RTR files
-  listRTRs(): Observable<{ success: boolean; rtrs: RTRFile[] }> {
-    console.log(`Fetching RTR files from: ${this.baseUrl}/list`);
-    return this.http.get<any>(`${this.baseUrl}/list`).pipe(
+  // List RTR database records - matches API documentation
+  listRTRRecords(): Observable<{ success: boolean; rtrs: any[] }> {
+    return this.http.get<{ success: boolean; rtrs: any[] }>(`${this.baseUrl}/list`).pipe(
       map(response => {
-        console.log('✅ RTR list response:', response);
-        // Handle different response formats
-        if (response.success !== undefined) {
-          return response;
-        }
-        // If response doesn't have success property, assume it's successful
-        return {
-          success: true,
-          rtrs: response.rtrs || response.data || response.files || []
-        };
+        console.log('RTR records response:', response);
+        return response;
       }),
       catchError(error => {
-        console.error('❌ List RTRs error:', error);
+        console.error('Error listing RTR records:', error);
         return throwError(() => error);
+      })
+    );
+  }
+
+  // List RTR files - updated for new API structure
+  listRTRs(): Observable<{ success: boolean; files: { uploaded: RTRFile[]; generated: RTRFile[] } }> {
+    return this.http.get<{ success: boolean; files: { uploaded: RTRFile[]; generated: RTRFile[] } }>(`${this.baseUrl}/files`).pipe(
+      map(response => {
+        console.log('RTR files response:', response);
+        return response;
+      }),
+      catchError(error => {
+        console.error('Error listing RTR files:', error);
+        // Return empty structure on error
+        return throwError(() => ({
+          success: false,
+          files: {
+            uploaded: [],
+            generated: []
+          }
+        }));
       })
     );
   }
@@ -276,13 +316,13 @@ export class RTRService {
 
   // Test API connectivity
   testApiConnectivity(): Observable<any> {
-    return this.http.get(`${this.baseUrl}/health`).pipe(
+    return this.healthCheck().pipe(
       map(response => {
-        console.log('API health check response:', response);
+        console.log('✅ RTR API is accessible:', response);
         return response;
       }),
       catchError(error => {
-        console.error('API health check failed:', error);
+        console.warn('⚠️ RTR API connectivity issue:', error);
         return throwError(() => error);
       })
     );
@@ -293,12 +333,13 @@ export class RTRService {
     return {
       baseUrl: this.baseUrl,
       endpoints: {
+        health: `${this.baseUrl}/health`,
         upload: `${this.baseUrl}/`,
-        analyze: `${this.baseUrl}/analyze`,
-        save: `${this.baseUrl}/save-with-decisions`,
         list: `${this.baseUrl}/list`,
+        files: `${this.baseUrl}/files`,
         download: `${this.baseUrl}/download/{rtrId}`,
-        health: `${this.baseUrl}/health`
+        analyze: `${this.baseUrl}/analyze`,
+        saveWithDecisions: `${this.baseUrl}/save-with-decisions`
       }
     };
   }

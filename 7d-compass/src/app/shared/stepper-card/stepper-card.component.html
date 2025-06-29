@@ -1,0 +1,546 @@
+<div class="stepper-card">
+  <div class="stepper-header">
+    <h2 class="stepper-title">{{ title }}</h2>
+  </div>
+
+  <mat-stepper #stepper class="custom-stepper">
+
+    <!-- Step 1: Upload File -->
+    <mat-step label="Upload File">
+      <div class="step-content">
+        <div class="step-header">
+          <mat-icon class="step-icon">cloud_upload</mat-icon>
+          <h3>Upload RTR File</h3>
+        </div>
+
+        <div class="step-description">
+          <p>Drag and drop your RTR Excel file or click to browse. Supported formats: .xlsx, .xls, .csv</p>
+          <p *ngIf="uploadedFile" class="file-replace-hint">
+            <mat-icon>info</mat-icon>
+            You can drag and drop a new file to replace the current one.
+          </p>
+        </div>
+
+        <div class="upload-section">
+          <app-drag-drop-upload
+            [maxFiles]="1"
+            [allowReplace]="true"
+            [isLoading]="isStep1Loading"
+            [currentFileName]="uploadedFile?.name || ''"
+            (filesDropped)="onFileUploaded($event)">
+          </app-drag-drop-upload>
+        </div>
+
+        <div *ngIf="uploadedFile" class="file-info">
+          <mat-icon>file_present</mat-icon>
+          <span>{{ uploadedFile.name }} ({{ (uploadedFile.size / 1024).toFixed(1) }} KB)</span>
+          <button
+            mat-icon-button
+            color="warn"
+            (click)="clearUploadedFile()"
+            matTooltip="Clear file">
+            <mat-icon>clear</mat-icon>
+          </button>
+        </div>
+
+        <div class="step-actions">
+          <button
+            mat-raised-button
+            color="primary"
+            (click)="stepper.next()"
+            [disabled]="!uploadedFile || isStep1Loading">
+            <mat-icon>arrow_forward</mat-icon>
+            Next: Analyze Data
+          </button>
+        </div>
+      </div>
+    </mat-step>
+
+    <!-- Step 2: Analyze Data -->
+    <mat-step label="Analyze Data">
+      <div class="step-content">
+        <div class="step-header">
+          <mat-icon class="step-icon">analytics</mat-icon>
+          <h3>Analyze RTR Data</h3>
+        </div>
+
+        <div class="step-description">
+          <p>Processing uploaded file to identify new tickets, inconsistencies, and missing information.</p>
+        </div>
+
+        <div *ngIf="!analyzedData" class="analysis-section">
+          <button
+            mat-raised-button
+            color="primary"
+            (click)="analyzeData()"
+            [disabled]="isStep2Loading">
+            <mat-spinner *ngIf="isStep2Loading" diameter="20"></mat-spinner>
+            <mat-icon *ngIf="!isStep2Loading">play_arrow</mat-icon>
+            {{ isStep2Loading ? 'Analyzing...' : 'Start Analysis' }}
+          </button>
+        </div>
+
+        <div *ngIf="analyzedData" class="analysis-results">
+          <div class="results-summary">
+            <div class="summary-item">
+              <span class="summary-label">Total Rows:</span>
+              <span class="summary-value">{{ analyzedData.summary.total }}</span>
+            </div>
+            <div class="summary-item">
+              <span class="summary-label">New Tickets:</span>
+              <span class="summary-value new">{{ analyzedData.summary.new }}</span>
+            </div>
+            <div class="summary-item">
+              <span class="summary-label">Inconsistent:</span>
+              <span class="summary-value inconsistent">{{ analyzedData.summary.inconsistent }}</span>
+            </div>
+            <div class="summary-item">
+              <span class="summary-label">Matching:</span>
+              <span class="summary-value matching">{{ analyzedData.summary.matching }}</span>
+            </div>
+            <div class="summary-item">
+              <span class="summary-label">Missing Info:</span>
+              <span class="summary-value missing">{{ analyzedData.summary.missingInfo }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="step-actions">
+          <button mat-button (click)="stepper.previous()">
+            <mat-icon>arrow_back</mat-icon>
+            Previous
+          </button>
+          <button
+            mat-raised-button
+            color="primary"
+            (click)="stepper.next()"
+            [disabled]="!analyzedData">
+            <mat-icon>arrow_forward</mat-icon>
+            Next: Fill Missing Info
+          </button>
+        </div>
+      </div>
+    </mat-step>
+
+    <!-- Step 3: Review Inconsistencies -->
+    <mat-step label="Review Inconsistencies">
+      <div class="step-content">
+        <div class="step-header">
+          <mat-icon class="step-icon">compare_arrows</mat-icon>
+          <h3>Review Data Inconsistencies</h3>
+        </div>
+
+        <div class="step-description">
+          <p>Review and resolve conflicts between Excel data and existing database records. Each row represents one ticket with a data conflict.</p>
+        </div>
+
+        <div *ngIf="!inconsistencies.length" class="inconsistency-section">
+          <button
+            mat-raised-button
+            color="primary"
+            (click)="reviewInconsistencies()"
+            [disabled]="isStep3Loading">
+            <mat-spinner *ngIf="isStep3Loading" diameter="20"></mat-spinner>
+            <mat-icon *ngIf="!isStep3Loading">search</mat-icon>
+            {{ isStep3Loading ? 'Finding Inconsistencies...' : 'Find Inconsistencies' }}
+          </button>
+        </div>
+
+        <div *ngIf="inconsistencies.length > 0" class="inconsistencies-table">
+          <table mat-table [dataSource]="inconsistencies" class="mat-elevation-z1">
+            <!-- Ticket Column -->
+            <ng-container matColumnDef="ticket">
+              <th mat-header-cell *matHeaderCellDef>Ticket Information</th>
+              <td mat-cell *matCellDef="let item">
+                <div class="ticket-info">
+                  <div class="ticket-code">{{ item.ticketCode }}</div>
+                  <div class="ticket-details">
+                    <div class="ticket-detail">
+                      <span class="detail-label">Restoration:</span>
+                      <span class="detail-value">{{ item.restWoNum }}</span>
+                    </div>
+                    <div class="ticket-detail">
+                      <span class="detail-label">Address:</span>
+                      <span class="detail-value">{{ item.address }}</span>
+                    </div>
+                  </div>
+                </div>
+              </td>
+            </ng-container>
+
+            <!-- Field Column -->
+            <ng-container matColumnDef="field">
+              <th mat-header-cell *matHeaderCellDef>Conflicting Field</th>
+              <td mat-cell *matCellDef="let item">
+                <div class="field-info">
+                  <span class="field-name">{{ item.field }}</span>
+                  <span class="field-description">Field has different values</span>
+                </div>
+              </td>
+            </ng-container>
+
+            <!-- Excel Value Column -->
+            <ng-container matColumnDef="excelValue">
+              <th mat-header-cell *matHeaderCellDef>Excel Value</th>
+              <td mat-cell *matCellDef="let item">
+                <div class="value-cell excel">
+                  {{ item.excelValue }}
+                </div>
+              </td>
+            </ng-container>
+
+            <!-- Database Value Column -->
+            <ng-container matColumnDef="databaseValue">
+              <th mat-header-cell *matHeaderCellDef>Database Value</th>
+              <td mat-cell *matCellDef="let item">
+                <div class="value-cell database">
+                  {{ item.databaseValue }}
+                </div>
+              </td>
+            </ng-container>
+
+            <!-- Choice Column -->
+            <ng-container matColumnDef="choice">
+              <th mat-header-cell *matHeaderCellDef>Your Choice</th>
+              <td mat-cell *matCellDef="let item">
+                <div class="choice-container">
+                  <mat-button-toggle-group
+                    [value]="item.userChoice"
+                    (valueChange)="onInconsistencyChoice(item, $event)">
+                    <mat-button-toggle value="excel" class="excel-choice">
+                      <mat-icon>file_excel</mat-icon>
+                      Excel
+                    </mat-button-toggle>
+                    <mat-button-toggle value="database" class="database-choice">
+                      <mat-icon>storage</mat-icon>
+                      Database
+                    </mat-button-toggle>
+                  </mat-button-toggle-group>
+                  <div *ngIf="item.userChoice" class="choice-status">
+                    <mat-icon [class]="item.userChoice === 'excel' ? 'excel-icon' : 'database-icon'">
+                      {{ item.userChoice === 'excel' ? 'check_circle' : 'check_circle' }}
+                    </mat-icon>
+                    <span>Choice made</span>
+                  </div>
+                </div>
+              </td>
+            </ng-container>
+
+            <tr mat-header-row *matHeaderRowDef="inconsistencyColumns"></tr>
+            <tr mat-row *matRowDef="let row; columns: inconsistencyColumns;"></tr>
+          </table>
+        </div>
+
+        <!-- Show message when no inconsistencies found -->
+        <div *ngIf="analyzedData && inconsistencies.length === 0" class="no-inconsistencies-message">
+          <div class="success-message">
+            <mat-icon color="primary">check_circle</mat-icon>
+            <h4>No Inconsistencies Found</h4>
+            <p>All tickets match between Excel and database records.</p>
+          </div>
+        </div>
+
+        <div class="step-actions">
+          <button mat-button (click)="stepper.previous()">
+            <mat-icon>arrow_back</mat-icon>
+            Previous
+          </button>
+          <button
+            mat-raised-button
+            color="primary"
+            (click)="stepper.next()"
+            [disabled]="!analyzedData">
+            <mat-icon>arrow_forward</mat-icon>
+            Next: Fill Missing Info
+          </button>
+        </div>
+      </div>
+    </mat-step>
+
+    <!-- Step 4: Fill Missing Information -->
+    <mat-step label="Fill Missing Information">
+      <div class="step-content">
+        <div class="step-header">
+          <mat-icon class="step-icon">edit</mat-icon>
+          <h3>Fill Missing Information</h3>
+        </div>
+
+        <div class="step-description">
+          <p>Complete any missing required fields and optional information.</p>
+        </div>
+
+        <div *ngIf="!missingInfo.length" class="missing-info-section">
+          <button
+            mat-raised-button
+            color="primary"
+            (click)="fillMissingInfo()"
+            [disabled]="isStep4Loading">
+            <mat-spinner *ngIf="isStep4Loading" diameter="20"></mat-spinner>
+            <mat-icon *ngIf="!isStep4Loading">search</mat-icon>
+            {{ isStep4Loading ? 'Finding Missing Info...' : 'Find Missing Information' }}
+          </button>
+        </div>
+
+        <div *ngIf="missingInfo.length > 0" class="missing-info-table">
+          <table mat-table [dataSource]="missingInfo" class="mat-elevation-z1">
+            <!-- Ticket Column -->
+            <ng-container matColumnDef="ticket">
+              <th mat-header-cell *matHeaderCellDef>Ticket Information</th>
+              <td mat-cell *matCellDef="let item">
+                <div class="ticket-info">
+                  <div class="ticket-code">{{ item.ticketCode || 'N/A' }}</div>
+                  <div class="ticket-details">
+                    <div class="ticket-detail" *ngIf="item.row?.TASK_WO_NUM">
+                      <span class="detail-label">Task:</span>
+                      <span class="detail-value">{{ item.row.TASK_WO_NUM }}</span>
+                    </div>
+                    <div class="ticket-detail" *ngIf="item.row?.RESTN_WO_NUM">
+                      <span class="detail-label">Restoration:</span>
+                      <span class="detail-value">{{ item.row.RESTN_WO_NUM }}</span>
+                    </div>
+                    <div class="ticket-detail">
+                      <span class="detail-label">Address:</span>
+                      <span class="detail-value">{{ item.address || item.row?.ADDRESS || 'N/A' }}</span>
+                    </div>
+                  </div>
+                </div>
+              </td>
+            </ng-container>
+
+            <!-- Field Column -->
+            <ng-container matColumnDef="field">
+              <th mat-header-cell *matHeaderCellDef>Field</th>
+              <td mat-cell *matCellDef="let item">{{ item.label }}</td>
+            </ng-container>
+
+            <!-- Value Column -->
+            <ng-container matColumnDef="value">
+              <th mat-header-cell *matHeaderCellDef>Current Value</th>
+              <td mat-cell *matCellDef="let item">
+                <div class="value-display">
+                  {{ item.value || 'Not set' }}
+                </div>
+              </td>
+            </ng-container>
+
+            <!-- Required Column -->
+            <ng-container matColumnDef="required">
+              <th mat-header-cell *matHeaderCellDef>Required</th>
+              <td mat-cell *matCellDef="let item">
+                <mat-icon [class.required]="item.required" [class.optional]="!item.required">
+                  {{ item.required ? 'error' : 'check_circle' }}
+                </mat-icon>
+                <span>{{ item.required ? 'Required' : 'Optional' }}</span>
+              </td>
+            </ng-container>
+
+            <!-- Actions Column -->
+            <ng-container matColumnDef="actions">
+              <th mat-header-cell *matHeaderCellDef>Actions</th>
+              <td mat-cell *matCellDef="let item">
+                <div class="actions-container">
+                  <button
+                    mat-icon-button
+                    color="primary"
+                    (click)="editMissingInfo(item)"
+                    matTooltip="Edit {{ item.label }}">
+                    <mat-icon>edit</mat-icon>
+                  </button>
+                  <button
+                    *ngIf="!item.required"
+                    mat-icon-button
+                    color="warn"
+                    (click)="skipMissingInfo(item)"
+                    matTooltip="Skip {{ item.label }}">
+                    <mat-icon>skip_next</mat-icon>
+                  </button>
+                </div>
+              </td>
+            </ng-container>
+
+            <tr mat-header-row *matHeaderRowDef="missingInfoColumns"></tr>
+            <tr mat-row *matRowDef="let row; columns: missingInfoColumns;"></tr>
+          </table>
+        </div>
+
+        <!-- Show message when no missing info found -->
+        <div *ngIf="analyzedData && missingInfo.length === 0" class="no-missing-info-message">
+          <div class="success-message">
+            <mat-icon color="primary">check_circle</mat-icon>
+            <h4>No Missing Information Found</h4>
+            <p>All required fields are complete.</p>
+          </div>
+        </div>
+
+        <div class="step-actions">
+          <button mat-button (click)="stepper.previous()">
+            <mat-icon>arrow_back</mat-icon>
+            Previous
+          </button>
+          <button
+            mat-raised-button
+            color="primary"
+            (click)="stepper.next()"
+            [disabled]="!analyzedData">
+            <mat-icon>arrow_forward</mat-icon>
+            Next: Validate Data
+          </button>
+        </div>
+      </div>
+    </mat-step>
+
+    <!-- Step 5: Validate Data -->
+    <mat-step label="Validate Data">
+      <div class="step-content">
+        <div class="step-header">
+          <mat-icon class="step-icon">verified</mat-icon>
+          <h3>Validate Data</h3>
+        </div>
+
+        <div class="step-description">
+          <p>Comprehensive validation of all data before saving to database.</p>
+        </div>
+
+        <div *ngIf="!validationResults.length" class="validation-section">
+          <button
+            mat-raised-button
+            color="primary"
+            (click)="validateData()"
+            [disabled]="isStep5Loading">
+            <mat-spinner *ngIf="isStep5Loading" diameter="20"></mat-spinner>
+            <mat-icon *ngIf="!isStep5Loading">verified</mat-icon>
+            {{ isStep5Loading ? 'Validating...' : 'Start Validation' }}
+          </button>
+        </div>
+
+        <div *ngIf="validationResults.length > 0" class="validation-results">
+          <table mat-table [dataSource]="validationResults" class="mat-elevation-z1">
+            <!-- Field Column -->
+            <ng-container matColumnDef="field">
+              <th mat-header-cell *matHeaderCellDef>Field</th>
+              <td mat-cell *matCellDef="let item">{{ item.field }}</td>
+            </ng-container>
+
+            <!-- Status Column -->
+            <ng-container matColumnDef="status">
+              <th mat-header-cell *matHeaderCellDef>Status</th>
+              <td mat-cell *matCellDef="let item">
+                <div class="status-cell">
+                  <mat-icon
+                    [style.color]="getValidationColor(item)"
+                    class="status-icon">
+                    {{ getValidationIcon(item) }}
+                  </mat-icon>
+                  <span [class]="'status-text ' + item.severity">
+                    {{ item.isValid ? 'Valid' : 'Invalid' }}
+                  </span>
+                </div>
+              </td>
+            </ng-container>
+
+            <!-- Message Column -->
+            <ng-container matColumnDef="message">
+              <th mat-header-cell *matHeaderCellDef>Message</th>
+              <td mat-cell *matCellDef="let item">
+                <div class="message-cell" [class]="item.severity">
+                  {{ item.message }}
+                </div>
+              </td>
+            </ng-container>
+
+            <tr mat-header-row *matHeaderRowDef="validationColumns"></tr>
+            <tr mat-row *matRowDef="let row; columns: validationColumns;"></tr>
+          </table>
+        </div>
+
+        <div class="step-actions">
+          <button mat-button (click)="stepper.previous()">
+            <mat-icon>arrow_back</mat-icon>
+            Previous
+          </button>
+          <button
+            mat-raised-button
+            color="primary"
+            (click)="stepper.next()"
+            [disabled]="!validationResults.length">
+            <mat-icon>arrow_forward</mat-icon>
+            Next: Save to Database
+          </button>
+        </div>
+      </div>
+    </mat-step>
+
+    <!-- Step 6: Save to Database -->
+    <mat-step label="Save to Database">
+      <div class="step-content">
+        <div class="step-header">
+          <mat-icon class="step-icon">save</mat-icon>
+          <h3>Save to Database</h3>
+        </div>
+
+        <div class="step-description">
+          <p>Save all processed data to the database. This action cannot be undone.</p>
+        </div>
+
+        <div *ngIf="!saveResults" class="save-section">
+          <div class="save-warning">
+            <mat-icon color="warn">warning</mat-icon>
+            <p>Please review all previous steps before proceeding. This will save all data to the database.</p>
+          </div>
+
+          <button
+            mat-raised-button
+            color="warn"
+            (click)="saveToDatabase()"
+            [disabled]="isStep6Loading">
+            <mat-spinner *ngIf="isStep6Loading" diameter="20"></mat-spinner>
+            <mat-icon *ngIf="!isStep6Loading">save</mat-icon>
+            {{ isStep6Loading ? 'Saving...' : 'Save to Database' }}
+          </button>
+        </div>
+
+        <div *ngIf="saveResults" class="save-results">
+          <div class="success-message">
+            <mat-icon color="primary">check_circle</mat-icon>
+            <h4>Data saved successfully!</h4>
+          </div>
+
+          <div class="save-summary">
+            <div class="summary-item">
+              <span class="summary-label">New Tickets Created:</span>
+              <span class="summary-value success">{{ saveResults.summary.created }}</span>
+            </div>
+            <div class="summary-item">
+              <span class="summary-label">Tickets Updated:</span>
+              <span class="summary-value updated">{{ saveResults.summary.updated }}</span>
+            </div>
+            <div class="summary-item" *ngIf="saveResults.summary.skipped > 0">
+              <span class="summary-label">Skipped:</span>
+              <span class="summary-value skipped">{{ saveResults.summary.skipped }}</span>
+            </div>
+            <div class="summary-item" *ngIf="saveResults.errors.length > 0">
+              <span class="summary-label">Errors:</span>
+              <span class="summary-value error">{{ saveResults.errors.length }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="step-actions">
+          <button mat-button (click)="stepper.previous()">
+            <mat-icon>arrow_back</mat-icon>
+            Previous
+          </button>
+          <button
+            mat-raised-button
+            color="primary"
+            [disabled]="!saveResults"
+            (click)="completeProcess()">
+            <mat-icon>done</mat-icon>
+            Complete Process
+          </button>
+        </div>
+      </div>
+    </mat-step>
+
+  </mat-stepper>
+</div>

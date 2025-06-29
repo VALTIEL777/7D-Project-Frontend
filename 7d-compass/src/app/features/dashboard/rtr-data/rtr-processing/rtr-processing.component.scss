@@ -348,3 +348,9 @@ mat-button-toggle {
   }
 }
 
+/* Stepper card full width */
+.stepper-card-full-width {
+  grid-column: 1 / -1; /* Span all columns */
+  margin-bottom: 20px;
+}
+

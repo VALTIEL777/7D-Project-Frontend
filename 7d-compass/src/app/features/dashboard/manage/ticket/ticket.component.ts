@@ -1,4 +1,5 @@
 import { Component, OnInit } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { DashboardLayoutComponent } from "../../../../shared/dashboard-layout/dashboard-layout.component";
 import { CardWithButtonComponent } from '../../../../shared/card-with-button/card-with-button.component';
 import { MatDialog } from '@angular/material/dialog';
@@ -7,6 +8,8 @@ import { ConfirmationDialogComponent } from '../../../../shared/confirmation-dia
 import { SearchDialogComponent } from '../../../../shared/search-dialog/search-dialog.component';
 import { BaseDashboardComponent } from '../../../../shared/base-dashboard.component';
 import { FilterService } from '../../../../core/services/filter.service';
+import { TicketService, Ticket } from '../../../../core/services/ticket.service';
+import { MatSnackBar } from '@angular/material/snack-bar';
 
 interface ColumnDefinition {
   name: string;
@@ -19,9 +22,12 @@ interface ColumnDefinition {
   selector: 'app-ticket',
   standalone: true,
   imports: [
+    CommonModule,
     DashboardLayoutComponent,
     CardWithButtonComponent,
     DataTableComponent,
+    ConfirmationDialogComponent,
+    SearchDialogComponent
   ],
   templateUrl: './ticket.component.html',
   styleUrl: './ticket.component.scss'
@@ -31,37 +37,63 @@ export class TicketComponent extends BaseDashboardComponent implements OnInit {
     {
       name: 'ticketCode',
       header: 'Ticket Code',
-      cell: (ticket: any) => ticket.ticketCode
+      cell: (ticket: any) => ticket.ticketCode || 'N/A'
     },
     {
-      name: 'mxNumber',
+      name: 'incidentId',
       header: 'MX Number',
-      cell: (ticket: any) => ticket.incidentId ? `MX-${ticket.incidentId}` : 'N/A'
+      cell: (ticket: any) => {
+        if (ticket.incidentId && ticket.incidentId !== null && ticket.incidentId !== '') {
+          return `MX-${ticket.incidentId}`;
+        }
+        return 'N/A';
+      }
     },
     {
-      name: 'contractUnit',
+      name: 'contractUnitId',
       header: 'Contract Unit',
-      cell: (ticket: any) => ticket.contractUnitName || 'N/A'
+      cell: (ticket: any) => {
+        if (ticket.contractUnitId && ticket.contractUnitId !== null && ticket.contractUnitId !== '') {
+          return ticket.contractUnitId.toString();
+        }
+        return 'N/A';
+      }
     },
     {
-      name: 'quadrant',
+      name: 'quadrantId',
       header: 'Quadrant',
-      cell: (ticket: any) => ticket.quadrantName || 'N/A'
+      cell: (ticket: any) => {
+        if (ticket.quadrantId && ticket.quadrantId !== null && ticket.quadrantId !== '') {
+          return ticket.quadrantId.toString();
+        }
+        return 'N/A';
+      }
     },
     {
       name: 'quantity',
       header: 'Quantity',
-      cell: (ticket: any) => ticket.quantity?.toString() || '0'
+      cell: (ticket: any) => {
+        if (ticket.quantity !== null && ticket.quantity !== undefined && ticket.quantity !== '') {
+          return ticket.quantity.toString();
+        }
+        return '0';
+      }
     },
     {
-      name: 'amount',
+      name: 'amountToPay',
       header: 'Amount',
-      cell: (ticket: any) => ticket.amountToPay ? `$${ticket.amountToPay.toFixed(2)}` : '$0.00'
+      cell: (ticket: any) => {
+        if (ticket.amountToPay !== null && ticket.amountToPay !== undefined && ticket.amountToPay !== '') {
+          const amount = typeof ticket.amountToPay === 'string' ? parseFloat(ticket.amountToPay) : ticket.amountToPay;
+          return isNaN(amount) ? '$0.00' : `$${amount.toFixed(2)}`;
+        }
+        return '$0.00';
+      }
     },
     {
-      name: 'status',
+      name: 'comment7d',
       header: 'Status',
-      cell: (ticket: any) => ticket.status || 'Pending'
+      cell: (ticket: any) => ticket.comment7d || 'Pending'
     },
     {
       name: 'actions',
@@ -71,170 +103,30 @@ export class TicketComponent extends BaseDashboardComponent implements OnInit {
     }
   ];
 
-  // Sample data based on your database schema
-  tableData = [
-    {
-      ticketId: 1,
-      ticketCode: 'TCK-001',
-      incidentId: 1001,
-      contractUnitId: 5,
-      contractUnitName: 'Asphalt Patching',
-      quadrantId: 3,
-      quadrantName: 'Northwest',
-      quantity: 5,
-      amountToPay: 1250.50,
-      status: 'In Progress',
-      ticketType: 'regular',
-      daysOutstanding: 3,
-      contractNumber: 'CNTR-2023-001'
-    },
-    {
-      ticketId: 2,
-      ticketCode: 'TCK-002',
-      incidentId: 1002,
-      contractUnitId: 7,
-      contractUnitName: 'Concrete Repair',
-      quadrantId: 1,
-      quadrantName: 'Southwest',
-      quantity: 2,
-      amountToPay: 850.75,
-      status: 'Completed',
-      ticketType: 'regular',
-      daysOutstanding: 0,
-      contractNumber: 'CNTR-2023-002'
-    },
-    {
-      ticketId: 3,
-      ticketCode: 'TCK-003',
-      incidentId: 1003,
-      contractUnitId: 12,
-      contractUnitName: 'Utility Cut Repair',
-      quadrantId: 2,
-      quadrantName: 'Northeast',
-      quantity: 1,
-      amountToPay: 420.00,
-      status: 'Pending',
-      ticketType: 'mobilization',
-      daysOutstanding: 7,
-      contractNumber: 'CNTR-2023-003'
-    },
-    {
-      ticketId: 4,
-      ticketCode: 'TCK-004',
-      incidentId: 1004,
-      contractUnitId: 8,
-      contractUnitName: 'Pothole Repair',
-      quadrantId: 4,
-      quadrantName: 'Southeast',
-      quantity: 8,
-      amountToPay: 960.25,
-      status: 'In Progress',
-      ticketType: 'regular',
-      daysOutstanding: 2,
-      contractNumber: 'CNTR-2023-004'
-    },
-    {
-      ticketId: 5,
-      ticketCode: 'TCK-005',
-      incidentId: 1005,
-      contractUnitId: 15,
-      contractUnitName: 'Sidewalk Repair',
-      quadrantId: 1,
-      quadrantName: 'Southwest',
-      quantity: 3,
-      amountToPay: 1375.40,
-      status: 'Completed',
-      ticketType: 'regular',
-      daysOutstanding: 0,
-      contractNumber: 'CNTR-2023-005'
-    },
-    {
-      ticketId: 6,
-      ticketCode: 'TCK-006',
-      incidentId: 1006,
-      contractUnitId: 5,
-      contractUnitName: 'Asphalt Patching',
-      quadrantId: 3,
-      quadrantName: 'Northwest',
-      quantity: 4,
-      amountToPay: 1100.00,
-      status: 'Pending',
-      ticketType: 'regular',
-      daysOutstanding: 5,
-      contractNumber: 'CNTR-2023-006'
-    },
-    {
-      ticketId: 7,
-      ticketCode: 'TCK-007',
-      incidentId: 1007,
-      contractUnitId: 9,
-      contractUnitName: 'Curb Repair',
-      quadrantId: 2,
-      quadrantName: 'Northeast',
-      quantity: 2,
-      amountToPay: 725.30,
-      status: 'In Progress',
-      ticketType: 'regular',
-      daysOutstanding: 1,
-      contractNumber: 'CNTR-2023-007'
-    },
-    {
-      ticketId: 8,
-      ticketCode: 'TCK-008',
-      incidentId: 1008,
-      contractUnitId: 11,
-      contractUnitName: 'Traffic Control',
-      quadrantId: 4,
-      quadrantName: 'Southeast',
-      quantity: 1,
-      amountToPay: 350.00,
-      status: 'Completed',
-      ticketType: 'mobilization',
-      daysOutstanding: 0,
-      contractNumber: 'CNTR-2023-008'
-    },
-    {
-      ticketId: 9,
-      ticketCode: 'TCK-009',
-      incidentId: 1009,
-      contractUnitId: 7,
-      contractUnitName: 'Concrete Repair',
-      quadrantId: 1,
-      quadrantName: 'Southwest',
-      quantity: 6,
-      amountToPay: 1850.60,
-      status: 'Pending',
-      ticketType: 'regular',
-      daysOutstanding: 4,
-      contractNumber: 'CNTR-2023-009'
-    },
-    {
-      ticketId: 10,
-      ticketCode: 'TCK-010',
-      incidentId: 1010,
-      contractUnitId: 13,
-      contractUnitName: 'Street Sweeping',
-      quadrantId: 3,
-      quadrantName: 'Northwest',
-      quantity: 1,
-      amountToPay: 280.00,
-      status: 'Completed',
-      ticketType: 'mobilization',
-      daysOutstanding: 0,
-      contractNumber: 'CNTR-2023-010'
-    }
+  tableData: Ticket[] = [];
+  comment7dOptions = [
+    'TK - CANCELLED',
+    'TK - COMPLETED',
+    'NEEDS PERMISION EXTENDED',
+    'ON HOLD OFF',
+    'ON PROGRESS',
+    'ON SCHEDULE',
+    'DIGGER APPLAY',
+    'HMA- ON PROGRESS'
   ];
 
   constructor(
     private dialog: MatDialog,
-    filterService: FilterService
+    private ticketService: TicketService,
+    filterService: FilterService,
+    private snackBar: MatSnackBar
   ) {
     super(filterService);
   }
 
   override ngOnInit(): void {
     super.ngOnInit();
-    this.loadData();
+    this.loadTickets();
   }
 
   protected override loadData(): void {
@@ -245,7 +137,7 @@ export class TicketComponent extends BaseDashboardComponent implements OnInit {
 
   // Override text search to include ticket fields
   protected override matchesTextSearch(item: any, searchTerm: string): boolean {
-    const searchableFields = ['ticketCode', 'incidentId', 'contractUnitName', 'quadrantName', 'status', 'contractNumber'];
+    const searchableFields = ['ticketCode', 'incidentId', 'contractNumber', 'comment7d'];
 
     return searchableFields.some(field => {
       const value = this.getNestedValue(item, field);
@@ -261,32 +153,80 @@ export class TicketComponent extends BaseDashboardComponent implements OnInit {
     return this.filteredData;
   }
 
-  onEdit(ticket: any) {
+  loadTickets(): void {
+    this.ticketService.getAllTickets().subscribe({
+      next: (data) => {
+        console.log('Tickets API response:', data);
+        if (data.length > 0) {
+          console.log('First ticket structure:', data[0]);
+          console.log('First ticket all keys:', Object.keys(data[0]));
+          console.log('ticketCode:', data[0].ticketCode);
+          console.log('incidentId:', data[0].incidentId);
+          console.log('contractUnitId:', data[0].contractUnitId);
+          console.log('quadrantId:', data[0].quadrantId);
+          console.log('quantity:', data[0].quantity);
+          console.log('amountToPay:', data[0].amountToPay);
+          console.log('comment7d:', data[0].comment7d);
+        }
+        this.tableData = data;
+        this.allData = [...data];
+        this.filteredData = [...data];
+      },
+      error: (err) => {
+        console.error('Error loading tickets:', err);
+        // Removed error toast since backend might not be running
+      }
+    });
+  }
+
+  onEdit(ticket: Ticket) {
     const dialogRef = this.dialog.open(SearchDialogComponent, {
       width: '500px',
       data: {
         title: `Edit Ticket: ${ticket.ticketCode}`,
-        data: { ...ticket },
-        excludedFields: ['ticketId', 'ticketCode', 'incidentId', 'deletedat', 'updatedat', 'createdat', 'createdby', 'updatedby']
+        data: ticket,
+        excludedFields: ['ticketId', 'ticketCode', 'incidentId', 'deletedAt', 'updatedAt', 'createdAt', 'createdBy', 'updatedBy'],
+        fields: [
+          { name: 'quantity', label: 'Quantity', type: 'number', required: true },
+          { name: 'daysOutstanding', label: 'Days Outstanding', type: 'number', required: false },
+          { name: 'comment7d', label: 'Status', type: 'select', required: true, options: this.comment7dOptions.map(option => ({ value: option, label: option })) },
+          { name: 'partnerComment', label: 'Partner Comment', type: 'textarea', required: false },
+          { name: 'partnerSupervisorComment', label: 'Partner Supervisor Comment', type: 'textarea', required: false },
+          { name: 'contractNumber', label: 'Contract Number', type: 'text', required: false },
+          { name: 'amountToPay', label: 'Amount to Pay', type: 'number', required: false },
+          { name: 'ticketType', label: 'Ticket Type', type: 'text', required: true }
+        ]
       }
     });
 
     dialogRef.afterClosed().subscribe(result => {
-      if (result) {
+      if (result && ticket.ticketId) {
         const index = this.tableData.findIndex(t => t.ticketId === ticket.ticketId);
         if (index !== -1) {
-          this.tableData[index] = {
-            ...this.tableData[index],
-            ...result
+          const updatedTicket = {
+            ...ticket,
+            ...result,
+            updatedBy: this.getCurrentUserId()
           };
-          this.allData = [...this.tableData];
-          this.applyFilters();
+
+          this.ticketService.updateTicket(ticket.ticketId, updatedTicket).subscribe({
+            next: () => {
+              this.tableData[index] = updatedTicket;
+              this.allData = [...this.tableData];
+              this.applyFilters();
+              this.snackBar.open('Ticket updated successfully', 'Close', { duration: 3000 });
+            },
+            error: err => {
+              console.error('Error updating ticket:', err);
+              this.snackBar.open('Error updating ticket', 'Close', { duration: 3000 });
+            }
+          });
         }
       }
     });
   }
 
-  onDelete(ticket: any) {
+  onDelete(ticket: Ticket) {
     const dialogRef = this.dialog.open(ConfirmationDialogComponent, {
       width: '450px',
       disableClose: true,
@@ -300,12 +240,27 @@ export class TicketComponent extends BaseDashboardComponent implements OnInit {
     });
 
     dialogRef.afterClosed().subscribe(confirmed => {
-      if (confirmed) {
+      if (confirmed && ticket.ticketId) {
+        this.ticketService.deleteTicket(ticket.ticketId).subscribe({
+          next: () => {
         this.tableData = this.tableData.filter(t => t.ticketId !== ticket.ticketId);
-        this.allData = [...this.tableData];
-        this.applyFilters();
-        console.log('Ticket deleted:', ticket);
+            this.allData = [...this.tableData];
+            this.applyFilters();
+            this.snackBar.open('Ticket deleted successfully', 'Close', { duration: 3000 });
+          },
+          error: (err) => {
+            console.error('Error deleting ticket:', err);
+            this.snackBar.open('Error deleting ticket', 'Close', { duration: 3000 });
+          }
+        });
       }
     });
+  }
+
+  // Helper method to get current user ID (should be replaced with actual auth service)
+  private getCurrentUserId(): number {
+    // TODO: Implement this when auth service is available
+    // return this.authService.getCurrentUser()?.id || 1;
+    return 1; // Default for now
   }
 }

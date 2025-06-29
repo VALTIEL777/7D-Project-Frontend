@@ -3,9 +3,7 @@ import { DashboardLayoutComponent } from "../../../../shared/dashboard-layout/da
 import { CardWithButtonComponent } from "../../../../shared/card-with-button/card-with-button.component";
 import { MatTableModule } from "@angular/material/table";
 import { CommonModule } from "@angular/common";
-import { DatePipe } from '@angular/common';
 import { MatDividerModule } from '@angular/material/divider';
-import { SearchBarComponent } from '../../../../shared/search-bar/search-bar.component';
 import { DragDropModule } from '@angular/cdk/drag-drop';
 import { CdkDragDrop, moveItemInArray, transferArrayItem } from '@angular/cdk/drag-drop';
 import { MatButtonModule } from '@angular/material/button';
@@ -20,9 +18,7 @@ import { FilterService } from '../../../../core/services/filter.service';
     CardWithButtonComponent,
     MatTableModule,
     CommonModule,
-    DatePipe,
     MatDividerModule,
-    SearchBarComponent,
     DragDropModule,
     MatButtonModule,
     PlusButtonComponent

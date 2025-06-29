@@ -31,7 +31,7 @@ export class SuppliersComponent extends BaseDashboardComponent implements OnInit
   columns: ColumnDefinition[] = [
     {
       name: 'name',
-      header: 'Supplier Name',
+      header: 'Name',
       cell: (s: any) => s.name
     },
     {
@@ -95,13 +95,13 @@ export class SuppliersComponent extends BaseDashboardComponent implements OnInit
     this.supplierService.getAllSuppliers().subscribe({
       next: (suppliers) => {
         this.tableData = suppliers.map(s => ({
-          supplierid: s.supplierId,
+          supplierid: s.supplierid,
           name: s.name,
           phone: s.phone,
           email: s.email,
           address: s.address,
-          createdby: s.createdBy,
-          updatedby: s.updatedBy
+          createdby: s.createdby,
+          updatedby: s.updatedby
         }) as any);
         this.allData = [...this.tableData];
         this.filteredData = [...this.allData];

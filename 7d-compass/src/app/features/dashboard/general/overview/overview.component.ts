@@ -79,7 +79,6 @@ export class OverviewComponent extends BaseDashboardComponent implements OnInit 
     'phase',
     'status',
     'startDate',
-    'actions',
   ];
 
   timeRanges = ['Year', 'Month', 'Week'] as const;
@@ -170,7 +169,7 @@ export class OverviewComponent extends BaseDashboardComponent implements OnInit 
     if (this.isMobile) {
       this.displayedColumns = ['location', 'status'];
     } else {
-      this.displayedColumns = ['location', 'phase', 'status', 'startDate', 'actions'];
+      this.displayedColumns = ['location', 'phase', 'status', 'startDate'];
     }
   }
 

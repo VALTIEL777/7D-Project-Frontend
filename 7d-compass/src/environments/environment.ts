@@ -10,5 +10,6 @@ export const environment = {
   fineServiceUrl: 'http://localhost:3000/api/fines',
   invoiceServiceUrl: 'http://localhost:3000/api/invoices',
   diggerServiceUrl: 'http://localhost:3000/api/diggers',
-  rtrServiceUrl: 'http://localhost:3000/api/rtr'
+  rtrServiceUrl: 'http://localhost:3000/api/rtr',
+  ticketServiceUrl: 'http://localhost:3000/api/tickets'
 };

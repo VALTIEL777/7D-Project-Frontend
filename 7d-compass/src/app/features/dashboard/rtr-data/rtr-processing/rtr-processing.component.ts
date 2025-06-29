@@ -12,12 +12,30 @@ import { MatDialog } from '@angular/material/dialog';
 import { ConfirmationDialogComponent } from '../../../../shared/confirmation-dialog/confirmation-dialog.component';
 import { BaseDashboardComponent } from '../../../../shared/base-dashboard.component';
 import { FilterService } from '../../../../core/services/filter.service';
+import { StepperCardComponent, StepperData } from '../../../../shared/stepper-card/stepper-card.component';
+
+// Updated interface for the new API structure
+interface RTRFileInfo {
+  name: string;
+  size: number;
+  lastModified: string;
+  type: 'uploaded' | 'generated';
+  url: string;
+}
+
+interface RTRFilesResponse {
+  success: boolean;
+  files: {
+    uploaded: RTRFileInfo[];
+    generated: RTRFileInfo[];
+  };
+}
 
 @Component({
   selector: 'app-rtr-processing',
   imports: [DashboardLayoutComponent,
     DragDropUploadComponent,
-     CardWithButtonComponent, MatTableModule, MatDividerModule, CommonModule, MATERIAL_MODULES, ],
+     CardWithButtonComponent, MatTableModule, MatDividerModule, CommonModule, MATERIAL_MODULES, StepperCardComponent],
   templateUrl: './rtr-processing.component.html',
   styleUrl: './rtr-processing.component.scss'
 })
@@ -40,6 +58,11 @@ export class RtrProcessingComponent extends BaseDashboardComponent implements On
   currentUploadFileName = '';  // Track current file being uploaded
   currentRtrId: number | null = null;  // Track current RTR ID from upload
 
+  // Upload retry mechanism
+  private uploadRetryCount = 0;
+  private maxUploadRetries = 2;
+  private currentUploadFile: File | null = null;
+
   // User decisions for inconsistencies
   userDecisions: { [ticketId: string]: { [field: string]: 'excel' | 'database' } } = {};
 
@@ -47,6 +70,9 @@ export class RtrProcessingComponent extends BaseDashboardComponent implements On
   pastedDataSource: any[] = [];
   pastedDisplayedColumns: string[] = [];
   private pastedText: string = '';
+
+  // Stepper data
+  stepperData: StepperData = {};
 
   constructor(
     private rtrService: RTRService,
@@ -63,10 +89,8 @@ export class RtrProcessingComponent extends BaseDashboardComponent implements On
     // Test API connectivity
     this.testApiConnectivity();
 
-    // Add mock data for testing if API is not available
-    if (this.receivedRTRs.length === 0) {
-      this.addMockData();
-    }
+    // Load RTR files
+    this.loadRTRFiles();
   }
 
   // Override the abstract loadData method
@@ -80,204 +104,100 @@ export class RtrProcessingComponent extends BaseDashboardComponent implements On
     this.rtrService.listRTRs().subscribe({
       next: (response) => {
         if (response.success) {
-          this.receivedRTRs = response.rtrs;
-          this.sentRTRs = response.rtrs; // For now, using same data for both
+          this.receivedRTRs = response.files.uploaded || [];
+          this.sentRTRs = response.files.generated || [];
 
-          // Update the base component's data arrays
+          // Update the base component's data arrays with received files for filtering
           this.allData = [...this.receivedRTRs];
           this.filteredData = [...this.allData];
         } else {
-          this.addMockData(); // Use mock data if API returns failure
+          console.error('Failed to load RTR files');
+          this.snackBar.open('Failed to load RTR files', 'Close', { duration: 3000 });
         }
         this.isLoadingRTRs = false;
       },
       error: (error) => {
         console.error('Error loading RTR files:', error);
-        this.snackBar.open('Using mock data for testing', 'Close', { duration: 3000 });
-        this.addMockData(); // Use mock data on error
+        this.snackBar.open('Error loading RTR files. Please check your connection.', 'Close', { duration: 5000 });
         this.isLoadingRTRs = false;
       }
     });
   }
 
-  // Add mock data for testing
-  addMockData() {
-    const mockRTRs: RTRFile[] = [
-      {
-        rtrid: 1,
-        name: 'RTR_2025_01_15.xlsx',
-        url: '/api/rtr/download/1',
-        createdat: '2025-01-15T10:30:00Z',
-        updatedat: '2025-01-15T10:30:00Z'
-      },
-      {
-        rtrid: 2,
-        name: 'RTR_2025_01_10.xlsx',
-        url: '/api/rtr/download/2',
-        createdat: '2025-01-10T14:20:00Z',
-        updatedat: '2025-01-10T14:20:00Z'
-      },
-      {
-        rtrid: 3,
-        name: 'RTR_2025_01_05.xlsx',
-        url: '/api/rtr/download/3',
-        createdat: '2025-01-05T09:15:00Z',
-        updatedat: '2025-01-05T09:15:00Z'
-      }
-    ];
-
-    this.receivedRTRs = mockRTRs;
-    this.sentRTRs = mockRTRs;
-
-    // Update the base component's data arrays
-    this.allData = [...this.receivedRTRs];
-    this.filteredData = [...this.allData];
-  }
-
-  // Generate mock analysis data for testing
-  generateMockAnalysis() {
-    const mockAnalysis: AnalysisResult = {
-      success: true,
-      analysis: {
-        newTickets: [
-          {
-            ticketCode: 'WO123456',
-            excelData: {
-              RESTN_WO_NUM: 'WO123456',
-              TASK_WO_NUM: 'TASK789',
-              'PGL ComD:Wments': 'Sample comment',
-              'Contractor Comments': 'Contractor note',
-              SHOP: 'Shop1',
-              SQ_MI: 1.5,
-              Earliest_Rpt_Dt: '2025-01-15',
-              ADDRESS: '123 Main St',
-              STREET_FROM_RES: 'Oak St',
-              STREET_TO_RES: 'Pine St',
-              NOTES2_RES: 'Notes',
-              SAP_ITEM_NUM: 'ITEM001',
-              LOCATION2_RES: 'Austin, TX',
-              length_x_width: '10x20',
-              AGENCY_NO: 12345,
-              ILL_ONLY: 'N',
-              START_DATE: '2025-02-01',
-              EXP_DATE: '2025-03-01',
-              ticketType: 'regular'
-            }
-          }
-        ],
-        inconsistentTickets: [
-          {
-            ticketId: 2,
-            ticketCode: 'WO789012',
-            excelData: {
-              RESTN_WO_NUM: 'WO789012',
-              TASK_WO_NUM: 'TASK012',
-              'PGL ComD:Wments': 'Updated comment',
-              'Contractor Comments': 'Updated contractor note',
-              SHOP: 'Shop2',
-              SQ_MI: 2.0,
-              Earliest_Rpt_Dt: '2025-01-20',
-              ADDRESS: '456 Oak Ave',
-              STREET_FROM_RES: 'Maple St',
-              STREET_TO_RES: 'Elm St',
-              NOTES2_RES: 'Updated notes',
-              SAP_ITEM_NUM: 'ITEM002',
-              LOCATION2_RES: 'Dallas, TX',
-              length_x_width: '15x25',
-              AGENCY_NO: 67890,
-              ILL_ONLY: 'Y',
-              START_DATE: '2025-02-15',
-              EXP_DATE: '2025-03-15',
-              ticketType: 'regular'
-            },
-            databaseData: {
-              ticketId: 2,
-              ticketCode: 'WO789012',
-              comment7d: 'Old comment',
-              quantity: 1.8
-            },
-            inconsistencies: [
-              {
-                field: 'PGL ComD:Wments',
-                databaseField: 'comment7d',
-                excelValue: 'Updated comment',
-                databaseValue: 'Old comment',
-                type: 'text'
-              },
-              {
-                field: 'SQ_MI',
-                databaseField: 'quantity',
-                excelValue: 2.0,
-                databaseValue: 1.8,
-                type: 'number'
-              }
-            ]
-          }
-        ],
-        matchingTickets: [
-          {
-            ticketId: 3,
-            ticketCode: 'WO345678',
-            excelData: {
-              RESTN_WO_NUM: 'WO345678',
-              'PGL ComD:Wments': 'Matching comment',
-              SQ_MI: 1.5,
-              Earliest_Rpt_Dt: '2025-01-25',
-              ADDRESS: '789 Pine St'
-            },
-            databaseData: {
-              ticketId: 3,
-              ticketCode: 'WO345678',
-              comment7d: 'Matching comment',
-              quantity: 1.5
-            }
-          }
-        ],
-        summary: {
-          total: 3,
-          new: 1,
-          inconsistent: 1,
-          matching: 1
-        }
-      }
-    };
-
-    this.analysisResult = mockAnalysis;
-    this.newTickets = mockAnalysis.analysis.newTickets;
-    this.inconsistentTickets = mockAnalysis.analysis.inconsistentTickets;
-    this.matchingTickets = mockAnalysis.analysis.matchingTickets || [];
-
-    // Initialize user decisions
-    this.userDecisions = {};
-    this.inconsistentTickets.forEach(ticket => {
-      this.userDecisions[ticket.ticketId.toString()] = {};
-      ticket.inconsistencies.forEach(inconsistency => {
-        this.userDecisions[ticket.ticketId.toString()][inconsistency.field] = 'database';
-      });
-    });
-  }
-
   // Handle file upload from drag-drop component
   onFilesDropped(files: File[]) {
-    if (files.length > 0) {
-      const file = files[0];
-      console.log('File dropped:', file.name);
-      this.snackBar.open(`Processing file: ${file.name}`, 'Close', { duration: 2000 });
-      this.currentUploadFileName = file.name;
-      this.uploadRTRFile(file);
+    console.log('🔄 onFilesDropped called with files:', files);
+    console.log('📁 Number of files:', files.length);
+
+    if (files.length === 0) {
+      console.log('❌ No files were dropped');
+      this.snackBar.open('No files were dropped', 'Close', { duration: 2000 });
+      return;
     }
+
+    if (files.length > 1) {
+      console.log('❌ Too many files dropped:', files.length);
+      this.snackBar.open('Please drop only one file at a time', 'Close', { duration: 2000 });
+      return;
+    }
+
+    const file = files[0];
+    console.log('📄 File dropped:', {
+      name: file.name,
+      size: file.size,
+      type: file.type,
+      lastModified: file.lastModified
+    });
+
+    // Validate file before processing
+    if (!file || file.size === 0) {
+      console.log('❌ Invalid file: File is empty or corrupted');
+      this.snackBar.open('Invalid file: File is empty or corrupted', 'Close', { duration: 3000 });
+      return;
+    }
+
+    // Check if file is being processed
+    if (this.isUploading) {
+      console.log('⏳ Upload already in progress');
+      this.snackBar.open('Upload already in progress. Please wait.', 'Close', { duration: 3000 });
+      return;
+    }
+
+    console.log('✅ File validation passed, starting upload process');
+    this.snackBar.open(`Processing file: ${file.name}`, 'Close', { duration: 2000 });
+    this.currentUploadFileName = file.name;
+
+    // Call uploadRTRFile directly without delay
+    console.log('🚀 Calling uploadRTRFile');
+    this.uploadRTRFile(file);
   }
 
-  // Enhanced file upload with analysis
-  uploadRTRFile(file: File) {
+  // Enhanced file upload with analysis and retry logic
+  uploadRTRFile(file: File, isRetry: boolean = false) {
+    console.log('🚀 uploadRTRFile called with:', {
+      fileName: file.name,
+      fileSize: file.size,
+      fileType: file.type,
+      isRetry: isRetry,
+      uploadRetryCount: this.uploadRetryCount
+    });
+
+    // Store the file for retry purposes
+    if (!isRetry) {
+      this.currentUploadFile = file;
+      this.uploadRetryCount = 0;
+      console.log('📁 File stored for potential retry');
+    }
+
     // Validate file type
     const allowedTypes = [
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
       'application/vnd.ms-excel', // .xls
-      'text/csv' // .csv
+      'text/csv', // .csv
+      'application/octet-stream' // Fallback for some Excel files
     ];
 
-    if (!allowedTypes.includes(file.type)) {
+    if (!allowedTypes.includes(file.type) && !file.name.toLowerCase().endsWith('.xlsx') && !file.name.toLowerCase().endsWith('.xls') && !file.name.toLowerCase().endsWith('.csv')) {
       this.snackBar.open(
         `Invalid file type. Please upload an Excel (.xlsx, .xls) or CSV file.`,
         'Close',
@@ -297,26 +217,37 @@ export class RtrProcessingComponent extends BaseDashboardComponent implements On
       return;
     }
 
+    // Prevent multiple simultaneous uploads
+    if (this.isUploading) {
+      this.snackBar.open('Upload already in progress. Please wait.', 'Close', { duration: 3000 });
+      return;
+    }
+
     this.isUploading = true;
     this.currentUploadFileName = file.name;
     this.currentRtrId = null; // Reset RTR ID
-    console.log('Starting upload for file:', file.name);
+    console.log(`Starting upload for file: ${file.name}, Size: ${file.size}, Type: ${file.type}, Retry: ${isRetry ? this.uploadRetryCount : 0}`);
 
+    // Make the API call directly without delay
     this.rtrService.uploadRTR(file).subscribe({
       next: (response) => {
-        console.log('Upload response:', response);
+        console.log('✅ Upload response:', response);
+
+        // Reset retry count on success
+        this.uploadRetryCount = 0;
+        this.currentUploadFile = null;
 
         // Analyze the response structure for debugging
         this.testUploadResponseStructure(response);
 
         if (response.success) {
           // Extract RTR ID from response if available - check multiple possible field names
-          if (response.rtrid) {
-            this.currentRtrId = response.rtrid;
-            console.log('RTR ID from upload (rtrid):', this.currentRtrId);
-          } else if (response.rtrId) {
+          if (response.rtrId) {
             this.currentRtrId = response.rtrId;
             console.log('RTR ID from upload (rtrId):', this.currentRtrId);
+          } else if (response.rtrid) {
+            this.currentRtrId = response.rtrid;
+            console.log('RTR ID from upload (rtrid):', this.currentRtrId);
           } else if (response.id) {
             this.currentRtrId = response.id;
             console.log('RTR ID from upload (id):', this.currentRtrId);
@@ -333,7 +264,7 @@ export class RtrProcessingComponent extends BaseDashboardComponent implements On
           }
 
           this.snackBar.open(
-            `File "${file.name}" uploaded successfully! ${response.sheetCount} sheets processed.`,
+            `File "${file.name}" uploaded successfully! ${response.sheetCount || 'Data'} processed.`,
             'Close',
             { duration: 5000 }
           );
@@ -346,7 +277,10 @@ export class RtrProcessingComponent extends BaseDashboardComponent implements On
             }
           }
 
-          this.loadRTRFiles(); // Reload the list
+          // Reload the list after a short delay to ensure backend processing is complete
+          setTimeout(() => {
+            this.loadRTRFiles();
+          }, 1000);
         } else {
           this.snackBar.open(
             `Upload failed: ${response.error || 'Unknown error'}`,
@@ -358,9 +292,36 @@ export class RtrProcessingComponent extends BaseDashboardComponent implements On
         this.currentUploadFileName = '';
       },
       error: (error) => {
-        console.error('Upload error:', error);
+        console.error('❌ Upload error:', error);
+
+        // Check if we should retry
+        if (this.uploadRetryCount < this.maxUploadRetries && this.currentUploadFile) {
+          this.uploadRetryCount++;
+          console.log(`Retrying upload (attempt ${this.uploadRetryCount}/${this.maxUploadRetries})`);
+
+          this.snackBar.open(
+            `Upload failed, retrying... (${this.uploadRetryCount}/${this.maxUploadRetries})`,
+            'Close',
+            { duration: 2000 }
+          );
+
+          // Retry after a short delay
+          setTimeout(() => {
+            this.isUploading = false;
+            this.uploadRTRFile(this.currentUploadFile!, true);
+          }, 2000);
+          return;
+        }
+
+        // Reset retry state
+        this.uploadRetryCount = 0;
+        this.currentUploadFile = null;
+
+        // Use the improved error message from the service
+        const errorMessage = error.userMessage || 'Upload failed';
+
         this.snackBar.open(
-          `Upload failed: ${error.error?.error || error.message}`,
+          `${errorMessage}. Please try again.`,
           'Close',
           { duration: 5000 }
         );
@@ -372,69 +333,41 @@ export class RtrProcessingComponent extends BaseDashboardComponent implements On
   }
 
   // Download RTR file
-  downloadRTR(rtrId: number, fileName: string) {
-    // Validate RTR ID
-    if (!rtrId || rtrId === undefined) {
-      console.error('Invalid RTR ID for download:', rtrId);
-      this.snackBar.open('Invalid RTR ID for download', 'Close', { duration: 3000 });
-      return;
-    }
+  downloadRTR(file: RTRFile) {
+    console.log('Downloading RTR file:', file.name, 'URL:', file.url);
 
-    console.log('Downloading RTR file with ID:', rtrId, 'FileName:', fileName);
+    // Create a temporary link to download the file
+    const link = document.createElement('a');
+    link.href = file.url;
+    link.download = file.name;
+    link.target = '_blank';
 
-    this.rtrService.downloadRTR(rtrId).subscribe({
-      next: (blob) => {
-        console.log('Download successful, blob size:', blob.size);
-        const url = window.URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = fileName;
-        link.click();
-        window.URL.revokeObjectURL(url);
-        this.snackBar.open('File downloaded successfully', 'Close', { duration: 3000 });
-      },
-      error: (error) => {
-        console.error('Download error:', error);
-        this.snackBar.open('Download failed - using mock data for testing', 'Close', { duration: 3000 });
-        // For testing purposes, create a mock download
-        this.createMockDownload(fileName);
-      }
-    });
+    // Append to body, click, and remove
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    this.snackBar.open('File download started', 'Close', { duration: 3000 });
   }
 
   // Download current uploaded file
   downloadCurrentUploadedFile() {
-    if (!this.currentRtrId) {
-      console.error('No RTR ID available for current uploaded file');
-      this.snackBar.open('No file available for download. Please upload a file first.', 'Close', { duration: 3000 });
-      return;
-    }
-
     if (!this.currentUploadFileName) {
       console.error('No filename available for current uploaded file');
       this.snackBar.open('No filename available for download.', 'Close', { duration: 3000 });
       return;
     }
 
-    console.log('Downloading current uploaded file with ID:', this.currentRtrId, 'FileName:', this.currentUploadFileName);
-    this.downloadRTR(this.currentRtrId, this.currentUploadFileName);
-  }
+    // Find the file by name in the received RTRs
+    const file = this.receivedRTRs.find(rtr => rtr.name === this.currentUploadFileName);
 
-  // Create mock download for testing
-  createMockDownload(fileName: string) {
-    const mockContent = `Mock RTR file content for ${fileName}
-This is a test file created for demonstration purposes.
-Date: ${new Date().toISOString()}
-Ticket: P123456
-Location: Austin, TX`;
-
-    const blob = new Blob([mockContent], { type: 'text/plain' });
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = fileName.replace('.xlsx', '_mock.txt');
-    link.click();
-    window.URL.revokeObjectURL(url);
+    if (file) {
+      console.log('Downloading current uploaded file:', file.name, 'URL:', file.url);
+      this.downloadRTR(file);
+    } else {
+      console.error('Current uploaded file not found in received RTRs');
+      this.snackBar.open('File not found for download. Please refresh the list.', 'Close', { duration: 3000 });
+    }
   }
 
   // Process pasted data and analyze
@@ -751,18 +684,26 @@ Location: Austin, TX`;
     console.log('Testing RTR API connectivity...');
     console.log('API Info:', this.rtrService.getApiInfo());
 
-    this.rtrService.testApiConnectivity().subscribe({
+    this.rtrService.healthCheck().subscribe({
       next: (response) => {
         console.log('✅ RTR API is accessible:', response);
-        this.snackBar.open('RTR API is accessible', 'Close', { duration: 3000 });
+        this.snackBar.open(`RTR API is accessible - ${response.status}`, 'Close', { duration: 3000 });
       },
       error: (error) => {
         console.warn('⚠️ RTR API connectivity issue:', error);
-        this.snackBar.open(
-          `RTR API not accessible: ${error.message || 'Unknown error'}`,
-          'Close',
-          { duration: 5000 }
-        );
+        let errorMessage = 'RTR API not accessible';
+
+        if (error.status === 0) {
+          errorMessage = 'RTR API server is not running. Please start the backend server.';
+        } else if (error.status === 404) {
+          errorMessage = 'RTR API endpoint not found. Please check the API configuration.';
+        } else if (error.status === 500) {
+          errorMessage = 'RTR API server error. Please check backend logs.';
+        } else if (error.message) {
+          errorMessage = `RTR API error: ${error.message}`;
+        }
+
+        this.snackBar.open(errorMessage, 'Close', { duration: 5000 });
       }
     });
   }
@@ -794,5 +735,310 @@ Location: Austin, TX`;
         console.log(`  Result ${index}:`, result);
       });
     }
+  }
+
+  // Stepper event handlers
+  onStepCompleted(event: { step: number; data: any }) {
+    console.log(`Step ${event.step} completed:`, event.data);
+
+    // Update stepper data with the new data from the step
+    this.stepperData = { ...this.stepperData, ...event.data };
+
+    // Show success message
+    this.snackBar.open(`Step ${event.step} completed successfully!`, 'Close', { duration: 3000 });
+
+    // Handle specific step completions
+    switch (event.step) {
+      case 1: // Upload completed
+        if (event.data.rtrId) {
+          this.currentRtrId = event.data.rtrId;
+        }
+        break;
+      case 2: // Analysis completed
+        if (event.data.analyzedData) {
+          // Update the existing analysis data
+          this.analysisResult = {
+            success: true,
+            analysis: event.data.analyzedData
+          };
+          this.newTickets = event.data.analyzedData.newTickets || [];
+          this.inconsistentTickets = event.data.analyzedData.inconsistentTickets || [];
+          this.matchingTickets = event.data.analyzedData.matchingTickets || [];
+        }
+        break;
+      case 6: // Save completed
+        if (event.data.saveResults) {
+          // Reload RTR files after successful save
+          this.loadRTRFiles();
+        }
+        break;
+    }
+  }
+
+  onProcessCompleted(data: StepperData) {
+    console.log('Process completed:', data);
+
+    // Show final success message
+    this.snackBar.open('RTR processing workflow completed successfully!', 'Close', { duration: 5000 });
+
+    // Reload data
+    this.loadRTRFiles();
+
+    // Clear any existing analysis data since it's now saved
+    this.clearAnalysisData();
+  }
+
+  // Test method to verify Excel/Database selection functionality
+  runExcelDatabaseTest() {
+    console.log('🧪 Starting Excel/Database Selection Test...');
+
+    // Create test data
+    const testInconsistencies = [
+      {
+        ticketId: 1001,
+        ticketCode: 'TKT-001',
+        taskWoNum: 'WO-001',
+        address: '123 Main St',
+        restWoNum: 'REST-001',
+        field: 'address',
+        excelValue: '123 Main Street',
+        databaseValue: '123 Main St',
+        userChoice: undefined
+      },
+      {
+        ticketId: 1001,
+        ticketCode: 'TKT-001',
+        taskWoNum: 'WO-001',
+        address: '123 Main St',
+        restWoNum: 'REST-001',
+        field: 'taskWoNum',
+        excelValue: 'WO-001-EXCEL',
+        databaseValue: 'WO-001-DB',
+        userChoice: undefined
+      },
+      {
+        ticketId: 1002,
+        ticketCode: 'TKT-002',
+        taskWoNum: 'WO-002',
+        address: '456 Oak Ave',
+        restWoNum: 'REST-002',
+        field: 'address',
+        excelValue: '456 Oak Avenue',
+        databaseValue: '456 Oak Ave',
+        userChoice: undefined
+      }
+    ];
+
+    // Test 1: Select Excel for all fields
+    console.log('\n📋 Test 1: Selecting Excel for all fields');
+    this.userDecisions = {};
+
+    testInconsistencies.forEach(item => {
+      this.onDecisionChange(item.ticketId, item.field, 'excel');
+    });
+
+    console.log('User decisions after Excel selection:', JSON.stringify(this.userDecisions, null, 2));
+
+    // Test 2: Select Database for all fields
+    console.log('\n📋 Test 2: Selecting Database for all fields');
+    this.userDecisions = {};
+
+    testInconsistencies.forEach(item => {
+      this.onDecisionChange(item.ticketId, item.field, 'database');
+    });
+
+    console.log('User decisions after Database selection:', JSON.stringify(this.userDecisions, null, 2));
+
+    // Test 3: Mixed selection (Excel for some, Database for others)
+    console.log('\n📋 Test 3: Mixed selection (Excel for some, Database for others)');
+    this.userDecisions = {};
+
+    // Select Excel for first item, Database for others
+    this.onDecisionChange(testInconsistencies[0].ticketId, testInconsistencies[0].field, 'excel');
+    this.onDecisionChange(testInconsistencies[1].ticketId, testInconsistencies[1].field, 'database');
+    this.onDecisionChange(testInconsistencies[2].ticketId, testInconsistencies[2].field, 'excel');
+
+    console.log('User decisions after mixed selection:', JSON.stringify(this.userDecisions, null, 2));
+
+    // Test 4: Verify data structure for API submission
+    console.log('\n📋 Test 4: Verifying data structure for API submission');
+    const apiData = {
+      rtrId: 999,
+      newTickets: [],
+      inconsistentTickets: testInconsistencies.map(item => ({
+        ticketId: item.ticketId,
+        ticketCode: item.ticketCode,
+        taskWoNum: item.taskWoNum,
+        address: item.address,
+        restWoNum: item.restWoNum,
+        excelData: { [item.field]: item.excelValue },
+        databaseData: { [item.field]: item.databaseValue },
+        inconsistencies: [{
+          field: item.field,
+          databaseField: item.field,
+          excelValue: item.excelValue,
+          databaseValue: item.databaseValue,
+          type: 'text'
+        }]
+      })),
+      decisions: this.userDecisions,
+      missingInfoFilled: [],
+      skippedRows: []
+    };
+
+    console.log('API submission data:', JSON.stringify(apiData, null, 2));
+
+    console.log('\n✅ Excel/Database Selection Test completed!');
+
+    // Show results in snackbar
+    this.snackBar.open(
+      'Excel/Database selection test completed. Check console for detailed results.',
+      'Close',
+      { duration: 8000 }
+    );
+  }
+
+  // Method to show complete API structure
+  showApiStructure() {
+    console.log('📋 COMPLETE API STRUCTURE FOR BACKEND:');
+    console.log('=====================================');
+
+    // 1. Analysis Request
+    console.log('\n1️⃣ ANALYSIS REQUEST (/rtr/stepper/analyze):');
+    console.log(JSON.stringify({
+      parsedData: [
+        {
+          RESTN_WO_NUM: "REST-001",
+          TASK_WO_NUM: "WO-001",
+          ADDRESS: "123 Main St",
+          SQ_MI: 0.5,
+          Earliest_Rpt_Dt: "2024-01-01",
+          // ... other RTR fields
+        }
+      ]
+    }, null, 2));
+
+    // 2. Analysis Response
+    console.log('\n2️⃣ ANALYSIS RESPONSE:');
+    console.log(JSON.stringify({
+      success: true,
+      analysis: {
+        newTickets: [
+          {
+            ticketCode: "TKT-NEW-001",
+            excelData: { /* RTR data */ },
+            taskWoNum: "WO-001",
+            address: "123 Main St",
+            restWoNum: "REST-001"
+          }
+        ],
+        inconsistentTickets: [
+          {
+            ticketId: 1001,
+            ticketCode: "TKT-001",
+            taskWoNum: "WO-001",
+            address: "123 Main St",
+            restWoNum: "REST-001",
+            excelData: { address: "123 Main Street" },
+            databaseData: { address: "123 Main St" },
+            inconsistencies: [
+              {
+                field: "address",
+                databaseField: "address",
+                excelValue: "123 Main Street",
+                databaseValue: "123 Main St",
+                type: "text"
+              }
+            ]
+          }
+        ],
+        matchingTickets: [
+          {
+            ticketId: 1002,
+            ticketCode: "TKT-002",
+            taskWoNum: "WO-002",
+            address: "456 Oak Ave",
+            restWoNum: "REST-002",
+            excelData: { /* RTR data */ },
+            databaseData: { /* DB data */ }
+          }
+        ],
+        missingInfo: [
+          {
+            ticketCode: "TKT-003",
+            taskWoNum: "WO-003",
+            address: "789 Pine St",
+            restWoNum: "REST-003",
+            row: { /* RTR row data */ },
+            missingField: "SAP_ITEM_NUM",
+            type: "required",
+            description: "Missing SAP item number"
+          }
+        ],
+        summary: {
+          total: 10,
+          new: 2,
+          inconsistent: 3,
+          matching: 4,
+          missingInfo: 1
+        }
+      },
+      message: "Analysis completed successfully"
+    }, null, 2));
+
+    // 3. Validation Request
+    console.log('\n3️⃣ VALIDATION REQUEST (/rtr/stepper/validate):');
+    console.log(JSON.stringify({
+      rtrId: 123,
+      newTickets: [/* new tickets array */],
+      inconsistentTickets: [/* inconsistent tickets array */],
+      decisions: {
+        "1001": {
+          "address": "excel",
+          "taskWoNum": "database"
+        }
+      },
+      missingInfoFilled: [
+        {
+          ticketCode: "TKT-003",
+          data: {
+            "SAP_ITEM_NUM": "SAP123456"
+          }
+        }
+      ],
+      skippedRows: [
+        {
+          ticketCode: "TKT-004",
+          field: "NOTES2_RES",
+          reason: "User chose to skip optional field"
+        }
+      ]
+    }, null, 2));
+
+    // 4. Save Request
+    console.log('\n4️⃣ SAVE REQUEST (/rtr/stepper/save):');
+    console.log(JSON.stringify({
+      fileInfo: {
+        originalName: "rtr_data.xlsx",
+        buffer: "base64_encoded_file_content",
+        size: 10240,
+        mimetype: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      },
+      newTickets: [/* new tickets array */],
+      inconsistentTickets: [/* inconsistent tickets array */],
+      decisions: {
+        "1001": {
+          "address": "excel",
+          "taskWoNum": "database"
+        }
+      },
+      missingInfoFilled: [/* filled missing info */],
+      skippedRows: [/* skipped rows */],
+      createdBy: 1,
+      updatedBy: 1
+    }, null, 2));
+
+    console.log('\n✅ API Structure documentation completed!');
+    this.snackBar.open('API structure logged to console. Check console for complete documentation.', 'Close', { duration: 5000 });
   }
 }

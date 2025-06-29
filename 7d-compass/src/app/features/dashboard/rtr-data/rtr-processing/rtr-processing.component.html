@@ -1,78 +1,82 @@
-<app-dashboard-layout>
+﻿<app-dashboard-layout>
+  <!-- Test Button -->
+  <div style="margin-bottom: 20px; text-align: center;">
+    <button
+      mat-raised-button
+      color="accent"
+      (click)="runExcelDatabaseTest()"
+      style="margin: 10px;">
+      <mat-icon>science</mat-icon>
+      Test Excel/DB Selection
+    </button>
+
+    <button
+      mat-raised-button
+      color="primary"
+      (click)="showApiStructure()"
+      style="margin: 10px;">
+      <mat-icon>code</mat-icon>
+      Show API Structure
+    </button>
+  </div>
+
   <!-- CONTENEDOR GENERAL -->
   <div class="dashboard-wrapper">
     <!-- GRID PRINCIPAL -->
     <div class="dashboard-grid">
-      <!-- Subida de nuevo RTR -->
-      <app-card-with-button title="Upload Files" [showEyeButton]="true" class="spaced-card">
-        <app-drag-drop-upload
-          [maxFiles]="1"
-          [isLoading]="isUploading"
-          [currentFileName]="currentUploadFileName"
-          (filesDropped)="onFilesDropped($event)">
-        </app-drag-drop-upload>
+      <!-- Stepper Card -->
+      <app-stepper-card
+        title="RTR Processing Workflow"
+        [data]="stepperData"
+        (stepCompleted)="onStepCompleted($event)"
+        (processCompleted)="onProcessCompleted($event)"
+        class="stepper-card-full-width">
+      </app-stepper-card>
 
-        <!-- Download current uploaded file -->
-        <div *ngIf="currentRtrId && currentUploadFileName" class="upload-actions" style="margin-top: 15px; text-align: center;">
-          <button mat-raised-button color="accent" (click)="downloadCurrentUploadedFile()">
-            <mat-icon>file_download</mat-icon> Download Uploaded File
-          </button>
-          <p style="margin: 5px 0 0 0; font-size: 12px; color: #666;">
-            File: {{ currentUploadFileName }} (ID: {{ currentRtrId }})
-          </p>
+      <!-- Subida de nuevo RTR -->
+      <app-card-with-button title="Received RTR History" [showEyeButton]="true" class="spaced-card">
+        <div class="history-scrollable-content">
+          <div *ngIf="isLoadingRTRs" class="loading-state">
+            <mat-spinner diameter="20"></mat-spinner>
+            <span>Loading RTR files...</span>
+          </div>
+          <div *ngIf="!isLoadingRTRs && receivedRTRs.length === 0" class="empty-state">
+            <mat-icon>folder_open</mat-icon>
+            <span>No RTR files found</span>
+          </div>
+          <div *ngFor="let rtr of receivedRTRs" class="history-item">
+            <div class="history-content">
+              <div class="history-info">
+                <h4 class="history-title">{{ rtr.name }}</h4>
+                <p class="history-date">{{ formatDate(rtr.lastModified) }}</p>
+              </div>
+              <button mat-raised-button (click)="downloadRTR(rtr)">
+                <mat-icon>file_download</mat-icon> Download
+              </button>
+            </div>
+            <hr class="custom-divider" />
+          </div>
         </div>
       </app-card-with-button>
 
       <!-- Descargar RTR -->
-      <app-card-with-button title="Download RTR" [showEyeButton]="true" class="spaced-card">
-        <div class="download-card-content">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            x="0px"
-            y="0px"
-            width="100"
-            height="100"
-            viewBox="0 0 48 48"
-          >
-            <path
-              fill="#4CAF50"
-              d="M41,10H25v28h16c0.553,0,1-0.447,1-1V11C42,10.447,41.553,10,41,10z"
-            ></path>
-            <path
-              fill="#FFF"
-              d="M32 15H39V18H32zM32 25H39V28H32zM32 30H39V33H32zM32 20H39V23H32zM25 15H30V18H25zM25 25H30V28H25zM25 30H30V33H25zM25 20H30V23H25z"
-            ></path>
-            <path fill="#2E7D32" d="M27 42L6 38 6 10 27 6z"></path>
-            <path
-              fill="#FFF"
-              d="M19.129,31l-2.411-4.561c-0.092-0.171-0.186-0.483-0.284-0.938h-0.037c-0.046,0.215-0.154,0.541-0.324,0.979L13.652,31H9.895l4.462-7.001L10.274,17h3.837l2.001,4.196c0.156,0.331,0.296,0.725,0.42,1.179h0.04c0.078-0.271,0.224-0.68,0.439-1.22L19.237,17h3.515l-4.199,6.939l4.316,7.059h-3.74V31z"
-            ></path>
-          </svg>
-          <button mat-raised-button color="primary" (click)="loadRTRFiles()">
-            <mat-icon>refresh</mat-icon> Refresh List
-          </button>
-        </div>
-      </app-card-with-button>
-
-
-      <!-- Historial de RTR recibidos -->
-      <app-card-with-button class="rtr-history-card" title="Received RTR History" [showEyeButton]="true">
+      <app-card-with-button title="7D-RTR" [showEyeButton]="true" class="spaced-card">
         <div class="history-scrollable-content">
           <div *ngIf="isLoadingRTRs" class="loading-state">
             <mat-spinner diameter="20"></mat-spinner>
             <span>Loading RTR files...</span>
           </div>
-          <div *ngIf="!isLoadingRTRs && filteredData.length === 0" class="empty-state">
+          <div *ngIf="!isLoadingRTRs && sentRTRs.length === 0" class="empty-state">
             <mat-icon>folder_open</mat-icon>
             <span>No RTR files found</span>
           </div>
-          <div *ngFor="let rtr of filteredData" class="history-item">
+          <div *ngFor="let rtr of sentRTRs" class="history-item">
             <div class="history-content">
               <div class="history-info">
                 <h4 class="history-title">{{ rtr.name }}</h4>
-                <p class="history-date">{{ formatDate(rtr.createdat) }}</p>
+                <p class="history-date">{{ formatDate(rtr.lastModified) }}</p>
               </div>
-              <button mat-raised-button (click)="downloadRTR(rtr.rtrid, rtr.name)">
+              <button mat-raised-button (click)="downloadRTR(rtr)">
                 <mat-icon>file_download</mat-icon> Download
               </button>
             </div>
@@ -81,230 +85,8 @@
         </div>
       </app-card-with-button>
 
-      <!-- Historial de RTR enviados -->
-      <app-card-with-button class="rtr-history-card" title="Sent RTR History" [showEyeButton]="true">
-        <div class="history-scrollable-content">
-          <div *ngIf="isLoadingRTRs" class="loading-state">
-            <mat-spinner diameter="20"></mat-spinner>
-            <span>Loading RTR files...</span>
-          </div>
-          <div *ngIf="!isLoadingRTRs && filteredData.length === 0" class="empty-state">
-            <mat-icon>folder_open</mat-icon>
-            <span>No RTR files found</span>
-          </div>
-          <div *ngFor="let rtr of filteredData" class="history-item">
-            <div class="history-content">
-              <div class="history-info">
-                <h4 class="history-title">{{ rtr.name }}</h4>
-                <p class="history-date">{{ formatDate(rtr.createdat) }}</p>
-              </div>
-              <button mat-raised-button (click)="downloadRTR(rtr.rtrid, rtr.name)">
-                <mat-icon>file_download</mat-icon> Download
-              </button>
-            </div>
-            <hr class="custom-divider" />
-          </div>
-        </div>
-      </app-card-with-button>
 
-      <app-card-with-button
-        id="data-insert-card"
-        title="Paste Excel Data"
-        [showEyeButton]="true"
-        class="combined-comments-permits-card"
-      >
-        <div class="combined-card-content">
-          <textarea
-            #pasteArea
-            (paste)="handlePaste($event)"
-            placeholder="Example:
-RESTN_WO_NUM	TASK_WO_NUM	PGL ComD:Wments	Contractor Comments	SHOP	SQ_MI	Earliest_Rpt_Dt	ADDRESS	STREET_FROM_RES	STREET_TO_RES	NOTES2_RES	SAP_ITEM_NUM	LOCATION2_RES	length_x_width	AGENCY_NO	ILL_ONLY	START_DATE	EXP_DATE
-P123	T456	Test comment	Contractor note	Shop1	1.5	2025-01-15	123 Main St	Oak St	Pine St	Notes	ITEM001	Austin, TX	10x20	12345	N	2025-02-01	2025-03-01"
-            rows="7"
-          ></textarea>
 
-          <div *ngIf="pastedDataSource.length > 0" class="pasted-table-wrapper">
-            <table
-              mat-table
-              [dataSource]="pastedDataSource"
-              class="custom-table"
-            >
-              <!-- Dynamic Columns -->
-              <ng-container
-                *ngFor="let col of pastedDisplayedColumns"
-                [matColumnDef]="col"
-              >
-                <th mat-header-cell *matHeaderCellDef>{{ col }}</th>
-                <td mat-cell *matCellDef="let element">{{ element[col] }}</td>
-              </ng-container>
-
-              <tr mat-header-row *matHeaderRowDef="pastedDisplayedColumns"></tr>
-              <tr
-                mat-row
-                *matRowDef="let row; columns: pastedDisplayedColumns"
-              ></tr>
-            </table>
-          </div>
-          <div class="card-actions">
-            <button mat-raised-button color="warn" (click)="clearPastedData()">
-              Clear All
-            </button>
-            <button
-              mat-raised-button
-              color="accent"
-              (click)="processPastedData()"
-              [disabled]="isAnalyzing">
-              <mat-spinner *ngIf="isAnalyzing" diameter="16"></mat-spinner>
-              {{ isAnalyzing ? 'Analyzing...' : 'Process Data' }}
-            </button>
-            <button
-              mat-raised-button
-              color="primary"
-              (click)="generateMockAnalysis()"
-              style="margin-left: 10px;">
-              Test Analysis
-            </button>
-          </div>
-        </div>
-      </app-card-with-button>
-
-      <!-- Inconsistencias -->
-      <app-card-with-button
-        title="RTR Inconsistencies"
-        [showEditButton]="false"
-        class="inconsistencies-card"
-      >
-        <div *ngIf="analysisResult" class="analysis-summary">
-          <div class="summary-item">
-            <span class="summary-label">Total:</span>
-            <span class="summary-value">{{ analysisResult.analysis.summary.total }}</span>
-          </div>
-          <div class="summary-item">
-            <span class="summary-label">New:</span>
-            <span class="summary-value new">{{ analysisResult.analysis.summary.new }}</span>
-          </div>
-          <div class="summary-item">
-            <span class="summary-label">Inconsistent:</span>
-            <span class="summary-value inconsistent">{{ analysisResult.analysis.summary.inconsistent }}</span>
-          </div>
-          <div class="summary-item">
-            <span class="summary-label">Matching:</span>
-            <span class="summary-value matching">{{ analysisResult.analysis.summary.matching }}</span>
-          </div>
-        </div>
-
-        <div class="rtr-inconsistencies-table-wrapper">
-          <table *ngIf="inconsistentTickets.length > 0">
-            <thead>
-              <tr>
-                <th>Ticket</th>
-                <th>Field</th>
-                <th>Excel Value</th>
-                <th>Database Value</th>
-                <th>Decision</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr
-                *ngFor="let ticket of inconsistentTickets"
-                class="custom-row"
-              >
-                <ng-container *ngFor="let inconsistency of ticket.inconsistencies; let first = first">
-                  <tr *ngIf="first" [attr.rowspan]="ticket.inconsistencies.length">
-                    <td>{{ ticket.ticketCode }}</td>
-                  </tr>
-                  <tr>
-                    <td>{{ inconsistency.field }}</td>
-                    <td>{{ inconsistency.excelValue }}</td>
-                    <td>{{ inconsistency.databaseValue }}</td>
-                    <td>
-                      <mat-button-toggle-group
-                        [value]="userDecisions[ticket.ticketId.toString()]?.[inconsistency.field] || 'database'"
-                        (valueChange)="onDecisionChange(ticket.ticketId, inconsistency.field, $event)">
-                        <mat-button-toggle value="excel">Excel</mat-button-toggle>
-                        <mat-button-toggle value="database">Database</mat-button-toggle>
-                      </mat-button-toggle-group>
-                    </td>
-                  </tr>
-                </ng-container>
-              </tr>
-            </tbody>
-          </table>
-
-          <div *ngIf="inconsistentTickets.length === 0 && !analysisResult" class="empty-state">
-            <mat-icon>check_circle</mat-icon>
-            <span>No inconsistencies found. Process data to see results.</span>
-          </div>
-        </div>
-
-        <!-- Matching Tickets Section -->
-        <div *ngIf="matchingTickets.length > 0" class="matching-tickets-section">
-          <h4>Matching Tickets ({{ matchingTickets.length }})</h4>
-          <div class="matching-tickets-list">
-            <div *ngFor="let ticket of matchingTickets" class="matching-ticket-item">
-              <div class="ticket-header">
-                <strong>{{ ticket.ticketCode }}</strong>
-                <span class="ticket-id">ID: {{ ticket.ticketId }}</span>
-              </div>
-              <div class="ticket-details">
-                <div class="detail-row">
-                  <span class="label">Address:</span>
-                  <span>{{ ticket.excelData.ADDRESS }}</span>
-                </div>
-                <div class="detail-row">
-                  <span class="label">SQ_MI:</span>
-                  <span>{{ ticket.excelData.SQ_MI }}</span>
-                </div>
-                <div class="detail-row" *ngIf="ticket.excelData['PGL ComD:Wments']">
-                  <span class="label">Comments:</span>
-                  <span>{{ ticket.excelData['PGL ComD:Wments'] }}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- New Tickets Section -->
-        <div *ngIf="newTickets.length > 0" class="new-tickets-section">
-          <h4>New Tickets ({{ newTickets.length }})</h4>
-          <div class="new-tickets-list">
-            <div *ngFor="let ticket of newTickets" class="new-ticket-item">
-              <div class="ticket-header">
-                <strong>{{ ticket.ticketCode }}</strong>
-                <span class="status-badge new">New</span>
-              </div>
-              <div class="ticket-details">
-                <div class="detail-row">
-                  <span class="label">Address:</span>
-                  <span>{{ ticket.excelData.ADDRESS }}</span>
-                </div>
-                <div class="detail-row">
-                  <span class="label">SQ_MI:</span>
-                  <span>{{ ticket.excelData.SQ_MI }}</span>
-                </div>
-                <div class="detail-row" *ngIf="ticket.excelData['PGL ComD:Wments']">
-                  <span class="label">Comments:</span>
-                  <span>{{ ticket.excelData['PGL ComD:Wments'] }}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="inconsistency-actions" *ngIf="analysisResult">
-          <button mat-raised-button color="warn" (click)="resetInconsistencies()">
-            Reset
-          </button>
-          <button
-            mat-raised-button
-            color="primary"
-            (click)="saveWithDecisions()"
-            [disabled]="isProcessing">
-            <mat-spinner *ngIf="isProcessing" diameter="16"></mat-spinner>
-            {{ isProcessing ? 'Processing...' : 'Update Database' }}
-          </button>
-        </div>
-      </app-card-with-button>
     </div>
     <!-- cierre de .dashboard-grid -->
   </div>

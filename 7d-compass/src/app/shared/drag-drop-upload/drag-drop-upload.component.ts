@@ -24,6 +24,7 @@ export class DragDropUploadComponent {
   @Input() maxFiles = 5;  // default max files
   @Input() isLoading = false;  // loading state input
   @Input() currentFileName = '';  // current file being uploaded
+  @Input() allowReplace = false;  // allow replacing files instead of adding
   @Output() filesDropped = new EventEmitter<File[]>();
 
   selectedFiles: File[] = [];
@@ -51,13 +52,27 @@ export class DragDropUploadComponent {
 
   handleFiles(fileList: FileList) {
     const filesArray = Array.from(fileList);
-    const allowedCount = this.maxFiles - this.selectedFiles.length;
-    const filesToAdd = filesArray.slice(0, allowedCount);
 
-    filesToAdd.forEach(file => {
-      this.selectedFiles.push(file);
-      this.generatePreview(file);
-    });
+    // If allowReplace is true or maxFiles is 1, replace existing files
+    if (this.allowReplace || this.maxFiles === 1) {
+      this.selectedFiles = [];
+      this.previewUrls = [];
+      const filesToAdd = filesArray.slice(0, this.maxFiles);
+
+      filesToAdd.forEach(file => {
+        this.selectedFiles.push(file);
+        this.generatePreview(file);
+      });
+    } else {
+      // Original behavior: add files up to maxFiles limit
+      const allowedCount = this.maxFiles - this.selectedFiles.length;
+      const filesToAdd = filesArray.slice(0, allowedCount);
+
+      filesToAdd.forEach(file => {
+        this.selectedFiles.push(file);
+        this.generatePreview(file);
+      });
+    }
 
     this.filesDropped.emit(this.selectedFiles);
   }

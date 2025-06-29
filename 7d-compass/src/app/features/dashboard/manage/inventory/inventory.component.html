@@ -1,12 +1,20 @@
-<app-dashboard-layout>
-  <app-card-with-button title="Inventory Management" [showEyeButton]="false">
-    <app-data-table
-      [title]="'Inventory Management'"
-      [data]="filteredInventoryData"
-      [columns]="columns"
-      [pageSizeOptions]="[5, 10, 20]"
-      (edit)="onEdit($event)"
-      (delete)="onDelete($event)">
-    </app-data-table>
-  </app-card-with-button>
-</app-dashboard-layout>
+<ng-container *ngIf="suppliersLoading">
+  <div style="display: flex; justify-content: center; align-items: center; height: 80px;">
+    <mat-spinner diameter="40"></mat-spinner>
+    <span style="margin-left: 16px;">Loading suppliers...</span>
+  </div>
+</ng-container>
+<ng-container *ngIf="!suppliersLoading">
+  <app-dashboard-layout>
+    <app-card-with-button title="Inventory Management" [showEyeButton]="false">
+      <app-data-table
+        [title]="'Inventory Management'"
+        [data]="filteredInventoryData"
+        [columns]="columns"
+        [pageSizeOptions]="[5, 10, 20]"
+        (edit)="onEdit($event)"
+        (delete)="onDelete($event)">
+      </app-data-table>
+    </app-card-with-button>
+  </app-dashboard-layout>
+</ng-container>

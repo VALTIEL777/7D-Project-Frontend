@@ -1,4 +1,5 @@
 import { Component, OnInit } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { DashboardLayoutComponent } from "../../../../shared/dashboard-layout/dashboard-layout.component";
 import { DataTableComponent } from '../../../../shared/data-table/data-table.component';
 import { CardWithButtonComponent } from '../../../../shared/card-with-button/card-with-button.component';
@@ -8,7 +9,6 @@ import { MatDialog } from '@angular/material/dialog';
 import { DomSanitizer } from '@angular/platform-browser';
 import { BaseDashboardComponent } from '../../../../shared/base-dashboard.component';
 import { FilterService } from '../../../../core/services/filter.service';
-
 
 interface ColumnDefinition {
   name: string;
@@ -20,7 +20,15 @@ interface ColumnDefinition {
 
 @Component({
   selector: 'app-income',
-  imports: [DashboardLayoutComponent, DataTableComponent,CardWithButtonComponent],
+  standalone: true,
+  imports: [
+    CommonModule,
+    DashboardLayoutComponent,
+    DataTableComponent,
+    CardWithButtonComponent,
+    ConfirmationDialogComponent,
+    SearchDialogComponent
+  ],
   templateUrl: './income.component.html',
   styleUrl: './income.component.scss'
 })
@@ -326,19 +334,16 @@ totalGeneral: number = 0;
     cell: (ticket: any) => `$${ticket.invoiceweb}`
   },
   {
-  name: 'income',
-  header: 'Income',
-  cell: (ticket: any) => {
-    const diff = Number(ticket.invoiceweb) - Number(ticket.our);
-    const sign = diff > 0 ? '+' : diff < 0 ? '-' : '';
-    const color = diff > 0 ? 'green' : diff < 0 ? 'red' : 'gray';
-    return `<span style="color:${color}; font-weight: bold;">${sign}$${Math.abs(diff)}</span>`;
+    name: 'income',
+    header: 'Income',
+    cell: (ticket: any) => {
+      const diff = Number(ticket.invoiceweb) - Number(ticket.our);
+      const sign = diff > 0 ? '+' : diff < 0 ? '-' : '';
+      const color = diff > 0 ? 'green' : diff < 0 ? 'red' : 'gray';
+      return `<span style="color:${color}; font-weight: bold;">${sign}$${Math.abs(diff)}</span>`;
+    },
+    isHtml: true
   },
-  isHtml: true
-}
-,
-
-
   {
     name: 'actions',
     header: 'Actions',

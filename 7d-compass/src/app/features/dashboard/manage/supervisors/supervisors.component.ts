@@ -5,6 +5,8 @@ import { MatDialog } from '@angular/material/dialog';
 import { SearchDialogComponent } from '../../../../shared/search-dialog/search-dialog.component';
 import { DataTableComponent } from '../../../../shared/data-table/data-table.component';
 import { ConfirmationDialogComponent } from '../../../../shared/confirmation-dialog/confirmation-dialog.component';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { SupervisorsService, Supervisor } from '../../../../core/services/human-resources/supervisors.service';
 import { BaseDashboardComponent } from '../../../../shared/base-dashboard.component';
 import { FilterService } from '../../../../core/services/filter.service';
 
@@ -31,27 +33,27 @@ export class SupervisorsComponent extends BaseDashboardComponent implements OnIn
     {
       name: 'name',
       header: 'Name',
-      cell: (supervisor: any) => supervisor.name
+      cell: (supervisor: any) => `${supervisor.firstname} ${supervisor.lastname}`
     },
     {
       name: 'phone',
       header: 'Phone',
-      cell: (supervisor: any) => supervisor.phone
+      cell: (supervisor: any) => supervisor.phone || 'N/A'
     },
     {
       name: 'email',
       header: 'Email',
-      cell: (supervisor: any) => supervisor.email
+      cell: (supervisor: any) => supervisor.email || 'N/A'
     },
     {
       name: 'role',
       header: 'Role',
-      cell: (supervisor: any) => supervisor.role
+      cell: (supervisor: any) => supervisor.role || 'N/A'
     },
     {
       name: 'quadrants',
       header: 'Assigned Quadrants',
-      cell: (supervisor: any) => this.getQuadrantNames(supervisor.supervisorId)
+      cell: (supervisor: any) => this.getQuadrantNames(supervisor.assignedQuadrants)
     },
     {
       name: 'actions',
@@ -61,48 +63,12 @@ export class SupervisorsComponent extends BaseDashboardComponent implements OnIn
     }
   ];
 
-  // Mock data based on your database schema
-  tableData = [
-    {
-      supervisorId: 1,
-      name: 'Carlos Mendoza',
-      phone: '5551234567',
-      email: 'carlos.mendoza@example.com',
-      role: 'supervisor'
-    },
-    {
-      supervisorId: 2,
-      name: 'Ana Ramirez',
-      phone: '5552345678',
-      email: 'ana.ramirez@example.com',
-      role: 'zoneManager'
-    },
-    {
-      supervisorId: 3,
-      name: 'Luis Fernandez',
-      phone: '5553456789',
-      email: 'luis.fernandez@example.com',
-      role: 'supervisor'
-    },
-    {
-      supervisorId: 4,
-      name: 'Maria Gutierrez',
-      phone: '5554567890',
-      email: 'maria.gutierrez@example.com',
-      role: 'zoneManager'
-    }
-  ];
-
-  // Mock quadrant data (in a real app, this would come from your Quadrants service)
-  quadrants = [
-    { quadrantId: 1, name: 'C203', supervisorId: 1 },
-    { quadrantId: 2, name: 'C1', supervisorId: 1 },
-    { quadrantId: 3, name: 'C75', supervisorId: 2 },
-    { quadrantId: 4, name: 'C12', supervisorId: 3 }
-  ];
+  tableData: Supervisor[] = [];
 
   constructor(
     private dialog: MatDialog,
+    private snackBar: MatSnackBar,
+    private supervisorsService: SupervisorsService,
     filterService: FilterService
   ) {
     super(filterService);
@@ -110,7 +76,7 @@ export class SupervisorsComponent extends BaseDashboardComponent implements OnIn
 
   override ngOnInit(): void {
     super.ngOnInit();
-    this.loadData();
+    this.loadSupervisors();
   }
 
   protected override loadData(): void {
@@ -121,7 +87,7 @@ export class SupervisorsComponent extends BaseDashboardComponent implements OnIn
 
   // Override text search to include supervisor fields
   protected override matchesTextSearch(item: any, searchTerm: string): boolean {
-    const searchableFields = ['name', 'phone', 'email', 'role'];
+    const searchableFields = ['firstname', 'lastname', 'phone', 'email', 'role'];
 
     return searchableFields.some(field => {
       const value = this.getNestedValue(item, field);
@@ -131,7 +97,22 @@ export class SupervisorsComponent extends BaseDashboardComponent implements OnIn
       return false;
     }) ||
     // Also search in assigned quadrants
-    this.getQuadrantNames(item.supervisorId).toLowerCase().includes(searchTerm);
+    this.getQuadrantNames(item.assignedQuadrants).toLowerCase().includes(searchTerm);
+  }
+
+  loadSupervisors(): void {
+    this.supervisorsService.getAllSupervisors().subscribe({
+      next: (data) => {
+        console.log('API response data:', data);
+        this.tableData = data;
+        this.allData = [...data];
+        this.filteredData = [...data];
+      },
+      error: (err) => {
+        console.error('Error loading supervisors:', err);
+        this.snackBar.open('Error loading supervisors', 'Close', { duration: 3000 });
+      }
+    });
   }
 
   // Getter for filtered supervisor data
@@ -140,71 +121,119 @@ export class SupervisorsComponent extends BaseDashboardComponent implements OnIn
   }
 
   // Helper function to get quadrant names for a supervisor
-  getQuadrantNames(supervisorId: number): string {
-    const assignedQuadrants = this.quadrants.filter(q => q.supervisorId === supervisorId);
-    return assignedQuadrants.map(q => q.name).join(', ') || 'None';
+  getQuadrantNames(assignedQuadrants: any[]): string {
+    if (!assignedQuadrants || assignedQuadrants.length === 0) {
+      return 'None';
+    }
+
+    // Show only first 4 quadrants
+    const displayQuadrants = assignedQuadrants.slice(0, 4);
+    const quadrantStrings = displayQuadrants.map(q => {
+      const shopInfo = q.shop ? ` (${q.shop})` : '';
+      return `${q.name}${shopInfo}`;
+    });
+
+    let result = quadrantStrings.join(' | ');
+
+    // Add indicator if there are more quadrants
+    if (assignedQuadrants.length > 4) {
+      result += ` [+${assignedQuadrants.length - 4}]`;
+    }
+
+    return result;
   }
 
-  onEdit(supervisor: any) {
+  onEdit(supervisor: Supervisor) {
     const dialogRef = this.dialog.open(SearchDialogComponent, {
       width: '500px',
       data: {
-        title: `Edit Supervisor: ${supervisor.name}`,
-        data: supervisor,
-        excludedFields: ['supervisorId', 'deletedat', 'updatedat', 'createdat', 'createdby', 'updatedby'],
+        title: `Edit Supervisor: ${supervisor.firstname} ${supervisor.lastname}`,
+        data: {
+          ...supervisor,
+          name: `${supervisor.firstname} ${supervisor.lastname}`
+        },
+        excludedFields: ['employeeId', 'userId', 'assignedQuadrants', 'createdAt', 'updatedAt', 'createdBy', 'updatedBy', 'deletedAt'],
         fields: [
-          { name: 'name', label: 'Full Name', type: 'text', required: true },
-          { name: 'phone', label: 'Phone', type: 'tel', required: true },
-          { name: 'email', label: 'Email', type: 'email', required: true },
+          { name: 'firstname', label: 'First Name', type: 'text', required: true },
+          { name: 'lastname', label: 'Last Name', type: 'text', required: true },
+          { name: 'phone', label: 'Phone', type: 'text', required: true },
+          { name: 'email', label: 'Email', type: 'text', required: true },
           {
             name: 'role',
             label: 'Role',
             type: 'select',
+            required: true,
             options: [
-              { value: 'supervisor', label: 'Supervisor' },
-              { value: 'zoneManager', label: 'Zone Manager' }
-            ],
-            required: true
+              { value: 'Supervisor', label: 'Supervisor' },
+              { value: 'Zone Manager', label: 'Zone Manager' }
+            ]
           }
         ]
       }
     });
 
     dialogRef.afterClosed().subscribe(result => {
-      if (result) {
-        const index = this.tableData.findIndex(s => s.supervisorId === supervisor.supervisorId);
+      if (result && supervisor.employeeId) {
+        const index = this.tableData.findIndex(s => s.employeeId === supervisor.employeeId);
         if (index !== -1) {
-          this.tableData[index] = { ...supervisor, ...result };
-          this.allData = [...this.tableData];
-          this.applyFilters();
+          const updatedSupervisor = {
+            ...supervisor,
+            ...result,
+            updatedBy: this.getCurrentUserId()
+          };
+
+          this.supervisorsService.updateSupervisor(supervisor.employeeId, updatedSupervisor).subscribe({
+            next: () => {
+              this.tableData[index] = updatedSupervisor;
+              this.allData = [...this.tableData];
+              this.applyFilters();
+              this.snackBar.open('Supervisor updated successfully', 'Close', { duration: 3000 });
+            },
+            error: err => {
+              console.error('Error updating supervisor:', err);
+              this.snackBar.open('Error updating supervisor', 'Close', { duration: 3000 });
+            }
+          });
         }
       }
     });
   }
 
-  onDelete(supervisor: any) {
+  onDelete(supervisor: Supervisor) {
     const dialogRef = this.dialog.open(ConfirmationDialogComponent, {
       width: '450px',
       disableClose: true,
       panelClass: 'confirmation-dialog',
       data: {
         title: 'Delete Supervisor',
-        message: `Are you sure you want to delete ${supervisor.name}? This will remove their access and any quadrant assignments.`,
+        message: `Are you sure you want to delete ${supervisor.firstname} ${supervisor.lastname}? This will remove their access and any quadrant assignments.`,
         confirmText: 'Delete',
         cancelText: 'Cancel'
       }
     });
 
     dialogRef.afterClosed().subscribe(confirmed => {
-      if (confirmed) {
-        // Remove the supervisor from the array
-        this.tableData = this.tableData.filter(s => s.supervisorId !== supervisor.supervisorId);
-        this.allData = [...this.tableData];
-        this.applyFilters();
-
-        // In a real app, you would call your API service here
-        console.log('Supervisor deleted:', supervisor);
+      if (confirmed && supervisor.employeeId) {
+        this.supervisorsService.deleteSupervisor(supervisor.employeeId).subscribe({
+          next: () => {
+            this.tableData = this.tableData.filter(s => s.employeeId !== supervisor.employeeId);
+            this.allData = [...this.tableData];
+            this.applyFilters();
+            this.snackBar.open('Supervisor deleted successfully', 'Close', { duration: 3000 });
+          },
+          error: (err) => {
+            console.error('Error deleting supervisor:', err);
+            this.snackBar.open('Error deleting supervisor', 'Close', { duration: 3000 });
+          }
+        });
       }
     });
+  }
+
+  // Helper method to get current user ID (should be replaced with actual auth service)
+  private getCurrentUserId(): number {
+    // TODO: Implement this when auth service is available
+    // return this.authService.getCurrentUser()?.id || 1;
+    return 1; // Default for now
   }
 }
