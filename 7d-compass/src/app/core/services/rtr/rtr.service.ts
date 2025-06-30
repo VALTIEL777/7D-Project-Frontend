@@ -9,6 +9,7 @@ export interface RTRFile {
   lastModified: string;
   type: 'uploaded' | 'generated';
   url: string;
+  objectKey?: string;
 }
 
 export interface RTRData {
@@ -269,20 +270,6 @@ export class RTRService {
     );
   }
 
-  // List RTR database records - matches API documentation
-  listRTRRecords(): Observable<{ success: boolean; rtrs: any[] }> {
-    return this.http.get<{ success: boolean; rtrs: any[] }>(`${this.baseUrl}/list`).pipe(
-      map(response => {
-        console.log('RTR records response:', response);
-        return response;
-      }),
-      catchError(error => {
-        console.error('Error listing RTR records:', error);
-        return throwError(() => error);
-      })
-    );
-  }
-
   // List RTR files - updated for new API structure
   listRTRs(): Observable<{ success: boolean; files: { uploaded: RTRFile[]; generated: RTRFile[] } }> {
     return this.http.get<{ success: boolean; files: { uploaded: RTRFile[]; generated: RTRFile[] } }>(`${this.baseUrl}/files`).pipe(
@@ -314,6 +301,18 @@ export class RTRService {
     );
   }
 
+  // Download file by object key (new method as suggested by AI)
+  downloadFileByKey(encodedObjectKey: string): Observable<Blob> {
+    return this.http.get(`${this.baseUrl}/download-file/${encodedObjectKey}`, {
+      responseType: 'blob'
+    }).pipe(
+      catchError(error => {
+        console.error('Download by key error:', error);
+        return throwError(() => error);
+      })
+    );
+  }
+
   // Test API connectivity
   testApiConnectivity(): Observable<any> {
     return this.healthCheck().pipe(
@@ -335,12 +334,29 @@ export class RTRService {
       endpoints: {
         health: `${this.baseUrl}/health`,
         upload: `${this.baseUrl}/`,
-        list: `${this.baseUrl}/list`,
         files: `${this.baseUrl}/files`,
         download: `${this.baseUrl}/download/{rtrId}`,
         analyze: `${this.baseUrl}/analyze`,
-        saveWithDecisions: `${this.baseUrl}/save-with-decisions`
+        saveWithDecisions: `${this.baseUrl}/save-with-decisions`,
+        updateWithDatabase: `${this.baseUrl}/update-with-database`
       }
     };
+  }
+
+  // Update RTR with database values
+  updateRtrWithDatabase(formData: FormData): Observable<any> {
+    console.log('🚀 Updating RTR with database values...');
+    console.log('📁 FormData entries:', Array.from(formData.entries()));
+
+    return this.http.post<any>(`${this.baseUrl}/update-with-database`, formData).pipe(
+      map(response => {
+        console.log('✅ Update RTR response:', response);
+        return response;
+      }),
+      catchError(error => {
+        console.error('❌ Update RTR error:', error);
+        return throwError(() => error);
+      })
+    );
   }
 }

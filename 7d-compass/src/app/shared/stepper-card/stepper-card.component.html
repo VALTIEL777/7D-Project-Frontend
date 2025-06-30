@@ -3,10 +3,10 @@
     <h2 class="stepper-title">{{ title }}</h2>
   </div>
 
-  <mat-stepper #stepper class="custom-stepper">
+  <mat-stepper #stepper class="custom-stepper" [linear]="isLinear">
 
     <!-- Step 1: Upload File -->
-    <mat-step label="Upload File">
+    <mat-step label="Upload File" [editable]="true" [completed]="isStepCompleted(1)">
       <div class="step-content">
         <div class="step-header">
           <mat-icon class="step-icon">cloud_upload</mat-icon>
@@ -57,7 +57,7 @@
     </mat-step>
 
     <!-- Step 2: Analyze Data -->
-    <mat-step label="Analyze Data">
+    <mat-step label="Analyze Data" [editable]="canAccessStep(2)" [completed]="isStepCompleted(2)">
       <div class="step-content">
         <div class="step-header">
           <mat-icon class="step-icon">analytics</mat-icon>
@@ -116,14 +116,14 @@
             (click)="stepper.next()"
             [disabled]="!analyzedData">
             <mat-icon>arrow_forward</mat-icon>
-            Next: Fill Missing Info
+            Next: Review Inconsistencies
           </button>
         </div>
       </div>
     </mat-step>
 
     <!-- Step 3: Review Inconsistencies -->
-    <mat-step label="Review Inconsistencies">
+    <mat-step label="Review Inconsistencies" [editable]="canAccessStep(3)" [completed]="isStepCompleted(3)">
       <div class="step-content">
         <div class="step-header">
           <mat-icon class="step-icon">compare_arrows</mat-icon>
@@ -258,7 +258,7 @@
     </mat-step>
 
     <!-- Step 4: Fill Missing Information -->
-    <mat-step label="Fill Missing Information">
+    <mat-step label="Fill Missing Information" [editable]="canAccessStep(4)" [completed]="isStepCompleted(4)">
       <div class="step-content">
         <div class="step-header">
           <mat-icon class="step-icon">edit</mat-icon>
@@ -390,7 +390,7 @@
     </mat-step>
 
     <!-- Step 5: Validate Data -->
-    <mat-step label="Validate Data">
+    <mat-step label="Validate Data" [editable]="canAccessStep(5)" [completed]="isStepCompleted(5)">
       <div class="step-content">
         <div class="step-header">
           <mat-icon class="step-icon">verified</mat-icon>
@@ -471,7 +471,7 @@
     </mat-step>
 
     <!-- Step 6: Save to Database -->
-    <mat-step label="Save to Database">
+    <mat-step label="Save to Database" [editable]="canAccessStep(6)" [completed]="isStepCompleted(6)">
       <div class="step-content">
         <div class="step-header">
           <mat-icon class="step-icon">save</mat-icon>

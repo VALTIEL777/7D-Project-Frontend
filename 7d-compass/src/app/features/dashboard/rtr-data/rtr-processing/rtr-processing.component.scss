@@ -354,3 +354,153 @@ mat-button-toggle {
   margin-bottom: 20px;
 }
 
+/* Generate RTR Styles */
+.generate-rtr-content {
+  padding: 20px;
+}
+
+.upload-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+}
+
+.upload-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  text-align: center;
+  padding: 30px;
+  border: 2px dashed #ccc;
+  border-radius: 8px;
+  background-color: #fafafa;
+  transition: border-color 0.3s ease;
+
+  &:hover {
+    border-color: #2196f3;
+  }
+}
+
+.upload-icon {
+  font-size: 48px;
+  width: 48px;
+  height: 48px;
+  color: #666;
+}
+
+.upload-area h4 {
+  margin: 0;
+  color: #333;
+  font-size: 18px;
+}
+
+.upload-area p {
+  margin: 0;
+  color: #666;
+  font-size: 14px;
+}
+
+.upload-btn, .generate-btn {
+  min-width: 200px;
+  height: 40px;
+}
+
+.selected-file {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  background-color: #e3f2fd;
+  border-radius: 4px;
+  border: 1px solid #2196f3;
+
+  span {
+    font-weight: 500;
+    color: #1976d2;
+  }
+}
+
+.remove-file-btn {
+  margin-left: auto;
+}
+
+/* Results Section */
+.results-section {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.results-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #eee;
+
+  h4 {
+    margin: 0;
+    flex: 1;
+  }
+}
+
+.download-btn, .reset-btn {
+  margin-left: auto;
+}
+
+/* Summary Table */
+.summary-table {
+  h5 {
+    margin: 0 0 15px 0;
+    color: #333;
+    font-size: 16px;
+  }
+
+  table {
+    width: 100%;
+  }
+
+  th {
+    font-weight: 600;
+    color: #333;
+  }
+
+  td {
+    padding: 12px 8px;
+  }
+}
+
+/* Summary value classes */
+.total-rows {
+  font-weight: bold;
+  color: #333;
+}
+
+.updated-rows {
+  color: #4caf50;
+  font-weight: 500;
+}
+
+.changed-rows {
+  color: #ff9800;
+  font-weight: 500;
+}
+
+.unchanged-rows {
+  color: #2196f3;
+  font-weight: 500;
+}
+
+.not-found-rows {
+  color: #f44336;
+  font-weight: 500;
+}
+
+.error-rows {
+  color: #9c27b0;
+  font-weight: 500;
+}
+

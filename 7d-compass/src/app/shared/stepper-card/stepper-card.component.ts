@@ -224,6 +224,9 @@ export class StepperCardComponent {
   @Output() processCompleted = new EventEmitter<StepperData>();
   @ViewChild('stepper') stepper!: MatStepper;
 
+  // Step validation properties
+  isLinear = true; // Enable linear mode to prevent skipping steps
+
   // Loading states
   isStep1Loading = false;
   isStep2Loading = false;
@@ -830,6 +833,11 @@ export class StepperCardComponent {
 
               this.snackBar.open(response.message, 'Close', { duration: 5000 });
               this.stepCompleted.emit({ step: 6, data: { saveResults: this.saveResults } });
+
+              // Automatically restart the stepper after successful save
+              setTimeout(() => {
+                this.completeProcess();
+              }, 2000); // Wait 2 seconds to show the success message
             } else {
               console.error('❌ Save failed with response:', response);
               this.snackBar.open(`Save failed: ${response.message}`, 'Close', { duration: 5000 });
@@ -903,7 +911,7 @@ export class StepperCardComponent {
     this.resetStepperToFirstStep();
 
     // Show success message
-    this.snackBar.open('Process completed successfully! Stepper has been reset.', 'Close', { duration: 3000 });
+    this.snackBar.open('Process completed successfully! Stepper has been reset and is ready for a new file.', 'Close', { duration: 4000 });
   }
 
   // Reset stepper to first step
@@ -921,22 +929,60 @@ export class StepperCardComponent {
   // Helper methods
   canProceedToStep(step: number): boolean {
     switch (step) {
+      case 1: return true; // First step is always accessible
+      case 2: return !!this.uploadedFile; // Need uploaded file
+      case 3: return !!this.analyzedData; // Need analyzed data
+      case 4: return !!this.analyzedData; // Need analyzed data (inconsistencies and missing info are optional)
+      case 5: return !!this.analyzedData; // Need analyzed data
+      case 6: return !!this.validationResults.length; // Need validation results
+      default: return false;
+    }
+  }
+
+  isStepCompleted(step: number): boolean {
+    switch (step) {
       case 1: return !!this.uploadedFile;
       case 2: return !!this.analyzedData;
-      case 3: return this.inconsistencies.length >= 0;
-      case 4: return this.missingInfo.length >= 0;
-      case 5: return !!this.analyzedData;
+      case 3: return !!this.analyzedData; // Step 3 is considered complete if analysis is done
+      case 4: return !!this.analyzedData; // Step 4 is considered complete if analysis is done
+      case 5: return !!this.validationResults.length;
       case 6: return !!this.saveResults;
       default: return false;
     }
   }
 
+  canAccessStep(step: number): boolean {
+    // Can access step if all previous steps are completed
+    for (let i = 1; i < step; i++) {
+      if (!this.isStepCompleted(i)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   getStepStatus(step: number): 'completed' | 'current' | 'pending' {
-    if (this.canProceedToStep(step)) {
+    if (this.isStepCompleted(step)) {
       return 'completed';
     }
-    // Add logic to determine current step
+    if (this.canAccessStep(step)) {
+      return 'current';
+    }
     return 'pending';
+  }
+
+  // Handle step navigation
+  onStepClick(stepIndex: number) {
+    if (this.canAccessStep(stepIndex + 1)) {
+      this.stepper.selectedIndex = stepIndex;
+    } else {
+      // Show a message that the step is not accessible
+      this.snackBar.open(`Please complete the previous steps first`, 'OK', {
+        duration: 3000,
+        horizontalPosition: 'center',
+        verticalPosition: 'bottom'
+      });
+    }
   }
 
   private checkUnresolvedInconsistencies(): string[] {

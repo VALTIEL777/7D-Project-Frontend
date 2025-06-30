@@ -1,24 +1,4 @@
 ﻿<app-dashboard-layout>
-  <!-- Test Button -->
-  <div style="margin-bottom: 20px; text-align: center;">
-    <button
-      mat-raised-button
-      color="accent"
-      (click)="runExcelDatabaseTest()"
-      style="margin: 10px;">
-      <mat-icon>science</mat-icon>
-      Test Excel/DB Selection
-    </button>
-
-    <button
-      mat-raised-button
-      color="primary"
-      (click)="showApiStructure()"
-      style="margin: 10px;">
-      <mat-icon>code</mat-icon>
-      Show API Structure
-    </button>
-  </div>
 
   <!-- CONTENEDOR GENERAL -->
   <div class="dashboard-wrapper">
@@ -50,7 +30,11 @@
                 <h4 class="history-title">{{ rtr.name }}</h4>
                 <p class="history-date">{{ formatDate(rtr.lastModified) }}</p>
               </div>
-              <button mat-raised-button (click)="downloadRTR(rtr)">
+              <button
+                mat-raised-button
+                (click)="downloadRTR(rtr)"
+                [disabled]="!rtr.url || rtr.url === ''"
+                [title]="!rtr.url || rtr.url === '' ? 'No download URL available' : 'Download file'">
                 <mat-icon>file_download</mat-icon> Download
               </button>
             </div>
@@ -76,7 +60,11 @@
                 <h4 class="history-title">{{ rtr.name }}</h4>
                 <p class="history-date">{{ formatDate(rtr.lastModified) }}</p>
               </div>
-              <button mat-raised-button (click)="downloadRTR(rtr)">
+              <button
+                mat-raised-button
+                (click)="downloadRTR(rtr)"
+                [disabled]="!rtr.url || rtr.url === ''"
+                [title]="!rtr.url || rtr.url === '' ? 'No download URL available' : 'Download file'">
                 <mat-icon>file_download</mat-icon> Download
               </button>
             </div>
@@ -85,7 +73,109 @@
         </div>
       </app-card-with-button>
 
+      <!-- Generate RTR -->
+      <app-card-with-button title="Generate RTR" [showEyeButton]="true" class="spaced-card">
+        <div class="generate-rtr-content">
+          <!-- Upload Section -->
+          <div *ngIf="!generateRtrResult" class="upload-section">
+            <div class="upload-area">
+              <mat-icon class="upload-icon">cloud_upload</mat-icon>
+              <h4>Upload Excel File to Update with Database Values</h4>
+              <p>Select an Excel file to update with the latest database values</p>
 
+              <input
+                #fileInput
+                type="file"
+                accept=".xlsx,.xls"
+                (change)="onGenerateRtrFileSelected($event)"
+                style="display: none;">
+
+              <button
+                mat-raised-button
+                color="primary"
+                (click)="fileInput.click()"
+                [disabled]="isGeneratingRtr"
+                class="upload-btn">
+                <mat-icon>file_upload</mat-icon>
+                Choose Excel File
+              </button>
+
+              <div *ngIf="selectedGenerateFile" class="selected-file">
+                <mat-icon>description</mat-icon>
+                <span>{{ selectedGenerateFile.name }}</span>
+                <button
+                  mat-icon-button
+                  color="warn"
+                  (click)="clearSelectedGenerateFile()"
+                  class="remove-file-btn">
+                  <mat-icon>close</mat-icon>
+                </button>
+              </div>
+
+              <button
+                *ngIf="selectedGenerateFile"
+                mat-raised-button
+                color="accent"
+                (click)="generateRtrWithDatabase()"
+                [disabled]="isGeneratingRtr"
+                class="generate-btn">
+                <mat-icon *ngIf="!isGeneratingRtr">update</mat-icon>
+                <mat-spinner *ngIf="isGeneratingRtr" diameter="20"></mat-spinner>
+                {{ isGeneratingRtr ? 'Generating...' : 'Generate Updated RTR' }}
+              </button>
+            </div>
+          </div>
+
+          <!-- Results Section -->
+          <div *ngIf="generateRtrResult" class="results-section">
+            <div class="results-header">
+              <h4>Generation Results</h4>
+              <button
+                mat-icon-button
+                color="primary"
+                (click)="downloadGeneratedRtr()"
+                class="download-btn">
+                <mat-icon>file_download</mat-icon>
+              </button>
+              <button
+                mat-icon-button
+                color="warn"
+                (click)="resetGenerateRtr()"
+                class="reset-btn">
+                <mat-icon>refresh</mat-icon>
+              </button>
+            </div>
+
+            <!-- Summary Table -->
+            <div class="summary-table">
+              <h5>Processing Summary</h5>
+              <table mat-table [dataSource]="summaryDataSource" class="mat-elevation-z1">
+                <ng-container matColumnDef="metric">
+                  <th mat-header-cell *matHeaderCellDef>Metric</th>
+                  <td mat-cell *matCellDef="let row">{{ row.metric }}</td>
+                </ng-container>
+
+                <ng-container matColumnDef="value">
+                  <th mat-header-cell *matHeaderCellDef>Value</th>
+                  <td mat-cell *matCellDef="let row">
+                    <span [class]="getSummaryValueClass(row.metric)">{{ row.value }}</span>
+                  </td>
+                </ng-container>
+
+                <ng-container matColumnDef="percentage">
+                  <th mat-header-cell *matHeaderCellDef>Percentage</th>
+                  <td mat-cell *matCellDef="let row">
+                    <span [class]="getSummaryValueClass(row.metric)">{{ row.percentage }}%</span>
+                  </td>
+                </ng-container>
+
+                <tr mat-header-row *matHeaderRowDef="summaryColumns"></tr>
+                <tr mat-row *matRowDef="let row; columns: summaryColumns;"></tr>
+              </table>
+            </div>
+          </div>
+        </div>
+      </app-card-with-button>
 
     </div>
     <!-- cierre de .dashboard-grid -->

@@ -25,11 +25,41 @@
     background: transparent;
   }
 
+  ::ng-deep .mat-stepper-horizontal-line {
+    @media (max-width: 768px) {
+      display: none;
+    }
+  }
+
+  ::ng-deep .mat-horizontal-stepper-header-container {
+    @media (max-width: 768px) {
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+    }
+  }
+
   ::ng-deep .mat-step-header {
     background: #f8f9fa;
     border-radius: 8px;
     margin-right: 8px;
     min-width: 120px;
+
+    @media (max-width: 768px) {
+      min-width: 100px;
+      max-width: 140px;
+      margin-right: 4px;
+      margin-bottom: 8px;
+      flex: 0 0 auto;
+    }
+
+    @media (max-width: 480px) {
+      min-width: 0;
+      max-width: none;
+      margin-right: 0;
+      margin-bottom: 4px;
+      padding: 8px 4px;
+    }
 
     &.mat-step-header-ripple {
       background: #e9ecef;
@@ -38,16 +68,74 @@
     &.cdk-keyboard-focused {
       background: #d7e3ff;
     }
+
+    &.mat-step-header-disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      background: #f1f3f4;
+
+      .mat-step-icon {
+        background: #bdbdbd !important;
+        color: #757575 !important;
+      }
+
+      .mat-step-label {
+        color: #757575;
+      }
+    }
+
+    &.mat-step-header-completed {
+      .mat-step-icon {
+        background: #28a745 !important;
+        color: white !important;
+      }
+    }
+
+    &.mat-step-header-selected {
+      background: #e3f2fd;
+      border: 2px solid #2196f3;
+
+      .mat-step-icon {
+        background: #2196f3 !important;
+        color: white !important;
+      }
+    }
   }
 
   ::ng-deep .mat-step-label {
     font-size: 12px;
     font-weight: 500;
+
+    @media (max-width: 768px) {
+      font-size: 11px;
+      line-height: 1.2;
+      text-align: center;
+    }
+
+    @media (max-width: 480px) {
+      font-size: 9px;
+      line-height: 1.1;
+      padding: 0 2px;
+    }
   }
 
   ::ng-deep .mat-step-icon {
     background: #6c757d;
     color: white;
+
+    @media (max-width: 768px) {
+      width: 24px;
+      height: 24px;
+      font-size: 14px;
+      line-height: 24px;
+    }
+
+    @media (max-width: 480px) {
+      width: 18px;
+      height: 18px;
+      font-size: 10px;
+      line-height: 18px;
+    }
 
     &.mat-step-icon-selected {
       background: #007bff;
@@ -55,6 +143,24 @@
 
     &.mat-step-icon-state-done {
       background: #28a745;
+    }
+  }
+
+  @media (max-width: 480px) {
+    ::ng-deep .mat-horizontal-stepper-header-container {
+      flex-direction: row;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      gap: 4px;
+      justify-content: center;
+    }
+
+    ::ng-deep .mat-step-header {
+      width: calc(50% - 2px);
+      max-width: none;
+      margin-right: 0;
+      margin-bottom: 4px;
+      min-width: 0;
     }
   }
 }
@@ -497,6 +603,24 @@ mat-button-toggle {
     padding: 16px;
   }
 
+  .stepper-header {
+    margin-bottom: 16px;
+
+    .stepper-title {
+      font-size: 20px;
+    }
+  }
+
+  .step-content {
+    padding: 16px 0;
+  }
+
+  .step-header {
+    h3 {
+      font-size: 18px;
+    }
+  }
+
   .results-summary {
     grid-template-columns: repeat(2, 1fr);
     gap: 12px;
@@ -527,6 +651,47 @@ mat-button-toggle {
     th, td {
       padding: 8px;
     }
+  }
+}
+
+@media (max-width: 480px) {
+  .stepper-card {
+    padding: 12px;
+  }
+
+  .stepper-header {
+    margin-bottom: 12px;
+
+    .stepper-title {
+      font-size: 18px;
+    }
+  }
+
+  .step-content {
+    padding: 12px 0;
+  }
+
+  .step-header {
+    h3 {
+      font-size: 16px;
+    }
+  }
+
+  .results-summary {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .summary-item {
+    padding: 8px;
+
+    .summary-value {
+      font-size: 18px;
+    }
+  }
+
+  .step-actions {
+    gap: 8px;
   }
 }
 

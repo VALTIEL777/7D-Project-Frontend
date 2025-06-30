@@ -74,6 +74,13 @@ export class RtrProcessingComponent extends BaseDashboardComponent implements On
   // Stepper data
   stepperData: StepperData = {};
 
+  // Generate RTR functionality
+  selectedGenerateFile: File | null = null;
+  isGeneratingRtr = false;
+  generateRtrResult: any = null;
+  summaryDataSource: any[] = [];
+  summaryColumns: string[] = ['metric', 'value', 'percentage'];
+
   constructor(
     private rtrService: RTRService,
     private snackBar: MatSnackBar,
@@ -89,8 +96,7 @@ export class RtrProcessingComponent extends BaseDashboardComponent implements On
     // Test API connectivity
     this.testApiConnectivity();
 
-    // Load RTR files
-    this.loadRTRFiles();
+    // Load RTR files is called by loadData() which is called by the parent component
   }
 
   // Override the abstract loadData method
@@ -334,20 +340,38 @@ export class RtrProcessingComponent extends BaseDashboardComponent implements On
 
   // Download RTR file
   downloadRTR(file: RTRFile) {
-    console.log('Downloading RTR file:', file.name, 'URL:', file.url);
+    console.log('Downloading RTR file:', file.name, 'Object Key:', file.objectKey);
 
-    // Create a temporary link to download the file
-    const link = document.createElement('a');
-    link.href = file.url;
-    link.download = file.name;
-    link.target = '_blank';
+    if (!file.objectKey) {
+      this.snackBar.open('No object key available for download', 'Close', { duration: 3000 });
+      return;
+    }
 
-    // Append to body, click, and remove
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    // URL-encode the object key to handle forward slashes
+    const encodedObjectKey = encodeURIComponent(file.objectKey);
+    console.log('Encoded object key:', encodedObjectKey);
 
-    this.snackBar.open('File download started', 'Close', { duration: 3000 });
+    // Use the backend download endpoint instead of presigned URL
+    this.rtrService.downloadFileByKey(encodedObjectKey).subscribe({
+      next: (blob: Blob) => {
+        // Create blob URL and download
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = file.name;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+
+        this.snackBar.open('File download started', 'Close', { duration: 3000 });
+      },
+      error: (error) => {
+        console.error('Download failed:', error);
+        console.error('Error details:', error.error);
+        this.snackBar.open('Download failed. Please try again.', 'Close', { duration: 5000 });
+      }
+    });
   }
 
   // Download current uploaded file
@@ -362,8 +386,38 @@ export class RtrProcessingComponent extends BaseDashboardComponent implements On
     const file = this.receivedRTRs.find(rtr => rtr.name === this.currentUploadFileName);
 
     if (file) {
-      console.log('Downloading current uploaded file:', file.name, 'URL:', file.url);
-      this.downloadRTR(file);
+      console.log('Downloading current uploaded file:', file.name, 'Object Key:', file.objectKey);
+
+      if (!file.objectKey) {
+        this.snackBar.open('No object key available for download', 'Close', { duration: 3000 });
+        return;
+      }
+
+      // URL-encode the object key to handle forward slashes
+      const encodedObjectKey = encodeURIComponent(file.objectKey);
+      console.log('Encoded object key:', encodedObjectKey);
+
+      // Use the backend download endpoint
+      this.rtrService.downloadFileByKey(encodedObjectKey).subscribe({
+        next: (blob: Blob) => {
+          // Create blob URL and download
+          const url = window.URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = file.name;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          window.URL.revokeObjectURL(url);
+
+          this.snackBar.open('File download started', 'Close', { duration: 3000 });
+        },
+        error: (error) => {
+          console.error('Download failed:', error);
+          console.error('Error details:', error.error);
+          this.snackBar.open('Download failed. Please try again.', 'Close', { duration: 5000 });
+        }
+      });
     } else {
       console.error('Current uploaded file not found in received RTRs');
       this.snackBar.open('File not found for download. Please refresh the list.', 'Close', { duration: 3000 });
@@ -1040,5 +1094,200 @@ export class RtrProcessingComponent extends BaseDashboardComponent implements On
 
     console.log('\n✅ API Structure documentation completed!');
     this.snackBar.open('API structure logged to console. Check console for complete documentation.', 'Close', { duration: 5000 });
+  }
+
+  // Generate RTR functionality
+  onGenerateRtrFileSelected(event: any) {
+    const file = event.target.files[0];
+    if (file) {
+      // Validate file type
+      const allowedTypes = [
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
+        'application/vnd.ms-excel', // .xls
+        'application/octet-stream' // Fallback for some Excel files
+      ];
+
+      if (!allowedTypes.includes(file.type) && !file.name.toLowerCase().endsWith('.xlsx') && !file.name.toLowerCase().endsWith('.xls')) {
+        this.snackBar.open('Please select an Excel file (.xlsx or .xls)', 'Close', { duration: 3000 });
+        return;
+      }
+
+      // Validate file size (max 10MB)
+      const maxSize = 10 * 1024 * 1024; // 10MB
+      if (file.size > maxSize) {
+        this.snackBar.open('File too large. Maximum size is 10MB.', 'Close', { duration: 3000 });
+        return;
+      }
+
+      this.selectedGenerateFile = file;
+      this.snackBar.open(`File selected: ${file.name}`, 'Close', { duration: 2000 });
+    }
+  }
+
+  clearSelectedGenerateFile() {
+    this.selectedGenerateFile = null;
+    // Reset the file input
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+    if (fileInput) {
+      fileInput.value = '';
+    }
+  }
+
+  generateRtrWithDatabase() {
+    if (!this.selectedGenerateFile) {
+      this.snackBar.open('Please select a file first', 'Close', { duration: 3000 });
+      return;
+    }
+
+    this.isGeneratingRtr = true;
+    this.snackBar.open(`Generating updated RTR from ${this.selectedGenerateFile.name}...`, 'Close', { duration: 2000 });
+
+    // Create FormData for file upload
+    const formData = new FormData();
+    formData.append('file', this.selectedGenerateFile);
+
+    // Make API call to update with database
+    this.rtrService.updateRtrWithDatabase(formData).subscribe({
+      next: (response: any) => {
+        console.log('Generate RTR response:', response);
+        this.isGeneratingRtr = false;
+
+        if (response.success) {
+          this.generateRtrResult = response.data;
+          this.processGenerateRtrResults(response.data);
+          this.snackBar.open('RTR generated successfully!', 'Close', { duration: 5000 });
+        } else {
+          this.snackBar.open(`Generation failed: ${response.message || 'Unknown error'}`, 'Close', { duration: 5000 });
+        }
+      },
+      error: (error: any) => {
+        console.error('Generate RTR error:', error);
+        this.isGeneratingRtr = false;
+        this.snackBar.open(`Generation failed: ${error.error?.message || error.message || 'Unknown error'}`, 'Close', { duration: 5000 });
+      }
+    });
+  }
+
+  processGenerateRtrResults(data: any) {
+    // Process summary data for the table
+    if (data.summary) {
+      const total = data.summary.totalRows;
+      this.summaryDataSource = [
+        {
+          metric: 'Total Rows',
+          value: data.summary.totalRows,
+          percentage: 100
+        },
+        {
+          metric: 'Updated Rows',
+          value: data.summary.updatedRows,
+          percentage: total > 0 ? Math.round((data.summary.updatedRows / total) * 100) : 0
+        },
+        {
+          metric: 'Changed Rows',
+          value: data.summary.changedRows,
+          percentage: total > 0 ? Math.round((data.summary.changedRows / total) * 100) : 0
+        },
+        {
+          metric: 'Unchanged Rows',
+          value: data.summary.unchangedRows,
+          percentage: total > 0 ? Math.round((data.summary.unchangedRows / total) * 100) : 0
+        },
+        {
+          metric: 'Not Found Rows',
+          value: data.summary.notFoundRows,
+          percentage: total > 0 ? Math.round((data.summary.notFoundRows / total) * 100) : 0
+        },
+        {
+          metric: 'Error Rows',
+          value: data.summary.errorRows,
+          percentage: total > 0 ? Math.round((data.summary.errorRows / total) * 100) : 0
+        }
+      ];
+    }
+  }
+
+  downloadGeneratedRtr() {
+    if (!this.generateRtrResult?.downloadUrl) {
+      this.snackBar.open('Download URL not available', 'Close', { duration: 3000 });
+      return;
+    }
+
+    // Check if we have an object key for backend download
+    if (this.generateRtrResult.objectKey) {
+      console.log('Downloading generated RTR using object key:', this.generateRtrResult.objectKey);
+
+      // URL-encode the object key to handle forward slashes
+      const encodedObjectKey = encodeURIComponent(this.generateRtrResult.objectKey);
+      console.log('Encoded object key:', encodedObjectKey);
+
+      this.rtrService.downloadFileByKey(encodedObjectKey).subscribe({
+        next: (blob: Blob) => {
+          // Create blob URL and download
+          const url = window.URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = this.generateRtrResult.generatedFileName;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          window.URL.revokeObjectURL(url);
+
+          this.snackBar.open('Download started', 'Close', { duration: 3000 });
+        },
+        error: (error) => {
+          console.error('Download failed:', error);
+          console.error('Error details:', error.error);
+          this.snackBar.open('Download failed. Please try again.', 'Close', { duration: 5000 });
+        }
+      });
+    } else {
+      // Fallback to direct URL download if no object key available
+      console.log('Downloading generated RTR using direct URL:', this.generateRtrResult.downloadUrl);
+
+      const link = document.createElement('a');
+      link.href = this.generateRtrResult.downloadUrl;
+      link.download = this.generateRtrResult.generatedFileName;
+      link.target = '_blank';
+
+      // Append to body, click, and remove
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      this.snackBar.open('Download started', 'Close', { duration: 3000 });
+    }
+  }
+
+  resetGenerateRtr() {
+    this.generateRtrResult = null;
+    this.selectedGenerateFile = null;
+    this.summaryDataSource = [];
+
+    // Reset the file input
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+    if (fileInput) {
+      fileInput.value = '';
+    }
+  }
+
+  // Helper methods for styling
+  getSummaryValueClass(metric: string): string {
+    switch (metric) {
+      case 'Total Rows':
+        return 'total-rows';
+      case 'Updated Rows':
+        return 'updated-rows';
+      case 'Changed Rows':
+        return 'changed-rows';
+      case 'Unchanged Rows':
+        return 'unchanged-rows';
+      case 'Not Found Rows':
+        return 'not-found-rows';
+      case 'Error Rows':
+        return 'error-rows';
+      default:
+        return '';
+    }
   }
 }
