@@ -28,32 +28,37 @@ export class CrewsService {
   constructor(private http: HttpClient) {}
 
   // Obtener todos los crews
-  getAllCrews(): Observable<Crew[]> {
-    return this.http.get<Crew[]>(`${this.baseUrl}`);
+  getAllCrews(): Observable<any[]> {
+    return this.http.get<any[]>(`${this.baseUrl}`);
   }
 
   // Obtener crews con sus empleados
-  getCrewsWithEmployees(): Observable<Crew[]> {
-    return this.http.get<Crew[]>(`${this.baseUrl}/employees`);
+  getCrewsWithEmployees(): Observable<any[]> {
+    return this.http.get<any[]>(`${this.baseUrl}/employees`);
   }
 
   // Obtener un crew por ID
-  getCrewById(crewId: number): Observable<Crew> {
-    return this.http.get<Crew>(`${this.baseUrl}/${crewId}`);
+  getCrewById(crewId: number): Observable<any> {
+    return this.http.get<any>(`${this.baseUrl}/${crewId}`);
   }
 
   // Crear un nuevo crew
-  createCrew(crew: Crew): Observable<Crew> {
-    return this.http.post<Crew>(`${this.baseUrl}`, crew);
+  createCrew(crew: any): Observable<any> {
+    return this.http.post<any>(`${this.baseUrl}`, crew);
   }
 
   // Actualizar un crew por ID
-  updateCrew(crewId: number, updatedCrew: Partial<Crew>): Observable<Crew> {
-    return this.http.put<Crew>(`${this.baseUrl}/${crewId}`, updatedCrew);
+  updateCrew(crewId: number, updatedCrew: Partial<any>): Observable<Crew> {
+    return this.http.put<any>(`${this.baseUrl}/${crewId}`, updatedCrew);
   }
 
   // Eliminar un crew por ID
   deleteCrew(crewId: number): Observable<{ message: string }> {
     return this.http.delete<{ message: string }>(`${this.baseUrl}/${crewId}`);
   }
+
+  getCrewDetails(crewId: number): Observable<any> {
+  return this.http.get(`${this.baseUrl}/details/${crewId}`);
+}
+
 }

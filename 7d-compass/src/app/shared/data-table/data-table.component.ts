@@ -5,11 +5,12 @@ import { MatIconModule } from '@angular/material/icon';
 import { CommonModule } from '@angular/common';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
+import { SafeHtml } from '@angular/platform-browser';
 
 export interface ColumnDefinition {
   name: string;
   header: string;
-  cell: (element: any) => string;
+  cell: (element: any) => string | SafeHtml; // ✅ Permitimos ambos tipos
   isActionColumn?: boolean;
     isHtml?: boolean; 
 

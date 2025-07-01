@@ -11,6 +11,7 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';  // <-- Agrega esta línea
+import { MatAutocompleteModule } from '@angular/material/autocomplete';
 
 
 
@@ -27,5 +28,6 @@ export const MATERIAL_MODULES = [
   MatSlideToggleModule,
    MatDatepickerModule,
   MatNativeDateModule,
-  MatProgressSpinnerModule 
+  MatProgressSpinnerModule,
+  MatAutocompleteModule
 ];

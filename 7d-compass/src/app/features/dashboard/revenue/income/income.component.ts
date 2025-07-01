@@ -5,16 +5,19 @@ import { CardWithButtonComponent } from '../../../../shared/card-with-button/car
 import { ConfirmationDialogComponent } from '../../../../shared/confirmation-dialog/confirmation-dialog.component';
 import { SearchDialogComponent } from '../../../../shared/search-dialog/search-dialog.component';
 import { MatDialog } from '@angular/material/dialog';
-import { DomSanitizer } from '@angular/platform-browser';
+import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
+import { ColumnDefinition } from '../../../../shared/data-table/data-table.component';
 
 
-interface ColumnDefinition {
-  name: string;
-  header: string;
-  cell: (element: any) => string;
-  isActionColumn?: boolean;
-  isHtml?: boolean; 
-}
+
+// interface ColumnDefinition {
+//   name: string;
+//   header: string;
+//   cell: (element: any) => string | SafeHtml; // ✅ Acepta ambos
+//   isActionColumn?: boolean;
+//   isHtml?: boolean; 
+// }
+
 
 @Component({
   selector: 'app-income',
@@ -26,6 +29,9 @@ export class IncomeComponent {
   constructor(private dialog: MatDialog,
     private sanitizer: DomSanitizer
    ) {}
+     sanitize(html: string): SafeHtml {
+    return this.sanitizer.bypassSecurityTrustHtml(html);
+  }
 
 
   ticketColumns: ColumnDefinition[] = [
@@ -268,14 +274,14 @@ totalGeneral: number = 0;
   name: 'income',
   header: 'Income',
   cell: (ticket: any) => {
-    const diff = Number(ticket.invoiceweb) - Number(ticket.our);
-    const sign = diff > 0 ? '+' : diff < 0 ? '-' : '';
-    const color = diff > 0 ? 'green' : diff < 0 ? 'red' : 'gray';
-    return `<span style="color:${color}; font-weight: bold;">${sign}$${Math.abs(diff)}</span>`;
-  },
-  isHtml: true
-}
-,
+  const diff = Number(ticket.invoiceweb) - Number(ticket.our);
+  const sign = diff > 0 ? '+' : diff < 0 ? '-' : '';
+  const color = diff > 0 ? 'green' : diff < 0 ? 'red' : 'gray';
+  const html = `<span style="color:${color}; font-weight: bold;">${sign}$${Math.abs(diff)}</span>`;
+  return this.sanitize(html); // 👈 sanitización aquí
+},
+isHtml: true
+},
 
   
   {

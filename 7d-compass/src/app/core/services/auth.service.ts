@@ -26,11 +26,20 @@ export class AuthService {
 }
 
 
-  handleLoginResponse(response: any): void {
-    localStorage.setItem('token', response.token);
-    // Puedes guardar más datos si tu backend los envía (ej. usuario, rol, etc.)
-    console.log('Token guardado:', response.token);
+handleLoginResponse(response: any): void {
+  localStorage.setItem('token', response.token);
+
+  if (response.user?.userid) {
+    localStorage.setItem('userId', response.user.userid.toString());
+    console.log('🧑‍💻 userId guardado:', response.user.userid);
+  } else {
+    console.warn('⚠️ userId no presente en la respuesta de login.');
   }
+
+  console.log('📦 Verificación localStorage userId:', localStorage.getItem('userId'));
+}
+
+
 
   isLoggedIn(): boolean {
     return !!localStorage.getItem('token');

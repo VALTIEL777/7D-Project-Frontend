@@ -1,20 +1,32 @@
-<app-sitejob-sidenavbar [teamLeader]="'Alice Johnson'" [teamMembers]="['Bob', 'Carol', 'Dave']">
+<app-sitejob-sidenavbar [teamLeader]="teamLeader" [teamMembers]="teamMembers">
+  <app-sitejob-layout></app-sitejob-layout>
 
-<app-sitejob-layout></app-sitejob-layout>
-<div class="content-wrapper">
-  <h2 class="section-title">Remaining Locations</h2>
+  <div class="content-wrapper">
+    <h2 class="section-title">Remaining Locations</h2>
 
-  <div *ngFor="let location of remainingLocations" class="location-card">
-    <p class="address"> <strong>{{ location.address }}</strong></p>
+    <!-- 🔍 Campo de búsqueda -->
+    <mat-form-field appearance="outline" style="width: 100%; margin-bottom: 16px;">
+      <mat-label>Search location	</mat-label>
+        <mat-icon matPrefix>search</mat-icon>
+      <input matInput [(ngModel)]="filterText" placeholder="Search by address or job type	">
+    </mat-form-field>
 
-    <h3 class="sub-title">General Info</h3>
-    <ul class="info-list">
-      <li>Job: {{ location.job }}</li>
-      <li>Size: {{ location.size }}</li>
-      <li>Material: {{ location.material }}</li>
-    </ul>
+    <!-- 📍 Lista filtrada -->
+    <div *ngFor="let location of filteredLocations" class="location-card">
+      <p class="address"><strong>{{ location.address }}</strong></p>
 
-    <hr class="divider" />
+      <h3 class="sub-title">General Info</h3>
+      <ul class="info-list">
+        <li *ngIf="location.job"><strong>Job:</strong> {{ location.job }}</li>
+        <li *ngIf="location.width && location.length"><strong>Size:</strong> {{ location.width }} x {{ location.length }} ft</li>
+        <li *ngIf="location.surface"><strong>Surface:</strong> {{ location.surface }} m²</li>
+            <li><strong>Crew type:</strong> {{crewType}} </li>
+
+      </ul>
+
+      <button mat-button color="primary" (click)="goToCurrent(location)">Select</button>
+
+      <hr class="divider" />
+    </div>
   </div>
-</div>
 </app-sitejob-sidenavbar>
