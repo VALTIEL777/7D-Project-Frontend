@@ -147,7 +147,35 @@
         </div>
 
         <div *ngIf="inconsistencies.length > 0" class="inconsistencies-table">
-          <table mat-table [dataSource]="inconsistencies" class="mat-elevation-z1">
+          <!-- Batch action buttons -->
+          <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+            <button mat-flat-button color="accent" (click)="batchChooseAll('excel')">
+              <mat-icon>done_all</mat-icon>
+              Choose All Excel
+            </button>
+            <button mat-flat-button color="primary" (click)="batchChooseAll('database')">
+              <mat-icon>storage</mat-icon>
+              Choose All Database
+            </button>
+          </div>
+
+          <!-- Pagination info -->
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <span class="pagination-info">
+              Showing {{ getDisplayedInconsistencies().length }} of {{ inconsistencies.length }} inconsistencies
+            </span>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <span>Page {{ currentPage + 1 }} of {{ getTotalPages() }}</span>
+              <button mat-icon-button (click)="previousPage()" [disabled]="currentPage === 0">
+                <mat-icon>chevron_left</mat-icon>
+              </button>
+              <button mat-icon-button (click)="nextPage()" [disabled]="currentPage >= getTotalPages() - 1">
+                <mat-icon>chevron_right</mat-icon>
+              </button>
+            </div>
+          </div>
+
+          <table mat-table [dataSource]="getDisplayedInconsistencies()" class="mat-elevation-z1">
             <!-- Ticket Column -->
             <ng-container matColumnDef="ticket">
               <th mat-header-cell *matHeaderCellDef>Ticket Information</th>
@@ -203,25 +231,23 @@
             <ng-container matColumnDef="choice">
               <th mat-header-cell *matHeaderCellDef>Your Choice</th>
               <td mat-cell *matCellDef="let item">
-                <div class="choice-container">
-                  <mat-button-toggle-group
-                    [value]="item.userChoice"
-                    (valueChange)="onInconsistencyChoice(item, $event)">
-                    <mat-button-toggle value="excel" class="excel-choice">
-                      <mat-icon>file_excel</mat-icon>
-                      Excel
-                    </mat-button-toggle>
-                    <mat-button-toggle value="database" class="database-choice">
-                      <mat-icon>storage</mat-icon>
-                      Database
-                    </mat-button-toggle>
-                  </mat-button-toggle-group>
-                  <div *ngIf="item.userChoice" class="choice-status">
-                    <mat-icon [class]="item.userChoice === 'excel' ? 'excel-icon' : 'database-icon'">
-                      {{ item.userChoice === 'excel' ? 'check_circle' : 'check_circle' }}
-                    </mat-icon>
-                    <span>Choice made</span>
-                  </div>
+                <mat-button-toggle-group
+                  [value]="item.userChoice"
+                  (valueChange)="onInconsistencyChoice(item, $event)">
+                  <mat-button-toggle value="excel" class="excel-choice">
+                    <mat-icon>file_excel</mat-icon>
+                    Excel
+                  </mat-button-toggle>
+                  <mat-button-toggle value="database" class="database-choice">
+                    <mat-icon>storage</mat-icon>
+                    Database
+                  </mat-button-toggle>
+                </mat-button-toggle-group>
+                <div *ngIf="item.userChoice" class="choice-status">
+                  <mat-icon [class]="item.userChoice === 'excel' ? 'excel-icon' : 'database-icon'">
+                    {{ item.userChoice === 'excel' ? 'check_circle' : 'check_circle' }}
+                  </mat-icon>
+                  <span>Choice made</span>
                 </div>
               </td>
             </ng-container>

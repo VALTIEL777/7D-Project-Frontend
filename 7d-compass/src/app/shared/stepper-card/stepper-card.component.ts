@@ -255,6 +255,10 @@ export class StepperCardComponent {
   missingInfoColumns: string[] = ['ticket', 'field', 'value', 'required', 'actions'];
   validationColumns: string[] = ['field', 'status', 'message'];
 
+  // Pagination properties
+  currentPage = 0;
+  itemsPerPage = 10;
+
   constructor(
     private dialog: MatDialog,
     private http: HttpClient,
@@ -400,6 +404,9 @@ export class StepperCardComponent {
                 });
               }
             });
+
+            // Reset pagination to first page when new data is loaded
+            this.currentPage = 0;
 
             console.log('Final inconsistencies array length:', this.inconsistencies.length);
 
@@ -1475,5 +1482,61 @@ export class StepperCardComponent {
       missingInfoFilled: [],
       skippedRows: []
     };
+  }
+
+  // Batch choose all for inconsistencies
+  batchChooseAll(choice: 'excel' | 'database') {
+    // Apply to ALL inconsistencies, not just the displayed ones
+    this.inconsistencies.forEach(item => {
+      item.userChoice = choice;
+      if (item.ticketId) {
+        if (!this.userDecisions[item.ticketId.toString()]) {
+          this.userDecisions[item.ticketId.toString()] = {};
+        }
+        // Find the original ticket data to get all inconsistencies
+        const originalTicket = this.analyzedData?.inconsistentTickets?.find(
+          (ticket: any) => ticket.databaseData.ticketid === item.ticketId
+        );
+        if (originalTicket) {
+          originalTicket.inconsistencies.forEach((inconsistency: any) => {
+            this.userDecisions[item.ticketId.toString()][inconsistency.field] = choice;
+          });
+        } else {
+          this.userDecisions[item.ticketId.toString()][item.field] = choice;
+        }
+      }
+    });
+
+    // Show success message with total count
+    this.snackBar.open(`Applied ${choice} choice to all ${this.inconsistencies.length} inconsistencies`, 'Close', { duration: 3000 });
+  }
+
+  // Pagination methods
+  getDisplayedInconsistencies(): InconsistencyItem[] {
+    const startIndex = this.currentPage * this.itemsPerPage;
+    const endIndex = startIndex + this.itemsPerPage;
+    return this.inconsistencies.slice(startIndex, endIndex);
+  }
+
+  getTotalPages(): number {
+    return Math.ceil(this.inconsistencies.length / this.itemsPerPage);
+  }
+
+  previousPage(): void {
+    if (this.currentPage > 0) {
+      this.currentPage--;
+    }
+  }
+
+  nextPage(): void {
+    if (this.currentPage < this.getTotalPages() - 1) {
+      this.currentPage++;
+    }
+  }
+
+  goToPage(page: number): void {
+    if (page >= 0 && page < this.getTotalPages()) {
+      this.currentPage = page;
+    }
   }
 }
