@@ -40,24 +40,14 @@ export class TicketComponent extends BaseDashboardComponent implements OnInit {
       cell: (ticket: any) => ticket.ticketCode || 'N/A'
     },
     {
-      name: 'incidentId',
-      header: 'MX Number',
-      cell: (ticket: any) => {
-        if (ticket.incidentId && ticket.incidentId !== null && ticket.incidentId !== '') {
-          return `MX-${ticket.incidentId}`;
-        }
-        return 'N/A';
-      }
+      name: 'incidentName',
+      header: 'Incident Name',
+      cell: (ticket: any) => ticket.incidentName || 'N/A'
     },
     {
-      name: 'contractUnitId',
+      name: 'contractUnitName',
       header: 'Contract Unit',
-      cell: (ticket: any) => {
-        if (ticket.contractUnitId && ticket.contractUnitId !== null && ticket.contractUnitId !== '') {
-          return ticket.contractUnitId.toString();
-        }
-        return 'N/A';
-      }
+      cell: (ticket: any) => ticket.contractUnitName || 'N/A'
     },
     {
       name: 'quadrantId',
@@ -137,7 +127,7 @@ export class TicketComponent extends BaseDashboardComponent implements OnInit {
 
   // Override text search to include ticket fields
   protected override matchesTextSearch(item: any, searchTerm: string): boolean {
-    const searchableFields = ['ticketCode', 'incidentId', 'contractNumber', 'comment7d'];
+    const searchableFields = ['ticketCode', 'incidentName', 'contractUnitName', 'comment7d'];
 
     return searchableFields.some(field => {
       const value = this.getNestedValue(item, field);
@@ -161,8 +151,8 @@ export class TicketComponent extends BaseDashboardComponent implements OnInit {
           console.log('First ticket structure:', data[0]);
           console.log('First ticket all keys:', Object.keys(data[0]));
           console.log('ticketCode:', data[0].ticketCode);
-          console.log('incidentId:', data[0].incidentId);
-          console.log('contractUnitId:', data[0].contractUnitId);
+          console.log('incidentName:', data[0].incidentName);
+          console.log('contractUnitName:', data[0].contractUnitName);
           console.log('quadrantId:', data[0].quadrantId);
           console.log('quantity:', data[0].quantity);
           console.log('amountToPay:', data[0].amountToPay);
@@ -185,7 +175,7 @@ export class TicketComponent extends BaseDashboardComponent implements OnInit {
       data: {
         title: `Edit Ticket: ${ticket.ticketCode}`,
         data: ticket,
-        excludedFields: ['ticketId', 'ticketCode', 'incidentId', 'deletedAt', 'updatedAt', 'createdAt', 'createdBy', 'updatedBy'],
+        excludedFields: ['ticketId', 'ticketCode', 'incidentName', 'deletedAt', 'updatedAt', 'createdAt', 'createdBy', 'updatedBy'],
         fields: [
           { name: 'quantity', label: 'Quantity', type: 'number', required: true },
           { name: 'daysOutstanding', label: 'Days Outstanding', type: 'number', required: false },

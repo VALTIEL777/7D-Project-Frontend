@@ -176,9 +176,19 @@ mat-button-toggle {
   min-width: 80px;
 }
 
+.spaced-card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
 .history-scrollable-content {
   overflow-y: auto;
-  max-height: 180px; /* Adjust based on desired visible items */
+  max-height: 100%; /* Take full height of container */
+  height: 100%; /* Ensure it fills the container */
+  display: flex;
+  flex-direction: column;
+  flex: 1; /* Take remaining space */
 }
 
 .combined-card-content textarea {

@@ -560,11 +560,16 @@ mat-button-toggle-group {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  border-radius: 0 !important;
+  overflow: visible !important;
+  border: none !important;
 }
 
 mat-button-toggle {
   font-size: 12px;
   min-width: 80px;
+  border-radius: 4px !important;
+  margin: 2px 0 !important;
 
   &.excel-choice {
     background: #d4edda;

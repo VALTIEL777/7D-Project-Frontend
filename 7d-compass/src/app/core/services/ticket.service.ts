@@ -6,8 +6,10 @@ import { environment } from '../../../environments/environment';
 export interface Ticket {
   ticketId?: number;
   incidentId?: number;
+  incidentName?: string;
   quadrantId?: number;
   contractUnitId?: number;
+  contractUnitName?: string;
   wayfindingId?: number;
   paymentId?: number | null;
   mobilizationId?: number | null;

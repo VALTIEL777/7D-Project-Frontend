@@ -1169,7 +1169,7 @@ export class RtrProcessingComponent extends BaseDashboardComponent implements On
   }
 
   processGenerateRtrResults(data: any) {
-    // Process summary data for the table
+    // Process summary data for the table - only show Total Rows and Updated Rows
     if (data.summary) {
       const total = data.summary.totalRows;
       this.summaryDataSource = [
@@ -1182,26 +1182,6 @@ export class RtrProcessingComponent extends BaseDashboardComponent implements On
           metric: 'Updated Rows',
           value: data.summary.updatedRows,
           percentage: total > 0 ? Math.round((data.summary.updatedRows / total) * 100) : 0
-        },
-        {
-          metric: 'Changed Rows',
-          value: data.summary.changedRows,
-          percentage: total > 0 ? Math.round((data.summary.changedRows / total) * 100) : 0
-        },
-        {
-          metric: 'Unchanged Rows',
-          value: data.summary.unchangedRows,
-          percentage: total > 0 ? Math.round((data.summary.unchangedRows / total) * 100) : 0
-        },
-        {
-          metric: 'Not Found Rows',
-          value: data.summary.notFoundRows,
-          percentage: total > 0 ? Math.round((data.summary.notFoundRows / total) * 100) : 0
-        },
-        {
-          metric: 'Error Rows',
-          value: data.summary.errorRows,
-          percentage: total > 0 ? Math.round((data.summary.errorRows / total) * 100) : 0
         }
       ];
     }

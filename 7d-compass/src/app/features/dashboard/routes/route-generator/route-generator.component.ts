@@ -1,4 +1,4 @@
-import { Component, HostListener, OnInit } from '@angular/core';
+import { Component, HostListener, OnInit, ViewChild, TemplateRef } from '@angular/core';
 import { DashboardLayoutComponent } from "../../../../shared/dashboard-layout/dashboard-layout.component";
 import { CardWithButtonComponent } from "../../../../shared/card-with-button/card-with-button.component";
 import { MatTableModule } from "@angular/material/table";
@@ -7,9 +7,88 @@ import { MatDividerModule } from '@angular/material/divider';
 import { DragDropModule } from '@angular/cdk/drag-drop';
 import { CdkDragDrop, moveItemInArray, transferArrayItem } from '@angular/cdk/drag-drop';
 import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { FormsModule } from '@angular/forms';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
 import { PlusButtonComponent } from '../../../../shared/plus-button/plus-button.component';
 import { BaseDashboardComponent } from '../../../../shared/base-dashboard.component';
 import { FilterService } from '../../../../core/services/filter.service';
+import { HttpClient } from '@angular/common/http';
+import { environment } from '../../../../../environments/environment';
+
+// Interface for route tickets
+interface RouteTicket {
+  ticketId: number;
+  ticketCode: string;
+  address: string;
+  queue: number;
+  quantity: number;
+  amountToPay: number;
+}
+
+// Interface for optimization metadata
+interface OptimizationMetadata {
+  optimizationDate: string;
+  totalWaypoints: number;
+  originAddress: string;
+  destinationAddress: string;
+}
+
+// Interface for individual route
+interface Route {
+  routeId: number;
+  routeCode: string;
+  type: string;
+  startDate: string;
+  endDate: string | null;
+  encodedPolyline: string;
+  totalDistance: number;
+  totalDuration: number;
+  optimizedOrder: number[];
+  optimizationMetadata: OptimizationMetadata;
+  createdAt: string;
+  updatedAt: string;
+  createdBy: number;
+  updatedBy: number;
+  tickets: RouteTicket[];
+}
+
+// Interface for API response
+interface RoutesResponse {
+  message: string;
+  type: string;
+  count: number;
+  routes: Route[];
+}
+
+// Interface for ready tickets
+interface ReadyTicket {
+  ticketid: number;
+  ticketcode: string;
+  contractnumber: string | null;
+  amounttopay: number | null;
+  tickettype: string;
+  daysoutstanding: number | null;
+  comment7d: string | null;
+  quantity: number;
+  address: string;
+  contractunitname: string;
+  incidentname: string;
+  createdat: string;
+  updatedat: string;
+}
+
+// Interface for ready tickets API response
+interface ReadyTicketsResponse {
+  message: string;
+  type: string;
+  count: number;
+  criteria: string;
+  tickets: ReadyTicket[];
+}
 
 @Component({
   selector: 'app-route-generator',
@@ -21,7 +100,13 @@ import { FilterService } from '../../../../core/services/filter.service';
     MatDividerModule,
     DragDropModule,
     MatButtonModule,
-    PlusButtonComponent
+    PlusButtonComponent,
+    MatIconModule,
+    MatDialogModule,
+    FormsModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatSelectModule
   ],
   templateUrl: './route-generator.component.html',
   styleUrl: './route-generator.component.scss'
@@ -29,14 +114,44 @@ import { FilterService } from '../../../../core/services/filter.service';
 export class RouteGeneratorComponent extends BaseDashboardComponent implements OnInit {
   isMobile: boolean = false;
 
-  activeRoutes = [
-    { code: 'RTE-001', details: ['2837 N Froid Street', '123 Main St', '456 Oak Ave', '789 Pine Ln', '101 Elm Rd', '111 Elm Rd', '222 Oak Dr'] },
-    { code: 'RTE-002', details: ['2837 N Froid Street', '123 Main St', '456 Oak Ave', '789 Pine Ln', '101 Elm Rd'] },
+  // API data properties
+  spottingRoutes: Route[] = [];
+  concreteRoutes: Route[] = [];
+  asphaltRoutes: Route[] = [];
+
+  // Ready tickets data
+  spotReadyTickets: ReadyTicket[] = [];
+  asphaltReadyTickets: ReadyTicket[] = [];
+  concreteReadyTickets: ReadyTicket[] = [];
+
+  // Loading states
+  isLoadingSpottingRoutes = false;
+  isLoadingConcreteRoutes = false;
+  isLoadingAsphaltRoutes = false;
+  isLoadingSpotReady = false;
+  isLoadingAsphaltReady = false;
+  isLoadingConcreteReady = false;
+
+  // Dialog properties
+  newRouteType: string = '';
+  newRouteStartDate: string = '';
+  private dialogRef: any;
+
+  // Fallback data (will be used if API fails)
+  fallbackSpottingRoutes = [
+    { routeCode: 'SPT-001', tickets: [{ address: '2837 N Froid Street' }, { address: '123 Main St' }, { address: '456 Oak Ave' }] },
+    { routeCode: 'SPT-002', tickets: [{ address: '789 Pine Ln' }, { address: '101 Elm Rd' }] },
   ];
-  generatedRoutes = [
-    { code: 'RTE-003', details: ['2837 N Froid Street', '123 Main St', '456 Oak Ave', '789 Pine Ln', '101 Elm Rd'] },
-    { code: 'RTE-004', details: ['2837 N Froid Street', '123 Main St', '456 Oak Ave', '789 Pine Ln', '101 Elm Rd'] },
-    { code: 'RTE-005', details: ['2837 N Froid Street', '123 Main St', '456 Oak Ave', '789 Pine Ln', '101 Elm Rd'] },
+
+  fallbackConcreteRoutes = [
+    { routeCode: 'CON-001', tickets: [{ address: '2837 N Froid Street' }, { address: '123 Main St' }, { address: '456 Oak Ave' }] },
+    { routeCode: 'CON-002', tickets: [{ address: '789 Pine Ln' }, { address: '101 Elm Rd' }] },
+    { routeCode: 'CON-003', tickets: [{ address: '111 Elm Rd' }, { address: '222 Oak Dr' }] },
+  ];
+
+  fallbackAsphaltRoutes = [
+    { routeCode: 'ASP-001', tickets: [{ address: '2837 N Froid Street' }, { address: '123 Main St' }, { address: '456 Oak Ave' }] },
+    { routeCode: 'ASP-002', tickets: [{ address: '789 Pine Ln' }, { address: '101 Elm Rd' }] },
   ];
 
   locationsWithoutRoute = [
@@ -112,28 +227,39 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     'actions',
   ];
 
-  private initialActiveRoutes: any[] = [];
-  private initialGeneratedRoutes: any[] = [];
+  private initialSpottingRoutes: Route[] = [];
+  private initialConcreteRoutes: Route[] = [];
+  private initialAsphaltRoutes: Route[] = [];
 
-  constructor(filterService: FilterService) {
+  @ViewChild('generateRouteDialog') generateRouteDialog!: TemplateRef<any>;
+
+  constructor(filterService: FilterService, private http: HttpClient, private dialog: MatDialog) {
     super(filterService);
     this.checkMobile();
-    this.initialActiveRoutes = [...this.activeRoutes];
-    this.initialGeneratedRoutes = [...this.generatedRoutes];
+    this.initialSpottingRoutes = [...this.spottingRoutes];
+    this.initialConcreteRoutes = [...this.concreteRoutes];
+    this.initialAsphaltRoutes = [...this.asphaltRoutes];
   }
 
   override ngOnInit() {
     super.ngOnInit();
     this.updateDisplayedColumns();
+    this.loadSpottingRoutes();
+    this.loadConcreteRoutes();
+    this.loadAsphaltRoutes();
+    this.loadSpotReadyTickets();
+    this.loadAsphaltReadyTickets();
+    this.loadConcreteReadyTickets();
   }
 
   protected override loadData(): void {
     // Initialize data for filtering - combine all route-related data
     const allRouteData = [
-      ...this.activeRoutes.map(route => ({ ...route, type: 'active' })),
-      ...this.generatedRoutes.map(route => ({ ...route, type: 'generated' })),
-      ...this.locationsWithoutRoute.map(location => ({ code: location, details: [location], type: 'without-route' })),
-      ...this.locationsOnHoldOff.map(item => ({ code: item.location, details: [item.location], reason: item.reason, type: 'on-hold' })),
+      ...this.spottingRoutes.map(route => ({ ...route, type: 'spotting' })),
+      ...this.concreteRoutes.map(route => ({ ...route, type: 'concrete' })),
+      ...this.asphaltRoutes.map(route => ({ ...route, type: 'asphalt' })),
+      ...this.locationsWithoutRoute.map(location => ({ routeCode: location, tickets: [{ address: location }], type: 'without-route' })),
+      ...this.locationsOnHoldOff.map(item => ({ routeCode: item.location, tickets: [{ address: item.location }], reason: item.reason, type: 'on-hold' })),
       ...this.ticketData.map(ticket => ({ ...ticket, type: 'ticket' }))
     ];
 
@@ -143,7 +269,7 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
 
   // Override text search to include route and location fields
   protected override matchesTextSearch(item: any, searchTerm: string): boolean {
-    const searchableFields = ['code', 'location', 'phase', 'status', 'reason'];
+    const searchableFields = ['routeCode', 'location', 'phase', 'status', 'reason'];
 
     return searchableFields.some(field => {
       const value = this.getNestedValue(item, field);
@@ -152,9 +278,9 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
       }
       return false;
     }) ||
-    // Also search in details arrays
-    (item.details && Array.isArray(item.details) &&
-     item.details.some((detail: string) => detail.toLowerCase().includes(searchTerm)));
+    // Also search in tickets arrays
+    (item.tickets && Array.isArray(item.tickets) &&
+     item.tickets.some((ticket: RouteTicket) => ticket.address.toLowerCase().includes(searchTerm)));
   }
 
   // Override date range to use startDate for tickets
@@ -192,23 +318,143 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
   }
 
   // Getter for filtered route data
-  get filteredActiveRoutes() {
-    return this.filteredData.filter(item => item.type === 'active');
+  get filteredSpottingRoutes() {
+    return this.filteredData.filter(item => item.type === 'spotting');
   }
 
-  get filteredGeneratedRoutes() {
-    return this.filteredData.filter(item => item.type === 'generated');
+  get filteredConcreteRoutes() {
+    return this.filteredData.filter(item => item.type === 'concrete');
+  }
+
+  get filteredAsphaltRoutes() {
+    return this.filteredData.filter(item => item.type === 'asphalt');
   }
 
   get filteredLocationsWithoutRoute() {
-    return this.filteredData.filter(item => item.type === 'without-route').map(item => item.code);
+    return this.filteredData.filter(item => item.type === 'without-route').map(item => item.routeCode);
   }
 
   get filteredLocationsOnHoldOff() {
     return this.filteredData.filter(item => item.type === 'on-hold').map(item => ({
-      location: item.code,
+      location: item.routeCode,
       reason: item.reason
     }));
+  }
+
+  // Load spotting routes from API
+  loadSpottingRoutes() {
+    this.isLoadingSpottingRoutes = true;
+    this.http.get<RoutesResponse>(`${environment.apiUrl}/routes/spotting`).subscribe({
+      next: (response) => {
+        this.spottingRoutes = response.routes;
+        this.isLoadingSpottingRoutes = false;
+        this.loadData(); // Refresh filtered data
+      },
+      error: (error) => {
+        console.error('Error loading spotting routes:', error);
+        this.isLoadingSpottingRoutes = false;
+        // Fallback to empty array if API fails
+        this.spottingRoutes = [];
+        this.loadData(); // Refresh filtered data
+      }
+    });
+  }
+
+  // Load concrete routes from API
+  loadConcreteRoutes() {
+    this.isLoadingConcreteRoutes = true;
+    this.http.get<RoutesResponse>(`${environment.apiUrl}/routes/concrete`).subscribe({
+      next: (response) => {
+        this.concreteRoutes = response.routes;
+        this.isLoadingConcreteRoutes = false;
+        this.loadData(); // Refresh filtered data
+      },
+      error: (error) => {
+        console.error('Error loading concrete routes:', error);
+        this.isLoadingConcreteRoutes = false;
+        // Fallback to empty array if API fails
+        this.concreteRoutes = [];
+        this.loadData(); // Refresh filtered data
+      }
+    });
+  }
+
+  // Load asphalt routes from API
+  loadAsphaltRoutes() {
+    this.isLoadingAsphaltRoutes = true;
+    this.http.get<RoutesResponse>(`${environment.apiUrl}/routes/asphalt`).subscribe({
+      next: (response) => {
+        this.asphaltRoutes = response.routes;
+        this.isLoadingAsphaltRoutes = false;
+        this.loadData(); // Refresh filtered data
+      },
+      error: (error) => {
+        console.error('Error loading asphalt routes:', error);
+        this.isLoadingAsphaltRoutes = false;
+        // Fallback to empty array if API fails
+        this.asphaltRoutes = [];
+        this.loadData(); // Refresh filtered data
+      }
+    });
+  }
+
+  // Load spot ready tickets from API
+  loadSpotReadyTickets() {
+    this.isLoadingSpotReady = true;
+    this.http.get<ReadyTicketsResponse>(`${environment.apiUrl}/routes/tickets-ready/spotting`).subscribe({
+      next: (response) => {
+        console.log('Spot ready tickets response:', response);
+        this.spotReadyTickets = response.tickets;
+        console.log('Spot ready tickets array:', this.spotReadyTickets);
+        this.isLoadingSpotReady = false;
+        this.loadData(); // Refresh filtered data
+      },
+      error: (error) => {
+        console.error('Error loading spot ready tickets:', error);
+        this.isLoadingSpotReady = false;
+        // Fallback to empty array if API fails
+        this.spotReadyTickets = [];
+        this.loadData(); // Refresh filtered data
+      }
+    });
+  }
+
+  // Load asphalt ready tickets from API
+  loadAsphaltReadyTickets() {
+    this.isLoadingAsphaltReady = true;
+    this.http.get<ReadyTicketsResponse>(`${environment.apiUrl}/routes/tickets-ready/asphalt`).subscribe({
+      next: (response) => {
+        this.asphaltReadyTickets = response.tickets;
+        this.isLoadingAsphaltReady = false;
+        this.loadData(); // Refresh filtered data
+      },
+      error: (error) => {
+        console.error('Error loading asphalt ready tickets:', error);
+        this.isLoadingAsphaltReady = false;
+        // Fallback to empty array if API fails
+        this.asphaltReadyTickets = [];
+        this.loadData(); // Refresh filtered data
+      }
+    });
+  }
+
+  // Load concrete ready tickets from API
+  loadConcreteReadyTickets() {
+    this.isLoadingConcreteReady = true;
+    this.http.get<ReadyTicketsResponse>(`${environment.apiUrl}/routes/tickets-ready/concrete`).subscribe({
+      next: (response) => {
+        this.concreteReadyTickets = response.tickets;
+        this.isLoadingConcreteReady = false;
+        this.loadData(); // Refresh filtered data
+      },
+      error: (error) => {
+        console.error('Error loading concrete ready tickets:', error);
+        this.isLoadingConcreteReady = false;
+        // Fallback to empty array if API fails
+        this.concreteReadyTickets = [];
+        this.loadData(); // Refresh filtered data
+      }
+    });
   }
 
   drop(event: CdkDragDrop<any[]>) {
@@ -216,11 +462,12 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
       moveItemInArray(event.container.data, event.previousIndex, event.currentIndex);
     } else {
       // Prevent routes from becoming empty
-      const isSourceActiveOrGeneratedRoute =
-        this.activeRoutes.some(route => route.details === event.previousContainer.data) ||
-        this.generatedRoutes.some(route => route.details === event.previousContainer.data);
+      const isSourceRoute =
+        this.spottingRoutes.some(route => route.tickets === event.previousContainer.data) ||
+        this.concreteRoutes.some(route => route.tickets === event.previousContainer.data) ||
+        this.asphaltRoutes.some(route => route.tickets === event.previousContainer.data);
 
-      if (isSourceActiveOrGeneratedRoute && event.previousContainer.data.length === 1) {
+      if (isSourceRoute && event.previousContainer.data.length === 1) {
         alert('Routes cannot be empty. At least one location must remain.');
         return;
       }
@@ -234,22 +481,95 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     }
 
     // Force Angular to detect changes by reassigning the arrays
-    this.activeRoutes = [...this.activeRoutes];
-    this.generatedRoutes = [...this.generatedRoutes];
+    this.spottingRoutes = [...this.spottingRoutes];
+    this.concreteRoutes = [...this.concreteRoutes];
+    this.asphaltRoutes = [...this.asphaltRoutes];
     this.locationsWithoutRoute = [...this.locationsWithoutRoute];
     this.locationsOnHoldOff = [...this.locationsOnHoldOff];
   }
 
   saveChanges() {
-    console.log('Active Routes:', this.activeRoutes);
-    console.log('Generated Routes:', this.generatedRoutes);
+    console.log('Spotting Routes:', this.spottingRoutes);
+    console.log('Concrete Routes:', this.concreteRoutes);
+    console.log('Asphalt Routes:', this.asphaltRoutes);
     // Here you would implement the logic to save the changes, e.g., send to a backend service
     alert('Changes saved! Check console for updated routes.');
   }
 
   resetLists() {
-    this.activeRoutes = [...this.initialActiveRoutes];
-    this.generatedRoutes = [...this.initialGeneratedRoutes];
+    this.spottingRoutes = [...this.initialSpottingRoutes];
+    this.concreteRoutes = [...this.initialConcreteRoutes];
+    this.asphaltRoutes = [...this.initialAsphaltRoutes];
     alert('Lists have been reset!');
+  }
+
+  openGenerateRouteDialog() {
+    this.dialogRef = this.dialog.open(this.generateRouteDialog, {
+      width: '500px',
+      disableClose: true
+    });
+  }
+
+  closeGenerateRouteDialog() {
+    if (this.dialogRef) {
+      this.dialogRef.close();
+    }
+  }
+
+  generateNewRoute() {
+    // Validate form
+    if (!this.newRouteType || !this.newRouteStartDate) {
+      alert('Please fill in all required fields');
+      return;
+    }
+
+    // Create new route object
+    const newRoute = {
+      routeType: this.newRouteType,
+      startDate: this.newRouteStartDate
+    };
+
+    console.log('Generating new route:', newRoute);
+
+    // Determine the correct API endpoint based on route type
+    let endpoint = '';
+    switch (this.newRouteType) {
+      case 'spotting':
+        endpoint = `${environment.apiUrl}/routes/optimize/spotting`;
+        break;
+      case 'concrete':
+        endpoint = `${environment.apiUrl}/routes/optimize/concrete`;
+        break;
+      case 'asphalt':
+        endpoint = `${environment.apiUrl}/routes/optimize/asphalt`;
+        break;
+      default:
+        alert('Invalid route type selected');
+        return;
+    }
+
+    // Make API call to generate the route
+    this.http.post(endpoint, {
+      startDate: this.newRouteStartDate
+    }).subscribe({
+      next: (response) => {
+        console.log('Route generation successful:', response);
+        this.closeGenerateRouteDialog();
+        alert('Route generation completed successfully!');
+
+        // Refresh the routes data
+        this.loadSpottingRoutes();
+        this.loadConcreteRoutes();
+        this.loadAsphaltRoutes();
+      },
+      error: (error) => {
+        console.error('Error generating route:', error);
+        alert('Error generating route. Please try again.');
+      }
+    });
+
+    // Reset form
+    this.newRouteType = '';
+    this.newRouteStartDate = '';
   }
 }
