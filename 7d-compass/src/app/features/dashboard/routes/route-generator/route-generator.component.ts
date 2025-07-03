@@ -1,4 +1,4 @@
-import { Component, HostListener, OnInit, ViewChild, TemplateRef } from '@angular/core';
+import { Component, HostListener, OnInit, ViewChild, TemplateRef, ElementRef } from '@angular/core';
 import { DashboardLayoutComponent } from "../../../../shared/dashboard-layout/dashboard-layout.component";
 import { CardWithButtonComponent } from "../../../../shared/card-with-button/card-with-button.component";
 import { MatTableModule } from "@angular/material/table";
@@ -18,6 +18,8 @@ import { BaseDashboardComponent } from '../../../../shared/base-dashboard.compon
 import { FilterService } from '../../../../core/services/filter.service';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../../environments/environment';
+import { GoogleMapsModule } from '@angular/google-maps';
+import * as polyline from '@mapbox/polyline';
 
 // Interface for route tickets
 interface RouteTicket {
@@ -106,7 +108,8 @@ interface ReadyTicketsResponse {
     FormsModule,
     MatFormFieldModule,
     MatInputModule,
-    MatSelectModule
+    MatSelectModule,
+    GoogleMapsModule
   ],
   templateUrl: './route-generator.component.html',
   styleUrl: './route-generator.component.scss'
@@ -136,6 +139,20 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
   newRouteType: string = '';
   newRouteStartDate: string = '';
   private dialogRef: any;
+
+  // Map properties
+  center: google.maps.LatLngLiteral = { lat: 41.8781, lng: -87.6298 }; // Chicago
+  zoom = 10;
+  mapOptions: google.maps.MapOptions = {
+    mapTypeId: google.maps.MapTypeId.ROADMAP,
+    zoomControl: true,
+    scrollwheel: true,
+    disableDoubleClickZoom: true,
+    maxZoom: 20,
+    minZoom: 8,
+  };
+  routePolylines: google.maps.Polyline[] = [];
+  private map: google.maps.Map | null = null;
 
   // Fallback data (will be used if API fails)
   fallbackSpottingRoutes = [
@@ -349,13 +366,43 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
         this.spottingRoutes = response.routes;
         this.isLoadingSpottingRoutes = false;
         this.loadData(); // Refresh filtered data
+        this.updateMapPolylines(); // Update map with new routes
       },
       error: (error) => {
         console.error('Error loading spotting routes:', error);
         this.isLoadingSpottingRoutes = false;
-        // Fallback to empty array if API fails
-        this.spottingRoutes = [];
+        // Use fallback data since API endpoint doesn't exist yet
+        this.spottingRoutes = this.fallbackSpottingRoutes.map((route, index) => ({
+          routeId: index + 1,
+          routeCode: route.routeCode,
+          type: 'spotting',
+          startDate: new Date().toISOString(),
+          endDate: null,
+          encodedPolyline: '',
+          totalDistance: 0,
+          totalDuration: 0,
+          optimizedOrder: [],
+          optimizationMetadata: {
+            optimizationDate: new Date().toISOString(),
+            totalWaypoints: route.tickets.length,
+            originAddress: '',
+            destinationAddress: ''
+          },
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          createdBy: 1,
+          updatedBy: 1,
+          tickets: route.tickets.map((ticket, ticketIndex) => ({
+            ticketId: ticketIndex + 1,
+            ticketCode: `TICKET-${index + 1}-${ticketIndex + 1}`,
+            address: ticket.address,
+            queue: ticketIndex,
+            quantity: 1,
+            amountToPay: 150.00
+          }))
+        }));
         this.loadData(); // Refresh filtered data
+        this.updateMapPolylines(); // Update map with fallback routes
       }
     });
   }
@@ -368,13 +415,43 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
         this.concreteRoutes = response.routes;
         this.isLoadingConcreteRoutes = false;
         this.loadData(); // Refresh filtered data
+        this.updateMapPolylines(); // Update map with new routes
       },
       error: (error) => {
         console.error('Error loading concrete routes:', error);
         this.isLoadingConcreteRoutes = false;
-        // Fallback to empty array if API fails
-        this.concreteRoutes = [];
+        // Use fallback data since API endpoint doesn't exist yet
+        this.concreteRoutes = this.fallbackConcreteRoutes.map((route, index) => ({
+          routeId: index + 1,
+          routeCode: route.routeCode,
+          type: 'concrete',
+          startDate: new Date().toISOString(),
+          endDate: null,
+          encodedPolyline: '',
+          totalDistance: 0,
+          totalDuration: 0,
+          optimizedOrder: [],
+          optimizationMetadata: {
+            optimizationDate: new Date().toISOString(),
+            totalWaypoints: route.tickets.length,
+            originAddress: '',
+            destinationAddress: ''
+          },
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          createdBy: 1,
+          updatedBy: 1,
+          tickets: route.tickets.map((ticket, ticketIndex) => ({
+            ticketId: ticketIndex + 1,
+            ticketCode: `TICKET-${index + 1}-${ticketIndex + 1}`,
+            address: ticket.address,
+            queue: ticketIndex,
+            quantity: 1,
+            amountToPay: 150.00
+          }))
+        }));
         this.loadData(); // Refresh filtered data
+        this.updateMapPolylines(); // Update map with fallback routes
       }
     });
   }
@@ -387,13 +464,43 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
         this.asphaltRoutes = response.routes;
         this.isLoadingAsphaltRoutes = false;
         this.loadData(); // Refresh filtered data
+        this.updateMapPolylines(); // Update map with new routes
       },
       error: (error) => {
         console.error('Error loading asphalt routes:', error);
         this.isLoadingAsphaltRoutes = false;
-        // Fallback to empty array if API fails
-        this.asphaltRoutes = [];
+        // Use fallback data since API endpoint doesn't exist yet
+        this.asphaltRoutes = this.fallbackAsphaltRoutes.map((route, index) => ({
+          routeId: index + 1,
+          routeCode: route.routeCode,
+          type: 'asphalt',
+          startDate: new Date().toISOString(),
+          endDate: null,
+          encodedPolyline: '',
+          totalDistance: 0,
+          totalDuration: 0,
+          optimizedOrder: [],
+          optimizationMetadata: {
+            optimizationDate: new Date().toISOString(),
+            totalWaypoints: route.tickets.length,
+            originAddress: '',
+            destinationAddress: ''
+          },
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          createdBy: 1,
+          updatedBy: 1,
+          tickets: route.tickets.map((ticket, ticketIndex) => ({
+            ticketId: ticketIndex + 1,
+            ticketCode: `TICKET-${index + 1}-${ticketIndex + 1}`,
+            address: ticket.address,
+            queue: ticketIndex,
+            quantity: 1,
+            amountToPay: 150.00
+          }))
+        }));
         this.loadData(); // Refresh filtered data
+        this.updateMapPolylines(); // Update map with fallback routes
       }
     });
   }
@@ -571,5 +678,78 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     // Reset form
     this.newRouteType = '';
     this.newRouteStartDate = '';
+  }
+
+  // Update map polylines from all routes
+  updateMapPolylines() {
+    // Clear existing polylines
+    this.routePolylines.forEach(polyline => polyline.setMap(null));
+    this.routePolylines = [];
+
+    // Combine all routes
+    const allRoutes = [...this.spottingRoutes, ...this.concreteRoutes, ...this.asphaltRoutes];
+
+    allRoutes.forEach((route, index) => {
+      if (route.encodedPolyline) {
+        try {
+          // Decode the polyline
+          const decodedPolyline = polyline.decode(route.encodedPolyline);
+
+          // Convert to Google Maps LatLng objects
+          const path = decodedPolyline.map(coord => ({
+            lat: coord[0],
+            lng: coord[1]
+          }));
+
+          // Create polyline with different colors for different route types
+          let strokeColor = '#FF0000'; // Default red
+          if (route.type === 'spotting') {
+            strokeColor = '#FF6B35'; // Orange for spotting
+          } else if (route.type === 'concrete') {
+            strokeColor = '#4A90E2'; // Blue for concrete
+          } else if (route.type === 'asphalt') {
+            strokeColor = '#7ED321'; // Green for asphalt
+          }
+
+          const polylineOptions: google.maps.PolylineOptions = {
+            path: path,
+            strokeColor: strokeColor,
+            strokeOpacity: 0.8,
+            strokeWeight: 4,
+            geodesic: true,
+            map: this.map // Set the map directly if available
+          };
+
+          const newPolyline = new google.maps.Polyline(polylineOptions);
+          this.routePolylines.push(newPolyline);
+
+          console.log(`Created polyline for route ${route.routeCode}:`, {
+            path: path,
+            strokeColor: strokeColor,
+            encodedPolyline: route.encodedPolyline
+          });
+        } catch (error) {
+          console.error(`Error decoding polyline for route ${route.routeCode}:`, error);
+        }
+      } else {
+        console.log(`No encoded polyline for route ${route.routeCode}`);
+      }
+    });
+
+    console.log(`Total polylines created: ${this.routePolylines.length}`);
+  }
+
+  // Called when map is ready
+  onMapReady(map: google.maps.Map) {
+    console.log('Map is ready, setting map reference');
+    this.map = map;
+
+    // Add all existing polylines to the map
+    this.routePolylines.forEach(polyline => {
+      polyline.setMap(map);
+    });
+
+    // Update polylines again to ensure they're added to the map
+    this.updateMapPolylines();
   }
 }
