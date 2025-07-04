@@ -1,8 +1,8 @@
 <app-dashboard-layout>
-  <app-card-with-button title="Suppliers Management" [showEyeButton]="false">
+  <app-card-with-button title="Supplier Management" [showEyeButton]="false">
     <app-data-table
-      [title]="'Suppliers Management'"
-      [data]="tableData"
+      [title]="'Supplier Management'"
+      [data]="filteredSupplierData"
       [columns]="columns"
       [pageSizeOptions]="[5, 10, 20]"
       (edit)="onEdit($event)"

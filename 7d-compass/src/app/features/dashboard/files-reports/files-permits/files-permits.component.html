@@ -1,24 +1,22 @@
 <app-dashboard-layout>
-
   <div style="display: flex; flex-direction: column; gap: 16px; width: 100%;">
 
   <!-- Card 1: Upload Digger Permits -->
   <app-card-with-button title="Upload Digger Permits" [showEditButton]="true" class="uniform-card">
-
-    <div style="padding: 0 16px; margin: 8px 0;">
-    <mat-form-field appearance="fill" style="width: 100%;">
-      <mat-label>Search Permits</mat-label>
-      <input matInput [(ngModel)]="permitsFilter" (keyup)="applyPermitFilter($event)" placeholder="e.g., 7829S Turner or P456347">
-      <mat-icon matSuffix>search</mat-icon>
-    </mat-form-field>
-  </div>
+      <div style="padding: 0 16px; margin: 8px 0;">
+        <mat-form-field appearance="fill" style="width: 100%;">
+          <mat-label>Search Permits</mat-label>
+          <input matInput [(ngModel)]="permitsFilter" (keyup)="applyPermitFilter($event)" placeholder="e.g., 7829S Turner or P456347">
+          <mat-icon matSuffix>search</mat-icon>
+        </mat-form-field>
+      </div>
     <div style="display: flex; align-items: center; padding: 0 16px; margin: 8px 0; font-weight: 500;">
       <div style="flex: 3;">Location</div>
       <div style="flex: 2; text-align: center;">Ticket</div>
       <div style="flex: 1; text-align: center;">Action</div>
     </div>
     <mat-divider></mat-divider>
-    <div *ngFor="let permit of filteredPermits">
+      <div *ngFor="let permit of filteredPermits">
       <div style="display: flex; padding: 8px 16px; align-items: center;">
         <div style="flex: 3;">{{ permit.location }}</div>
         <div style="flex: 2; text-align: center;">{{ permit.ticket }}</div>
@@ -32,21 +30,20 @@
 
   <!-- Card 2: Upload Construction Permit -->
   <app-card-with-button title="Upload Construction Permit" [showEditButton]="true" class="uniform-card">
-    <div style="padding: 0 16px; margin: 8px 0;">
-    <mat-form-field appearance="fill" style="width: 100%;">
-      <mat-label>Search Construction Permits</mat-label>
-      <input matInput [(ngModel)]="constructionPermitsFilter" (keyup)="applyConstructionPermitFilter($event)" placeholder="e.g., Downtown or CP-2023-0456">
-      <mat-icon matSuffix>search</mat-icon>
-    </mat-form-field>
-
-  </div>
+      <div style="padding: 0 16px; margin: 8px 0;">
+        <mat-form-field appearance="fill" style="width: 100%;">
+          <mat-label>Search Construction Permits</mat-label>
+          <input matInput [(ngModel)]="constructionPermitsFilter" (keyup)="applyConstructionPermitFilter($event)" placeholder="e.g., Downtown or CP-2023-0456">
+          <mat-icon matSuffix>search</mat-icon>
+        </mat-form-field>
+      </div>
     <div style="display: flex; align-items: center; padding: 0 16px; margin: 8px 0; font-weight: 500;">
       <div style="flex: 3;">Project</div>
       <div style="flex: 2; text-align: center;">Permit #</div>
       <div style="flex: 1; text-align: center;">Action</div>
     </div>
     <mat-divider></mat-divider>
-    <div *ngFor="let permit of filteredConstructionPermits">
+      <div *ngFor="let permit of filteredConstructionPermits">
       <div style="display: flex; padding: 8px 16px; align-items: center;">
         <div style="flex: 3;">{{ permit.project }}</div>
         <div style="flex: 2; text-align: center;">{{ permit.permitNumber }}</div>
@@ -60,7 +57,6 @@
 
   <!-- Card 3: Upload Missing Photo Evidence -->
   <app-card-with-button title="Upload Photo Evidence" [showEditButton]="true" class="uniform-card">
-    
   <div style="padding: 0 16px; margin: 8px 0;">
     <mat-form-field appearance="fill" style="width: 100%;">
       <mat-label>Search Missing Photos</mat-label>
@@ -68,14 +64,13 @@
       <mat-icon matSuffix>search</mat-icon>
     </mat-form-field>
   </div>
-    
     <div style="display: flex; align-items: center; padding: 0 16px; margin: 8px 0; font-weight: 500;">
       <div style="flex: 3;">Site</div>
       <div style="flex: 2; text-align: center;">Date</div>
       <div style="flex: 1; text-align: center;">Action</div>
     </div>
     <mat-divider></mat-divider>
-    <div *ngFor="let photo of filteredMissingPhotos">
+      <div *ngFor="let photo of filteredMissingPhotos">
       <div style="display: flex; padding: 8px 16px; align-items: center;">
         <div style="flex: 3;">{{ photo.site }}</div>
         <div style="flex: 2; text-align: center;">{{ photo.date }}</div>
@@ -96,14 +91,13 @@
       <mat-icon matSuffix>search</mat-icon>
     </mat-form-field>
   </div>
-   
     <div style="display: flex; align-items: center; padding: 0 16px; margin: 8px 0; font-weight: 500;">
       <div style="flex: 3;">Vendor</div>
       <div style="flex: 2; text-align: center;">Amount</div>
       <div style="flex: 1; text-align: center;">Action</div>
     </div>
     <mat-divider></mat-divider>
-    <div *ngFor="let invoice of filteredInvoices">
+      <div *ngFor="let invoice of filteredInvoices">
       <div style="display: flex; padding: 8px 16px; align-items: center;">
         <div style="flex: 3;">{{ invoice.vendor }}</div>
         <div style="flex: 2; text-align: center;">{{ invoice.amount }}</div>
@@ -124,14 +118,13 @@
       <mat-icon matSuffix>search</mat-icon>
     </mat-form-field>
   </div>
-  
     <div style="display: flex; align-items: center; padding: 0 16px; margin: 8px 0; font-weight: 500;">
       <div style="flex: 3;">Location</div>
       <div style="flex: 2; text-align: center;">Date</div>
       <div style="flex: 1; text-align: center;">Action</div>
     </div>
     <mat-divider></mat-divider>
-    <div *ngFor="let permit of filteredPreviousDiggerPermits">
+      <div *ngFor="let permit of filteredPreviousDiggerPermits">
       <div style="display: flex; padding: 8px 16px; align-items: center;">
         <div style="flex: 3;">{{ permit.location }}</div>
         <div style="flex: 2; text-align: center;">{{ permit.date }}</div>
@@ -152,14 +145,13 @@
       <mat-icon matSuffix>search</mat-icon>
     </mat-form-field>
   </div>
-   
     <div style="display: flex; align-items: center; padding: 0 16px; margin: 8px 0; font-weight: 500;">
       <div style="flex: 3;">Project</div>
       <div style="flex: 2; text-align: center;">Date</div>
       <div style="flex: 1; text-align: center;">Action</div>
     </div>
     <mat-divider></mat-divider>
-    <div *ngFor="let permit of filteredPreviousConstructionPermits">
+      <div *ngFor="let permit of filteredPreviousConstructionPermits">
       <div style="display: flex; padding: 8px 16px; align-items: center;">
         <div style="flex: 3;">{{ permit.project }}</div>
         <div style="flex: 2; text-align: center;">{{ permit.date }}</div>
@@ -180,14 +172,13 @@
       <mat-icon matSuffix>search</mat-icon>
     </mat-form-field>
   </div>
-   
     <div style="display: flex; align-items: center; padding: 0 16px; margin: 8px 0; font-weight: 500;">
       <div style="flex: 3;">Site</div>
       <div style="flex: 2; text-align: center;">Date</div>
       <div style="flex: 1; text-align: center;">Action</div>
     </div>
     <mat-divider></mat-divider>
-    <div *ngFor="let photo of filteredPhotoEvidence">
+      <div *ngFor="let photo of filteredPhotoEvidence">
       <div style="display: flex; padding: 8px 16px; align-items: center;">
         <div style="flex: 3;">{{ photo.site }}</div>
         <div style="flex: 2; text-align: center;">{{ photo.date }}</div>
@@ -208,14 +199,13 @@
       <mat-icon matSuffix>search</mat-icon>
     </mat-form-field>
   </div>
-   
     <div style="display: flex; align-items: center; padding: 0 16px; margin: 8px 0; font-weight: 500;">
       <div style="flex: 3;">Vendor</div>
       <div style="flex: 2; text-align: center;">Date</div>
       <div style="flex: 1; text-align: center;">Action</div>
     </div>
     <mat-divider></mat-divider>
-    <div *ngFor="let invoice of filteredPreviousInvoices">
+      <div *ngFor="let invoice of filteredPreviousInvoices">
       <div style="display: flex; padding: 8px 16px; align-items: center;">
         <div style="flex: 3;">{{ invoice.vendor }}</div>
         <div style="flex: 2; text-align: center;">{{ invoice.date }}</div>
@@ -226,6 +216,6 @@
       <mat-divider></mat-divider>
     </div>
   </app-card-with-button>
-
   </div>
+
 </app-dashboard-layout>

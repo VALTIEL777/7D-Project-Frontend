@@ -3,6 +3,32 @@ import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 
+export interface Inventory {
+  inventoryid?: number;
+  supplierid?: number;
+  name: string;
+  costperunit: string;
+  unit: string;
+  createdat?: string;
+  updatedat?: string;
+  deletedat?: string | null;
+  createdby?: number;
+  updatedby?: number;
+  suppliername?: string;
+  supplierphone?: string;
+  supplieremail?: string;
+  supplieraddress?: string;
+}
+
+export interface InventoryResponse {
+  inventoryid: number;
+  name: string;
+}
+
+export interface DeleteResponse {
+  message: string;
+}
+
 @Injectable({
   providedIn: 'root'
 })

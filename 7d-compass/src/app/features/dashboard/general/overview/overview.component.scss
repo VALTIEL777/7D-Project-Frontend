@@ -198,3 +198,33 @@ table.mat-elevation-z1 tr {
   overflow-y: auto;
   padding-right: 8px; /* To prevent content hiding behind scrollbar */
 }
+
+/* Loading and empty states */
+.loading-state, .empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  gap: 10px;
+  color: #666;
+}
+
+.loading-state {
+  flex-direction: row;
+  gap: 10px;
+}
+
+.empty-state mat-icon {
+  font-size: 48px;
+  width: 48px;
+  height: 48px;
+  color: #ccc;
+}
+
+/* Increase font size for card descriptions */
+app-card-with-button ::ng-deep .card-description {
+  font-size: 2.5rem !important;
+  font-weight: 700 !important;
+  color: #333 !important;
+}

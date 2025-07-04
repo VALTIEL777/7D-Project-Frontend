@@ -6,6 +6,8 @@ import { SearchDialogComponent } from '../../../../shared/search-dialog/search-d
 import { DataTableComponent } from '../../../../shared/data-table/data-table.component';
 import { ConfirmationDialogComponent } from '../../../../shared/confirmation-dialog/confirmation-dialog.component';
 import { FinesService } from '../../../../core/services/payments/fines.service';
+import { BaseDashboardComponent } from '../../../../shared/base-dashboard.component';
+import { FilterService } from '../../../../core/services/filter.service';
 
 interface ColumnDefinition {
   name: string;
@@ -25,7 +27,7 @@ interface ColumnDefinition {
   templateUrl: './fines.component.html',
   styleUrl: './fines.component.scss'
 })
-export class FinesComponent implements OnInit {
+export class FinesComponent extends BaseDashboardComponent implements OnInit {
   columns: ColumnDefinition[] = [
     { name: 'fineNumber', header: 'Fine Number', cell: f => `FINE-${f.fineid}` },
     { name: 'ticketId', header: 'Ticket ID',   cell: (f: any) => f.ticketid != null ? `TK-${f.ticketid}` : ''},
@@ -47,21 +49,65 @@ export class FinesComponent implements OnInit {
     { name: 'actions', header: 'Actions', cell: () => '', isActionColumn: true }
   ];
 
-  
+
   tableData: any[] = [];
 
   constructor(
     private dialog: MatDialog,
-    private finesService: FinesService
-  ) {}
+    private finesService: FinesService,
+    filterService: FilterService
+  ) {
+    super(filterService);
+  }
 
-  ngOnInit(): void {
+  override ngOnInit(): void {
+    super.ngOnInit();
     this.loadFines();
+  }
+
+  protected override loadData(): void {
+    // Initialize data for filtering
+    this.allData = [...this.tableData];
+    this.filteredData = [...this.allData];
+  }
+
+  // Override text search to include fine fields
+  protected override matchesTextSearch(item: any, searchTerm: string): boolean {
+    const searchableFields = ['fineid', 'ticketid', 'status'];
+
+    return searchableFields.some(field => {
+      const value = this.getNestedValue(item, field);
+      if (value) {
+        return String(value).toLowerCase().includes(searchTerm);
+      }
+      return false;
+    });
+  }
+
+  // Override date range to use fine date
+  protected override matchesDateRange(item: any, cutoffDate: Date): boolean {
+    const dateValue = item.finedate;
+    if (dateValue) {
+      const itemDate = new Date(dateValue);
+      if (!isNaN(itemDate.getTime()) && itemDate >= cutoffDate) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  // Getter for filtered fine data
+  get filteredFineData() {
+    return this.filteredData;
   }
 
   loadFines(): void {
     this.finesService.getAllFines().subscribe({
-      next: (data) => this.tableData = data,
+      next: (data) => {
+        this.tableData = data;
+        this.allData = [...this.tableData];
+        this.filteredData = [...this.allData];
+      },
       error: (err) => console.error('Error loading fines:', err)
     });
   }
@@ -76,7 +122,7 @@ export class FinesComponent implements OnInit {
           fineDate: new Date(fine.fineDate),
           paymentDate: fine.paymentDate ? new Date(fine.paymentDate) : null
         },
-        excludedFields: ['fineid', 'finenumber', 'fineURL']
+        excludedFields: ['fineid', 'finenumber', 'fineURL', 'deletedat', 'updatedat', 'createdat', 'createdby', 'updatedby']
       }
     });
 
@@ -91,6 +137,8 @@ export class FinesComponent implements OnInit {
             status: newStatus,
             paymentdate: result.paymentdate ? result.paymentDate.toISOString().split('T')[0] : null
           };
+          this.allData = [...this.tableData];
+          this.applyFilters();
         }
       }
     });
@@ -114,6 +162,8 @@ export class FinesComponent implements OnInit {
         this.finesService.deleteFine(fine.fineid).subscribe({
           next: () => {
             this.tableData = this.tableData.filter(f => f.fineid !== fine.fineid);
+            this.allData = [...this.tableData];
+            this.applyFilters();
             console.log('Fine deleted:', fine);
           },
           error: (err) => {
