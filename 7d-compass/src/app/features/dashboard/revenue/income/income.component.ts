@@ -6,17 +6,21 @@ import { CardWithButtonComponent } from '../../../../shared/card-with-button/car
 import { ConfirmationDialogComponent } from '../../../../shared/confirmation-dialog/confirmation-dialog.component';
 import { SearchDialogComponent } from '../../../../shared/search-dialog/search-dialog.component';
 import { MatDialog } from '@angular/material/dialog';
-import { DomSanitizer } from '@angular/platform-browser';
+import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { BaseDashboardComponent } from '../../../../shared/base-dashboard.component';
 import { FilterService } from '../../../../core/services/filter.service';
+import { ColumnDefinition } from '../../../../shared/data-table/data-table.component';
+import { ColumnDefinition } from '../../../../shared/data-table/data-table.component';
+
 
 interface ColumnDefinition {
   name: string;
   header: string;
-  cell: (element: any) => string;
+  cell: (element: any) => string | SafeHtml; // ✅ Acepta ambos
   isActionColumn?: boolean;
   isHtml?: boolean;
 }
+
 
 @Component({
   selector: 'app-income',
@@ -32,26 +36,14 @@ interface ColumnDefinition {
   templateUrl: './income.component.html',
   styleUrl: './income.component.scss'
 })
-export class IncomeComponent extends BaseDashboardComponent implements OnInit {
-  constructor(
-    private dialog: MatDialog,
-    private sanitizer: DomSanitizer,
-    filterService: FilterService
-  ) {
-    super(filterService);
-  }
 
-  override ngOnInit(): void {
-    super.ngOnInit();
-    this.initializeData();
+export class IncomeComponent {
+  constructor(private dialog: MatDialog,
+    private sanitizer: DomSanitizer
+   ) {}
+     sanitize(html: string): SafeHtml {
+    return this.sanitizer.bypassSecurityTrustHtml(html);
   }
-
-  protected override loadData(): void {
-    // Combine ticket and invoice data for filtering
-    const allData = [
-      ...this.ticketData.map(ticket => ({ ...ticket, type: 'ticket' })),
-      ...this.invoiceData.map(invoice => ({ ...invoice, type: 'invoice' }))
-    ];
 
     this.allData = allData;
     this.filteredData = [...this.allData];
@@ -334,16 +326,20 @@ totalGeneral: number = 0;
     cell: (ticket: any) => `$${ticket.invoiceweb}`
   },
   {
-    name: 'income',
-    header: 'Income',
-    cell: (ticket: any) => {
-      const diff = Number(ticket.invoiceweb) - Number(ticket.our);
-      const sign = diff > 0 ? '+' : diff < 0 ? '-' : '';
-      const color = diff > 0 ? 'green' : diff < 0 ? 'red' : 'gray';
-      return `<span style="color:${color}; font-weight: bold;">${sign}$${Math.abs(diff)}</span>`;
-    },
-    isHtml: true
-  },
+
+  name: 'income',
+  header: 'Income',
+  cell: (ticket: any) => {
+  const diff = Number(ticket.invoiceweb) - Number(ticket.our);
+  const sign = diff > 0 ? '+' : diff < 0 ? '-' : '';
+  const color = diff > 0 ? 'green' : diff < 0 ? 'red' : 'gray';
+  const html = `<span style="color:${color}; font-weight: bold;">${sign}$${Math.abs(diff)}</span>`;
+  return this.sanitize(html); // 👈 sanitización aquí
+},
+isHtml: true
+},
+
+  
   {
     name: 'actions',
     header: 'Actions',

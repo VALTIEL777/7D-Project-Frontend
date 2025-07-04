@@ -30,7 +30,7 @@ export class LoginComponent implements OnInit {
     });
   }
 
-  login(): void {
+login(): void {
   if (this.loginForm.invalid) {
     this.errorMessage = 'Todos los campos son requeridos';
     return;
@@ -51,18 +51,18 @@ export class LoginComponent implements OnInit {
 
       const role = response.user?.role?.toLowerCase();
 
-      // Redirige según el rol
       if (role === 'operario') {
-        this.router.navigate(['/current']);
+        this.router.navigate(['/upcoming']);
       } else {
         this.router.navigate(['/dashboard']);
       }
     },
     error: (error) => {
       this.errorMessage = error.error?.message || 'Credenciales inválidas';
+      this.isLoading = false; // ✅ Detener el spinner al fallar
     },
     complete: () => {
-      this.isLoading = false;
+      // No pongas isLoading = false aquí, ya que solo se ejecuta si no hubo error
     }
   });
 }

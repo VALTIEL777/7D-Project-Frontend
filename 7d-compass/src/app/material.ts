@@ -14,6 +14,8 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatDialogModule } from '@angular/material/dialog';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
+import { MatAutocompleteModule } from '@angular/material/autocomplete';
+
 
 export const MATERIAL_MODULES = [
   MatButtonModule,
@@ -32,4 +34,5 @@ export const MATERIAL_MODULES = [
   MatSnackBarModule,
   MatDialogModule,
   MatButtonToggleModule
+  MatAutocompleteModule
 ];
