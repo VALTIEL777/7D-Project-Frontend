@@ -1,0 +1,35 @@
+<!-- Dentro de app-sitejob-layout, fuera del scroll principal -->
+<div class="bottom-tabs">
+  <button
+    mat-button
+    class="tab-button"
+    routerLink="/current"
+    routerLinkActive="active"
+    [routerLinkActiveOptions]="{ exact: true }"
+  >
+    <mat-icon>location_on</mat-icon>
+    <span>Current</span>
+  </button>
+
+  <button
+    mat-button
+    class="tab-button"
+    routerLink="/upcoming"
+    routerLinkActive="active"
+    [routerLinkActiveOptions]="{ exact: true }"
+  >
+    <mat-icon>schedule</mat-icon>
+    <span>Upcoming</span>
+  </button>
+
+  <button
+    mat-button
+    class="tab-button"
+    routerLink="/completed"
+    routerLinkActive="active"
+    [routerLinkActiveOptions]="{ exact: true }"
+  >
+    <mat-icon>check_circle</mat-icon>
+    <span>Completed</span>
+  </button>
+</div>

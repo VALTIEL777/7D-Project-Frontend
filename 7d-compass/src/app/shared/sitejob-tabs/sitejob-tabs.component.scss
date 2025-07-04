@@ -1,0 +1,41 @@
+.bottom-tabs {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  background-color: #ffffff;
+  padding: 8px 0; // Aumenta la altura general
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.15);
+  border-top: 1px solid #ccc;
+  height: 70px; // puedes ajustar según el diseño
+}
+
+.tab-button {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: #555;
+  border-radius: 0;
+  font-size: 0.75rem;
+  min-width: 0;
+  transition: color 0.3s;
+
+  mat-icon {
+    font-size: 20px;
+    margin-bottom: 4px;
+  }
+
+  &.active {
+    color: #0d47a1;
+    font-weight: bold;
+  }
+
+  &:hover {
+    background-color: rgba(0, 0, 0, 0.04);
+  }
+}
