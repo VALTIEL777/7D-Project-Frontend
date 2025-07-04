@@ -6,6 +6,8 @@ import { SearchDialogComponent } from '../../../../shared/search-dialog/search-d
 import { DataTableComponent } from '../../../../shared/data-table/data-table.component';
 import { ConfirmationDialogComponent } from '../../../../shared/confirmation-dialog/confirmation-dialog.component';
 import { SupplierService } from '../../../../core/services/material/supplier.service';
+import { BaseDashboardComponent } from '../../../../shared/base-dashboard.component';
+import { FilterService } from '../../../../core/services/filter.service';
 
 interface ColumnDefinition {
   name: string;
@@ -25,11 +27,11 @@ interface ColumnDefinition {
   templateUrl: './suppliers.component.html',
   styleUrl: './suppliers.component.scss'
 })
-export class SuppliersComponent implements OnInit {
+export class SuppliersComponent extends BaseDashboardComponent implements OnInit {
   columns: ColumnDefinition[] = [
     {
       name: 'name',
-      header: 'Supplier Name',
+      header: 'Name',
       cell: (s: any) => s.name
     },
     {
@@ -59,28 +61,58 @@ export class SuppliersComponent implements OnInit {
 
   constructor(
     private dialog: MatDialog,
-    private supplierService: SupplierService
-  ) {}
+    private supplierService: SupplierService,
+    filterService: FilterService
+  ) {
+    super(filterService);
+  }
 
-  ngOnInit(): void {
+  override ngOnInit(): void {
+    super.ngOnInit();
     this.loadSuppliers();
+  }
+
+  protected override loadData(): void {
+    // Initialize data for filtering
+    this.allData = [...this.tableData];
+    this.filteredData = [...this.allData];
+  }
+
+  // Override text search to include supplier fields
+  protected override matchesTextSearch(item: any, searchTerm: string): boolean {
+    const searchableFields = ['name', 'phone', 'email', 'address'];
+
+    return searchableFields.some(field => {
+      const value = this.getNestedValue(item, field);
+      if (value) {
+        return String(value).toLowerCase().includes(searchTerm);
+      }
+      return false;
+    });
   }
 
   loadSuppliers(): void {
     this.supplierService.getAllSuppliers().subscribe({
       next: (suppliers) => {
         this.tableData = suppliers.map(s => ({
-          supplierid: s.supplierId,
+          supplierid: s.supplierid,
           name: s.name,
           phone: s.phone,
           email: s.email,
           address: s.address,
-          createdby: s.createdBy,
-          updatedby: s.updatedBy
+          createdby: s.createdby,
+          updatedby: s.updatedby
         }) as any);
+        this.allData = [...this.tableData];
+        this.filteredData = [...this.allData];
       },
       error: (err) => console.error('Error loading suppliers', err)
     });
+  }
+
+  // Getter for filtered supplier data
+  get filteredSupplierData() {
+    return this.filteredData;
   }
 
   onEdit(supplier: any) {
@@ -89,7 +121,7 @@ export class SuppliersComponent implements OnInit {
       data: {
         title: `Edit Supplier: ${supplier.name}`,
         data: supplier,
-        excludedFields: ['supplierid']
+        excludedFields: ['supplierid', 'deletedat', 'updatedat', 'createdat', 'createdby', 'updatedby']
       }
     });
 
@@ -101,6 +133,8 @@ export class SuppliersComponent implements OnInit {
             ...this.tableData[index],
             ...result
           };
+          this.allData = [...this.tableData];
+          this.applyFilters();
         }
       }
     });
@@ -124,6 +158,8 @@ export class SuppliersComponent implements OnInit {
         this.supplierService.deleteSupplier(supplier.supplierid).subscribe({
           next: () => {
             this.tableData = this.tableData.filter(s => s.supplierid !== supplier.supplierid);
+            this.allData = [...this.tableData];
+            this.applyFilters();
             console.log('Supplier deleted:', supplier);
           },
           error: err => console.error('Error deleting supplier', err)

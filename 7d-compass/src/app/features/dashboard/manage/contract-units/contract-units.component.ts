@@ -1,10 +1,13 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { DashboardLayoutComponent } from "../../../../shared/dashboard-layout/dashboard-layout.component";
 import { CardWithButtonComponent } from '../../../../shared/card-with-button/card-with-button.component';
 import { MatDialog } from '@angular/material/dialog';
 import { SearchDialogComponent } from '../../../../shared/search-dialog/search-dialog.component';
 import { DataTableComponent } from '../../../../shared/data-table/data-table.component';
 import { ConfirmationDialogComponent } from '../../../../shared/confirmation-dialog/confirmation-dialog.component';
+import { ContractUnitsService, ContractUnit } from '../../../../core/services/contract-units.service';
+import { BaseDashboardComponent } from '../../../../shared/base-dashboard.component';
+import { FilterService } from '../../../../core/services/filter.service';
 
 interface ColumnDefinition {
   name: string;
@@ -24,12 +27,12 @@ interface ColumnDefinition {
   templateUrl: './contract-units.component.html',
   styleUrl: './contract-units.component.scss'
 })
-export class ContractUnitsComponent {
+export class ContractUnitsComponent extends BaseDashboardComponent implements OnInit {
   columns: ColumnDefinition[] = [
     {
       name: 'itemCode',
       header: 'Item Code',
-      cell: (unit: any) => unit.itemCode
+      cell: (unit: any) => unit.itemCode || 'N/A'
     },
     {
       name: 'name',
@@ -44,12 +47,19 @@ export class ContractUnitsComponent {
     {
       name: 'cost',
       header: 'Cost/Unit',
-      cell: (unit: any) => `$${unit.costPerUnit.toFixed(2)}`
+      cell: (unit: any) => {
+        const cost = unit.costPerUnit;
+        if (cost === null || cost === undefined || cost === '') {
+          return '$0.00';
+        }
+        const numCost = typeof cost === 'string' ? parseFloat(cost) : cost;
+        return isNaN(numCost) ? '$0.00' : `$${numCost.toFixed(2)}`;
+      }
     },
     {
       name: 'zone',
       header: 'Zone',
-      cell: (unit: any) => unit.zone
+      cell: (unit: any) => unit.zone || 'N/A'
     },
     {
       name: 'actions',
@@ -59,123 +69,118 @@ export class ContractUnitsComponent {
     }
   ];
 
-  tableData = [
-    {
-      contractUnitId: 1,
-      itemCode: 'CU-001',
-      name: 'Asphalt Paving',
-      unit: 'Square Yard',
-      description: 'Hot mix asphalt paving, including all materials and labor',
-      workNotIncluded: 'Does not include base preparation',
-      costPerUnit: 12.50,
-      zone: 'North',
-      paymentClause: 'Payment upon completion and inspection'
-    },
-    {
-      contractUnitId: 2,
-      itemCode: 'CU-002',
-      name: 'Concrete Sidewalk',
-      unit: 'Linear Foot',
-      description: '4" thick concrete sidewalk with broom finish',
-      workNotIncluded: 'Does not include subgrade preparation',
-      costPerUnit: 8.75,
-      zone: 'Central',
-      paymentClause: '50% upfront, 50% upon completion'
-    },
-    {
-      contractUnitId: 3,
-      itemCode: 'CU-003',
-      name: 'Curb Installation',
-      unit: 'Linear Foot',
-      description: '6" concrete curb with integral gutter',
-      workNotIncluded: 'Does not include excavation',
-      costPerUnit: 10.20,
-      zone: 'South',
-      paymentClause: 'Payment upon completion'
-    },
-    {
-      contractUnitId: 4,
-      itemCode: 'CU-004',
-      name: 'Storm Drain Installation',
-      unit: 'Each',
-      description: '12" diameter storm drain with all connections',
-      workNotIncluded: 'Does not include trenching',
-      costPerUnit: 250.00,
-      zone: 'West',
-      paymentClause: 'Progress payments based on milestones'
-    },
-    {
-      contractUnitId: 5,
-      itemCode: 'CU-005',
-      name: 'Street Sign Installation',
-      unit: 'Each',
-      description: 'Standard street sign with post and hardware',
-      workNotIncluded: 'Does not include sign design',
-      costPerUnit: 85.00,
-      zone: 'East',
-      paymentClause: 'Payment upon installation'
-    },
-    {
-      contractUnitId: 6,
-      itemCode: 'CU-006',
-      name: 'Traffic Signal',
-      unit: 'Each',
-      description: 'Complete traffic signal installation',
-      workNotIncluded: 'Does not include wiring to controller',
-      costPerUnit: 1200.00,
-      zone: 'Central',
-      paymentClause: '30% deposit, balance upon completion'
-    },
-    {
-      contractUnitId: 7,
-      itemCode: 'CU-007',
-      name: 'Pothole Repair',
-      unit: 'Square Foot',
-      description: 'Cold mix asphalt pothole repair',
-      workNotIncluded: 'Does not include full depth repair',
-      costPerUnit: 5.25,
-      zone: 'All',
-      paymentClause: 'Payment upon completion'
-    },
-    {
-      contractUnitId: 8,
-      itemCode: 'CU-008',
-      name: 'Street Light Installation',
-      unit: 'Each',
-      description: 'LED street light with pole and foundation',
-      workNotIncluded: 'Does not include electrical connection',
-      costPerUnit: 950.00,
-      zone: 'North',
-      paymentClause: 'Payment upon energization'
-    }
-  ];
+  tableData: ContractUnit[] = [];
 
-  constructor(private dialog: MatDialog) {}
+  constructor(
+    private dialog: MatDialog,
+    private contractUnitsService: ContractUnitsService,
+    filterService: FilterService
+  ) {
+    super(filterService);
+  }
 
-  onEdit(unit: any) {
+  override ngOnInit(): void {
+    super.ngOnInit();
+    this.loadContractUnits();
+  }
+
+  protected override loadData(): void {
+    // Initialize data for filtering
+    this.allData = [...this.tableData];
+    this.filteredData = [...this.allData];
+  }
+
+  // Override text search to include contract unit fields
+  protected override matchesTextSearch(item: any, searchTerm: string): boolean {
+    const searchableFields = ['itemCode', 'name', 'unit', 'zone', 'description'];
+
+    return searchableFields.some(field => {
+      const value = this.getNestedValue(item, field);
+      if (value) {
+        return String(value).toLowerCase().includes(searchTerm);
+      }
+      return false;
+    });
+  }
+
+  loadContractUnits(): void {
+    this.contractUnitsService.getAllContractUnits().subscribe({
+      next: data => {
+        console.log('API response data:', data);
+        if (data.length > 0) {
+          console.log('First item structure:', data[0]);
+          console.log('First item ID field:', data[0].contractUnitId);
+          console.log('First item all keys:', Object.keys(data[0]));
+        }
+        this.tableData = data;
+        this.allData = [...data];
+        this.filteredData = [...data];
+      },
+      error: err => console.error('Error loading contract units:', err)
+    });
+  }
+
+  // Getter for filtered contract unit data
+  get filteredContractUnitData() {
+    return this.filteredData;
+  }
+
+  onEdit(unit: ContractUnit) {
     const dialogRef = this.dialog.open(SearchDialogComponent, {
       width: '600px',
       data: {
         title: `Edit Contract Unit: ${unit.itemCode}`,
         data: unit,
-        excludedFields: ['contractUnitId', 'itemCode']
+        excludedFields: ['contractUnitId', 'itemCode', 'deletedAt', 'updatedAt', 'createdAt', 'createdBy', 'updatedBy'],
+        fields: [
+          { name: 'name', label: 'Name', type: 'text', required: true },
+          { name: 'unit', label: 'Unit', type: 'select', required: true, options: [
+            { value: 'each', label: 'Each' },
+            { value: 'square foot', label: 'Square Foot' },
+            { value: 'foot', label: 'Foot' }
+          ]},
+          { name: 'description', label: 'Description', type: 'textarea', required: false },
+          { name: 'workNotIncluded', label: 'Work Not Included', type: 'textarea', required: false },
+          { name: 'costPerUnit', label: 'Cost Per Unit', type: 'number', required: false },
+          { name: 'zone', label: 'Zone', type: 'select', required: false, options: [
+            { value: 'central', label: 'Central' },
+            { value: 'north', label: 'North' }
+          ]},
+          { name: 'paymentClause', label: 'Payment Clause', type: 'textarea', required: false },
+          { name: 'neededMobilization', label: 'Needed Mobilization', type: 'number', required: false },
+          { name: 'neededContractUnit', label: 'Needed Contract Unit', type: 'number', required: false },
+          { name: 'cdotStandardImg', label: 'CDOT Standard Image', type: 'text', required: false }
+        ]
       }
     });
 
     dialogRef.afterClosed().subscribe(result => {
-      if (result) {
+      if (result && unit.contractUnitId) {
         const index = this.tableData.findIndex(u => u.contractUnitId === unit.contractUnitId);
         if (index !== -1) {
-          this.tableData[index] = {
-            ...this.tableData[index],
-            ...result
+          const updatedUnit = {
+            ...unit,
+            ...result,
+            updatedBy: this.getCurrentUserId()
           };
+
+          this.contractUnitsService.updateContractUnit(unit.contractUnitId, updatedUnit).subscribe({
+            next: () => {
+              this.tableData[index] = updatedUnit;
+              this.allData = [...this.tableData];
+              this.applyFilters();
+            },
+            error: err => console.error('Error updating contract unit:', err)
+          });
         }
       }
     });
   }
 
-  onDelete(unit: any) {
+  onDelete(unit: ContractUnit) {
+    console.log('Delete unit object:', unit);
+    console.log('Unit ID (contractUnitId):', unit.contractUnitId);
+
     const dialogRef = this.dialog.open(ConfirmationDialogComponent, {
       width: '450px',
       disableClose: true,
@@ -189,10 +194,28 @@ export class ContractUnitsComponent {
     });
 
     dialogRef.afterClosed().subscribe(confirmed => {
-      if (confirmed) {
-        this.tableData = this.tableData.filter(u => u.contractUnitId !== unit.contractUnitId);
-        console.log('Contract unit deleted:', unit);
+      if (confirmed && unit.contractUnitId) {
+        console.log('Attempting to delete with ID:', unit.contractUnitId);
+        this.contractUnitsService.deleteContractUnit(unit.contractUnitId).subscribe({
+          next: () => {
+            this.tableData = this.tableData.filter(u => u.contractUnitId !== unit.contractUnitId);
+            this.allData = [...this.tableData];
+            this.applyFilters();
+            console.log('Contract unit deleted:', unit);
+          },
+          error: err => {
+            console.error('Error deleting contract unit:', err);
+            console.error('Error details:', err.error);
+          }
+        });
       }
     });
+  }
+
+  // Helper method to get current user ID (should be replaced with actual auth service)
+  private getCurrentUserId(): number {
+    // TODO: Implement this when auth service is available
+    // return this.authService.getCurrentUser()?.id || 1;
+    return 1; // Default for now
   }
 }

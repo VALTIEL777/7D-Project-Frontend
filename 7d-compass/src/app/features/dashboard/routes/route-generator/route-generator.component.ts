@@ -1,15 +1,96 @@
-import { Component, HostListener, OnInit } from '@angular/core';
+import { Component, HostListener, OnInit, ViewChild, TemplateRef, ElementRef } from '@angular/core';
 import { DashboardLayoutComponent } from "../../../../shared/dashboard-layout/dashboard-layout.component";
 import { CardWithButtonComponent } from "../../../../shared/card-with-button/card-with-button.component";
 import { MatTableModule } from "@angular/material/table";
 import { CommonModule } from "@angular/common";
-import { DatePipe } from '@angular/common';
 import { MatDividerModule } from '@angular/material/divider';
-import { SearchBarComponent } from '../../../../shared/search-bar/search-bar.component';
 import { DragDropModule } from '@angular/cdk/drag-drop';
 import { CdkDragDrop, moveItemInArray, transferArrayItem } from '@angular/cdk/drag-drop';
 import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { FormsModule } from '@angular/forms';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
 import { PlusButtonComponent } from '../../../../shared/plus-button/plus-button.component';
+import { BaseDashboardComponent } from '../../../../shared/base-dashboard.component';
+import { FilterService } from '../../../../core/services/filter.service';
+import { HttpClient } from '@angular/common/http';
+import { environment } from '../../../../../environments/environment';
+import { GoogleMapsModule } from '@angular/google-maps';
+import * as polyline from '@mapbox/polyline';
+
+// Interface for route tickets
+interface RouteTicket {
+  ticketId: number;
+  ticketCode: string;
+  address: string;
+  queue: number;
+  quantity: number;
+  amountToPay: number;
+}
+
+// Interface for optimization metadata
+interface OptimizationMetadata {
+  optimizationDate: string;
+  totalWaypoints: number;
+  originAddress: string;
+  destinationAddress: string;
+}
+
+// Interface for individual route
+interface Route {
+  routeId: number;
+  routeCode: string;
+  type: string;
+  startDate: string;
+  endDate: string | null;
+  encodedPolyline: string;
+  totalDistance: number;
+  totalDuration: number;
+  optimizedOrder: number[];
+  optimizationMetadata: OptimizationMetadata;
+  createdAt: string;
+  updatedAt: string;
+  createdBy: number;
+  updatedBy: number;
+  tickets: RouteTicket[];
+}
+
+// Interface for API response
+interface RoutesResponse {
+  message: string;
+  type: string;
+  count: number;
+  routes: Route[];
+}
+
+// Interface for ready tickets
+interface ReadyTicket {
+  ticketid: number;
+  ticketcode: string;
+  contractnumber: string | null;
+  amounttopay: number | null;
+  tickettype: string;
+  daysoutstanding: number | null;
+  comment7d: string | null;
+  quantity: number;
+  address: string;
+  contractunitname: string;
+  incidentname: string;
+  createdat: string;
+  updatedat: string;
+}
+
+// Interface for ready tickets API response
+interface ReadyTicketsResponse {
+  message: string;
+  type: string;
+  count: number;
+  criteria: string;
+  tickets: ReadyTicket[];
+}
 
 @Component({
   selector: 'app-route-generator',
@@ -18,27 +99,76 @@ import { PlusButtonComponent } from '../../../../shared/plus-button/plus-button.
     CardWithButtonComponent,
     MatTableModule,
     CommonModule,
-    DatePipe,
     MatDividerModule,
-    SearchBarComponent,
     DragDropModule,
     MatButtonModule,
-    PlusButtonComponent
+    PlusButtonComponent,
+    MatIconModule,
+    MatDialogModule,
+    FormsModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatSelectModule,
+    GoogleMapsModule
   ],
   templateUrl: './route-generator.component.html',
   styleUrl: './route-generator.component.scss'
 })
-export class RouteGeneratorComponent implements OnInit {
+export class RouteGeneratorComponent extends BaseDashboardComponent implements OnInit {
   isMobile: boolean = false;
 
-  activeRoutes = [
-    { code: 'RTE-001', details: ['2837 N Froid Street', '123 Main St', '456 Oak Ave', '789 Pine Ln', '101 Elm Rd', '111 Elm Rd', '222 Oak Dr'] },
-    { code: 'RTE-002', details: ['2837 N Froid Street', '123 Main St', '456 Oak Ave', '789 Pine Ln', '101 Elm Rd'] },
+  // API data properties
+  spottingRoutes: Route[] = [];
+  concreteRoutes: Route[] = [];
+  asphaltRoutes: Route[] = [];
+
+  // Ready tickets data
+  spotReadyTickets: ReadyTicket[] = [];
+  asphaltReadyTickets: ReadyTicket[] = [];
+  concreteReadyTickets: ReadyTicket[] = [];
+
+  // Loading states
+  isLoadingSpottingRoutes = false;
+  isLoadingConcreteRoutes = false;
+  isLoadingAsphaltRoutes = false;
+  isLoadingSpotReady = false;
+  isLoadingAsphaltReady = false;
+  isLoadingConcreteReady = false;
+
+  // Dialog properties
+  newRouteType: string = '';
+  newRouteStartDate: string = '';
+  private dialogRef: any;
+
+  // Map properties
+  center: google.maps.LatLngLiteral = { lat: 41.8781, lng: -87.6298 }; // Chicago
+  zoom = 10;
+  mapOptions: google.maps.MapOptions = {
+    mapTypeId: google.maps.MapTypeId.ROADMAP,
+    zoomControl: true,
+    scrollwheel: true,
+    disableDoubleClickZoom: true,
+    maxZoom: 20,
+    minZoom: 8,
+  };
+  routePolylines: google.maps.Polyline[] = [];
+  private map: google.maps.Map | null = null;
+
+  // Fallback data (will be used if API fails)
+  fallbackSpottingRoutes = [
+    { routeCode: 'SPT-001', tickets: [{ address: '2837 N Froid Street' }, { address: '123 Main St' }, { address: '456 Oak Ave' }] },
+    { routeCode: 'SPT-002', tickets: [{ address: '789 Pine Ln' }, { address: '101 Elm Rd' }] },
   ];
-  generatedRoutes = [
-    { code: 'RTE-003', details: ['2837 N Froid Street', '123 Main St', '456 Oak Ave', '789 Pine Ln', '101 Elm Rd'] },
-    { code: 'RTE-004', details: ['2837 N Froid Street', '123 Main St', '456 Oak Ave', '789 Pine Ln', '101 Elm Rd'] },
-    { code: 'RTE-005', details: ['2837 N Froid Street', '123 Main St', '456 Oak Ave', '789 Pine Ln', '101 Elm Rd'] },
+
+  fallbackConcreteRoutes = [
+    { routeCode: 'CON-001', tickets: [{ address: '2837 N Froid Street' }, { address: '123 Main St' }, { address: '456 Oak Ave' }] },
+    { routeCode: 'CON-002', tickets: [{ address: '789 Pine Ln' }, { address: '101 Elm Rd' }] },
+    { routeCode: 'CON-003', tickets: [{ address: '111 Elm Rd' }, { address: '222 Oak Dr' }] },
+  ];
+
+  fallbackAsphaltRoutes = [
+    { routeCode: 'ASP-001', tickets: [{ address: '2837 N Froid Street' }, { address: '123 Main St' }, { address: '456 Oak Ave' }] },
+    { routeCode: 'ASP-002', tickets: [{ address: '789 Pine Ln' }, { address: '101 Elm Rd' }] },
   ];
 
   locationsWithoutRoute = [
@@ -114,17 +244,71 @@ export class RouteGeneratorComponent implements OnInit {
     'actions',
   ];
 
-  private initialActiveRoutes: any[] = [];
-  private initialGeneratedRoutes: any[] = [];
+  private initialSpottingRoutes: Route[] = [];
+  private initialConcreteRoutes: Route[] = [];
+  private initialAsphaltRoutes: Route[] = [];
 
-  constructor() {
+  @ViewChild('generateRouteDialog') generateRouteDialog!: TemplateRef<any>;
+
+  constructor(filterService: FilterService, private http: HttpClient, private dialog: MatDialog) {
+    super(filterService);
     this.checkMobile();
-    this.initialActiveRoutes = [...this.activeRoutes];
-    this.initialGeneratedRoutes = [...this.generatedRoutes];
+    this.initialSpottingRoutes = [...this.spottingRoutes];
+    this.initialConcreteRoutes = [...this.concreteRoutes];
+    this.initialAsphaltRoutes = [...this.asphaltRoutes];
   }
 
-  ngOnInit() {
+  override ngOnInit() {
+    super.ngOnInit();
     this.updateDisplayedColumns();
+    this.loadSpottingRoutes();
+    this.loadConcreteRoutes();
+    this.loadAsphaltRoutes();
+    this.loadSpotReadyTickets();
+    this.loadAsphaltReadyTickets();
+    this.loadConcreteReadyTickets();
+  }
+
+  protected override loadData(): void {
+    // Initialize data for filtering - combine all route-related data
+    const allRouteData = [
+      ...this.spottingRoutes.map(route => ({ ...route, type: 'spotting' })),
+      ...this.concreteRoutes.map(route => ({ ...route, type: 'concrete' })),
+      ...this.asphaltRoutes.map(route => ({ ...route, type: 'asphalt' })),
+      ...this.locationsWithoutRoute.map(location => ({ routeCode: location, tickets: [{ address: location }], type: 'without-route' })),
+      ...this.locationsOnHoldOff.map(item => ({ routeCode: item.location, tickets: [{ address: item.location }], reason: item.reason, type: 'on-hold' })),
+      ...this.ticketData.map(ticket => ({ ...ticket, type: 'ticket' }))
+    ];
+
+    this.allData = allRouteData;
+    this.filteredData = [...this.allData];
+  }
+
+  // Override text search to include route and location fields
+  protected override matchesTextSearch(item: any, searchTerm: string): boolean {
+    const searchableFields = ['routeCode', 'location', 'phase', 'status', 'reason'];
+
+    return searchableFields.some(field => {
+      const value = this.getNestedValue(item, field);
+      if (value) {
+        return String(value).toLowerCase().includes(searchTerm);
+      }
+      return false;
+    }) ||
+    // Also search in tickets arrays
+    (item.tickets && Array.isArray(item.tickets) &&
+     item.tickets.some((ticket: RouteTicket) => ticket.address.toLowerCase().includes(searchTerm)));
+  }
+
+  // Override date range to use startDate for tickets
+  protected override matchesDateRange(item: any, cutoffDate: Date): boolean {
+    if (item.type === 'ticket' && item.startDate) {
+      const itemDate = new Date(item.startDate);
+      if (!isNaN(itemDate.getTime()) && itemDate >= cutoffDate) {
+        return true;
+      }
+    }
+    return false;
   }
 
   @HostListener('window:resize', ['$event'])
@@ -145,16 +329,252 @@ export class RouteGeneratorComponent implements OnInit {
     }
   }
 
+  // Getter for filtered ticket data
+  get filteredTicketData() {
+    return this.filteredData.filter(item => item.type === 'ticket');
+  }
+
+  // Getter for filtered route data
+  get filteredSpottingRoutes() {
+    return this.filteredData.filter(item => item.type === 'spotting');
+  }
+
+  get filteredConcreteRoutes() {
+    return this.filteredData.filter(item => item.type === 'concrete');
+  }
+
+  get filteredAsphaltRoutes() {
+    return this.filteredData.filter(item => item.type === 'asphalt');
+  }
+
+  get filteredLocationsWithoutRoute() {
+    return this.filteredData.filter(item => item.type === 'without-route').map(item => item.routeCode);
+  }
+
+  get filteredLocationsOnHoldOff() {
+    return this.filteredData.filter(item => item.type === 'on-hold').map(item => ({
+      location: item.routeCode,
+      reason: item.reason
+    }));
+  }
+
+  // Load spotting routes from API
+  loadSpottingRoutes() {
+    this.isLoadingSpottingRoutes = true;
+    this.http.get<RoutesResponse>(`${environment.apiUrl}/routes/spotting`).subscribe({
+      next: (response) => {
+        this.spottingRoutes = response.routes;
+        this.isLoadingSpottingRoutes = false;
+        this.loadData(); // Refresh filtered data
+        this.updateMapPolylines(); // Update map with new routes
+      },
+      error: (error) => {
+        console.error('Error loading spotting routes:', error);
+        this.isLoadingSpottingRoutes = false;
+        // Use fallback data since API endpoint doesn't exist yet
+        this.spottingRoutes = this.fallbackSpottingRoutes.map((route, index) => ({
+          routeId: index + 1,
+          routeCode: route.routeCode,
+          type: 'spotting',
+          startDate: new Date().toISOString(),
+          endDate: null,
+          encodedPolyline: '',
+          totalDistance: 0,
+          totalDuration: 0,
+          optimizedOrder: [],
+          optimizationMetadata: {
+            optimizationDate: new Date().toISOString(),
+            totalWaypoints: route.tickets.length,
+            originAddress: '',
+            destinationAddress: ''
+          },
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          createdBy: 1,
+          updatedBy: 1,
+          tickets: route.tickets.map((ticket, ticketIndex) => ({
+            ticketId: ticketIndex + 1,
+            ticketCode: `TICKET-${index + 1}-${ticketIndex + 1}`,
+            address: ticket.address,
+            queue: ticketIndex,
+            quantity: 1,
+            amountToPay: 150.00
+          }))
+        }));
+        this.loadData(); // Refresh filtered data
+        this.updateMapPolylines(); // Update map with fallback routes
+      }
+    });
+  }
+
+  // Load concrete routes from API
+  loadConcreteRoutes() {
+    this.isLoadingConcreteRoutes = true;
+    this.http.get<RoutesResponse>(`${environment.apiUrl}/routes/concrete`).subscribe({
+      next: (response) => {
+        this.concreteRoutes = response.routes;
+        this.isLoadingConcreteRoutes = false;
+        this.loadData(); // Refresh filtered data
+        this.updateMapPolylines(); // Update map with new routes
+      },
+      error: (error) => {
+        console.error('Error loading concrete routes:', error);
+        this.isLoadingConcreteRoutes = false;
+        // Use fallback data since API endpoint doesn't exist yet
+        this.concreteRoutes = this.fallbackConcreteRoutes.map((route, index) => ({
+          routeId: index + 1,
+          routeCode: route.routeCode,
+          type: 'concrete',
+          startDate: new Date().toISOString(),
+          endDate: null,
+          encodedPolyline: '',
+          totalDistance: 0,
+          totalDuration: 0,
+          optimizedOrder: [],
+          optimizationMetadata: {
+            optimizationDate: new Date().toISOString(),
+            totalWaypoints: route.tickets.length,
+            originAddress: '',
+            destinationAddress: ''
+          },
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          createdBy: 1,
+          updatedBy: 1,
+          tickets: route.tickets.map((ticket, ticketIndex) => ({
+            ticketId: ticketIndex + 1,
+            ticketCode: `TICKET-${index + 1}-${ticketIndex + 1}`,
+            address: ticket.address,
+            queue: ticketIndex,
+            quantity: 1,
+            amountToPay: 150.00
+          }))
+        }));
+        this.loadData(); // Refresh filtered data
+        this.updateMapPolylines(); // Update map with fallback routes
+      }
+    });
+  }
+
+  // Load asphalt routes from API
+  loadAsphaltRoutes() {
+    this.isLoadingAsphaltRoutes = true;
+    this.http.get<RoutesResponse>(`${environment.apiUrl}/routes/asphalt`).subscribe({
+      next: (response) => {
+        this.asphaltRoutes = response.routes;
+        this.isLoadingAsphaltRoutes = false;
+        this.loadData(); // Refresh filtered data
+        this.updateMapPolylines(); // Update map with new routes
+      },
+      error: (error) => {
+        console.error('Error loading asphalt routes:', error);
+        this.isLoadingAsphaltRoutes = false;
+        // Use fallback data since API endpoint doesn't exist yet
+        this.asphaltRoutes = this.fallbackAsphaltRoutes.map((route, index) => ({
+          routeId: index + 1,
+          routeCode: route.routeCode,
+          type: 'asphalt',
+          startDate: new Date().toISOString(),
+          endDate: null,
+          encodedPolyline: '',
+          totalDistance: 0,
+          totalDuration: 0,
+          optimizedOrder: [],
+          optimizationMetadata: {
+            optimizationDate: new Date().toISOString(),
+            totalWaypoints: route.tickets.length,
+            originAddress: '',
+            destinationAddress: ''
+          },
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          createdBy: 1,
+          updatedBy: 1,
+          tickets: route.tickets.map((ticket, ticketIndex) => ({
+            ticketId: ticketIndex + 1,
+            ticketCode: `TICKET-${index + 1}-${ticketIndex + 1}`,
+            address: ticket.address,
+            queue: ticketIndex,
+            quantity: 1,
+            amountToPay: 150.00
+          }))
+        }));
+        this.loadData(); // Refresh filtered data
+        this.updateMapPolylines(); // Update map with fallback routes
+      }
+    });
+  }
+
+  // Load spot ready tickets from API
+  loadSpotReadyTickets() {
+    this.isLoadingSpotReady = true;
+    this.http.get<ReadyTicketsResponse>(`${environment.apiUrl}/routes/tickets-ready/spotting`).subscribe({
+      next: (response) => {
+        console.log('Spot ready tickets response:', response);
+        this.spotReadyTickets = response.tickets;
+        console.log('Spot ready tickets array:', this.spotReadyTickets);
+        this.isLoadingSpotReady = false;
+        this.loadData(); // Refresh filtered data
+      },
+      error: (error) => {
+        console.error('Error loading spot ready tickets:', error);
+        this.isLoadingSpotReady = false;
+        // Fallback to empty array if API fails
+        this.spotReadyTickets = [];
+        this.loadData(); // Refresh filtered data
+      }
+    });
+  }
+
+  // Load asphalt ready tickets from API
+  loadAsphaltReadyTickets() {
+    this.isLoadingAsphaltReady = true;
+    this.http.get<ReadyTicketsResponse>(`${environment.apiUrl}/routes/tickets-ready/asphalt`).subscribe({
+      next: (response) => {
+        this.asphaltReadyTickets = response.tickets;
+        this.isLoadingAsphaltReady = false;
+        this.loadData(); // Refresh filtered data
+      },
+      error: (error) => {
+        console.error('Error loading asphalt ready tickets:', error);
+        this.isLoadingAsphaltReady = false;
+        // Fallback to empty array if API fails
+        this.asphaltReadyTickets = [];
+        this.loadData(); // Refresh filtered data
+      }
+    });
+  }
+
+  // Load concrete ready tickets from API
+  loadConcreteReadyTickets() {
+    this.isLoadingConcreteReady = true;
+    this.http.get<ReadyTicketsResponse>(`${environment.apiUrl}/routes/tickets-ready/concrete`).subscribe({
+      next: (response) => {
+        this.concreteReadyTickets = response.tickets;
+        this.isLoadingConcreteReady = false;
+        this.loadData(); // Refresh filtered data
+      },
+      error: (error) => {
+        console.error('Error loading concrete ready tickets:', error);
+        this.isLoadingConcreteReady = false;
+        // Fallback to empty array if API fails
+        this.concreteReadyTickets = [];
+        this.loadData(); // Refresh filtered data
+      }
+    });
+  }
+
   drop(event: CdkDragDrop<any[]>) {
     if (event.previousContainer === event.container) {
       moveItemInArray(event.container.data, event.previousIndex, event.currentIndex);
     } else {
       // Prevent routes from becoming empty
-      const isSourceActiveOrGeneratedRoute =
-        this.activeRoutes.some(route => route.details === event.previousContainer.data) ||
-        this.generatedRoutes.some(route => route.details === event.previousContainer.data);
+      const isSourceRoute =
+        this.spottingRoutes.some(route => route.tickets === event.previousContainer.data) ||
+        this.concreteRoutes.some(route => route.tickets === event.previousContainer.data) ||
+        this.asphaltRoutes.some(route => route.tickets === event.previousContainer.data);
 
-      if (isSourceActiveOrGeneratedRoute && event.previousContainer.data.length === 1) {
+      if (isSourceRoute && event.previousContainer.data.length === 1) {
         alert('Routes cannot be empty. At least one location must remain.');
         return;
       }
@@ -168,22 +588,168 @@ export class RouteGeneratorComponent implements OnInit {
     }
 
     // Force Angular to detect changes by reassigning the arrays
-    this.activeRoutes = [...this.activeRoutes];
-    this.generatedRoutes = [...this.generatedRoutes];
+    this.spottingRoutes = [...this.spottingRoutes];
+    this.concreteRoutes = [...this.concreteRoutes];
+    this.asphaltRoutes = [...this.asphaltRoutes];
     this.locationsWithoutRoute = [...this.locationsWithoutRoute];
     this.locationsOnHoldOff = [...this.locationsOnHoldOff];
   }
 
   saveChanges() {
-    console.log('Active Routes:', this.activeRoutes);
-    console.log('Generated Routes:', this.generatedRoutes);
+    console.log('Spotting Routes:', this.spottingRoutes);
+    console.log('Concrete Routes:', this.concreteRoutes);
+    console.log('Asphalt Routes:', this.asphaltRoutes);
     // Here you would implement the logic to save the changes, e.g., send to a backend service
     alert('Changes saved! Check console for updated routes.');
   }
 
   resetLists() {
-    this.activeRoutes = [...this.initialActiveRoutes];
-    this.generatedRoutes = [...this.initialGeneratedRoutes];
+    this.spottingRoutes = [...this.initialSpottingRoutes];
+    this.concreteRoutes = [...this.initialConcreteRoutes];
+    this.asphaltRoutes = [...this.initialAsphaltRoutes];
     alert('Lists have been reset!');
+  }
+
+  openGenerateRouteDialog() {
+    this.dialogRef = this.dialog.open(this.generateRouteDialog, {
+      width: '500px',
+      disableClose: true
+    });
+  }
+
+  closeGenerateRouteDialog() {
+    if (this.dialogRef) {
+      this.dialogRef.close();
+    }
+  }
+
+  generateNewRoute() {
+    // Validate form
+    if (!this.newRouteType || !this.newRouteStartDate) {
+      alert('Please fill in all required fields');
+      return;
+    }
+
+    // Create new route object
+    const newRoute = {
+      routeType: this.newRouteType,
+      startDate: this.newRouteStartDate
+    };
+
+    console.log('Generating new route:', newRoute);
+
+    // Determine the correct API endpoint based on route type
+    let endpoint = '';
+    switch (this.newRouteType) {
+      case 'spotting':
+        endpoint = `${environment.apiUrl}/routes/optimize/spotting`;
+        break;
+      case 'concrete':
+        endpoint = `${environment.apiUrl}/routes/optimize/concrete`;
+        break;
+      case 'asphalt':
+        endpoint = `${environment.apiUrl}/routes/optimize/asphalt`;
+        break;
+      default:
+        alert('Invalid route type selected');
+        return;
+    }
+
+    // Make API call to generate the route
+    this.http.post(endpoint, {
+      startDate: this.newRouteStartDate
+    }).subscribe({
+      next: (response) => {
+        console.log('Route generation successful:', response);
+        this.closeGenerateRouteDialog();
+        alert('Route generation completed successfully!');
+
+        // Refresh the routes data
+        this.loadSpottingRoutes();
+        this.loadConcreteRoutes();
+        this.loadAsphaltRoutes();
+      },
+      error: (error) => {
+        console.error('Error generating route:', error);
+        alert('Error generating route. Please try again.');
+      }
+    });
+
+    // Reset form
+    this.newRouteType = '';
+    this.newRouteStartDate = '';
+  }
+
+  // Update map polylines from all routes
+  updateMapPolylines() {
+    // Clear existing polylines
+    this.routePolylines.forEach(polyline => polyline.setMap(null));
+    this.routePolylines = [];
+
+    // Combine all routes
+    const allRoutes = [...this.spottingRoutes, ...this.concreteRoutes, ...this.asphaltRoutes];
+
+    allRoutes.forEach((route, index) => {
+      if (route.encodedPolyline) {
+        try {
+          // Decode the polyline
+          const decodedPolyline = polyline.decode(route.encodedPolyline);
+
+          // Convert to Google Maps LatLng objects
+          const path = decodedPolyline.map(coord => ({
+            lat: coord[0],
+            lng: coord[1]
+          }));
+
+          // Create polyline with different colors for different route types
+          let strokeColor = '#FF0000'; // Default red
+          if (route.type === 'spotting') {
+            strokeColor = '#FF6B35'; // Orange for spotting
+          } else if (route.type === 'concrete') {
+            strokeColor = '#4A90E2'; // Blue for concrete
+          } else if (route.type === 'asphalt') {
+            strokeColor = '#7ED321'; // Green for asphalt
+          }
+
+          const polylineOptions: google.maps.PolylineOptions = {
+            path: path,
+            strokeColor: strokeColor,
+            strokeOpacity: 0.8,
+            strokeWeight: 4,
+            geodesic: true,
+            map: this.map // Set the map directly if available
+          };
+
+          const newPolyline = new google.maps.Polyline(polylineOptions);
+          this.routePolylines.push(newPolyline);
+
+          console.log(`Created polyline for route ${route.routeCode}:`, {
+            path: path,
+            strokeColor: strokeColor,
+            encodedPolyline: route.encodedPolyline
+          });
+        } catch (error) {
+          console.error(`Error decoding polyline for route ${route.routeCode}:`, error);
+        }
+      } else {
+        console.log(`No encoded polyline for route ${route.routeCode}`);
+      }
+    });
+
+    console.log(`Total polylines created: ${this.routePolylines.length}`);
+  }
+
+  // Called when map is ready
+  onMapReady(map: google.maps.Map) {
+    console.log('Map is ready, setting map reference');
+    this.map = map;
+
+    // Add all existing polylines to the map
+    this.routePolylines.forEach(polyline => {
+      polyline.setMap(map);
+    });
+
+    // Update polylines again to ensure they're added to the map
+    this.updateMapPolylines();
   }
 }

@@ -3,13 +3,21 @@
   (drop)="onFileDropped($event)"
   (dragover)="onDragOver($event)"
 >
-  <label for="file" class="file-upload-label">
+  <!-- Loading overlay -->
+  <div *ngIf="isLoading" class="loading-overlay">
+    <mat-spinner diameter="40"></mat-spinner>
+    <p>Uploading file...</p>
+    <p *ngIf="currentFileName" class="file-name">{{ currentFileName }}</p>
+  </div>
+
+  <label for="file" class="file-upload-label" [class.disabled]="isLoading">
     <input
       id="file"
       type="file"
       multiple
       (change)="onFileSelected($event)"
       [attr.max]="maxFiles"
+      [disabled]="isLoading"
     />
 
     <div class="file-upload-design">
@@ -57,6 +65,7 @@
     (click)="removeFile(i)"
     aria-label="Remove file"
     type="button"
+    [disabled]="isLoading"
   >
     <mat-icon>close</mat-icon>
   </button>

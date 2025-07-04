@@ -88,19 +88,48 @@
   </div>
 
   <div *ngIf="showFilterBar" class="filter-bar">
-    <mat-chip-listbox multiple aria-label="Filter selection">
-      <div *ngFor="let filterGroup of filterOptions" class="filter-group">
-        <div class="filter-group-name">{{ filterGroup.name }}:</div>
-        <mat-chip-option
-          *ngFor="let option of filterGroup.options"
-          [value]="option"
-          [selected]="selectedFilters.includes(option)"
-          (selectionChange)="toggleFilter(option)"
-        >
-          {{ option }}
-        </mat-chip-option>
+    <div class="filter-section">
+      <!-- Text Search -->
+      <div class="search-section">
+        <mat-form-field appearance="outline" class="search-input">
+          <input
+            matInput
+            [(ngModel)]="textSearch"
+            (ngModelChange)="onTextSearchChange()"
+            [placeholder]="customFilterLabels.searchLabel"
+          >
+          <mat-icon matSuffix>search</mat-icon>
+        </mat-form-field>
       </div>
-    </mat-chip-listbox>
+
+      <!-- Date Range Filters -->
+      <div class="date-range-section">
+        <span class="filter-label">{{ customFilterLabels.dateLabel }}</span>
+        <div class="date-buttons">
+          <button
+            *ngFor="let option of dateRangeOptions"
+            mat-stroked-button
+            [class.selected]="selectedDateRange === option.label"
+            (click)="selectedDateRange = option.label; onDateRangeChange()"
+            class="date-range-btn"
+        >
+            {{ option.label }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Clear filters button -->
+    <button
+      *ngIf="getActiveFilterCount() > 0"
+      mat-button
+      color="warn"
+      (click)="clearAllFilters()"
+      class="clear-filters-btn"
+    >
+      <mat-icon>clear_all</mat-icon>
+      Clear All Filters ({{ getActiveFilterCount() }})
+    </button>
   </div>
 </div>
 

@@ -6,6 +6,8 @@ import { SearchDialogComponent } from '../../../../shared/search-dialog/search-d
 import { DataTableComponent } from '../../../../shared/data-table/data-table.component';
 import { ConfirmationDialogComponent } from '../../../../shared/confirmation-dialog/confirmation-dialog.component';
 import { EquipmentService } from '../../../../core/services/material/equipment.service';
+import { BaseDashboardComponent } from '../../../../shared/base-dashboard.component';
+import { FilterService } from '../../../../core/services/filter.service';
 
 interface ColumnDefinition {
   name: string;
@@ -25,7 +27,7 @@ interface ColumnDefinition {
   templateUrl: './equipment.component.html',
   styleUrl: './equipment.component.scss'
 })
-export class EquipmentComponent implements OnInit {
+export class EquipmentComponent extends BaseDashboardComponent implements OnInit {
   columns: ColumnDefinition[] = [
     {
       name: 'equipmentname',
@@ -67,22 +69,52 @@ export class EquipmentComponent implements OnInit {
 
   constructor(
     private dialog: MatDialog,
-    private equipmentService: EquipmentService 
-  ) {}
+    private equipmentService: EquipmentService,
+    filterService: FilterService
+  ) {
+    super(filterService);
+  }
 
-  ngOnInit(): void {
+  override ngOnInit(): void {
+    super.ngOnInit();
     this.loadEquipment();
+  }
+
+  protected override loadData(): void {
+    // Initialize data for filtering
+    this.allData = [...this.tableData];
+    this.filteredData = [...this.allData];
+  }
+
+  // Override text search to include equipment fields
+  protected override matchesTextSearch(item: any, searchTerm: string): boolean {
+    const searchableFields = ['equipmentname', 'owner', 'type', 'observation'];
+
+    return searchableFields.some(field => {
+      const value = this.getNestedValue(item, field);
+      if (value) {
+        return String(value).toLowerCase().includes(searchTerm);
+      }
+      return false;
+    });
   }
 
   loadEquipment() {
     this.equipmentService.getAllEquipment().subscribe({
       next: (data) => {
         this.tableData = data;
+        this.allData = [...data];
+        this.filteredData = [...data];
       },
       error: (err) => {
         console.error('Error loading equipment:', err);
       }
     });
+  }
+
+  // Getter for filtered equipment data
+  get filteredEquipmentData() {
+    return this.filteredData;
   }
 
   private capitalizeFirstLetter(text: string): string {
@@ -102,6 +134,7 @@ export class EquipmentComponent implements OnInit {
           ...equipment,
           status: equipment.isavailable ? 'Available' : 'In Use'
         },
+        excludedFields: ['equipmentid', 'deletedat', 'updatedat', 'createdat', 'createdby', 'updatedby'],
         fields: [
           { name: 'equipmentname', label: 'Equipment Name', type: 'text' },
           { name: 'owner', label: 'Owner', type: 'text' },
@@ -143,6 +176,8 @@ export class EquipmentComponent implements OnInit {
             observation: result.observation,
             isavailable: result.status === 'Available'
           };
+          this.allData = [...this.tableData];
+          this.applyFilters();
         }
       }
     });
@@ -166,6 +201,8 @@ export class EquipmentComponent implements OnInit {
         this.equipmentService.deleteEquipment(equipment.equipmentid).subscribe({
           next: () => {
             this.tableData = this.tableData.filter(e => e.equipmentid !== equipment.equipmentid);
+            this.allData = [...this.tableData];
+            this.applyFilters();
             console.log('Equipment deleted:', equipment);
           },
           error: (err) => {

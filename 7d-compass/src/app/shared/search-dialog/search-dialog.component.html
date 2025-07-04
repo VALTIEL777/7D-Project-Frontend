@@ -18,11 +18,42 @@
           <div *ngFor="let field of column">
             <mat-form-field appearance="fill" class="full-width">
               <mat-label>{{field.label}}</mat-label>
+
+              <!-- Text input -->
               <input
+                *ngIf="field.type === 'text' || field.type === 'email' || field.type === 'password' || field.type === 'date'"
                 matInput
                 [formControlName]="field.key"
-                [type]="field.type || 'text'"
+                [type]="field.type"
                 [disabled]="field.disabled ?? false">
+
+              <!-- Number input -->
+              <input
+                *ngIf="field.type === 'number'"
+                matInput
+                [formControlName]="field.key"
+                type="number"
+                [disabled]="field.disabled ?? false">
+
+              <!-- Textarea -->
+              <textarea
+                *ngIf="field.type === 'textarea'"
+                matInput
+                [formControlName]="field.key"
+                [disabled]="field.disabled ?? false"
+                rows="3">
+              </textarea>
+
+              <!-- Select dropdown -->
+              <mat-select
+                *ngIf="field.type === 'select'"
+                [formControlName]="field.key"
+                [disabled]="field.disabled ?? false">
+                <mat-option *ngFor="let option of field.options" [value]="option.value">
+                  {{option.label}}
+                </mat-option>
+              </mat-select>
+
             </mat-form-field>
           </div>
         </div>
