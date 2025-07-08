@@ -18,5 +18,7 @@ export const environment = {
   photoEvidenceServiceUrl: 'http://localhost:3000/api/photoevidence',
   necessaryPhasesServiceUrl:'http://localhost:3000/api/necessaryphases',
   contractUnitPhasesServiceUrl: 'http://localhost:3000/api/contractunitsphases',
-  ticketStatusServiceUrl:'http://localhost:3000/api/ticketstatus'
+  ticketStatusServiceUrl:'http://localhost:3000/api/ticketstatus',
+  rtrServiceUrl: 'http://localhost:3000/api/rtr',
+  ticketServiceUrl: 'http://localhost:3000/api/tickets'
 };
