@@ -4,10 +4,6 @@
       <div class="dashboard-wrapper">
         <!-- Header with refresh and reoptimize buttons -->
         <div class="header-controls">
-          <button mat-raised-button color="accent" (click)="forceRefresh()" class="refresh-btn">
-            <mat-icon>refresh</mat-icon>
-            Refresh Data
-          </button>
           <button mat-raised-button color="primary" (click)="reoptimizeAllRoutes()" class="reoptimize-btn">
             <mat-icon>route</mat-icon>
             Reoptimize All Routes
@@ -38,6 +34,8 @@
                   [cdkDropListData]="route.tickets"
                   (cdkDropListDropped)="drop($event)"
                   class="route-list-container"
+                  data-route-section="true"
+                  [attr.data-route-id]="route.routeId"
                 >
                   <div
                     *ngFor="let ticket of route.tickets; let i = index"
@@ -45,7 +43,7 @@
                     class="route-detail-item"
                   >
                     <span class="queue-number">{{ ticket.queue + 1 }}.</span>
-                    <p class="route-location">{{ ticket.address }}</p>
+                    <p class="route-location">{{ formatAddress(ticket.address) }}</p>
                     <mat-divider></mat-divider>
                   </div>
                 </div>
@@ -84,6 +82,8 @@
                   [cdkDropListData]="route.tickets"
                   (cdkDropListDropped)="drop($event)"
                   class="route-list-container"
+                  data-route-section="true"
+                  [attr.data-route-id]="route.routeId"
                 >
                   <div
                     *ngFor="let ticket of route.tickets; let i = index"
@@ -91,7 +91,7 @@
                     class="route-detail-item"
                   >
                     <span class="queue-number">{{ ticket.queue + 1 }}.</span>
-                    <p class="route-location">{{ ticket.address }}</p>
+                    <p class="route-location">{{ formatAddress(ticket.address) }}</p>
                     <mat-divider></mat-divider>
                   </div>
                 </div>
@@ -130,6 +130,8 @@
                   [cdkDropListData]="route.tickets"
                   (cdkDropListDropped)="drop($event)"
                   class="route-list-container"
+                  data-route-section="true"
+                  [attr.data-route-id]="route.routeId"
                 >
                   <div
                     *ngFor="let ticket of route.tickets; let i = index"
@@ -137,7 +139,7 @@
                     class="route-detail-item"
                   >
                     <span class="queue-number">{{ ticket.queue + 1 }}.</span>
-                    <p class="route-location">{{ ticket.address }}</p>
+                    <p class="route-location">{{ formatAddress(ticket.address) }}</p>
                     <mat-divider></mat-divider>
                   </div>
                 </div>
@@ -197,6 +199,7 @@
               [cdkDropListData]="spotReadyTickets"
               (cdkDropListDropped)="drop($event)"
               class="route-list-container"
+              data-ready-section="true"
             >
               <div
                 *ngFor="let ticket of spotReadyTickets; let i = index"
@@ -205,7 +208,7 @@
               >
                 <span class="queue-number">{{ i + 1 }}.</span>
                 <div class="ticket-info">
-                  <p class="route-location">{{ ticket.address || 'Address not available' }}</p>
+                  <p class="route-location">{{ formatAddress(ticket.address) }}</p>
                   <p class="incident-name">{{ ticket.incidentname || 'No incident name' }}</p>
                 </div>
                 <span class="ticket-code">{{ ticket.ticketcode || 'No ticket code' }}</span>
@@ -229,6 +232,7 @@
               [cdkDropListData]="asphaltReadyTickets"
               (cdkDropListDropped)="drop($event)"
               class="route-list-container"
+              data-ready-section="true"
             >
               <div
                 *ngFor="let ticket of asphaltReadyTickets; let i = index"
@@ -237,7 +241,7 @@
               >
                 <span class="queue-number">{{ i + 1 }}.</span>
                 <div class="ticket-info">
-                  <p class="route-location">{{ ticket.address || 'Address not available' }}</p>
+                  <p class="route-location">{{ formatAddress(ticket.address) }}</p>
                   <p class="incident-name">{{ ticket.incidentname || 'No incident name' }}</p>
                 </div>
                 <span class="ticket-code">{{ ticket.ticketcode || 'No ticket code' }}</span>
@@ -261,6 +265,7 @@
               [cdkDropListData]="concreteReadyTickets"
               (cdkDropListDropped)="drop($event)"
               class="route-list-container"
+              data-ready-section="true"
             >
               <div
                 *ngFor="let ticket of concreteReadyTickets; let i = index"
@@ -269,7 +274,7 @@
               >
                 <span class="queue-number">{{ i + 1 }}.</span>
                 <div class="ticket-info">
-                  <p class="route-location">{{ ticket.address || 'Address not available' }}</p>
+                  <p class="route-location">{{ formatAddress(ticket.address) }}</p>
                   <p class="incident-name">{{ ticket.incidentname || 'No incident name' }}</p>
                 </div>
                 <span class="ticket-code">{{ ticket.ticketcode || 'No ticket code' }}</span>
@@ -295,7 +300,7 @@
               >
                 <span class="queue-number">{{ i + 1 }}.</span>
                 <div class="location-and-reason">
-                  <p class="route-location">{{ item.location }}</p>
+                  <p class="route-location">{{ formatAddress(item.location) }}</p>
                   <p class="hold-off-reason">{{ item.reason }}</p>
                 </div>
                 <mat-divider></mat-divider>
@@ -305,12 +310,6 @@
         </div>
 
         <div class="full-span buttons-container">
-          <button mat-raised-button color="primary" (click)="saveChanges()">
-            Save Changes
-          </button>
-          <button mat-raised-button color="warn" (click)="resetLists()">
-            Reset Lists
-          </button>
         </div>
       </div>
     </div>

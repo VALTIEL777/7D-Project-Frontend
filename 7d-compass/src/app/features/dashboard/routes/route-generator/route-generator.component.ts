@@ -595,23 +595,59 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
   }
 
   async drop(event: CdkDragDrop<any[]>) {
-    const draggedTicket = event.previousContainer.data[event.previousIndex];
+    console.log('=== DROP EVENT TRIGGERED ===');
+    console.log('Event:', event);
+    console.log('Previous container:', event.previousContainer);
+    console.log('Current container:', event.container);
+    console.log('Previous index:', event.previousIndex);
+    console.log('Current index:', event.currentIndex);
+    console.log('Previous container data:', event.previousContainer.data);
+    console.log('Current container data:', event.container.data);
 
-    if (event.previousContainer === event.container) {
-      // Scenario 2: Reordering within the same route
+    const draggedTicket = event.previousContainer.data[event.previousIndex];
+    console.log('Dragged ticket:', draggedTicket);
+
+    // Check if we're moving between ready sections
+    const isFromReadySection = this.isReadySection(event.previousContainer.data);
+    const isToReadySection = this.isReadySection(event.container.data);
+    const isToRoute = this.isRouteSection(event.container);
+
+    console.log('Is from ready section:', isFromReadySection);
+    console.log('Is to ready section:', isToReadySection);
+    console.log('Is to route:', isToRoute);
+    console.log('Previous container data type:', typeof event.previousContainer.data);
+    console.log('Current container element:', event.container.element);
+
+    if (isFromReadySection && isToReadySection) {
+      console.log('Scenario 2: Moving between ready sections');
+      // Scenario 2: Moving between ready sections
+      await this.handleMoveBetweenReadySections(event, draggedTicket);
+    } else if (isFromReadySection && isToRoute) {
+      console.log('Scenario 3: Moving from ready section to route');
+      // Scenario 3: Moving from ready section to route
+      await this.handleMoveFromReadyToRoute(event, draggedTicket);
+    } else if (event.previousContainer === event.container) {
+      console.log('Scenario 1: Reordering within the same container');
+      // Scenario 1: Reordering within the same route
       moveItemInArray(event.container.data, event.previousIndex, event.currentIndex);
 
+      // Update queue numbers for the reordered tickets
+      event.container.data.forEach((ticket, index) => {
+        ticket.queue = index;
+      });
+
       // Find the route that contains this container
-      const route = this.findRouteByTickets(event.container.data);
-      if (route) {
-        await this.handleReorderWithinRoute(route, event.container.data);
+      const routeId = this.getRouteIdFromDropEvent(event);
+      if (routeId) {
+        const route = this.findRouteByTickets(routeId);
+        if (route) {
+          await this.handleReorderWithinRoute(route, event.container.data);
+        }
       }
     } else {
-      // Scenario 1: Moving tickets between routes
-      const isSourceRoute =
-        this.spottingRoutes.some(route => route.tickets === event.previousContainer.data) ||
-        this.concreteRoutes.some(route => route.tickets === event.previousContainer.data) ||
-        this.asphaltRoutes.some(route => route.tickets === event.previousContainer.data);
+      console.log('Scenario 4: Moving between routes');
+      // Scenario 4: Moving between routes
+      const isSourceRoute = this.isRouteSection(event.previousContainer);
 
       if (isSourceRoute && event.previousContainer.data.length === 1) {
         alert('Routes cannot be empty. At least one location must remain.');
@@ -625,6 +661,17 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
         event.currentIndex,
       );
 
+      // Update queue numbers for both source and destination containers
+      if (event.previousContainer.data.length > 0) {
+        event.previousContainer.data.forEach((ticket, index) => {
+          ticket.queue = index;
+        });
+      }
+
+      event.container.data.forEach((ticket, index) => {
+        ticket.queue = index;
+      });
+
       // Handle the API calls for moving between routes
       await this.handleMoveBetweenRoutes(event, draggedTicket);
     }
@@ -635,30 +682,222 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     this.asphaltRoutes = [...this.asphaltRoutes];
     this.locationsWithoutRoute = [...this.locationsWithoutRoute];
     this.locationsOnHoldOff = [...this.locationsOnHoldOff];
+    console.log('=== DROP EVENT COMPLETED ===');
   }
 
-  private findRouteByTickets(tickets: any[]): Route | null {
-    const allRoutes = [...this.spottingRoutes, ...this.concreteRoutes, ...this.asphaltRoutes];
-    return allRoutes.find(route => route.tickets === tickets) || null;
+  private getRouteIdFromDropEvent(event: CdkDragDrop<any[]>): number | null {
+    // Get route ID from the container element's data attribute
+    const containerElement = event.container.element.nativeElement;
+    const routeId = containerElement.getAttribute('data-route-id');
+    console.log('=== GET ROUTE ID FROM DROP EVENT ===');
+    console.log('Container element:', containerElement);
+    console.log('Route ID attribute:', routeId);
+    console.log('Parsed route ID:', routeId ? parseInt(routeId, 10) : null);
+    console.log('====================================');
+    return routeId ? parseInt(routeId, 10) : null;
   }
 
-      private async handleReorderWithinRoute(route: Route, tickets: any[]): Promise<void> {
+  private isReadySection(data: any[]): boolean {
+    console.log('=== IS READY SECTION CHECK ===');
+    console.log('Data to check:', data);
+    console.log('Spot ready tickets:', this.spotReadyTickets);
+    console.log('Concrete ready tickets:', this.concreteReadyTickets);
+    console.log('Asphalt ready tickets:', this.asphaltReadyTickets);
+    console.log('Is spot ready:', data === this.spotReadyTickets);
+    console.log('Is concrete ready:', data === this.concreteReadyTickets);
+    console.log('Is asphalt ready:', data === this.asphaltReadyTickets);
+    const result = data === this.spotReadyTickets ||
+           data === this.concreteReadyTickets ||
+           data === this.asphaltReadyTickets;
+    console.log('Final result:', result);
+    console.log('==============================');
+    return result;
+  }
+
+  private isRouteSection(container: any): boolean {
+    // Check if the container element has the route section attribute
+    const containerElement = container.element?.nativeElement;
+    console.log('=== IS ROUTE SECTION CHECK ===');
+    console.log('Container:', container);
+    console.log('Container element:', containerElement);
+    console.log('Has data-route-section attribute:', containerElement && containerElement.hasAttribute('data-route-section'));
+    const result = containerElement && containerElement.hasAttribute('data-route-section');
+    console.log('Final result:', result);
+    console.log('=============================');
+    return result;
+  }
+
+  private async handleMoveFromReadyToRoute(event: CdkDragDrop<any[]>, draggedTicket: any) {
+    console.log('=== HANDLE MOVE FROM READY TO ROUTE ===');
+    console.log('Dragged ticket:', draggedTicket);
+    console.log('Previous container data:', event.previousContainer.data);
+    console.log('Current container data:', event.container.data);
+
     try {
-      // For reordering within a route, we need to reoptimize the entire route
-      // since the API doesn't have a specific endpoint for just updating queue positions
-      await this.reoptimizeRoute(route.routeId);
+      const routeId = this.getRouteIdFromDropEvent(event);
+      if (!routeId) {
+        console.error('Could not find route ID from drop event');
+        alert('Could not find destination route. Please try again.');
+        return;
+      }
 
-      console.log(`Reordered tickets within route ${route.routeCode}`);
+      const destinationRoute = this.findRouteByTickets(routeId);
+
+      if (!destinationRoute) {
+        console.error('Could not find destination route');
+        alert('Could not find destination route. Please try again.');
+        return;
+      }
+
+      // Extract ticket ID from the ready ticket
+      const ticketId = draggedTicket.ticketid || draggedTicket.ticketId;
+
+      console.log('=== MOVE FROM READY TO ROUTE DEBUG ===');
+      console.log('Dragged ticket object:', draggedTicket);
+      console.log('Ticket ID extracted:', ticketId);
+      console.log('Destination route:', destinationRoute);
+      console.log('======================================');
+
+      if (!ticketId) {
+        console.error('Could not find ticket ID in dragged ticket:', draggedTicket);
+        alert('Could not find ticket ID. Please try again.');
+        return;
+      }
+
+      console.log(`Adding ticket ${ticketId} to route ${destinationRoute.routeCode}`);
+
+      // Show loading message
+      this.snackBar.open(`Adding ticket to route ${destinationRoute.routeCode}...`, 'Close', { duration: 2000 });
+
+      // Add ticket to destination route
+      await this.addTicketsToRoute(destinationRoute.routeId, [ticketId]);
+
+      // Note: Reoptimization will be done manually via the route button
+
+      // Remove the ticket from the ready section (don't transfer, just remove)
+      event.previousContainer.data.splice(event.previousIndex, 1);
+
+      // Refresh the data to get the updated route with the new ticket
+      this.refreshAllDataAndCache();
+
+      console.log(`Successfully added ticket ${ticketId} to route ${destinationRoute.routeCode}`);
+      this.snackBar.open(`Successfully added ticket to route ${destinationRoute.routeCode}!`, 'Close', { duration: 3000 });
+    } catch (error: any) {
+      console.error('Error moving ticket from ready section to route:', error);
+
+      // Provide more specific error messages
+      let errorMessage = 'Error adding ticket to route. Please try again.';
+
+      if (error?.status === 404) {
+        errorMessage = 'Route not found. Please refresh and try again.';
+      } else if (error?.status === 400) {
+        errorMessage = 'Invalid ticket data. Please check the ticket information.';
+      } else if (error?.status === 500) {
+        errorMessage = 'Server error. Please try again later.';
+      } else if (error?.status === 0) {
+        errorMessage = 'Network error. Please check your connection.';
+      }
+
+      this.snackBar.open(errorMessage, 'Close', { duration: 5000, panelClass: ['error-snackbar'] });
+    }
+  }
+
+  private async handleMoveBetweenReadySections(event: CdkDragDrop<any[]>, draggedTicket: any) {
+    console.log('=== HANDLE MOVE BETWEEN READY SECTIONS ===');
+    console.log('Dragged ticket:', draggedTicket);
+    console.log('Previous container data:', event.previousContainer.data);
+    console.log('Current container data:', event.container.data);
+
+    // Determine the source and destination ready sections
+    const sourceSection = this.getReadySectionType(event.previousContainer.data);
+    const destSection = this.getReadySectionType(event.container.data);
+
+    console.log('Source section:', sourceSection);
+    console.log('Destination section:', destSection);
+
+    // Check restrictions
+    if (sourceSection === 'spot' && (destSection === 'asphalt' || destSection === 'concrete')) {
+      console.log('✅ Allowed: Spot Ready → Asphalt Ready or Concrete Ready');
+    } else if (sourceSection === 'concrete' && destSection === 'asphalt') {
+      console.log('✅ Allowed: Concrete Ready → Asphalt Ready');
+    } else {
+      console.log('❌ Restricted move detected');
+      this.snackBar.open('This move is not allowed. Please check the restrictions.', 'Close', {
+        duration: 3000,
+        panelClass: ['error-snackbar']
+      });
+      return;
+    }
+
+    // Remove from source ready section
+    event.previousContainer.data.splice(event.previousIndex, 1);
+
+    // Add to destination ready section
+    event.container.data.splice(event.currentIndex, 0, draggedTicket);
+
+    console.log('=== MOVE BETWEEN READY SECTIONS COMPLETED ===');
+  }
+
+  private getReadySectionType(data: any[]): string {
+    console.log('=== GET READY SECTION TYPE ===');
+    console.log('Data:', data);
+
+    // Check if this is a ready section by looking at the first item's properties
+    if (data.length > 0) {
+      const firstItem = data[0];
+      console.log('First item:', firstItem);
+
+      // Check if it's a spot ready ticket
+      if (firstItem.spotReady) {
+        console.log('Section type: spot');
+        return 'spot';
+      }
+
+      // Check if it's an asphalt ready ticket
+      if (firstItem.asphaltReady) {
+        console.log('Section type: asphalt');
+        return 'asphalt';
+      }
+
+      // Check if it's a concrete ready ticket
+      if (firstItem.concreteReady) {
+        console.log('Section type: concrete');
+        return 'concrete';
+      }
+    }
+
+    console.log('Section type: unknown');
+    return 'unknown';
+  }
+
+  private findRouteByTickets(routeId: number): Route | null {
+    const allRoutes = [...this.spottingRoutes, ...this.concreteRoutes, ...this.asphaltRoutes];
+    return allRoutes.find(route => route.routeId === routeId) || null;
+  }
+
+  private async handleReorderWithinRoute(route: Route, tickets: any[]): Promise<void> {
+    try {
+      // Update queue numbers locally without reoptimizing
+      console.log(`Reordered tickets within route ${route.routeCode} - reoptimization will be done manually`);
     } catch (error) {
       console.error('Error reordering tickets within route:', error);
       alert('Error reordering tickets. Please try again.');
     }
   }
 
-      private async handleMoveBetweenRoutes(event: CdkDragDrop<any[]>, draggedTicket: any): Promise<void> {
+  private async handleMoveBetweenRoutes(event: CdkDragDrop<any[]>, draggedTicket: any): Promise<void> {
     try {
-      const sourceRoute = this.findRouteByTickets(event.previousContainer.data);
-      const destinationRoute = this.findRouteByTickets(event.container.data);
+      const sourceRouteId = this.getRouteIdFromDropEvent({ ...event, container: event.previousContainer });
+      const destinationRouteId = this.getRouteIdFromDropEvent(event);
+
+      if (!sourceRouteId || !destinationRouteId) {
+        console.error('Could not find route IDs from drop event');
+        alert('Could not identify source or destination route. Please try again.');
+        return;
+      }
+
+      const sourceRoute = this.findRouteByTickets(sourceRouteId);
+      const destinationRoute = this.findRouteByTickets(destinationRouteId);
 
       if (sourceRoute && destinationRoute) {
         // Extract ticket ID - handle both RouteTicket and ReadyTicket structures
@@ -675,9 +914,7 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
         // 2. Add to destination route
         await this.addTicketsToRoute(destinationRoute.routeId, [ticketId]);
 
-        // 3. Re-optimize both routes
-        await this.reoptimizeRoute(sourceRoute.routeId);
-        await this.reoptimizeRoute(destinationRoute.routeId);
+        // Note: Reoptimization will be done manually via the route buttons
 
         console.log(`Moved ticket ${ticketId} from route ${sourceRoute.routeCode} to ${destinationRoute.routeCode}`);
       }
@@ -694,17 +931,42 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
 
   private async addTicketsToRoute(routeId: number, ticketIds: number[]): Promise<void> {
     const endpoint = `${environment.apiUrl}/route-optimization/route/${routeId}/add-tickets`;
-    await this.http.post(endpoint, { ticketIds }).toPromise();
+    const requestBody = { ticketIds };
+
+    console.log('=== ADD TICKETS TO ROUTE DEBUG ===');
+    console.log('Endpoint:', endpoint);
+    console.log('Route ID:', routeId);
+    console.log('Ticket IDs:', ticketIds);
+    console.log('Request body:', JSON.stringify(requestBody, null, 2));
+    console.log('==================================');
+
+    try {
+      const response = await this.http.post(endpoint, requestBody).toPromise();
+      console.log('Add tickets response:', response);
+    } catch (error: any) {
+      console.error('=== ADD TICKETS ERROR DEBUG ===');
+      console.error('Error object:', error);
+      console.error('Error status:', error.status);
+      console.error('Error statusText:', error.statusText);
+      console.error('Error message:', error.message);
+      console.error('Error error:', error.error);
+      console.error('Error url:', error.url);
+      console.error('Full error response:', JSON.stringify(error, null, 2));
+      console.error('===============================');
+      throw error;
+    }
   }
-
-
 
   private async reoptimizeRoute(routeId: number): Promise<void> {
     const endpoint = `${environment.apiUrl}/route-optimization/route/${routeId}/reoptimize`;
-    await this.http.post(endpoint, {}).toPromise();
+    const requestBody = {
+      originAddress: "2000 W 43rd St, Chicago, IL 60609, Estados Unidos",
+      destinationAddress: "2000 W 43rd St, Chicago, IL 60609, Estados Unidos"
+    };
+    await this.http.post(endpoint, requestBody).toPromise();
   }
 
-    // Reoptimize all routes
+  // Reoptimize all routes - updated to use actual endpoints
   async reoptimizeAllRoutes() {
     const confirmed = confirm('Are you sure you want to reoptimize all routes? This will recalculate the optimal order for all tickets.');
 
@@ -718,13 +980,13 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
       // Show loading message
       this.snackBar.open('Reoptimizing routes...', 'Close', { duration: 3000 });
 
-      // Reoptimize each route
+      // Reoptimize each route using the actual endpoint
       for (const route of allRoutes) {
         await this.reoptimizeRoute(route.routeId);
       }
 
       // Refresh all route data
-      this.forceRefresh();
+      this.refreshAllDataAndCache();
 
       this.snackBar.open('All routes have been reoptimized successfully!', 'Close', { duration: 5000 });
     } catch (error) {
@@ -733,7 +995,7 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     }
   }
 
-  // Reoptimize specific route
+  // Reoptimize specific route - updated to use actual endpoints
   async reoptimizeSpecificRoute(route: Route) {
     const confirmed = confirm(`Are you sure you want to reoptimize route ${route.routeCode}?`);
 
@@ -747,28 +1009,13 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
       await this.reoptimizeRoute(route.routeId);
 
       // Refresh the specific route data
-      this.forceRefresh();
+      this.refreshAllDataAndCache();
 
       this.snackBar.open(`Route ${route.routeCode} has been reoptimized successfully!`, 'Close', { duration: 5000 });
     } catch (error) {
       console.error(`Error reoptimizing route ${route.routeCode}:`, error);
       this.snackBar.open(`Error reoptimizing route ${route.routeCode}. Please try again.`, 'Close', { duration: 5000 });
     }
-  }
-
-  saveChanges() {
-    console.log('Spotting Routes:', this.spottingRoutes);
-    console.log('Concrete Routes:', this.concreteRoutes);
-    console.log('Asphalt Routes:', this.asphaltRoutes);
-    // Here you would implement the logic to save the changes, e.g., send to a backend service
-    alert('Changes saved! Check console for updated routes.');
-  }
-
-  resetLists() {
-    this.spottingRoutes = [...this.initialSpottingRoutes];
-    this.concreteRoutes = [...this.initialConcreteRoutes];
-    this.asphaltRoutes = [...this.initialAsphaltRoutes];
-    alert('Lists have been reset!');
   }
 
   openGenerateRouteDialog() {
@@ -831,7 +1078,7 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     console.log('Valid ticket IDs count:', ticketIds.length);
     console.log('==============================');
 
-    // Use the new unified optimization endpoint
+    // Use the optimize-single endpoint from your backend
     const endpoint = `${environment.apiUrl}/route-optimization/optimize-single`;
 
     // Map route type to expected API values
@@ -850,9 +1097,14 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
 
     const requestBody = {
       ticketIds: ticketIds,
+      routeCode: `${routeType}-${new Date().getFullYear()}-${String(Date.now()).slice(-3)}`,
       type: routeType,
       originAddress: "2000 W 43rd St, Chicago, IL 60609, Estados Unidos",
-      destinationAddress: "2000 W 43rd St, Chicago, IL 60609, Estados Unidos"
+      destinationAddress: "2000 W 43rd St, Chicago, IL 60609, Estados Unidos",
+      options: {
+        autoSuggest: true,
+        minConfidence: 0.8
+      }
     };
 
     console.log('=== API REQUEST DEBUG ===');
@@ -883,9 +1135,7 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
         this.snackBar.open('Route generation completed successfully!', 'Close', { duration: 5000 });
 
         // Refresh the routes data
-        this.loadSpottingRoutes();
-        this.loadConcreteRoutes();
-        this.loadAsphaltRoutes();
+        this.refreshAllDataAndCache();
       },
       error: (error) => {
         console.error('=== API ERROR DEBUG ===');
@@ -985,8 +1235,28 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     this.generateStaticMap();
   }
 
-  // Force refresh all data (bypass cache)
-  forceRefresh() {
+  // Format address to remove coordinates, city, and state
+  formatAddress(address: string): string {
+    if (!address) return 'Address not available';
+
+    // Remove coordinates (numbers with decimal points in parentheses)
+    let formattedAddress = address.replace(/\([^)]*\)/g, '').trim();
+
+    // Remove common city/state patterns
+    // Remove ", Chicago, IL" or similar patterns
+    formattedAddress = formattedAddress.replace(/,\s*[^,]+,\s*[A-Z]{2}.*$/i, '');
+
+    // Remove ", Estados Unidos" or similar country names
+    formattedAddress = formattedAddress.replace(/,\s*[^,]+$/, '');
+
+    // Remove any remaining trailing commas and whitespace
+    formattedAddress = formattedAddress.replace(/,\s*$/, '').trim();
+
+    return formattedAddress || 'Address not available';
+  }
+
+  // Refresh all data and cache
+  refreshAllDataAndCache() {
     this.clearCache();
     this.loadSpottingRoutes();
     this.loadConcreteRoutes();

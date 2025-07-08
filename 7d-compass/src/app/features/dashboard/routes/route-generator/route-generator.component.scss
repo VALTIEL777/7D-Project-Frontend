@@ -536,3 +536,97 @@ mat-dialog-actions {
     color: white !important;
   }
 }
+
+/* Drag and Drop Styles */
+.route-list-container {
+  min-height: 100px;
+  padding: 8px;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+}
+
+.route-list-container.cdk-drop-list-dragging {
+  background-color: rgba(63, 81, 181, 0.1);
+  border: 2px dashed #3f51b5;
+}
+
+.route-detail-item {
+  cursor: grab;
+  transition: all 0.2s ease;
+  border-radius: 4px;
+  margin-bottom: 4px;
+  padding: 8px;
+  background: white;
+  border: 1px solid #e0e0e0;
+}
+
+.route-detail-item:hover {
+  background-color: #f5f5f5;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.route-detail-item.cdk-drag-preview {
+  background: white;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+  border-radius: 4px;
+  opacity: 0.9;
+  transform: rotate(5deg);
+}
+
+.route-detail-item.cdk-drag-placeholder {
+  opacity: 0.3;
+  background: #ccc;
+  border: 2px dashed #999;
+}
+
+.route-detail-item.cdk-drag-animating {
+  transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+/* Ready section specific styles */
+.route-list-container[data-ready-section="true"] {
+  background-color: #f8f9fa;
+  border: 2px solid #e9ecef;
+}
+
+.route-list-container[data-ready-section="true"]:hover {
+  background-color: #e9ecef;
+  border-color: #3f51b5;
+}
+
+/* Route section specific styles */
+.route-list-container[data-route-section="true"] {
+  background-color: #fff;
+  border: 2px solid #dee2e6;
+}
+
+.route-list-container[data-route-section="true"]:hover {
+  background-color: #f8f9fa;
+  border-color: #3f51b5;
+}
+
+/* Loading and empty states */
+.loading-state, .empty-state {
+  text-align: center;
+  padding: 20px;
+  color: #666;
+  font-style: italic;
+}
+
+.loading-state p, .empty-state p {
+  margin: 0;
+  font-size: 14px;
+}
+
+/* Error snackbar styling */
+.error-snackbar {
+  background-color: #f44336 !important;
+  color: white !important;
+}
+
+/* Success feedback */
+.success-feedback {
+  background-color: #4caf50 !important;
+  color: white !important;
+}
