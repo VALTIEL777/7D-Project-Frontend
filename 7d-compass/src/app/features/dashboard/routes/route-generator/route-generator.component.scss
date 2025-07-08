@@ -104,21 +104,101 @@
 
 /* Map container and iframe fill their container fully */
 .map-container {
+  position: relative;
   width: 100%;
-  height: 100%; /* fill parent */
-  padding: 0;
-  margin: 0;
+  height: 750px;
+  border-radius: 8px;
+  overflow: hidden;
   display: flex;
-  flex-direction: column;
-  flex-grow: 1;
+  align-items: center;
+  justify-content: center;
 }
 
-.map-container iframe {
+.static-map {
+  position: relative;
   width: 100%;
-  height: 100%; /* Make the iframe fill its parent container */
-  border: 0;
-  display: block;
+  height: 100%;
+
+  .map-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px;
+  }
+
+  .map-overlay {
+    position: absolute;
+    bottom: 8px;
+    left: 8px;
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+
+    .map-info {
+      margin: 0;
+    }
+  }
 }
+
+.map-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  border-radius: 8px;
+
+  p {
+    margin-top: 16px;
+    color: #666;
+    font-size: 14px;
+  }
+}
+
+.map-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  border-radius: 8px;
+
+  mat-icon {
+    font-size: 48px;
+    width: 48px;
+    height: 48px;
+    color: #ccc;
+    margin-bottom: 16px;
+  }
+
+  p {
+    color: #666;
+    font-size: 14px;
+    margin: 0;
+  }
+}
+
+.map-controls {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 1000;
+
+  .hide-map-btn {
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 50%;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+
+    &:hover {
+      background: rgba(255, 255, 255, 1);
+    }
+  }
+}
+
 .extra-cards-row {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -424,4 +504,35 @@ mat-dialog-actions {
 
 .loading-state p, .empty-state p {
   margin: 0;
+}
+
+.header-controls {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 0 16px;
+
+  .refresh-btn, .reoptimize-btn {
+    mat-icon {
+      margin-right: 8px;
+    }
+  }
+}
+
+.route-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 8px;
+  padding: 0 8px;
+}
+
+// Error snackbar styling
+::ng-deep .error-snackbar {
+  background-color: #f44336 !important;
+  color: white !important;
+
+  .mat-simple-snackbar-action {
+    color: white !important;
+  }
 }

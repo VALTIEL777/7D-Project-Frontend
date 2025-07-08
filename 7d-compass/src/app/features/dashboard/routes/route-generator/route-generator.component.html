@@ -2,6 +2,18 @@
   <div class="full-layout-container">
     <div class="dashboard-container">
       <div class="dashboard-wrapper">
+        <!-- Header with refresh and reoptimize buttons -->
+        <div class="header-controls">
+          <button mat-raised-button color="accent" (click)="forceRefresh()" class="refresh-btn">
+            <mat-icon>refresh</mat-icon>
+            Refresh Data
+          </button>
+          <button mat-raised-button color="primary" (click)="reoptimizeAllRoutes()" class="reoptimize-btn">
+            <mat-icon>route</mat-icon>
+            Reoptimize All Routes
+          </button>
+        </div>
+
         <!-- Top Row: Route Containers and Today's Routes -->
         <div class="top-row">
           <!-- Left Side: Route Containers -->
@@ -16,6 +28,11 @@
                 [title]="route.routeCode"
                 [showEyeButton]="true"
               >
+                <div class="route-actions">
+                  <button mat-icon-button color="primary" (click)="reoptimizeSpecificRoute(route)" title="Reoptimize Route">
+                    <mat-icon>route</mat-icon>
+                  </button>
+                </div>
                 <div
                   cdkDropList
                   [cdkDropListData]="route.tickets"
@@ -31,6 +48,18 @@
                     <p class="route-location">{{ ticket.address }}</p>
                     <mat-divider></mat-divider>
                   </div>
+                </div>
+              </app-card-with-button>
+
+              <!-- No Spotting Routes Available Card -->
+              <app-card-with-button
+                *ngIf="!isLoadingSpottingRoutes && filteredSpottingRoutes.length === 0"
+                title="No Spotting Routes Available"
+                class="no-routes-card"
+              >
+                <div class="no-routes-content">
+                  <p>No spotting routes are currently available.</p>
+                  <p>Routes will appear here once they are generated.</p>
                 </div>
               </app-card-with-button>
             </div>
@@ -45,6 +74,11 @@
                 [title]="route.routeCode"
                 [showEyeButton]="true"
               >
+                <div class="route-actions">
+                  <button mat-icon-button color="primary" (click)="reoptimizeSpecificRoute(route)" title="Reoptimize Route">
+                    <mat-icon>route</mat-icon>
+                  </button>
+                </div>
                 <div
                   cdkDropList
                   [cdkDropListData]="route.tickets"
@@ -60,6 +94,18 @@
                     <p class="route-location">{{ ticket.address }}</p>
                     <mat-divider></mat-divider>
                   </div>
+                </div>
+              </app-card-with-button>
+
+              <!-- No Concrete Routes Available Card -->
+              <app-card-with-button
+                *ngIf="!isLoadingConcreteRoutes && filteredConcreteRoutes.length === 0"
+                title="No Concrete Routes Available"
+                class="no-routes-card"
+              >
+                <div class="no-routes-content">
+                  <p>No concrete routes are currently available.</p>
+                  <p>Routes will appear here once they are generated.</p>
                 </div>
               </app-card-with-button>
             </div>
@@ -74,6 +120,11 @@
                 [title]="route.routeCode"
                 [showEyeButton]="true"
               >
+                <div class="route-actions">
+                  <button mat-icon-button color="primary" (click)="reoptimizeSpecificRoute(route)" title="Reoptimize Route">
+                    <mat-icon>route</mat-icon>
+                  </button>
+                </div>
                 <div
                   cdkDropList
                   [cdkDropListData]="route.tickets"
@@ -91,20 +142,47 @@
                   </div>
                 </div>
               </app-card-with-button>
+
+              <!-- No Asphalt Routes Available Card -->
+              <app-card-with-button
+                *ngIf="!isLoadingAsphaltRoutes && filteredAsphaltRoutes.length === 0"
+                title="No Asphalt Routes Available"
+                class="no-routes-card"
+              >
+                <div class="no-routes-content">
+                  <p>No asphalt routes are currently available.</p>
+                  <p>Routes will appear here once they are generated.</p>
+                </div>
+              </app-card-with-button>
             </div>
           </div>
 
           <!-- Right Side: Today's Routes Card -->
           <app-card-with-button title="Today's Routes" class="todays-routes-card">
             <div class="map-container">
-              <google-map
-                [center]="center"
-                [zoom]="zoom"
-                [options]="mapOptions"
-                (mapInitialized)="onMapReady($event)"
-                width="100%"
-                height="400px">
-              </google-map>
+              <!-- Static map display -->
+              <div *ngIf="staticMapUrl" class="static-map">
+                <img [src]="staticMapUrl"
+                     [alt]="'Route Map'"
+                     [width]="staticMapWidth"
+                     [height]="staticMapHeight"
+                     class="map-image">
+                <div class="map-overlay">
+                  <p class="map-info">Static route visualization</p>
+                </div>
+              </div>
+
+              <!-- Loading state -->
+              <div *ngIf="!staticMapUrl && (isLoadingSpottingRoutes || isLoadingConcreteRoutes || isLoadingAsphaltRoutes)" class="map-loading">
+                <mat-spinner diameter="40"></mat-spinner>
+                <p>Loading route map...</p>
+              </div>
+
+              <!-- Empty state -->
+              <div *ngIf="!staticMapUrl && !isLoadingSpottingRoutes && !isLoadingConcreteRoutes && !isLoadingAsphaltRoutes" class="map-empty">
+                <mat-icon>map</mat-icon>
+                <p>No routes available to display</p>
+              </div>
             </div>
           </app-card-with-button>
         </div>
@@ -256,11 +334,6 @@
               <mat-option value="concrete">Concrete Route</mat-option>
               <mat-option value="asphalt">Asphalt Route</mat-option>
             </mat-select>
-          </mat-form-field>
-
-          <mat-form-field appearance="fill" class="full-width">
-            <mat-label>Start Date</mat-label>
-            <input matInput type="date" [(ngModel)]="newRouteStartDate" name="startDate" required>
           </mat-form-field>
         </form>
       </div>
