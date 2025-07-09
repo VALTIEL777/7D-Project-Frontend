@@ -1,4 +1,5 @@
 <app-sitejob-sidenavbar [teamLeader]="teamLeader" [teamMembers]="teamMembers">
+  <app-sitejob-layout></app-sitejob-layout>
 
   <div class="content-wrapper">
     <h2 class="section-title">Remaining Locations</h2>
@@ -9,6 +10,14 @@
         <mat-icon matPrefix>search</mat-icon>
       <input matInput [(ngModel)]="filterText" placeholder="Search by address or job type	">
     </mat-form-field>
+
+    <!-- ❌ Mostrar mensaje si no hay resultados -->
+<div *ngIf="filteredLocations.length === 0" class="no-locations">
+  <p class="no-locations-text">
+    <mat-icon color="warn">info</mat-icon>
+    There is no route assigned yet.
+  </p>
+</div>
 
     <!-- 📍 Lista filtrada -->
     <div *ngFor="let location of filteredLocations" class="location-card">

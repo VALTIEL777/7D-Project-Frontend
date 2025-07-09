@@ -261,27 +261,133 @@
 
 .filter-bar {
   width: 100%;
-  background-color: #f0f0f0; /* Light background for the filter bar */
-  padding: 12px 24px;
+  background-color: #f8f9fa;
+  padding: 8px 24px;
   box-sizing: border-box;
   border-radius: 8px;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 16px;
+  flex-wrap: wrap;
+  border: 1px solid #e9ecef;
 
-  .filter-group {
+  .filter-section {
     display: flex;
     align-items: center;
-    gap: 8px;
-    margin-right: 16px; /* Space between filter groups */
+    gap: 24px;
+    flex: 1;
+    flex-wrap: wrap;
 
-    .filter-group-name {
-      font-weight: 600;
-      color: #333;
+    .search-section {
+      min-width: 250px;
+      flex: 1;
+
+      .search-input {
+        width: 100%;
+
+        ::ng-deep .mat-mdc-form-field-subscript-wrapper {
+          display: none;
+        }
+
+        ::ng-deep .mat-mdc-form-field-focus-overlay {
+          background-color: #d7e3ff;
+        }
+
+        ::ng-deep .mat-mdc-text-field-wrapper {
+          background-color: #d7e3ff;
+        }
+
+        ::ng-deep .mdc-text-field--outlined {
+          background-color: #d7e3ff;
+        }
+      }
+    }
+
+    .date-range-section {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+
+      .filter-label {
+        font-weight: 600;
+        color: #495057;
+        white-space: nowrap;
+      }
+
+      .date-buttons {
+        display: flex;
+    gap: 8px;
+        flex-wrap: wrap;
+
+        .date-range-btn {
+          font-size: 12px;
+          padding: 6px 12px;
+          min-width: auto;
+          border-radius: 16px;
+          transition: all 0.2s ease;
+
+          &.selected {
+            background-color: #007bff;
+            color: white;
+            border-color: #007bff;
+          }
+
+          &:hover:not(.selected) {
+            background-color: #e9ecef;
+            border-color: #adb5bd;
+          }
+        }
+      }
     }
   }
 
+  .clear-filters-btn {
+    margin-left: auto;
+    font-size: 12px;
+    padding: 6px 12px;
+    min-width: auto;
+    border-radius: 16px;
+
+    mat-icon {
+      font-size: 16px;
+      width: 16px;
+      height: 16px;
+    }
+  }
 }
+
+// Responsive design for mobile
+@media (max-width: 768px) {
+  .filter-bar {
+    padding: 6px 16px; // Reduced from 12px to 6px for top/bottom padding on mobile
+    gap: 12px;
+
+    .filter-section {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 16px;
+
+      .search-section {
+        min-width: auto;
+      }
+
+      .date-range-section {
+        justify-content: center;
+
+        .date-buttons {
+          justify-content: center;
+    }
+  }
+    }
+
+    .clear-filters-btn {
+      margin-left: 0;
+      align-self: center;
+    }
+  }
+}
+
 ::ng-deep .mat-mdc-standard-chip .mdc-evolution-chip__graphic {
   display: none !important;
 }

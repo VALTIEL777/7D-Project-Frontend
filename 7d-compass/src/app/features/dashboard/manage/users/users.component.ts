@@ -6,6 +6,8 @@ import { SearchDialogComponent } from '../../../../shared/search-dialog/search-d
 import { DataTableComponent } from '../../../../shared/data-table/data-table.component';
 import { ConfirmationDialogComponent } from '../../../../shared/confirmation-dialog/confirmation-dialog.component';
 import { PeopleService } from '../../../../core/services/human-resources/users.service';
+import { BaseDashboardComponent } from '../../../../shared/base-dashboard.component';
+import { FilterService } from '../../../../core/services/filter.service';
 
 interface ColumnDefinition {
   name: string;
@@ -25,7 +27,7 @@ interface ColumnDefinition {
   templateUrl: './users.component.html',
   styleUrl: './users.component.scss'
 })
-export class UsersComponent implements OnInit {
+export class UsersComponent extends BaseDashboardComponent implements OnInit {
   columns: ColumnDefinition[] = [
     { name: 'fullName', header: 'Full Name', cell: u => `${u.firstname} ${u.lastname}` },
     { name: 'username', header: 'Username', cell: u => u.username },
@@ -39,18 +41,50 @@ export class UsersComponent implements OnInit {
 
   constructor(
     private dialog: MatDialog,
-    private peopleService: PeopleService
-  ) {}
+    private peopleService: PeopleService,
+    filterService: FilterService
+  ) {
+    super(filterService);
+  }
 
-  ngOnInit(): void {
+  override ngOnInit(): void {
+    super.ngOnInit();
     this.loadUsers();
+  }
+
+  protected override loadData(): void {
+    // Initialize data for filtering
+    this.allData = [...this.tableData];
+    this.filteredData = [...this.allData];
+  }
+
+  // Override text search to include user fields
+  protected override matchesTextSearch(item: any, searchTerm: string): boolean {
+    const searchableFields = ['firstname', 'lastname', 'username', 'email', 'role'];
+
+    return searchableFields.some(field => {
+      const value = this.getNestedValue(item, field);
+      if (value) {
+        return String(value).toLowerCase().includes(searchTerm);
+      }
+      return false;
+    });
   }
 
   loadUsers(): void {
     this.peopleService.getAllPeople().subscribe({
-      next: data => this.tableData = data,
+      next: data => {
+        this.tableData = data;
+        this.allData = [...data];
+        this.filteredData = [...data];
+      },
       error: err => console.error('Error loading users:', err)
     });
+  }
+
+  // Getter for filtered user data
+  get filteredUserData() {
+    return this.filteredData;
   }
 
 onEdit(user: any) {
@@ -62,7 +96,19 @@ onEdit(user: any) {
         ...user,
         name: `${user.firstname} ${user.lastname}`
       },
-      excludedFields: ['username']
+        excludedFields: ['UserId', 'name', 'username', 'employeeid', 'deletedat', 'updatedat', 'createdat', 'createdby', 'updatedby'],
+        fields: [
+          { name: 'firstname', label: 'First Name', type: 'text', required: true },
+          { name: 'lastname', label: 'Last Name', type: 'text', required: true },
+          { name: 'email', label: 'Email', type: 'text', required: false },
+          { name: 'phone', label: 'Phone', type: 'text', required: false },
+          { name: 'role', label: 'Role', type: 'select', required: false, options: [
+            { value: 'Side Worker', label: 'Side Worker' },
+            { value: 'Admin', label: 'Admin' },
+            { value: 'Accounting', label: 'Accounting' },
+            { value: 'Assistant', label: 'Assistant' }
+          ]}
+        ]
     }
   });
 
@@ -71,7 +117,7 @@ onEdit(user: any) {
       const [firstname, ...lastnameParts] = result.name.split(' ');
       const lastname = lastnameParts.join(' ');
 
-      const index = this.tableData.findIndex(u => u.employeeid === user.employeeid); // 👈 Cambiado
+        const index = this.tableData.findIndex(u => u.employeeid === user.employeeid);
 
       if (index !== -1) {
         const updatedUser = {
@@ -81,10 +127,11 @@ onEdit(user: any) {
           ...result
         };
 
-        // 👇 Cambiar para enviar employeeid como identificador
         this.peopleService.updatePeople(user.employeeid, updatedUser).subscribe({
           next: () => {
             this.tableData[index] = updatedUser;
+              this.allData = [...this.tableData];
+              this.applyFilters();
           },
           error: err => console.error('Error updating user:', err)
         });
@@ -93,9 +140,8 @@ onEdit(user: any) {
   });
 }
 
-
 onDelete(user: any) {
-  console.log('User to delete:', user); 
+  console.log('User to delete:', user);
 
   const dialogRef = this.dialog.open(ConfirmationDialogComponent, {
     width: '450px',
@@ -114,6 +160,8 @@ onDelete(user: any) {
       this.peopleService.deletePeople(user.employeeid).subscribe({
         next: () => {
           this.tableData = this.tableData.filter(u => u.employeeid !== user.employeeid);
+            this.allData = [...this.tableData];
+            this.applyFilters();
           console.log('User deleted:', user);
         },
         error: err => console.error('Error deleting user:', err)
@@ -121,7 +169,4 @@ onDelete(user: any) {
     }
   });
 }
-
-
-
 }

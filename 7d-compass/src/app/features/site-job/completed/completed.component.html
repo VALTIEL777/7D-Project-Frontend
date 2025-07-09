@@ -4,6 +4,14 @@
 <div class="content-wrapper">
   <h2 class="section-title">Completed Locations</h2>
 
+    <!-- Mostrar mensaje si no hay ubicaciones completadas -->
+  <div *ngIf="previousLocations.length === 0" class="no-locations">
+    <p class="no-locations-text">
+      <mat-icon color="warn">info</mat-icon>
+      There are no completed locations yet.
+    </p>
+  </div>
+
 <div *ngFor="let location of previousLocations" class="location-card">
   <div class="location-header">
     <p class="address">

@@ -10,9 +10,11 @@ import { MatTableModule } from '@angular/material/table';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';  // <-- Agrega esta línea
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatDialogModule } from '@angular/material/dialog';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
-
 
 
 export const MATERIAL_MODULES = [
@@ -29,5 +31,8 @@ export const MATERIAL_MODULES = [
    MatDatepickerModule,
   MatNativeDateModule,
   MatProgressSpinnerModule,
+  MatSnackBarModule,
+  MatDialogModule,
+  MatButtonToggleModule,
   MatAutocompleteModule
 ];

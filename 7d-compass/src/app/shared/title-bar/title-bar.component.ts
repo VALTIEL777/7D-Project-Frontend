@@ -14,6 +14,8 @@ import { MatBadgeModule } from '@angular/material/badge';
 import { MatDialog } from '@angular/material/dialog';
 import { SearchDialogComponent } from '../search-dialog/search-dialog.component';
 import { MatChipsModule } from '@angular/material/chips';
+import { FilterService, FilterOption, FilterState, DateRangeFilter } from '../../core/services/filter.service';
+import { FormsModule } from '@angular/forms';
 
 @Component({
   selector: 'app-title-bar',
@@ -30,6 +32,7 @@ import { MatChipsModule } from '@angular/material/chips';
     SearchBarComponent,
     MatBadgeModule,
     MatChipsModule,
+    FormsModule,
   ],
   templateUrl: './title-bar.component.html',
   styleUrl: './title-bar.component.scss',
@@ -42,14 +45,16 @@ export class TitleBarComponent {
   notificationCount: number = 11;
   showFilterBar: boolean = false;
 
-  filterOptions = [
-    { name: 'Shop', options: ['North', 'Central'] },
-    { name: 'Status', options: ['Open', 'Closed', 'In Progress', 'On Hold'] },
-    { name: 'Date Range', options: ['Today', 'Last Week', 'Last Month'] },
+  // Filter properties
+  textSearch: string = '';
+  selectedDateRange: string = '';
+  dateRangeOptions: DateRangeFilter[] = [];
 
-  ];
-
-  selectedFilters: string[] = [];
+  // Custom filter labels for different pages
+  customFilterLabels: { searchLabel: string; dateLabel: string } = {
+    searchLabel: 'Search by name or content',
+    dateLabel: 'Date Range:'
+  };
 
   notifications = [
     {
@@ -131,12 +136,32 @@ export class TitleBarComponent {
     },
   ];
 
-  constructor(private router: Router, private dialog: MatDialog) {
+  constructor(
+    private router: Router,
+    private dialog: MatDialog,
+    private filterService: FilterService
+  ) {
     this.router.events
       .pipe(filter((event) => event instanceof NavigationEnd))
       .subscribe(() => {
         this.setPageTitle(this.router.url);
       });
+
+    // Initialize date range options
+    this.dateRangeOptions = this.filterService.getDateRangeOptions();
+
+    // Initialize filter values from service
+    this.textSearch = this.filterService.currentTextSearch;
+    this.selectedDateRange = this.filterService.currentDateRange;
+
+    // Subscribe to filter changes
+    this.filterService.textSearch$.subscribe(search => {
+      this.textSearch = search;
+    });
+
+    this.filterService.dateRange$.subscribe(range => {
+      this.selectedDateRange = range;
+    });
   }
 
   private setPageTitle(url: string) {
@@ -164,6 +189,84 @@ export class TitleBarComponent {
       '/ticket': 'Ticket',
     };
     this.pageTitle = routeMap[url] || 'Dashboard';
+
+    // Set custom filter labels based on the current page
+    this.setCustomFilterLabels(url);
+  }
+
+  private setCustomFilterLabels(url: string) {
+    const filterLabelsMap: Record<string, { searchLabel: string; dateLabel: string }> = {
+      '/overview': {
+        searchLabel: 'Search by location, phase, or status',
+        dateLabel: 'Start Date Range:'
+      },
+      '/rtr-processing': {
+        searchLabel: 'Search by file name, status, or description',
+        dateLabel: 'Upload Date Range:'
+      },
+      '/route-generator': {
+        searchLabel: 'Search by route code, location, or status',
+        dateLabel: 'Creation Date Range:'
+      },
+      '/users': {
+        searchLabel: 'Search by name, username, email, or role',
+        dateLabel: 'Registration Date Range:'
+      },
+      '/invoices': {
+        searchLabel: 'Search by invoice number, ticket ID, or status',
+        dateLabel: 'Invoice Date Range:'
+      },
+      '/fines': {
+        searchLabel: 'Search by fine number, ticket ID, or status',
+        dateLabel: 'Fine Date Range:'
+      },
+      '/supervisors': {
+        searchLabel: 'Search by name, email, role, or assigned quadrants',
+        dateLabel: 'Assignment Date Range:'
+      },
+      '/inventory': {
+        searchLabel: 'Search by item name, supplier, or category',
+        dateLabel: 'Inventory Date Range:'
+      },
+      '/suppliers': {
+        searchLabel: 'Search by supplier name, phone, or email',
+        dateLabel: 'Supplier Date Range:'
+      },
+      '/equipment': {
+        searchLabel: 'Search by equipment name, type, or status',
+        dateLabel: 'Equipment Date Range:'
+      },
+      '/crews': {
+        searchLabel: 'Search by crew type, team members, or equipment',
+        dateLabel: 'Crew Date Range:'
+      },
+      '/ticket': {
+        searchLabel: 'Search by ticket code, contract unit, or status',
+        dateLabel: 'Ticket Date Range:'
+      },
+      '/payments': {
+        searchLabel: 'Search by payment number or status',
+        dateLabel: 'Payment Date Range:'
+      },
+      '/contract-units': {
+        searchLabel: 'Search by item code, name, or zone',
+        dateLabel: 'Contract Date Range:'
+      },
+      '/income': {
+        searchLabel: 'Search by ticket number, crew, or invoice number',
+        dateLabel: 'Income Date Range:'
+      },
+      '/fines-penalties': {
+        searchLabel: 'Search by location, ticket, or fine number',
+        dateLabel: 'Fine Date Range:'
+      }
+    };
+
+    // Set default labels if no specific ones are found
+    this.customFilterLabels = filterLabelsMap[url] || {
+      searchLabel: 'Search by name or content',
+      dateLabel: 'Date Range:'
+    };
   }
 
   onNotificationsOpened() {
@@ -269,16 +372,34 @@ export class TitleBarComponent {
 
   toggleFilterBar() {
     this.showFilterBar = !this.showFilterBar;
+
+    // Clear all filters when hiding the filter bar
+    if (!this.showFilterBar) {
+      this.clearAllFilters();
+    } else {
+      // Ensure filter values are synchronized when showing the filter bar
+      this.textSearch = this.filterService.currentTextSearch;
+      this.selectedDateRange = this.filterService.currentDateRange;
+    }
   }
 
-  toggleFilter(option: string) {
-    const index = this.selectedFilters.indexOf(option);
-    if (index > -1) {
-      this.selectedFilters.splice(index, 1);
-    } else {
-      this.selectedFilters.push(option);
-    }
-    console.log('Selected Filters:', this.selectedFilters);
-    // Here you would typically apply the filter to your data
+  // Text search methods
+  onTextSearchChange() {
+    this.filterService.setTextSearch(this.textSearch);
+  }
+
+  // Date range methods
+  onDateRangeChange() {
+    this.filterService.setDateRange(this.selectedDateRange);
+  }
+
+  clearAllFilters() {
+    this.filterService.clearAllFilters();
+    this.textSearch = '';
+    this.selectedDateRange = '';
+  }
+
+  getActiveFilterCount(): number {
+    return this.filterService.getActiveFilterCount();
   }
 }

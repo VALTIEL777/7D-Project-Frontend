@@ -13,31 +13,19 @@
         <!-- New Tickets -->
         <app-card-with-button
           [title]="'New Tickets'"
-          [description]="'Tickets created recently'"
-          [percentage]="5"
-          [isPositive]="true"
-          [showEyeButton]="true"
-          [showLabel]="true"
+          [description]="dashboardStats?.data?.overview?.newTickets?.toString() || '0'"
         ></app-card-with-button>
 
         <!-- Tickets in Progress -->
         <app-card-with-button
           [title]="'Tickets in Progress'"
-          [description]="'Currently being addressed'"
-          [percentage]="8"
-          [isPositive]="true"
-          [showEyeButton]="true"
-          [showLabel]="true"
+          [description]="dashboardStats?.data?.overview?.ticketsInSchedule?.toString() || '0'"
         ></app-card-with-button>
 
-        <!-- Tickets on Standby -->
+        <!-- Tickets on Hold Off -->
         <app-card-with-button
-          [title]="'Tickets on Standby'"
-          [description]="'Waiting for external input'"
-          [percentage]="-3"
-          [isPositive]="false"
-          [showEyeButton]="true"
-          [showLabel]="true"
+          [title]="'Tickets on Hold Off'"
+          [description]="dashboardStats?.data?.overview?.ticketsHoldOff?.toString() || '0'"
         ></app-card-with-button>
 
         <!-- SECTION TITLE: Pending and Submission -->
@@ -48,31 +36,19 @@
         <!-- Invoicing -->
         <app-card-with-button
           [title]="'Invoicing'"
-          [description]="'Pending invoices to be submitted'"
-          [percentage]="10"
-          [isPositive]="true"
-          [showEyeButton]="true"
-          [showLabel]="true"
+          [description]="dashboardStats?.data?.specific?.completedWithoutInvoices?.toString() || '0'"
         ></app-card-with-button>
 
         <!-- Digger Permit -->
         <app-card-with-button
           [title]="'Digger Permit'"
-          [description]="'Permits awaiting approval'"
-          [percentage]="-2"
-          [isPositive]="false"
-          [showEyeButton]="true"
-          [showLabel]="true"
+          [description]="dashboardStats?.data?.detailed?.diggerApply?.toString() || '0'"
         ></app-card-with-button>
 
         <!-- Carry Over -->
         <app-card-with-button
           [title]="'Carry Over'"
-          [description]="'Tasks carried over from previous cycles'"
-          [percentage]="3"
-          [isPositive]="false"
-          [showEyeButton]="true"
-          [showLabel]="true"
+          [description]="dashboardStats?.data?.specific?.ticketsWithCarryover?.toString() || '0'"
         ></app-card-with-button>
 
         <!-- SECTION TITLE: Ticket Status -->
@@ -82,7 +58,7 @@
 
         <!-- Table Card -->
         <app-card-with-button title="Ticket Overview" [showEyeButton]="true" class="full-span">
-          <table mat-table [dataSource]="ticketData" class="mat-elevation-z1" style="width: 100%">
+          <table mat-table [dataSource]="filteredTicketData" class="mat-elevation-z1" style="width: 100%">
             <!-- Location Column -->
             <ng-container matColumnDef="location">
               <th mat-header-cell *matHeaderCellDef>Location</th>
@@ -145,9 +121,6 @@
 <div class="extra-cards-row">
 <app-card-with-button
   [title]="'Completed Jobs'"
-  [showEyeButton]="true"
-  [showLabel]="false"
-
 >
   <div class="tabs">
     <button
@@ -196,15 +169,23 @@
   [showLabel]="false"
 >
   <div class="scrollable-permits">
-    <ng-container *ngFor="let permit of expiredPermits; let i = index">
+    <div *ngIf="isLoadingExpiredTickets" class="loading-state">
+      <mat-spinner diameter="20"></mat-spinner>
+      <span>Loading expired tickets...</span>
+    </div>
+    <div *ngIf="!isLoadingExpiredTickets && expiredTickets.length === 0" class="empty-state">
+      <mat-icon>check_circle</mat-icon>
+      <span>No expired tickets</span>
+    </div>
+    <ng-container *ngFor="let ticket of expiredTickets; let i = index">
       <div class="permit-item">
         <mat-icon class="icon-red">cancel</mat-icon>
         <div class="permit-text">
-          <div class="code">{{ permit.code }}</div>
-          <div class="date">{{ permit.date }}</div>
+          <div class="code">{{ ticket.ticketCode }}</div>
+          <div class="date">{{ ticket.expireDate | date }}</div>
         </div>
       </div>
-      <mat-divider *ngIf="i < expiredPermits.length - 1"></mat-divider>
+      <mat-divider *ngIf="i < expiredTickets.length - 1"></mat-divider>
     </ng-container>
   </div>
 </app-card-with-button>
@@ -216,15 +197,23 @@
   [showLabel]="false"
 >
   <div class="scrollable-permits">
-    <ng-container *ngFor="let permit of nearToExpirePermits; let i = index">
+    <div *ngIf="isLoadingExpiringTickets" class="loading-state">
+      <mat-spinner diameter="20"></mat-spinner>
+      <span>Loading expiring tickets...</span>
+    </div>
+    <div *ngIf="!isLoadingExpiringTickets && expiringTickets.length === 0" class="empty-state">
+      <mat-icon>check_circle</mat-icon>
+      <span>No tickets expiring soon</span>
+    </div>
+    <ng-container *ngFor="let ticket of expiringTickets; let i = index">
       <div class="permit-item">
         <mat-icon class="icon-yellow">warning</mat-icon>
         <div class="permit-text">
-          <div class="code">{{ permit.code }}</div>
-          <div class="date">{{ permit.date }}</div>
+          <div class="code">{{ ticket.ticketCode }}</div>
+          <div class="date">{{ ticket.expireDate | date }}</div>
         </div>
       </div>
-      <mat-divider *ngIf="i < nearToExpirePermits.length - 1"></mat-divider>
+      <mat-divider *ngIf="i < expiringTickets.length - 1"></mat-divider>
     </ng-container>
   </div>
 </app-card-with-button>
@@ -241,24 +230,26 @@
 <app-card-with-button title="Unresolved Issues" [showEyeButton]="true" class="uniform-card">
   <!-- Header Row -->
   <div style="display: flex; align-items: center; padding: 0 16px; margin: 8px 0; font-weight: 500;">
-    <div style="flex: 3;">Location</div>
-    <div style="flex: 5; text-align: left;">Comment</div>
-    <div style="flex: 1; text-align: center;">Action</div>
+    <div style="flex: 1;">Location</div>
+    <div style="flex: 2; text-align: left;">Comment</div>
   </div>
   <mat-divider></mat-divider>
 
   <!-- Scrollable Content -->
   <div class="scrollable-issues">
-    <div *ngFor="let issue of unresolvedIssues">
+    <div *ngIf="isLoadingTicketsWithIssues" class="loading-state">
+      <mat-spinner diameter="20"></mat-spinner>
+      <span>Loading tickets with issues...</span>
+    </div>
+    <div *ngIf="!isLoadingTicketsWithIssues && ticketsWithIssues.length === 0" class="empty-state">
+      <mat-icon>check_circle</mat-icon>
+      <span>No tickets with issues</span>
+    </div>
+    <div *ngFor="let ticket of ticketsWithIssues">
       <div style="display: flex; padding: 8px 16px; align-items: flex-start;">
-        <div style="flex: 3;">{{ issue.location }}</div>
-        <div style="flex: 5; text-align: left; white-space: normal; word-break: break-word;">
-          {{ issue.comment }}
-        </div>
-        <div style="flex: 1; display: flex; justify-content: center;">
-          <button mat-raised-button color="primary" style="min-width: 64px; font-size: 12px; padding: 2px 8px;">
-            View
-          </button>
+        <div style="flex: 1;">{{ formatAddress(ticket) }}</div>
+        <div style="flex: 2; text-align: left; white-space: normal; word-break: break-word;">
+          {{ getCrewComments(ticket) }}
         </div>
       </div>
       <mat-divider></mat-divider>

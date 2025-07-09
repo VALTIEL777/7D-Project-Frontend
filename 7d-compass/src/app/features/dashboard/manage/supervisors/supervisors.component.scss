@@ -1,0 +1,46 @@
+:host ::ng-deep {
+  .quadrants-cell {
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+    &:hover {
+      white-space: normal;
+      word-wrap: break-word;
+      overflow: visible;
+      position: relative;
+      z-index: 10;
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      padding: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+  }
+
+  .quadrant-item {
+    display: inline-block;
+    margin-right: 8px;
+    margin-bottom: 4px;
+    padding: 2px 6px;
+    background-color: #f0f0f0;
+    border-radius: 3px;
+    font-size: 12px;
+
+    .shop-info {
+      color: #666;
+      font-style: italic;
+    }
+  }
+
+  .more-indicator {
+    color: #007bff;
+    font-weight: 500;
+    cursor: pointer;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+}

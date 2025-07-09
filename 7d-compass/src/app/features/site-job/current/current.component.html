@@ -11,35 +11,35 @@
 <ul class="info-list">
   <li><strong>Job:</strong> {{ location.job }}</li>
   <li><strong>Surface:</strong> {{ location.surface }} m²</li>
-  <li><strong>Width:</strong> {{ location.width }} m</li>
-  <li><strong>Length:</strong> {{ location.length }} m</li>
+  <li><strong>Size:</strong> {{ location.width }} x {{ location.length }} m</li>
   <li><strong>Crew type:</strong> {{ crewType }}</li>
 </ul>
 
-    <mat-divider></mat-divider>
 
 <!-- Activities -->
 <h3 class="sub-title">Activities</h3>
 <ul class="info-list">
   <li *ngFor="let activity of activities">
-    <mat-checkbox [(ngModel)]="activity.checked"  [disabled]="activity.locked">{{ activity.name }}</mat-checkbox>
+    <mat-checkbox [(ngModel)]="activity.checked"    [disabled]="activity.locked || isPreviousPhaseIncomplete(activity)"
+>{{ activity.name }}</mat-checkbox>
   </li>
   <button mat-raised-button color="primary" (click)="saveSelectedActivities()">
   Save Selected Activities
 </button>
 </ul>
-    <mat-divider></mat-divider>
 <!-- Upload Image & Issue -->
  <h3 class="sub-title">Photo evidence</h3>
 <div class="issue-section">
   <div class="upload-container">
     <label class="upload-button">
       <input
-        type="file"
-        accept="image/jpeg, image/png, image/gif, image/webp"
-        hidden
-        (change)="onFileSelected($event)"
-      />
+  type="file"
+  accept="image/*"
+  capture="environment"
+  hidden
+  (change)="onFileSelected($event)"
+/>
+
       <mat-icon style="font-size: 25px;">camera_enhance</mat-icon>
     </label>
     <span>Upload Image</span>
@@ -68,7 +68,6 @@
   </button>
 </div>
 
-
 <!-- Permits -->
 <h3 class="sub-title">Permits</h3>
 <div class="permits">
@@ -84,6 +83,14 @@
     <span>Digger Ticket: DG-{{ digger.id }}</span>
     <button mat-raised-button color="primary">Download</button>
   </div>
+</div>
+
+<!-- Mostrar mensaje si no hay permits ni diggers -->
+<div *ngIf="permits.length === 0 && diggers.length === 0" class="no-permits">
+  <p class="no-permits-text">
+    <mat-icon color="warn">info</mat-icon>
+    There are no permits or digger tickets assigned yet.
+  </p>
 </div>
 
 <br>

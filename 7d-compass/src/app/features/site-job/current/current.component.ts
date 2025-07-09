@@ -1,6 +1,5 @@
 import { Component } from '@angular/core';
 import { SitejobLayoutComponent } from '../../../shared/sitejob-layout/sitejob-layout.component';
-import { CardWithButtonComponent } from '../../../shared/card-with-button/card-with-button.component';
 import { MatTableModule } from '@angular/material/table';
 import { MatDividerModule } from '@angular/material/divider';
 import { CommonModule } from '@angular/common';
@@ -8,12 +7,8 @@ import { MATERIAL_MODULES } from '../../../material';
 import { SitejobSidenavbarComponent } from '../../../shared/sitejob-sidenavbar/sitejob-sidenavbar.component';
 import { CrewsService } from '../../../core/services/human-resources/crew.service';
 import { CrewEmployeesService } from '../../../core/services/human-resources/crewemployees.service';
-import { UsedInventoryService } from '../../../core/services/material/used-inventory.service';
-import { UsedEquipmentService } from '../../../core/services/material/used-equipment.service';
-import { SupplierService } from '../../../core/services/material/supplier.service';
 import { PeopleService } from '../../../core/services/human-resources/users.service';
 import { SkillsService } from '../../../core/services/human-resources/skills.service';
-import { RoutesService } from '../../../core/services/route/route.service';
 import { PhotoEvidenceService } from '../../../core/services/route/photoevidence.service';
 import { FormsModule } from '@angular/forms';
 import { SitejobTabsComponent } from '../../../shared/sitejob-tabs/sitejob-tabs.component';
@@ -21,15 +16,8 @@ import { forkJoin } from 'rxjs';
 import { ContractUnitsPhasesService } from '../../../core/services/ticket-logic/contractunitphases.service';
 import { NecessaryPhasesService } from '../../../core/services/ticket-logic/necessaryphases.service';
 import { TicketStatusService } from '../../../core/services/route/ticketstatus.service';
-
-
-interface Activity {
-  id: number;
-  name: string;
-  description: string;
-  checked: boolean;
-}
-
+import { MatDialog } from '@angular/material/dialog';
+import { ConfirmPhaseDialogComponent } from '../../../shared/confirm-phase-dialog/confirm-phase-dialog.component';
 
 @Component({
   selector: 'app-current',
@@ -92,14 +80,13 @@ diggers: { id: number; number: string }[] = [];
   constructor(
      private crewsService: CrewsService,
         private crewEmployeesService: CrewEmployeesService,
-        private usedInventoryService: UsedInventoryService,
-        private usedEquipmentService: UsedEquipmentService,
         private ticketStatusService: TicketStatusService,
         private usersService: PeopleService,
         private skillsService: SkillsService,
         private necessaryPhasesService: NecessaryPhasesService,
         private photoEvidenceService: PhotoEvidenceService,
-        private contractUnitsPhasesService: ContractUnitsPhasesService
+        private contractUnitsPhasesService: ContractUnitsPhasesService,
+        private dialog: MatDialog
   ){}
 
   private isLocationFromStorage = false;
@@ -296,20 +283,36 @@ loadLinkedPhases() {
 
 
 saveSelectedActivities() {
-  const selectedPhaseRelations = this.activities
-    .filter(a => a.checked && !a.locked && a.id != null)
-    .map(a => ({
-      contractUnitId: this.contractUnitId,
-      necessaryPhaseId: a.id,
-      createdBy: this.userId || 1,
-      updatedBy: this.userId || 1
-    }));
+  const selectedPhases = this.activities
+    .filter(a => a.checked && !a.locked && a.id != null);
 
-  if (selectedPhaseRelations.length === 0) {
+  if (selectedPhases.length === 0) {
     console.warn('⚠️ No hay fases nuevas para guardar.');
     return;
   }
 
+  const selectedPhaseRelations = selectedPhases.map(a => ({
+    contractUnitId: this.contractUnitId,
+    necessaryPhaseId: a.id,
+    createdBy: this.userId || 1,
+    updatedBy: this.userId || 1
+  }));
+
+  const selectedNames = selectedPhases.map(p => p.name).join(', ');
+
+  const dialogRef = this.dialog.open(ConfirmPhaseDialogComponent, {
+    width: '400px',
+    data: { phaseName: selectedNames }
+  });
+
+  dialogRef.afterClosed().subscribe(result => {
+    if (result) {
+      this.executeSave(selectedPhaseRelations, selectedPhases);
+    }
+  });
+}
+
+private executeSave(selectedPhaseRelations: any[], selectedPhases: any[]) {
   const requests = selectedPhaseRelations.map(phase =>
     this.contractUnitsPhasesService.create(phase)
   );
@@ -317,53 +320,57 @@ saveSelectedActivities() {
   forkJoin(requests).subscribe({
     next: () => {
       console.log('✅ Fases nuevas guardadas con éxito.');
-      this.loadLinkedPhases(); 
+      this.loadLinkedPhases();
     },
     error: (err) => console.error('❌ Error al guardar fases', err)
   });
 
-  // Mantienes tu lógica para TicketStatus igual
-this.ticketStatusService.getByTicketAndCrew(this.ticketId, this.crewId).subscribe({
-  next: (status: any) => {
-    if (status) {
-      const taskStatusId = status.taskstatusid;
-      const ticketId = status.ticketid;
+  this.ticketStatusService.getByTicketAndCrew(this.ticketId, this.crewId).subscribe({
+    next: (status: any) => {
+      if (status) {
+        const taskStatusId = status.taskstatusid;
+        const ticketId = status.ticketid;
 
-      console.log('taskStatusId:', taskStatusId, 'ticketId:', ticketId);
+        if (this.activities.some(a => a.name.toLowerCase() === 'clean up' && a.checked)) {
+          this.ticketStatusService.update(taskStatusId, ticketId, {
+            endingDate: new Date().toISOString(),
+            updatedBy: this.userId
+          }).subscribe(() => {
+            console.log('✅ TicketStatus actualizado con endingDate');
+          });
+        }
+      } else {
+        const crackSealPhase = selectedPhases.find(a => a.name.toLowerCase() === 'crack seal' && a.checked);
 
-      if (this.activities.some(a => a.name.toLowerCase() === 'clean up' && a.checked)) {
-        this.ticketStatusService.update(taskStatusId, ticketId, {
-          endingDate: new Date().toISOString(),
-          updatedBy: this.userId
-        }).subscribe(() => {
-          console.log('✅ TicketStatus actualizado con endingDate');
-        });
+        if (crackSealPhase) {
+          this.ticketStatusService.create({
+            ticketId: this.ticketId,
+            crewId: this.crewId,
+            taskStatusId: crackSealPhase.id,
+            startingDate: new Date().toISOString(),
+            createdBy: this.userId,
+            updatedBy: this.userId
+          }).subscribe(() => {
+            console.log('✅ TicketStatus creado con startingDate');
+          });
+        }
       }
-    } else {
-      const crackSealPhase = this.activities.find(a => a.name.toLowerCase() === 'crack seal' && a.checked);
-
-      if (crackSealPhase) {
-        this.ticketStatusService.create({
-          ticketId: this.ticketId,
-          crewId: this.crewId,
-          taskStatusId: crackSealPhase.id, 
-          startingDate: new Date().toISOString(),
-          createdBy: this.userId,
-          updatedBy: this.userId
-        }).subscribe(() => {
-          console.log('✅ TicketStatus creado con startingDate');
-        });
-      }
+    },
+    error: (err) => {
+      console.error('❌ Error al obtener TicketStatus:', err);
     }
-  },
-  error: (err) => {
-    console.error('❌ Error al obtener TicketStatus:', err);
-  }
-});
+  });
+}
 
+isPreviousPhaseIncomplete(currentActivity: any): boolean {
+  const currentIndex = this.activities.indexOf(currentActivity);
 
+  // Si es el primero, permitirlo
+  if (currentIndex === 0) return false;
 
-
+  // Revisar si la fase anterior fue marcada
+  const previousActivity = this.activities[currentIndex - 1];
+  return !previousActivity.checked;
 }
 
 

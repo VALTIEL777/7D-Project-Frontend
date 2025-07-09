@@ -2,104 +2,217 @@
   <div class="full-layout-container">
     <div class="dashboard-container">
       <div class="dashboard-wrapper">
-        <div class="section-title full-span">
-          <h4>Active Routes</h4>
-        </div>
-        <!-- GRID PRINCIPAL -->
-        <div cdkDropListGroup class="dashboard-grid vertical-list">
-          <!-- Active Routes -->
-
-          <app-card-with-button
-            *ngFor="let route of activeRoutes"
-            [title]="route.code"
-            [showEyeButton]="true"
-          >
-            <div
-              cdkDropList
-              [cdkDropListData]="route.details"
-              (cdkDropListDropped)="drop($event)"
-              class="route-list-container"
-            >
-              <div
-                *ngFor="let location of route.details; let i = index"
-                cdkDrag
-                class="route-detail-item"
+        <!-- Top Row: Route Containers and Today's Routes -->
+        <div class="top-row">
+          <!-- Left Side: Route Containers -->
+          <div class="routes-section">
+            <!-- Spotting Routes -->
+            <div class="section-title">
+              <h4>Spotting Routes</h4>
+            </div>
+            <div cdkDropListGroup class="dashboard-grid vertical-list">
+              <app-card-with-button
+                *ngFor="let route of filteredSpottingRoutes"
+                [title]="route.routeCode"
+                [showEyeButton]="true"
               >
-                <span class="queue-number">{{ i + 1 }}.</span>
-                <p class="route-location">{{ location }}</p>
-                <mat-divider></mat-divider>
-              </div>
+                <div
+                  cdkDropList
+                  [cdkDropListData]="route.tickets"
+                  (cdkDropListDropped)="drop($event)"
+                  class="route-list-container"
+                >
+                  <div
+                    *ngFor="let ticket of route.tickets; let i = index"
+                    cdkDrag
+                    class="route-detail-item"
+                  >
+                    <span class="queue-number">{{ ticket.queue + 1 }}.</span>
+                    <p class="route-location">{{ ticket.address }}</p>
+                    <mat-divider></mat-divider>
+                  </div>
+                </div>
+              </app-card-with-button>
+            </div>
+
+            <!-- Concrete Routes -->
+            <div class="section-title">
+              <h4>Concrete Routes</h4>
+            </div>
+            <div cdkDropListGroup class="dashboard-grid vertical-list">
+              <app-card-with-button
+                *ngFor="let route of filteredConcreteRoutes"
+                [title]="route.routeCode"
+                [showEyeButton]="true"
+              >
+                <div
+                  cdkDropList
+                  [cdkDropListData]="route.tickets"
+                  (cdkDropListDropped)="drop($event)"
+                  class="route-list-container"
+                >
+                  <div
+                    *ngFor="let ticket of route.tickets; let i = index"
+                    cdkDrag
+                    class="route-detail-item"
+                  >
+                    <span class="queue-number">{{ ticket.queue + 1 }}.</span>
+                    <p class="route-location">{{ ticket.address }}</p>
+                    <mat-divider></mat-divider>
+                  </div>
+                </div>
+              </app-card-with-button>
+            </div>
+
+            <!-- Asphalt Routes -->
+            <div class="section-title">
+              <h4>Asphalt Routes</h4>
+            </div>
+            <div cdkDropListGroup class="dashboard-grid vertical-list">
+              <app-card-with-button
+                *ngFor="let route of filteredAsphaltRoutes"
+                [title]="route.routeCode"
+                [showEyeButton]="true"
+              >
+                <div
+                  cdkDropList
+                  [cdkDropListData]="route.tickets"
+                  (cdkDropListDropped)="drop($event)"
+                  class="route-list-container"
+                >
+                  <div
+                    *ngFor="let ticket of route.tickets; let i = index"
+                    cdkDrag
+                    class="route-detail-item"
+                  >
+                    <span class="queue-number">{{ ticket.queue + 1 }}.</span>
+                    <p class="route-location">{{ ticket.address }}</p>
+                    <mat-divider></mat-divider>
+                  </div>
+                </div>
+              </app-card-with-button>
+            </div>
+          </div>
+
+          <!-- Right Side: Today's Routes Card -->
+          <app-card-with-button title="Today's Routes" class="todays-routes-card">
+            <div class="map-container">
+              <google-map
+                [center]="center"
+                [zoom]="zoom"
+                [options]="mapOptions"
+                (mapInitialized)="onMapReady($event)"
+                width="100%"
+                height="400px">
+              </google-map>
             </div>
           </app-card-with-button>
         </div>
-          <!-- Generated Routes -->
-          <div class="section-title full-span">
-            <h4>Generated Routes</h4>
-          </div>
 
-          <div cdkDropListGroup class="dashboard-grid vertical-list">
+        <div cdkDropListGroup class="dashboard-grid">
           <app-card-with-button
-            *ngFor="let route of generatedRoutes"
-            [title]="route.code"
+            title="Spot Ready"
             [showEyeButton]="true"
           >
             <div
               cdkDropList
-              [cdkDropListData]="route.details"
+              [cdkDropListData]="spotReadyTickets"
               (cdkDropListDropped)="drop($event)"
               class="route-list-container"
             >
               <div
-                *ngFor="let location of route.details; let i = index"
+                *ngFor="let ticket of spotReadyTickets; let i = index"
                 cdkDrag
                 class="route-detail-item"
               >
                 <span class="queue-number">{{ i + 1 }}.</span>
-                <p class="route-location">{{ location }}</p>
+                <div class="ticket-info">
+                  <p class="route-location">{{ ticket.address || 'Address not available' }}</p>
+                  <p class="incident-name">{{ ticket.incidentname || 'No incident name' }}</p>
+                </div>
+                <span class="ticket-code">{{ ticket.ticketcode || 'No ticket code' }}</span>
                 <mat-divider></mat-divider>
+              </div>
+              <div *ngIf="isLoadingSpotReady" class="loading-state">
+                <p>Loading spot ready tickets...</p>
+              </div>
+              <div *ngIf="!isLoadingSpotReady && spotReadyTickets.length === 0" class="empty-state">
+                <p>No spot ready tickets available</p>
               </div>
             </div>
           </app-card-with-button>
 
-          <app-plus-button [title]="'Generate New Route'"></app-plus-button>
-
-          </div>
-          
-          <div class="section-title full-span">
-            <h4>Issue Locations</h4>
-          </div>
-
-          <div cdkDropListGroup class="dashboard-grid">
-          <!-- Issue Location Cards -->
           <app-card-with-button
-            title="Location without route"
+            title="Asphalt Ready"
             [showEyeButton]="true"
           >
             <div
               cdkDropList
-              [cdkDropListData]="locationsWithoutRoute"
+              [cdkDropListData]="asphaltReadyTickets"
               (cdkDropListDropped)="drop($event)"
               class="route-list-container"
             >
               <div
-                *ngFor="let location of locationsWithoutRoute; let i = index"
+                *ngFor="let ticket of asphaltReadyTickets; let i = index"
                 cdkDrag
                 class="route-detail-item"
               >
                 <span class="queue-number">{{ i + 1 }}.</span>
-                <p class="route-location">{{ location }}</p>
+                <div class="ticket-info">
+                  <p class="route-location">{{ ticket.address || 'Address not available' }}</p>
+                  <p class="incident-name">{{ ticket.incidentname || 'No incident name' }}</p>
+                </div>
+                <span class="ticket-code">{{ ticket.ticketcode || 'No ticket code' }}</span>
                 <mat-divider></mat-divider>
+              </div>
+              <div *ngIf="isLoadingAsphaltReady" class="loading-state">
+                <p>Loading asphalt ready tickets...</p>
+              </div>
+              <div *ngIf="!isLoadingAsphaltReady && asphaltReadyTickets.length === 0" class="empty-state">
+                <p>No asphalt ready tickets available</p>
               </div>
             </div>
           </app-card-with-button>
+
           <app-card-with-button
-            title="Locations on Hold off"
+            title="Concrete Ready"
             [showEyeButton]="true"
-            class="two-column-span"
+          >
+            <div
+              cdkDropList
+              [cdkDropListData]="concreteReadyTickets"
+              (cdkDropListDropped)="drop($event)"
+              class="route-list-container"
+            >
+              <div
+                *ngFor="let ticket of concreteReadyTickets; let i = index"
+                cdkDrag
+                class="route-detail-item"
+              >
+                <span class="queue-number">{{ i + 1 }}.</span>
+                <div class="ticket-info">
+                  <p class="route-location">{{ ticket.address || 'Address not available' }}</p>
+                  <p class="incident-name">{{ ticket.incidentname || 'No incident name' }}</p>
+                </div>
+                <span class="ticket-code">{{ ticket.ticketcode || 'No ticket code' }}</span>
+                <mat-divider></mat-divider>
+              </div>
+              <div *ngIf="isLoadingConcreteReady" class="loading-state">
+                <p>Loading concrete ready tickets...</p>
+              </div>
+              <div *ngIf="!isLoadingConcreteReady && concreteReadyTickets.length === 0" class="empty-state">
+                <p>No concrete ready tickets available</p>
+              </div>
+            </div>
+          </app-card-with-button>
+
+          <app-card-with-button
+            title="Hold Off"
+            [showEyeButton]="true"
           >
             <div class="route-list-container">
               <div
-                *ngFor="let item of locationsOnHoldOff; let i = index"
+                *ngFor="let item of filteredLocationsOnHoldOff; let i = index"
                 class="route-detail-item"
               >
                 <span class="queue-number">{{ i + 1 }}.</span>
@@ -111,33 +224,50 @@
               </div>
             </div>
           </app-card-with-button>
-
-          <div class="full-span buttons-container">
-            <button mat-raised-button color="primary" (click)="saveChanges()">
-              Save Changes
-            </button>
-            <button mat-raised-button color="warn" (click)="resetLists()">
-              Reset Lists
-            </button>
-          </div>
         </div>
 
-        <!-- cierre de .dashboard-grid -->
+        <div class="full-span buttons-container">
+          <button mat-raised-button color="primary" (click)="saveChanges()">
+            Save Changes
+          </button>
+          <button mat-raised-button color="warn" (click)="resetLists()">
+            Reset Lists
+          </button>
+        </div>
       </div>
-      <!-- cierre de .dashboard-wrapper -->
-
-      <!-- Today's Routes Card -->
-      <app-card-with-button title="Today's Routes" class="todays-routes-card">
-        <div class="map-container">
-          <iframe
-            loading="lazy"
-            allowfullscreen
-            referrerpolicy="no-referrer-when-downgrade"
-            src="https://maps.google.com/maps?q=Chicago%2C%20Illinois&t=&z=13&ie=UTF8&iwloc=&output=embed"
-          >
-          </iframe>
-        </div>
-      </app-card-with-button>
     </div>
   </div>
+
+  <!-- Floating Action Button -->
+  <button mat-fab color="primary" class="fab-button" (click)="openGenerateRouteDialog()">
+    <mat-icon>add</mat-icon>
+  </button>
+
+  <!-- Generate Route Dialog Template -->
+  <ng-template #generateRouteDialog>
+    <div class="dialog-container">
+      <h2 mat-dialog-title>Generate New Route</h2>
+      <div mat-dialog-content>
+        <form>
+          <mat-form-field appearance="fill" class="full-width">
+            <mat-label>Route Type</mat-label>
+            <mat-select [(ngModel)]="newRouteType" name="routeType" required>
+              <mat-option value="spotting">Spotting Route</mat-option>
+              <mat-option value="concrete">Concrete Route</mat-option>
+              <mat-option value="asphalt">Asphalt Route</mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="fill" class="full-width">
+            <mat-label>Start Date</mat-label>
+            <input matInput type="date" [(ngModel)]="newRouteStartDate" name="startDate" required>
+          </mat-form-field>
+        </form>
+      </div>
+      <div mat-dialog-actions align="end">
+        <button mat-button (click)="closeGenerateRouteDialog()">Cancel</button>
+        <button mat-raised-button color="primary" (click)="generateNewRoute()">Generate Route</button>
+      </div>
+    </div>
+  </ng-template>
 </app-dashboard-layout>
