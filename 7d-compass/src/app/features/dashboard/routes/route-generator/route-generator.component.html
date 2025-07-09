@@ -46,6 +46,10 @@
                     <p class="route-location">{{ formatAddress(ticket.address) }}</p>
                     <mat-divider></mat-divider>
                   </div>
+                  <!-- Show message when no tickets match the filter -->
+                  <div *ngIf="route.tickets.length === 0 && currentTextSearch.trim()" class="no-matching-tickets">
+                    <p>No tickets match the current filter</p>
+                  </div>
                 </div>
               </app-card-with-button>
 
@@ -93,6 +97,10 @@
                     <span class="queue-number">{{ ticket.queue + 1 }}.</span>
                     <p class="route-location">{{ formatAddress(ticket.address) }}</p>
                     <mat-divider></mat-divider>
+                  </div>
+                  <!-- Show message when no tickets match the filter -->
+                  <div *ngIf="route.tickets.length === 0 && currentTextSearch.trim()" class="no-matching-tickets">
+                    <p>No tickets match the current filter</p>
                   </div>
                 </div>
               </app-card-with-button>
@@ -142,6 +150,10 @@
                     <p class="route-location">{{ formatAddress(ticket.address) }}</p>
                     <mat-divider></mat-divider>
                   </div>
+                  <!-- Show message when no tickets match the filter -->
+                  <div *ngIf="route.tickets.length === 0 && currentTextSearch.trim()" class="no-matching-tickets">
+                    <p>No tickets match the current filter</p>
+                  </div>
                 </div>
               </app-card-with-button>
 
@@ -172,6 +184,21 @@
                 <div class="map-overlay">
                   <p class="map-info">Static route visualization</p>
                 </div>
+                <!-- Route Legend -->
+                <div class="map-legend">
+                  <div class="legend-item">
+                    <div class="legend-color" style="background-color: #FF6B35;"></div>
+                    <span>Spotting Routes</span>
+                  </div>
+                  <div class="legend-item">
+                    <div class="legend-color" style="background-color: #4A90E2;"></div>
+                    <span>Concrete Routes</span>
+                  </div>
+                  <div class="legend-item">
+                    <div class="legend-color" style="background-color: #7B68EE;"></div>
+                    <span>Asphalt Routes</span>
+                  </div>
+                </div>
               </div>
 
               <!-- Loading state -->
@@ -196,13 +223,13 @@
           >
             <div
               cdkDropList
-              [cdkDropListData]="spotReadyTickets"
+              [cdkDropListData]="filteredSpotReadyTickets"
               (cdkDropListDropped)="drop($event)"
               class="route-list-container"
               data-ready-section="true"
             >
               <div
-                *ngFor="let ticket of spotReadyTickets; let i = index"
+                *ngFor="let ticket of filteredSpotReadyTickets; let i = index"
                 cdkDrag
                 class="route-detail-item"
               >
@@ -217,7 +244,7 @@
               <div *ngIf="isLoadingSpotReady" class="loading-state">
                 <p>Loading spot ready tickets...</p>
               </div>
-              <div *ngIf="!isLoadingSpotReady && spotReadyTickets.length === 0" class="empty-state">
+              <div *ngIf="!isLoadingSpotReady && filteredSpotReadyTickets.length === 0" class="empty-state">
                 <p>No spot ready tickets available</p>
               </div>
             </div>
@@ -229,13 +256,13 @@
           >
             <div
               cdkDropList
-              [cdkDropListData]="asphaltReadyTickets"
+              [cdkDropListData]="filteredAsphaltReadyTickets"
               (cdkDropListDropped)="drop($event)"
               class="route-list-container"
               data-ready-section="true"
             >
               <div
-                *ngFor="let ticket of asphaltReadyTickets; let i = index"
+                *ngFor="let ticket of filteredAsphaltReadyTickets; let i = index"
                 cdkDrag
                 class="route-detail-item"
               >
@@ -250,7 +277,7 @@
               <div *ngIf="isLoadingAsphaltReady" class="loading-state">
                 <p>Loading asphalt ready tickets...</p>
               </div>
-              <div *ngIf="!isLoadingAsphaltReady && asphaltReadyTickets.length === 0" class="empty-state">
+              <div *ngIf="!isLoadingAsphaltReady && filteredAsphaltReadyTickets.length === 0" class="empty-state">
                 <p>No asphalt ready tickets available</p>
               </div>
             </div>
@@ -262,13 +289,13 @@
           >
             <div
               cdkDropList
-              [cdkDropListData]="concreteReadyTickets"
+              [cdkDropListData]="filteredConcreteReadyTickets"
               (cdkDropListDropped)="drop($event)"
               class="route-list-container"
               data-ready-section="true"
             >
               <div
-                *ngFor="let ticket of concreteReadyTickets; let i = index"
+                *ngFor="let ticket of filteredConcreteReadyTickets; let i = index"
                 cdkDrag
                 class="route-detail-item"
               >
@@ -283,7 +310,7 @@
               <div *ngIf="isLoadingConcreteReady" class="loading-state">
                 <p>Loading concrete ready tickets...</p>
               </div>
-              <div *ngIf="!isLoadingConcreteReady && concreteReadyTickets.length === 0" class="empty-state">
+              <div *ngIf="!isLoadingConcreteReady && filteredConcreteReadyTickets.length === 0" class="empty-state">
                 <p>No concrete ready tickets available</p>
               </div>
             </div>

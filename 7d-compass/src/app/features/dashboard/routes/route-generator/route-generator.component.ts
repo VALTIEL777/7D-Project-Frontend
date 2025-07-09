@@ -294,7 +294,11 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
       ...this.asphaltRoutes.map(route => ({ ...route, type: 'asphalt' })),
       ...this.locationsWithoutRoute.map(location => ({ routeCode: location, tickets: [{ address: location }], type: 'without-route' })),
       ...this.locationsOnHoldOff.map(item => ({ routeCode: item.location, tickets: [{ address: item.location }], reason: item.reason, type: 'on-hold' })),
-      ...this.ticketData.map(ticket => ({ ...ticket, type: 'ticket' }))
+      ...this.ticketData.map(ticket => ({ ...ticket, type: 'ticket' })),
+      // Add ready tickets for filtering
+      ...this.spotReadyTickets.map(ticket => ({ ...ticket, type: 'ready-ticket', category: 'spot' })),
+      ...this.asphaltReadyTickets.map(ticket => ({ ...ticket, type: 'ready-ticket', category: 'asphalt' })),
+      ...this.concreteReadyTickets.map(ticket => ({ ...ticket, type: 'ready-ticket', category: 'concrete' }))
     ];
 
     this.allData = allRouteData;
@@ -305,16 +309,33 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
   protected override matchesTextSearch(item: any, searchTerm: string): boolean {
     const searchableFields = ['routeCode', 'location', 'phase', 'status', 'reason'];
 
-    return searchableFields.some(field => {
+    // Check direct fields
+    const directMatch = searchableFields.some(field => {
       const value = this.getNestedValue(item, field);
       if (value) {
         return String(value).toLowerCase().includes(searchTerm);
       }
       return false;
-    }) ||
-    // Also search in tickets arrays
-    (item.tickets && Array.isArray(item.tickets) &&
-     item.tickets.some((ticket: RouteTicket) => ticket.address.toLowerCase().includes(searchTerm)));
+    });
+
+    if (directMatch) return true;
+
+    // Search in tickets arrays for route items
+    if (item.tickets && Array.isArray(item.tickets)) {
+      return item.tickets.some((ticket: RouteTicket) => {
+        if (ticket.address) {
+          return ticket.address.toLowerCase().includes(searchTerm);
+        }
+        return false;
+      });
+    }
+
+    // Search in ready tickets for ready sections
+    if (item.type === 'ready-ticket' && item.address) {
+      return item.address.toLowerCase().includes(searchTerm);
+    }
+
+    return false;
   }
 
   // Override date range to use startDate for tickets
@@ -351,17 +372,57 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     return this.filteredData.filter(item => item.type === 'ticket');
   }
 
-  // Getter for filtered route data
+  // Getter for filtered route data with filtered tickets
   get filteredSpottingRoutes() {
-    return this.filteredData.filter(item => item.type === 'spotting');
+    const routes = this.filteredData.filter(item => item.type === 'spotting');
+    return routes.map(route => ({
+      ...route,
+      tickets: this.filterTicketsInRoute(route.tickets)
+    }));
   }
 
   get filteredConcreteRoutes() {
-    return this.filteredData.filter(item => item.type === 'concrete');
+    const routes = this.filteredData.filter(item => item.type === 'concrete');
+    return routes.map(route => ({
+      ...route,
+      tickets: this.filterTicketsInRoute(route.tickets)
+    }));
   }
 
   get filteredAsphaltRoutes() {
-    return this.filteredData.filter(item => item.type === 'asphalt');
+    const routes = this.filteredData.filter(item => item.type === 'asphalt');
+    return routes.map(route => ({
+      ...route,
+      tickets: this.filterTicketsInRoute(route.tickets)
+    }));
+  }
+
+  // Helper method to filter tickets within a route based on current search
+  private filterTicketsInRoute(tickets: RouteTicket[]): RouteTicket[] {
+    if (!this.currentTextSearch.trim()) {
+      return tickets; // Return all tickets if no search term
+    }
+
+    const searchTerm = this.currentTextSearch.toLowerCase().trim();
+    return tickets.filter(ticket => {
+      if (ticket.address) {
+        return ticket.address.toLowerCase().includes(searchTerm);
+      }
+      return false;
+    });
+  }
+
+  // Getter for filtered ready tickets
+  get filteredSpotReadyTickets() {
+    return this.filteredData.filter(item => item.type === 'ready-ticket' && item.category === 'spot');
+  }
+
+  get filteredAsphaltReadyTickets() {
+    return this.filteredData.filter(item => item.type === 'ready-ticket' && item.category === 'asphalt');
+  }
+
+  get filteredConcreteReadyTickets() {
+    return this.filteredData.filter(item => item.type === 'ready-ticket' && item.category === 'concrete');
   }
 
   get filteredLocationsWithoutRoute() {
@@ -700,15 +761,15 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
   private isReadySection(data: any[]): boolean {
     console.log('=== IS READY SECTION CHECK ===');
     console.log('Data to check:', data);
-    console.log('Spot ready tickets:', this.spotReadyTickets);
-    console.log('Concrete ready tickets:', this.concreteReadyTickets);
-    console.log('Asphalt ready tickets:', this.asphaltReadyTickets);
-    console.log('Is spot ready:', data === this.spotReadyTickets);
-    console.log('Is concrete ready:', data === this.concreteReadyTickets);
-    console.log('Is asphalt ready:', data === this.asphaltReadyTickets);
-    const result = data === this.spotReadyTickets ||
-           data === this.concreteReadyTickets ||
-           data === this.asphaltReadyTickets;
+    console.log('Filtered spot ready tickets:', this.filteredSpotReadyTickets);
+    console.log('Filtered concrete ready tickets:', this.filteredConcreteReadyTickets);
+    console.log('Filtered asphalt ready tickets:', this.filteredAsphaltReadyTickets);
+    console.log('Is filtered spot ready:', data === this.filteredSpotReadyTickets);
+    console.log('Is filtered concrete ready:', data === this.filteredConcreteReadyTickets);
+    console.log('Is filtered asphalt ready:', data === this.filteredAsphaltReadyTickets);
+    const result = data === this.filteredSpotReadyTickets ||
+           data === this.filteredConcreteReadyTickets ||
+           data === this.filteredAsphaltReadyTickets;
     console.log('Final result:', result);
     console.log('==============================');
     return result;
@@ -775,7 +836,27 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
       // Note: Reoptimization will be done manually via the route button
 
       // Remove the ticket from the ready section (don't transfer, just remove)
-      event.previousContainer.data.splice(event.previousIndex, 1);
+      // Note: We need to remove from the original array, not the filtered array
+      const ticketToRemove = event.previousContainer.data[event.previousIndex];
+      if (ticketToRemove) {
+        // Find and remove from the original array
+        if (event.previousContainer.data === this.filteredSpotReadyTickets) {
+          const originalIndex = this.spotReadyTickets.findIndex(t => t.ticketid === ticketToRemove.ticketid);
+          if (originalIndex !== -1) {
+            this.spotReadyTickets.splice(originalIndex, 1);
+          }
+        } else if (event.previousContainer.data === this.filteredAsphaltReadyTickets) {
+          const originalIndex = this.asphaltReadyTickets.findIndex(t => t.ticketid === ticketToRemove.ticketid);
+          if (originalIndex !== -1) {
+            this.asphaltReadyTickets.splice(originalIndex, 1);
+          }
+        } else if (event.previousContainer.data === this.filteredConcreteReadyTickets) {
+          const originalIndex = this.concreteReadyTickets.findIndex(t => t.ticketid === ticketToRemove.ticketid);
+          if (originalIndex !== -1) {
+            this.concreteReadyTickets.splice(originalIndex, 1);
+          }
+        }
+      }
 
       // Refresh the data to get the updated route with the new ticket
       this.refreshAllDataAndCache();
@@ -829,11 +910,36 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
       return;
     }
 
-    // Remove from source ready section
-    event.previousContainer.data.splice(event.previousIndex, 1);
+    // Remove from source ready section (from original array)
+    const ticketToMove = event.previousContainer.data[event.previousIndex];
+    if (ticketToMove) {
+      // Remove from original source array
+      if (event.previousContainer.data === this.filteredSpotReadyTickets) {
+        const originalIndex = this.spotReadyTickets.findIndex(t => t.ticketid === ticketToMove.ticketid);
+        if (originalIndex !== -1) {
+          this.spotReadyTickets.splice(originalIndex, 1);
+        }
+      } else if (event.previousContainer.data === this.filteredAsphaltReadyTickets) {
+        const originalIndex = this.asphaltReadyTickets.findIndex(t => t.ticketid === ticketToMove.ticketid);
+        if (originalIndex !== -1) {
+          this.asphaltReadyTickets.splice(originalIndex, 1);
+        }
+      } else if (event.previousContainer.data === this.filteredConcreteReadyTickets) {
+        const originalIndex = this.concreteReadyTickets.findIndex(t => t.ticketid === ticketToMove.ticketid);
+        if (originalIndex !== -1) {
+          this.concreteReadyTickets.splice(originalIndex, 1);
+        }
+      }
 
-    // Add to destination ready section
-    event.container.data.splice(event.currentIndex, 0, draggedTicket);
+      // Add to original destination array
+      if (event.container.data === this.filteredSpotReadyTickets) {
+        this.spotReadyTickets.push(ticketToMove);
+      } else if (event.container.data === this.filteredAsphaltReadyTickets) {
+        this.asphaltReadyTickets.push(ticketToMove);
+      } else if (event.container.data === this.filteredConcreteReadyTickets) {
+        this.concreteReadyTickets.push(ticketToMove);
+      }
+    }
 
     console.log('=== MOVE BETWEEN READY SECTIONS COMPLETED ===');
   }
@@ -842,27 +948,31 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     console.log('=== GET READY SECTION TYPE ===');
     console.log('Data:', data);
 
-    // Check if this is a ready section by looking at the first item's properties
+    // Check if this is a ready section by comparing with filtered arrays
+    if (data === this.filteredSpotReadyTickets) {
+      console.log('Section type: spot');
+      return 'spot';
+    }
+
+    if (data === this.filteredAsphaltReadyTickets) {
+      console.log('Section type: asphalt');
+      return 'asphalt';
+    }
+
+    if (data === this.filteredConcreteReadyTickets) {
+      console.log('Section type: concrete');
+      return 'concrete';
+    }
+
+    // Fallback: Check if this is a ready section by looking at the first item's properties
     if (data.length > 0) {
       const firstItem = data[0];
       console.log('First item:', firstItem);
 
-      // Check if it's a spot ready ticket
-      if (firstItem.spotReady) {
-        console.log('Section type: spot');
-        return 'spot';
-      }
-
-      // Check if it's an asphalt ready ticket
-      if (firstItem.asphaltReady) {
-        console.log('Section type: asphalt');
-        return 'asphalt';
-      }
-
-      // Check if it's a concrete ready ticket
-      if (firstItem.concreteReady) {
-        console.log('Section type: concrete');
-        return 'concrete';
+      // Check if it's a ready ticket with category
+      if (firstItem.type === 'ready-ticket') {
+        console.log('Section type:', firstItem.category);
+        return firstItem.category;
       }
     }
 
@@ -1042,13 +1152,13 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     let readyTickets: ReadyTicket[] = [];
     switch (this.newRouteType) {
       case 'spotting':
-        readyTickets = this.spotReadyTickets;
+        readyTickets = this.filteredSpotReadyTickets;
         break;
       case 'concrete':
-        readyTickets = this.concreteReadyTickets;
+        readyTickets = this.filteredConcreteReadyTickets;
         break;
       case 'asphalt':
-        readyTickets = this.asphaltReadyTickets;
+        readyTickets = this.filteredAsphaltReadyTickets;
         break;
       default:
         alert('Invalid route type selected');
@@ -1181,22 +1291,42 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
       return;
     }
 
-    // Collect all waypoints from all routes
+    // Collect all waypoints and polylines from all routes
     const allWaypoints: string[] = [];
-    const pathEncodings: string[] = [];
+    const routePaths: { polyline: string; color: string; weight: number }[] = [];
 
-    allRoutes.forEach(route => {
+    allRoutes.forEach((route, routeIndex) => {
       if (route.tickets && route.tickets.length > 0) {
-        // Add addresses as waypoints
+        // Add addresses as waypoints (limit to avoid URL length issues)
         route.tickets.forEach(ticket => {
-          if (ticket.address && !allWaypoints.includes(ticket.address)) {
+          if (ticket.address && !allWaypoints.includes(ticket.address) && allWaypoints.length < 20) {
             allWaypoints.push(ticket.address);
           }
         });
 
-        // Add polyline if available
+        // Add polyline with route-specific styling
         if (route.encodedPolyline) {
-          pathEncodings.push(route.encodedPolyline);
+          let pathColor = '#FF0000'; // Default red
+          let pathWeight = 3;
+
+          // Color-code routes by type
+          switch (route.type) {
+            case 'SPOTTER':
+              pathColor = '#FF6B35'; // Orange for spotting
+              break;
+            case 'CONCRETE':
+              pathColor = '#4A90E2'; // Blue for concrete
+              break;
+            case 'ASPHALT':
+              pathColor = '#7B68EE'; // Purple for asphalt
+              break;
+          }
+
+          routePaths.push({
+            polyline: route.encodedPolyline,
+            color: pathColor,
+            weight: pathWeight
+          });
         }
       }
     });
@@ -1208,26 +1338,38 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     mapUrl += `&maptype=roadmap`;
     mapUrl += `&key=${this.GOOGLE_MAPS_API_KEY}`;
 
-    // Add small custom markers for waypoints (limit to first 10 to avoid URL length issues)
-    const limitedWaypoints = allWaypoints.slice(0, 10);
+    // Add markers for waypoints (limit to first 15 to avoid URL length issues)
+    const limitedWaypoints = allWaypoints.slice(0, 15);
     limitedWaypoints.forEach((waypoint, index) => {
-      // Use small markers with numbered labels - ensure proper encoding
       const label = (index + 1).toString();
       mapUrl += `&markers=size:small|color:red|label:${label}|${encodeURIComponent(waypoint)}`;
     });
 
-    // Add path for first route if available (Static Maps API has limitations)
-    if (pathEncodings.length > 0) {
-      mapUrl += `&path=enc:${pathEncodings[0]}`;
+    // Add multiple paths with different colors
+    // Note: Static Maps API has limitations, so we'll prioritize the first few routes
+    const maxPaths = 3; // Limit to 3 paths to avoid URL length issues
+    const limitedPaths = routePaths.slice(0, maxPaths);
+
+    limitedPaths.forEach((path, index) => {
+      mapUrl += `&path=color:${path.color}|weight:${path.weight}|enc:${path.polyline}`;
+    });
+
+    // Calculate center based on actual route data if available
+    let centerCoords = '41.899463,-87.694039'; // Default Chicago coordinates
+
+    if (allWaypoints.length > 0) {
+      // Use the first waypoint as center for better focus
+      centerCoords = encodeURIComponent(allWaypoints[0]);
     }
 
-    // Always use the specified center coordinates
-    mapUrl += `&center=41.899463,-87.694039`; // Your custom coordinates
-
-    mapUrl += `&zoom=10`;
+    mapUrl += `&center=${centerCoords}`;
+    mapUrl += `&zoom=11`; // Slightly closer zoom
 
     this.staticMapUrl = mapUrl;
     console.log('Generated static map URL:', this.staticMapUrl);
+    console.log('Routes with polylines:', routePaths.length);
+    console.log('Total waypoints:', allWaypoints.length);
+    console.log('Paths rendered:', limitedPaths.length);
   }
 
   // Update static map when data changes
