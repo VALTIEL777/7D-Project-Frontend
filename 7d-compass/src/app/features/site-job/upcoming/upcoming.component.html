@@ -1,5 +1,4 @@
 <app-sitejob-sidenavbar [teamLeader]="teamLeader" [teamMembers]="teamMembers">
-  <app-sitejob-layout></app-sitejob-layout>
 
   <div class="content-wrapper">
     <h2 class="section-title">Remaining Locations</h2>
@@ -13,20 +12,15 @@
 
     <!-- 📍 Lista filtrada -->
     <div *ngFor="let location of filteredLocations" class="location-card">
-      <p class="address"><strong>{{ location.address }}</strong></p>
-
-      <h3 class="sub-title">General Info</h3>
-      <ul class="info-list">
-        <li *ngIf="location.job"><strong>Job:</strong> {{ location.job }}</li>
-        <li *ngIf="location.width && location.length"><strong>Size:</strong> {{ location.width }} x {{ location.length }} ft</li>
-        <li *ngIf="location.surface"><strong>Surface:</strong> {{ location.surface }} m²</li>
-            <li><strong>Crew type:</strong> {{crewType}} </li>
-
-      </ul>
-
-      <button mat-button color="primary" (click)="goToCurrent(location)">Select</button>
+<div class="address-container">
+  <p class="address"><strong>{{ location.address }}</strong></p>
+  <button mat-raised-button matButton="filled" class="custom-select-button" (click)="goToCurrent(location)">
+    <mat-icon class="icon">place</mat-icon>Go to location</button>
+</div>
 
       <hr class="divider" />
     </div>
   </div>
+
+  <app-sitejob-tabs></app-sitejob-tabs>
 </app-sitejob-sidenavbar>

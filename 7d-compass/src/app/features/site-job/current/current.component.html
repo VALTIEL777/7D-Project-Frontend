@@ -9,23 +9,28 @@
 <!-- General Info -->
 <h3 class="sub-title">General Info</h3>
 <ul class="info-list">
-    <li><strong>Job:</strong> {{ location.job }}</li>
+  <li><strong>Job:</strong> {{ location.job }}</li>
   <li><strong>Surface:</strong> {{ location.surface }} m²</li>
   <li><strong>Width:</strong> {{ location.width }} m</li>
   <li><strong>Length:</strong> {{ location.length }} m</li>
-    <li><strong>Crew type:</strong> {{crewType}} </li>
+  <li><strong>Crew type:</strong> {{ crewType }}</li>
 </ul>
+
     <mat-divider></mat-divider>
 
 <!-- Activities -->
 <h3 class="sub-title">Activities</h3>
 <ul class="info-list">
-  <li *ngFor="let activity of temporal.activities">
-    <mat-checkbox checked>{{ activity }}</mat-checkbox>
+  <li *ngFor="let activity of activities">
+    <mat-checkbox [(ngModel)]="activity.checked"  [disabled]="activity.locked">{{ activity.name }}</mat-checkbox>
   </li>
+  <button mat-raised-button color="primary" (click)="saveSelectedActivities()">
+  Save Selected Activities
+</button>
 </ul>
+    <mat-divider></mat-divider>
 <!-- Upload Image & Issue -->
-<!-- Upload Image & Issue -->
+ <h3 class="sub-title">Photo evidence</h3>
 <div class="issue-section">
   <div class="upload-container">
     <label class="upload-button">
@@ -63,6 +68,7 @@
   </button>
 </div>
 
+
 <!-- Permits -->
 <h3 class="sub-title">Permits</h3>
 <div class="permits">
@@ -89,4 +95,5 @@
 <p><strong>phone:</strong> {{ temporal.supervisor.phone }}</p>
     <mat-divider></mat-divider>
 </div>
+  <app-sitejob-tabs></app-sitejob-tabs>
 </app-sitejob-sidenavbar>

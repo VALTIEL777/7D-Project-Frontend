@@ -17,5 +17,8 @@ export const environment = {
   usedinventoryServiceUrl: 'http://localhost:3000/api/usedinventory',
   crewEmployeesServiceUrl: 'http://localhost:3000/api/crewemployees',
   routeServiceUrl: 'http://localhost:3000/api/routes',
-  photoEvidenceServiceUrl: 'http://localhost:3000/api/photoevidence'
+  photoEvidenceServiceUrl: 'http://localhost:3000/api/photoevidence',
+  necessaryPhasesServiceUrl:'http://localhost:3000/api/necessaryphases',
+  contractUnitPhasesServiceUrl: 'http://localhost:3000/api/contractunitsphases',
+  ticketStatusServiceUrl:'http://localhost:3000/api/ticketstatus'
 };

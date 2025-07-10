@@ -16,10 +16,17 @@ import { SkillsService } from '../../../core/services/human-resources/skills.ser
 import { RoutesService } from '../../../core/services/route/route.service';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
+import { SitejobTabsComponent } from '../../../shared/sitejob-tabs/sitejob-tabs.component';
 
 @Component({
   selector: 'app-upcoming',
-  imports: [SitejobLayoutComponent,SitejobSidenavbarComponent,MatTableModule, MatDividerModule,CommonModule,MATERIAL_MODULES, FormsModule],
+  imports: [
+    SitejobSidenavbarComponent,MatTableModule,
+    MatDividerModule,
+    CommonModule,
+    MATERIAL_MODULES,
+    FormsModule, 
+    SitejobTabsComponent],
   templateUrl: './upcoming.component.html',
   styleUrl: './upcoming.component.scss'
 })
@@ -141,14 +148,25 @@ getCrewDetails(crewId: number) {
       this.crewDetails = details;
 
       // Mapear todos los tickets asociados a su información de ubicación
-      this.remainingLocations = details.map((data: any) => ({
-        address: `${data.fromaddressstreet} ${data.toaddressstreet} ${data.fromaddresscardinal} ${data.fromaddresssuffix}`,
-        job: data.contractunit_description || '',
-        surface: data.surfacetotal,
-        width: data.width,
-        length: data.length,
-        ticketid: data.ticketid
-      }));
+     // Evita ubicaciones duplicadas por ticketid
+const uniqueLocationsMap = new Map<number, any>();
+
+details.forEach((data: any) => {
+  if (!uniqueLocationsMap.has(data.ticketid)) {
+    uniqueLocationsMap.set(data.ticketid, {
+      address: `${data.fromaddressstreet} ${data.toaddressstreet} ${data.fromaddresscardinal} ${data.fromaddresssuffix}`,
+      job: data.contractunit_name || '',
+      surface: data.surfacetotal,
+      width: data.width,
+      length: data.length,
+      ticketid: data.ticketid,
+      contractunitid: data.contractunitid
+    });
+  }
+});
+
+this.remainingLocations = Array.from(uniqueLocationsMap.values());
+
 
       console.log('📌 Remaining locations:', this.remainingLocations);
 

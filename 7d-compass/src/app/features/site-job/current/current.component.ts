@@ -16,10 +16,31 @@ import { SkillsService } from '../../../core/services/human-resources/skills.ser
 import { RoutesService } from '../../../core/services/route/route.service';
 import { PhotoEvidenceService } from '../../../core/services/route/photoevidence.service';
 import { FormsModule } from '@angular/forms';
+import { SitejobTabsComponent } from '../../../shared/sitejob-tabs/sitejob-tabs.component';
+import { forkJoin } from 'rxjs';
+import { ContractUnitsPhasesService } from '../../../core/services/ticket-logic/contractunitphases.service';
+import { NecessaryPhasesService } from '../../../core/services/ticket-logic/necessaryphases.service';
+import { TicketStatusService } from '../../../core/services/route/ticketstatus.service';
+
+
+interface Activity {
+  id: number;
+  name: string;
+  description: string;
+  checked: boolean;
+}
+
 
 @Component({
   selector: 'app-current',
-  imports: [SitejobLayoutComponent,MatTableModule, MatDividerModule,CommonModule,MATERIAL_MODULES,SitejobSidenavbarComponent, FormsModule],
+  imports: [SitejobLayoutComponent,
+    SitejobTabsComponent,
+    MatTableModule,
+    MatDividerModule,
+    CommonModule,
+    MATERIAL_MODULES,
+    SitejobSidenavbarComponent, 
+    FormsModule],
   templateUrl: './current.component.html',
   styleUrl: './current.component.scss'
 })
@@ -41,14 +62,18 @@ location: {
 crewDetails: any[] = [];
 crewType: string = '';
 
+contractUnitId: number = 0;
+userId: number = 0;
 selectedFile!: File;
 ticketId: number = 0; // Lo debes asignar al cargar detalles
+crewId: number = 0;
 ticketStatusId: number = 0; // Id del estado del ticket asociado (si aplica)
 comment: string = '';
 latitude: number = 0; // puedes obtenerla desde GPS o dejar en 0
 longitude: number = 0;
 name: string = 'Photo Evidence'; // nombre opcional o dinámico
 
+activities: any[] = [];
 
 temporal = {
   
@@ -69,12 +94,12 @@ diggers: { id: number; number: string }[] = [];
         private crewEmployeesService: CrewEmployeesService,
         private usedInventoryService: UsedInventoryService,
         private usedEquipmentService: UsedEquipmentService,
-        private supplierService: SupplierService,
+        private ticketStatusService: TicketStatusService,
         private usersService: PeopleService,
         private skillsService: SkillsService,
-        private routeService: RoutesService,
-        private photoEvidenceService: PhotoEvidenceService
-
+        private necessaryPhasesService: NecessaryPhasesService,
+        private photoEvidenceService: PhotoEvidenceService,
+        private contractUnitsPhasesService: ContractUnitsPhasesService
   ){}
 
   private isLocationFromStorage = false;
@@ -85,13 +110,18 @@ ngOnInit() {
     const parsedLocation = JSON.parse(savedLocation);
     this.location = parsedLocation;
     this.ticketId = parsedLocation.ticketid || 0;
+    this.contractUnitId = Number(parsedLocation.contractunitid) || 0; // Conversión a número
     this.isLocationFromStorage = true; // ✅ Esta línea es la que faltaba
     console.log('🗺️ Location cargada:', this.location);
     console.log('🧾 ticketId cargado:', this.ticketId);
+    console.log('🆔 contractUnitId cargado:', this.contractUnitId);
   }
 
   this.loadEmployees();
+    this.loadAllPhases();
+
 }
+
 
 
 
@@ -126,6 +156,11 @@ loadEmployees() {
           };
         });
 
+        const detectedLeader = this.employeeList.find(emp => emp.crewLeader);
+this.crewId = detectedLeader?.crewid || this.employeeList[0]?.crewid || 0;
+console.log('👷 crewId detectado:', this.crewId);
+
+
         // ✅ Obtener el userId logueado correctamente
         const storedUserId = Number(localStorage.getItem('userId')); // CORREGIDO aquí
         const person = this.employeeList.find(p => p.userid === storedUserId); // CORREGIDO aquí
@@ -134,6 +169,8 @@ loadEmployees() {
           console.warn('⚠️ Usuario logueado no encontrado entre empleados.');
           return;
         }
+
+        this.userId = person.userid; 
 
         const currentCrewId = person.crewid;
         if (!currentCrewId) {
@@ -161,10 +198,37 @@ loadEmployees() {
   });
 }
 
+loadAllPhases() {
+    this.necessaryPhasesService.getAllPhases().subscribe({
+    next: (phases) => {
+    this.activities = phases.map((p: any) => ({
+  id: p.necessaryphaseid ?? p.id,
+  name: p.name,
+  description: p.description,
+  checked: false
+}));
+
+// Guarda el ID de Crack Seal si existe
+const crackSealPhase = phases.find((p: any) => p.name.toLowerCase() === 'crack seal');
+this.ticketStatusId = crackSealPhase?.necessaryphaseid || 0;
+
+      // Aquí podrías llamar a loadLinkedPhases() para marcar las que estén vinculadas a contractUnitId
+      this.loadLinkedPhases();
+    },
+    error: (err) => {
+      console.error('Error loading phases', err);
+    }
+  });
+}
+
 getCrewDetails(crewId: number) {
   this.crewsService.getCrewDetails(crewId).subscribe({
     next: (details) => {
       this.crewDetails = details;
+      // 🔁 Extraer fases únicas (phase_name) como activities
+
+
+
 
       // 🔍 Extraer permisos únicos
       this.permits = details.reduce((acc: { id: number; number: string }[], d: any) => {
@@ -187,14 +251,14 @@ getCrewDetails(crewId: number) {
         const data = details[0];
 
         this.location.address = `${data.fromaddressstreet} ${data.toaddressstreet} ${data.fromaddresscardinal} ${data.fromaddresssuffix}`;
-        this.location.job = data.contractunit_description;
+        this.location.job = data.contractunit_name;
         this.location.surface = data.surfacetotal;
         this.location.width = data.width;
         this.location.length = data.length;
 
         console.log('📍 Dirección por defecto del backend:', this.location.address);
       } else if (this.isLocationFromStorage) {
-        console.log('📍 Dirección seleccionada manualmente, no se sobreescribe:', this.location.address);
+        console.log('📍 Dirección seleccionada manualmente:', this.location.address);
       }
     },
     error: (err) => {
@@ -202,6 +266,106 @@ getCrewDetails(crewId: number) {
     }
   });
 }
+
+loadLinkedPhases() {
+  this.contractUnitsPhasesService.getByContractUnitId(this.contractUnitId).subscribe({
+    next: (linkedPhases) => {
+      const normalized = linkedPhases.map(lp => ({
+        contractUnitId: lp.contractunitid,
+        necessaryPhaseId: lp.necessaryphaseid
+      }));
+
+      this.activities.forEach(activity => {
+        if (normalized.some(p => p.necessaryPhaseId === activity.id)) {
+          activity.checked = true;
+          activity.locked = true;
+        } else {
+          activity.checked = false;
+          activity.locked = false;
+        }
+      });
+    },
+    error: (err) => {
+      console.error('❌ Error al cargar fases vinculadas:', err);
+    }
+  });
+}
+
+
+
+
+
+saveSelectedActivities() {
+  const selectedPhaseRelations = this.activities
+    .filter(a => a.checked && !a.locked && a.id != null)
+    .map(a => ({
+      contractUnitId: this.contractUnitId,
+      necessaryPhaseId: a.id,
+      createdBy: this.userId || 1,
+      updatedBy: this.userId || 1
+    }));
+
+  if (selectedPhaseRelations.length === 0) {
+    console.warn('⚠️ No hay fases nuevas para guardar.');
+    return;
+  }
+
+  const requests = selectedPhaseRelations.map(phase =>
+    this.contractUnitsPhasesService.create(phase)
+  );
+
+  forkJoin(requests).subscribe({
+    next: () => {
+      console.log('✅ Fases nuevas guardadas con éxito.');
+      this.loadLinkedPhases(); 
+    },
+    error: (err) => console.error('❌ Error al guardar fases', err)
+  });
+
+  // Mantienes tu lógica para TicketStatus igual
+this.ticketStatusService.getByTicketAndCrew(this.ticketId, this.crewId).subscribe({
+  next: (status: any) => {
+    if (status) {
+      const taskStatusId = status.taskstatusid;
+      const ticketId = status.ticketid;
+
+      console.log('taskStatusId:', taskStatusId, 'ticketId:', ticketId);
+
+      if (this.activities.some(a => a.name.toLowerCase() === 'clean up' && a.checked)) {
+        this.ticketStatusService.update(taskStatusId, ticketId, {
+          endingDate: new Date().toISOString(),
+          updatedBy: this.userId
+        }).subscribe(() => {
+          console.log('✅ TicketStatus actualizado con endingDate');
+        });
+      }
+    } else {
+      const crackSealPhase = this.activities.find(a => a.name.toLowerCase() === 'crack seal' && a.checked);
+
+      if (crackSealPhase) {
+        this.ticketStatusService.create({
+          ticketId: this.ticketId,
+          crewId: this.crewId,
+          taskStatusId: crackSealPhase.id, 
+          startingDate: new Date().toISOString(),
+          createdBy: this.userId,
+          updatedBy: this.userId
+        }).subscribe(() => {
+          console.log('✅ TicketStatus creado con startingDate');
+        });
+      }
+    }
+  },
+  error: (err) => {
+    console.error('❌ Error al obtener TicketStatus:', err);
+  }
+});
+
+
+
+
+}
+
 
 onFileSelected(event: Event) {
   const input = event.target as HTMLInputElement;
@@ -245,6 +409,4 @@ formData.append('ticketid', this.ticketId.toString());
     error: (err) => console.error('❌ Error al subir evidencia:', err)
   });
 }
-
-
 }

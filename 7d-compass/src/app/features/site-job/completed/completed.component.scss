@@ -1,110 +1,108 @@
 .content-wrapper {
-  padding: 0 16px;
+  padding-bottom: 90px; // proteger el contenido inferior
+  padding-inline: 16px;
 
   @media (min-width: 768px) {
-    padding: 0 32px;
+    padding-inline: 32px;
   }
 
   @media (min-width: 1200px) {
-    padding: 0 64px;
+    padding-inline: 64px;
   }
 }
 
+
 .section-title {
-  font-size: 1.4rem;
-  font-weight: bold;
+  font-size: 1.8rem;
+  font-weight: 700;
+  margin: 24px 0 16px;
+  color: #2c3e50;
+}
+
+.location-card {
+  background: #f9f9f9;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.location-header {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
   margin-bottom: 12px;
 }
 
-.sub-title {
-  font-weight: bold;
-  margin-top: 20px;
+.address {
+  display: flex;
+  align-items: center;
+  font-size: 1.1rem;
+  color: #34495e;
+
+  .location-icon {
+    color: #0077cc;
+    margin-right: 8px;
+  }
+}
+
+.date-info {
+  font-size: 0.95rem;
+  color: #555;
+  line-height: 1.4;
+
+  .calendar-icon {
+    vertical-align: bottom;
+    margin-right: 6px;
+    color: #0077cc;
+  }
 }
 
 .info-list {
   list-style: none;
   padding-left: 0;
-  margin-bottom: 12px;
-}
+  margin: 12px 0;
+  font-size: 0.95rem;
 
-.issue-section {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  flex-wrap: wrap;
-  margin-bottom: 12px;
-
-  .upload-container {
+  li {
     display: flex;
-    flex-direction: column;
     align-items: center;
-    justify-content: center;
-    border: 2px dashed #ccc;
-    border-radius: 8px;
-    width: 100px;
-    height: 100px;
-    text-align: center;
+    margin-bottom: 6px;
+    color: #2d3436;
 
-    mat-icon {
-      font-size: 40px;
+    .icon {
+      font-size: 20px;
+      margin-right: 8px;
+      color: #2ecc71;
     }
   }
-
-  .comment-field {
-    flex: 1;
-    min-width: 200px;
-  }
 }
 
-.report-link {
-  font-size: 0.85rem;
-  margin-left: 12px;
-  color: #6c757d;
-  cursor: pointer;
-}
-
-.permits {
+.photo-comment {
   display: flex;
+  align-items: center;
   flex-wrap: wrap;
-  gap: 12px;
-
-  .permit {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 4px;
-    width: 150px;
-  }
+  gap: 16px;
+  margin-top: 12px;
 }
 
-.upload-button {
-  padding: 10px 20px;
-  background-color: #ffffff;
-  border: none;
-  color: #005cbb;
-  font-weight: bold;
-  border-radius: 8px;
-  cursor: pointer;
-  width: auto;
-  margin: 0;
-  transition: all 0.2s ease;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
-}
-
-.upload-button:hover {
-  background-color: #d3d4d4;
-  transform: translateY(-2px);
-  box-shadow: 0 6px 10px rgba(0, 0, 0, 0.25);
-}
-
-.upload-button:active {
-  transform: scale(0.95);
-  box-shadow: 0 3px 5px rgba(0, 0, 0, 0.2);
-}
 .location-image {
   width: 100%;
-  max-width: 320px;
-  height: 200px; /* o el alto que desees */
+  max-width: 300px;
+  height: 180px;
   object-fit: cover;
   border-radius: 8px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+.comment-btn {
+  font-weight: 600;
+  border-radius: 6px;
+  text-transform: none;
+}
+
+.divider {
+  margin-top: 20px;
+  border: none;
+  border-bottom: 1px solid #ccc;
 }
