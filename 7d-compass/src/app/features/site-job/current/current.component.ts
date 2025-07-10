@@ -16,6 +16,7 @@ import { forkJoin } from 'rxjs';
 import { ContractUnitsPhasesService } from '../../../core/services/ticket-logic/contractunitphases.service';
 import { NecessaryPhasesService } from '../../../core/services/ticket-logic/necessaryphases.service';
 import { TicketStatusService } from '../../../core/services/route/ticketstatus.service';
+
 import { MatDialog } from '@angular/material/dialog';
 import { ConfirmPhaseDialogComponent } from '../../../shared/confirm-phase-dialog/confirm-phase-dialog.component';
 
@@ -80,11 +81,13 @@ diggers: { id: number; number: string }[] = [];
   constructor(
      private crewsService: CrewsService,
         private crewEmployeesService: CrewEmployeesService,
+
         private ticketStatusService: TicketStatusService,
         private usersService: PeopleService,
         private skillsService: SkillsService,
         private necessaryPhasesService: NecessaryPhasesService,
         private photoEvidenceService: PhotoEvidenceService,
+
         private contractUnitsPhasesService: ContractUnitsPhasesService,
         private dialog: MatDialog
   ){}
@@ -283,6 +286,7 @@ loadLinkedPhases() {
 
 
 saveSelectedActivities() {
+
   const selectedPhases = this.activities
     .filter(a => a.checked && !a.locked && a.id != null);
 
@@ -290,6 +294,7 @@ saveSelectedActivities() {
     console.warn('⚠️ No hay fases nuevas para guardar.');
     return;
   }
+
 
   const selectedPhaseRelations = selectedPhases.map(a => ({
     contractUnitId: this.contractUnitId,
@@ -320,10 +325,12 @@ private executeSave(selectedPhaseRelations: any[], selectedPhases: any[]) {
   forkJoin(requests).subscribe({
     next: () => {
       console.log('✅ Fases nuevas guardadas con éxito.');
+
       this.loadLinkedPhases();
     },
     error: (err) => console.error('❌ Error al guardar fases', err)
   });
+
 
   this.ticketStatusService.getByTicketAndCrew(this.ticketId, this.crewId).subscribe({
     next: (status: any) => {

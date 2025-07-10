@@ -11,6 +11,7 @@
 <ul class="info-list">
   <li><strong>Job:</strong> {{ location.job }}</li>
   <li><strong>Surface:</strong> {{ location.surface }} m²</li>
+
   <li><strong>Size:</strong> {{ location.width }} x {{ location.length }} m</li>
   <li><strong>Crew type:</strong> {{ crewType }}</li>
 </ul>
@@ -20,6 +21,7 @@
 <h3 class="sub-title">Activities</h3>
 <ul class="info-list">
   <li *ngFor="let activity of activities">
+
     <mat-checkbox [(ngModel)]="activity.checked"    [disabled]="activity.locked || isPreviousPhaseIncomplete(activity)"
 >{{ activity.name }}</mat-checkbox>
   </li>
@@ -27,6 +29,7 @@
   Save Selected Activities
 </button>
 </ul>
+    <mat-divider></mat-divider>
 <!-- Upload Image & Issue -->
  <h3 class="sub-title">Photo evidence</h3>
 <div class="issue-section">
@@ -67,6 +70,7 @@
     Upload Evidence
   </button>
 </div>
+
 
 <!-- Permits -->
 <h3 class="sub-title">Permits</h3>

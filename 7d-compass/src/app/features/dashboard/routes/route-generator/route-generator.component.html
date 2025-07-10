@@ -2,6 +2,14 @@
   <div class="full-layout-container">
     <div class="dashboard-container">
       <div class="dashboard-wrapper">
+        <!-- Header with refresh and reoptimize buttons -->
+        <div class="header-controls">
+          <button mat-raised-button color="primary" (click)="reoptimizeAllRoutes()" class="reoptimize-btn">
+            <mat-icon>route</mat-icon>
+            Reoptimize All Routes
+          </button>
+        </div>
+
         <!-- Top Row: Route Containers and Today's Routes -->
         <div class="top-row">
           <!-- Left Side: Route Containers -->
@@ -16,11 +24,18 @@
                 [title]="route.routeCode"
                 [showEyeButton]="true"
               >
+                <div class="route-actions">
+                  <button mat-icon-button color="primary" (click)="reoptimizeSpecificRoute(route)" title="Reoptimize Route">
+                    <mat-icon>route</mat-icon>
+                  </button>
+                </div>
                 <div
                   cdkDropList
                   [cdkDropListData]="route.tickets"
                   (cdkDropListDropped)="drop($event)"
                   class="route-list-container"
+                  data-route-section="true"
+                  [attr.data-route-id]="route.routeId"
                 >
                   <div
                     *ngFor="let ticket of route.tickets; let i = index"
@@ -28,9 +43,25 @@
                     class="route-detail-item"
                   >
                     <span class="queue-number">{{ ticket.queue + 1 }}.</span>
-                    <p class="route-location">{{ ticket.address }}</p>
+                    <p class="route-location">{{ formatAddress(ticket.address) }}</p>
                     <mat-divider></mat-divider>
                   </div>
+                  <!-- Show message when no tickets match the filter -->
+                  <div *ngIf="route.tickets.length === 0 && currentTextSearch.trim()" class="no-matching-tickets">
+                    <p>No tickets match the current filter</p>
+                  </div>
+                </div>
+              </app-card-with-button>
+
+              <!-- No Spotting Routes Available Card -->
+              <app-card-with-button
+                *ngIf="!isLoadingSpottingRoutes && filteredSpottingRoutes.length === 0"
+                title="No Spotting Routes Available"
+                class="no-routes-card"
+              >
+                <div class="no-routes-content">
+                  <p>No spotting routes are currently available.</p>
+                  <p>Routes will appear here once they are generated.</p>
                 </div>
               </app-card-with-button>
             </div>
@@ -45,11 +76,18 @@
                 [title]="route.routeCode"
                 [showEyeButton]="true"
               >
+                <div class="route-actions">
+                  <button mat-icon-button color="primary" (click)="reoptimizeSpecificRoute(route)" title="Reoptimize Route">
+                    <mat-icon>route</mat-icon>
+                  </button>
+                </div>
                 <div
                   cdkDropList
                   [cdkDropListData]="route.tickets"
                   (cdkDropListDropped)="drop($event)"
                   class="route-list-container"
+                  data-route-section="true"
+                  [attr.data-route-id]="route.routeId"
                 >
                   <div
                     *ngFor="let ticket of route.tickets; let i = index"
@@ -57,9 +95,25 @@
                     class="route-detail-item"
                   >
                     <span class="queue-number">{{ ticket.queue + 1 }}.</span>
-                    <p class="route-location">{{ ticket.address }}</p>
+                    <p class="route-location">{{ formatAddress(ticket.address) }}</p>
                     <mat-divider></mat-divider>
                   </div>
+                  <!-- Show message when no tickets match the filter -->
+                  <div *ngIf="route.tickets.length === 0 && currentTextSearch.trim()" class="no-matching-tickets">
+                    <p>No tickets match the current filter</p>
+                  </div>
+                </div>
+              </app-card-with-button>
+
+              <!-- No Concrete Routes Available Card -->
+              <app-card-with-button
+                *ngIf="!isLoadingConcreteRoutes && filteredConcreteRoutes.length === 0"
+                title="No Concrete Routes Available"
+                class="no-routes-card"
+              >
+                <div class="no-routes-content">
+                  <p>No concrete routes are currently available.</p>
+                  <p>Routes will appear here once they are generated.</p>
                 </div>
               </app-card-with-button>
             </div>
@@ -74,11 +128,18 @@
                 [title]="route.routeCode"
                 [showEyeButton]="true"
               >
+                <div class="route-actions">
+                  <button mat-icon-button color="primary" (click)="reoptimizeSpecificRoute(route)" title="Reoptimize Route">
+                    <mat-icon>route</mat-icon>
+                  </button>
+                </div>
                 <div
                   cdkDropList
                   [cdkDropListData]="route.tickets"
                   (cdkDropListDropped)="drop($event)"
                   class="route-list-container"
+                  data-route-section="true"
+                  [attr.data-route-id]="route.routeId"
                 >
                   <div
                     *ngFor="let ticket of route.tickets; let i = index"
@@ -86,9 +147,25 @@
                     class="route-detail-item"
                   >
                     <span class="queue-number">{{ ticket.queue + 1 }}.</span>
-                    <p class="route-location">{{ ticket.address }}</p>
+                    <p class="route-location">{{ formatAddress(ticket.address) }}</p>
                     <mat-divider></mat-divider>
                   </div>
+                  <!-- Show message when no tickets match the filter -->
+                  <div *ngIf="route.tickets.length === 0 && currentTextSearch.trim()" class="no-matching-tickets">
+                    <p>No tickets match the current filter</p>
+                  </div>
+                </div>
+              </app-card-with-button>
+
+              <!-- No Asphalt Routes Available Card -->
+              <app-card-with-button
+                *ngIf="!isLoadingAsphaltRoutes && filteredAsphaltRoutes.length === 0"
+                title="No Asphalt Routes Available"
+                class="no-routes-card"
+              >
+                <div class="no-routes-content">
+                  <p>No asphalt routes are currently available.</p>
+                  <p>Routes will appear here once they are generated.</p>
                 </div>
               </app-card-with-button>
             </div>
@@ -97,14 +174,37 @@
           <!-- Right Side: Today's Routes Card -->
           <app-card-with-button title="Today's Routes" class="todays-routes-card">
             <div class="map-container">
-              <google-map
-                [center]="center"
-                [zoom]="zoom"
-                [options]="mapOptions"
-                (mapInitialized)="onMapReady($event)"
-                width="100%"
-                height="400px">
-              </google-map>
+              <!-- Static map display -->
+              <div *ngIf="staticMapUrl" class="static-map">
+                <img [src]="staticMapUrl"
+                     [alt]="'Route Map'"
+                     [width]="staticMapWidth"
+                     [height]="staticMapHeight"
+                     class="map-image">
+
+                <!-- No Routes Overlay -->
+                <div *ngIf="showNoRoutesOverlay" class="no-routes-overlay">
+                  <div class="no-routes-message">
+                    <mat-icon>route</mat-icon>
+                    <h3>No Active Routes</h3>
+                    <p>Routes will appear here once they are generated</p>
+                  </div>
+                </div>
+
+
+              </div>
+
+              <!-- Loading state -->
+              <div *ngIf="!staticMapUrl && (isLoadingSpottingRoutes || isLoadingConcreteRoutes || isLoadingAsphaltRoutes)" class="map-loading">
+                <mat-spinner diameter="40"></mat-spinner>
+                <p>Loading route map...</p>
+              </div>
+
+              <!-- Empty state -->
+              <div *ngIf="!staticMapUrl && !isLoadingSpottingRoutes && !isLoadingConcreteRoutes && !isLoadingAsphaltRoutes" class="map-empty">
+                <mat-icon>map</mat-icon>
+                <p>Map loading failed</p>
+              </div>
             </div>
           </app-card-with-button>
         </div>
@@ -116,18 +216,19 @@
           >
             <div
               cdkDropList
-              [cdkDropListData]="spotReadyTickets"
+              [cdkDropListData]="filteredSpotReadyTickets"
               (cdkDropListDropped)="drop($event)"
               class="route-list-container"
+              data-ready-section="true"
             >
               <div
-                *ngFor="let ticket of spotReadyTickets; let i = index"
+                *ngFor="let ticket of filteredSpotReadyTickets; let i = index"
                 cdkDrag
                 class="route-detail-item"
               >
                 <span class="queue-number">{{ i + 1 }}.</span>
                 <div class="ticket-info">
-                  <p class="route-location">{{ ticket.address || 'Address not available' }}</p>
+                  <p class="route-location">{{ formatAddress(ticket.address) }}</p>
                   <p class="incident-name">{{ ticket.incidentname || 'No incident name' }}</p>
                 </div>
                 <span class="ticket-code">{{ ticket.ticketcode || 'No ticket code' }}</span>
@@ -136,7 +237,7 @@
               <div *ngIf="isLoadingSpotReady" class="loading-state">
                 <p>Loading spot ready tickets...</p>
               </div>
-              <div *ngIf="!isLoadingSpotReady && spotReadyTickets.length === 0" class="empty-state">
+              <div *ngIf="!isLoadingSpotReady && filteredSpotReadyTickets.length === 0" class="empty-state">
                 <p>No spot ready tickets available</p>
               </div>
             </div>
@@ -148,18 +249,19 @@
           >
             <div
               cdkDropList
-              [cdkDropListData]="asphaltReadyTickets"
+              [cdkDropListData]="filteredAsphaltReadyTickets"
               (cdkDropListDropped)="drop($event)"
               class="route-list-container"
+              data-ready-section="true"
             >
               <div
-                *ngFor="let ticket of asphaltReadyTickets; let i = index"
+                *ngFor="let ticket of filteredAsphaltReadyTickets; let i = index"
                 cdkDrag
                 class="route-detail-item"
               >
                 <span class="queue-number">{{ i + 1 }}.</span>
                 <div class="ticket-info">
-                  <p class="route-location">{{ ticket.address || 'Address not available' }}</p>
+                  <p class="route-location">{{ formatAddress(ticket.address) }}</p>
                   <p class="incident-name">{{ ticket.incidentname || 'No incident name' }}</p>
                 </div>
                 <span class="ticket-code">{{ ticket.ticketcode || 'No ticket code' }}</span>
@@ -168,7 +270,7 @@
               <div *ngIf="isLoadingAsphaltReady" class="loading-state">
                 <p>Loading asphalt ready tickets...</p>
               </div>
-              <div *ngIf="!isLoadingAsphaltReady && asphaltReadyTickets.length === 0" class="empty-state">
+              <div *ngIf="!isLoadingAsphaltReady && filteredAsphaltReadyTickets.length === 0" class="empty-state">
                 <p>No asphalt ready tickets available</p>
               </div>
             </div>
@@ -180,18 +282,19 @@
           >
             <div
               cdkDropList
-              [cdkDropListData]="concreteReadyTickets"
+              [cdkDropListData]="filteredConcreteReadyTickets"
               (cdkDropListDropped)="drop($event)"
               class="route-list-container"
+              data-ready-section="true"
             >
               <div
-                *ngFor="let ticket of concreteReadyTickets; let i = index"
+                *ngFor="let ticket of filteredConcreteReadyTickets; let i = index"
                 cdkDrag
                 class="route-detail-item"
               >
                 <span class="queue-number">{{ i + 1 }}.</span>
                 <div class="ticket-info">
-                  <p class="route-location">{{ ticket.address || 'Address not available' }}</p>
+                  <p class="route-location">{{ formatAddress(ticket.address) }}</p>
                   <p class="incident-name">{{ ticket.incidentname || 'No incident name' }}</p>
                 </div>
                 <span class="ticket-code">{{ ticket.ticketcode || 'No ticket code' }}</span>
@@ -200,39 +303,16 @@
               <div *ngIf="isLoadingConcreteReady" class="loading-state">
                 <p>Loading concrete ready tickets...</p>
               </div>
-              <div *ngIf="!isLoadingConcreteReady && concreteReadyTickets.length === 0" class="empty-state">
+              <div *ngIf="!isLoadingConcreteReady && filteredConcreteReadyTickets.length === 0" class="empty-state">
                 <p>No concrete ready tickets available</p>
               </div>
             </div>
           </app-card-with-button>
 
-          <app-card-with-button
-            title="Hold Off"
-            [showEyeButton]="true"
-          >
-            <div class="route-list-container">
-              <div
-                *ngFor="let item of filteredLocationsOnHoldOff; let i = index"
-                class="route-detail-item"
-              >
-                <span class="queue-number">{{ i + 1 }}.</span>
-                <div class="location-and-reason">
-                  <p class="route-location">{{ item.location }}</p>
-                  <p class="hold-off-reason">{{ item.reason }}</p>
-                </div>
-                <mat-divider></mat-divider>
-              </div>
-            </div>
-          </app-card-with-button>
+
         </div>
 
         <div class="full-span buttons-container">
-          <button mat-raised-button color="primary" (click)="saveChanges()">
-            Save Changes
-          </button>
-          <button mat-raised-button color="warn" (click)="resetLists()">
-            Reset Lists
-          </button>
         </div>
       </div>
     </div>
@@ -256,11 +336,6 @@
               <mat-option value="concrete">Concrete Route</mat-option>
               <mat-option value="asphalt">Asphalt Route</mat-option>
             </mat-select>
-          </mat-form-field>
-
-          <mat-form-field appearance="fill" class="full-width">
-            <mat-label>Start Date</mat-label>
-            <input matInput type="date" [(ngModel)]="newRouteStartDate" name="startDate" required>
           </mat-form-field>
         </form>
       </div>

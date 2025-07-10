@@ -13,6 +13,7 @@ export const environment = {
   diggerServiceUrl: 'http://localhost:3000/api/diggers',
   rtrServiceUrl: 'http://localhost:3000/api/rtr',
   ticketServiceUrl: 'http://localhost:3000/api/tickets',
+
   usedequipmentServiceUrl:'http://localhost:3000/api/usedequipment',
   usedinventoryServiceUrl: 'http://localhost:3000/api/usedinventory',
   crewEmployeesServiceUrl: 'http://localhost:3000/api/crewemployees',
@@ -20,5 +21,6 @@ export const environment = {
   photoEvidenceServiceUrl: 'http://localhost:3000/api/photoevidence',
   necessaryPhasesServiceUrl:'http://localhost:3000/api/necessaryphases',
   contractUnitPhasesServiceUrl: 'http://localhost:3000/api/contractunitsphases',
+
   ticketStatusServiceUrl:'http://localhost:3000/api/ticketstatus',
 };

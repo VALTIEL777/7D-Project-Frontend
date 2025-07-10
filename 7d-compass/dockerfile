@@ -23,3 +23,7 @@ EXPOSE 3005
 
 # Start http-server with specific configuration to prevent redirects
 CMD ["http-server", "dist", "-p", "3005", "-a", "0.0.0.0", "--cors", "-P", "http://localhost:3005?"]
+
+
+# docker build -t christba/7d-compass latest .
+# docker push christba/7d-compass
