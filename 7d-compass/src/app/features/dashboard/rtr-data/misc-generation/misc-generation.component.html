@@ -41,6 +41,18 @@
       <div class="form-row">
        <mat-form-field appearance="fill" style="width: 300px;">
   <mat-label>Employee Name</mat-label>
+
+  <!-- 1. Declara primero la referencia -->
+  <mat-autocomplete
+    #auto="matAutocomplete"
+    [displayWith]="displayEmployee"
+    (optionSelected)="onEmployeeSelected($event.option.value)">
+    <mat-option *ngFor="let employee of filteredEmployees | async" [value]="employee">
+      {{ employee.name }}
+    </mat-option>
+  </mat-autocomplete>
+
+  <!-- 2. Usa la referencia después -->
   <input
     type="text"
     matInput
@@ -48,15 +60,12 @@
     [matAutocomplete]="auto"
     placeholder="Select or type employee name"
   />
-  <mat-autocomplete #auto="matAutocomplete"   [displayWith]="displayEmployee" (optionSelected)="onEmployeeSelected($event.option.value)">
-    <mat-option *ngFor="let employee of filteredEmployees | async" [value]="employee">
-      {{ employee.name }}
-    </mat-option>
-  </mat-autocomplete>
+
   <mat-error *ngIf="form.get('selectedEmployee')?.hasError('required')">
     Employee is required
   </mat-error>
 </mat-form-field>
+
 
         <mat-form-field appearance="fill">
           <mat-label>Skills</mat-label>
@@ -82,7 +91,7 @@
 
       <app-data-table
         [title]="'Team'"
-        [data]="employeeDataa"
+        [data]="employeeDataa || []"
         [columns]="employeecolumns"
         (edit)="onEditEmployee($event)"
         (delete)="onDeleteEmployee($event)">

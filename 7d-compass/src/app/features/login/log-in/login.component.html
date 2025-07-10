@@ -15,7 +15,7 @@
             Campo requerido
           </mat-error>
           <mat-error *ngIf="loginForm.get('identifier')?.hasError('minlength')">
-            Mínimo 4 caracteres
+            Mínimo 3 caracteres
           </mat-error>
         </mat-form-field>
 
@@ -26,7 +26,7 @@
             Campo requerido
           </mat-error>
           <mat-error *ngIf="loginForm.get('password')?.hasError('minlength')">
-            Mínimo 6 caracteres
+            Mínimo 3 caracteres
           </mat-error>
         </mat-form-field>
 

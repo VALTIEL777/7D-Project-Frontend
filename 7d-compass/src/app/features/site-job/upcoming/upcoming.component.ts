@@ -89,17 +89,17 @@ loadEmployees() {
       next: ({ people, crewEmployees, crews, skills }) => {
         // 🔁 Mapea todos los empleados
         this.employeeList = people.map((person: any) => {
-          const crewAssignment = crewEmployees.find((ce: any) => ce.employeeid === person.employeeid);
+const crewAssignment = crewEmployees.find((ce: any) => ce.employeeid === person.employeeId);
           const assignedCrew = crewAssignment
             ? crews.find((c: any) => c.crewid === crewAssignment.crewid)
             : null;
           const personSkills = skills
-            .filter((s: any) => s.userid === person.userid) // CORREGIDO aquí
+            .filter((s: any) => s.userId === person.userId) // CORREGIDO aquí
             .map((s: any) => s.name);
 
           return {
-            employeeid: person.employeeid,
-            userid: person.userid, // CORREGIDO aquí
+            employeeid: person.employeeId,
+            userid: person.userId, // CORREGIDO aquí
             name: `${person.firstname} ${person.lastname}`,
             crewid: crewAssignment?.crewid || null,
             type: assignedCrew?.type || '',
