@@ -123,16 +123,7 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
   // Static map properties
   private readonly GOOGLE_MAPS_API_KEY = 'AIzaSyDwEG-Tyq2kpHc4wznqVvSU0Dj2B_idzlY';
 
-  // Cache properties
-  private readonly CACHE_EXPIRY = 30 * 60 * 1000; // 30 minutes
-  private readonly CACHE_KEYS = {
-    SPOTTING_ROUTES: 'spotting_routes_cache',
-    CONCRETE_ROUTES: 'concrete_routes_cache',
-    ASPHALT_ROUTES: 'asphalt_routes_cache',
-    SPOT_READY: 'spot_ready_cache',
-    ASPHALT_READY: 'asphalt_ready_cache',
-    CONCRETE_READY: 'concrete_ready_cache'
-  };
+
 
   // API data properties
   spottingRoutes: Route[] = [];
@@ -160,88 +151,9 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
   staticMapUrl: string = '';
   staticMapWidth: number = 400;
   staticMapHeight: number = 600;
+  showNoRoutesOverlay: boolean = false;
 
-  // Fallback data (will be used if API fails)
-  fallbackSpottingRoutes = [
-    { routeCode: 'SPT-001', tickets: [{ address: '2837 N Froid Street' }, { address: '123 Main St' }, { address: '456 Oak Ave' }] },
-    { routeCode: 'SPT-002', tickets: [{ address: '789 Pine Ln' }, { address: '101 Elm Rd' }] },
-  ];
 
-  fallbackConcreteRoutes = [
-    { routeCode: 'CON-001', tickets: [{ address: '2837 N Froid Street' }, { address: '123 Main St' }, { address: '456 Oak Ave' }] },
-    { routeCode: 'CON-002', tickets: [{ address: '789 Pine Ln' }, { address: '101 Elm Rd' }] },
-    { routeCode: 'CON-003', tickets: [{ address: '111 Elm Rd' }, { address: '222 Oak Dr' }] },
-  ];
-
-  fallbackAsphaltRoutes = [
-    { routeCode: 'ASP-001', tickets: [{ address: '2837 N Froid Street' }, { address: '123 Main St' }, { address: '456 Oak Ave' }] },
-    { routeCode: 'ASP-002', tickets: [{ address: '789 Pine Ln' }, { address: '101 Elm Rd' }] },
-  ];
-
-  locationsWithoutRoute = [
-    '2837 N Froid Street',
-    '123 Main St',
-    '456 Oak Ave',
-    '789 Pine Ln',
-    '101 Elm Rd',
-    '333 Pine Rd',
-    '444 Cedar Dr',
-  ];
-
-  locationsOnHoldOff = [
-    { location: '101 Cedar Lane', reason: 'Permit Pending' },
-    { location: '202 Birch Road', reason: 'Client Unresponsive' },
-    { location: '303 Pine Street', reason: 'Equipment Malfunction' },
-    { location: '404 Maple Drive', reason: 'Weather Delay' },
-    { location: '505 Elm Road', reason: 'Inspection Required' },
-    { location: '606 Oak Avenue', reason: 'Material Shortage' },
-    { location: '707 Cherry Lane', reason: 'Scheduling Conflict' },
-  ];
-
-  ticketData = [
-    {
-      location: 'Chicago',
-      phase: 'Planning',
-      status: 'Open',
-      startDate: new Date('2025-06-01'),
-    },
-    {
-      location: 'New York',
-      phase: 'Execution',
-      status: 'In Progress',
-      startDate: new Date('2025-05-28'),
-    },
-    {
-      location: 'Los Angeles',
-      phase: 'Review',
-      status: 'Closed',
-      startDate: new Date('2025-05-20'),
-    },
-    {
-      location: 'San Francisco',
-      phase: 'Planning',
-      status: 'Open',
-      startDate: new Date('2025-06-05'),
-    },
-    {
-      location: 'Miami',
-      phase: 'Execution',
-      status: 'In Progress',
-      startDate: new Date('2025-06-02'),
-    },
-    {
-      location: 'Seattle',
-      phase: 'Review',
-      status: 'Closed',
-      startDate: new Date('2025-05-25'),
-    },
-    {
-      location: 'Boston',
-      phase: 'Planning',
-      status: 'Open',
-      startDate: new Date('2025-06-03'),
-    },
-  ];
 
   displayedColumns: string[] = [
     'location',
@@ -273,6 +185,7 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
   override ngOnInit() {
     super.ngOnInit();
     this.updateDisplayedColumns();
+
     this.loadSpottingRoutes();
     this.loadConcreteRoutes();
     this.loadAsphaltRoutes();
@@ -292,9 +205,6 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
       ...this.spottingRoutes.map(route => ({ ...route, type: 'spotting' })),
       ...this.concreteRoutes.map(route => ({ ...route, type: 'concrete' })),
       ...this.asphaltRoutes.map(route => ({ ...route, type: 'asphalt' })),
-      ...this.locationsWithoutRoute.map(location => ({ routeCode: location, tickets: [{ address: location }], type: 'without-route' })),
-      ...this.locationsOnHoldOff.map(item => ({ routeCode: item.location, tickets: [{ address: item.location }], reason: item.reason, type: 'on-hold' })),
-      ...this.ticketData.map(ticket => ({ ...ticket, type: 'ticket' })),
       // Add ready tickets for filtering
       ...this.spotReadyTickets.map(ticket => ({ ...ticket, type: 'ready-ticket', category: 'spot' })),
       ...this.asphaltReadyTickets.map(ticket => ({ ...ticket, type: 'ready-ticket', category: 'asphalt' })),
@@ -425,80 +335,33 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     return this.filteredData.filter(item => item.type === 'ready-ticket' && item.category === 'concrete');
   }
 
-  get filteredLocationsWithoutRoute() {
-    return this.filteredData.filter(item => item.type === 'without-route').map(item => item.routeCode);
-  }
 
-  get filteredLocationsOnHoldOff() {
-    return this.filteredData.filter(item => item.type === 'on-hold').map(item => ({
-      location: item.routeCode,
-      reason: item.reason
-    }));
-  }
 
-  // Cache management methods
-  private getCachedData(key: string): any {
-    try {
-      const cached = localStorage.getItem(key);
-      if (cached) {
-        const data = JSON.parse(cached);
-        if (Date.now() - data.timestamp < this.CACHE_EXPIRY) {
-          console.log(`Using cached data for ${key}`);
-          return data.value;
-        } else {
-          console.log(`Cache expired for ${key}`);
-          localStorage.removeItem(key);
-        }
-      }
-    } catch (error) {
-      console.error(`Error reading cache for ${key}:`, error);
-    }
-    return null;
-  }
 
-  private setCachedData(key: string, value: any): void {
-    try {
-      const cacheData = {
-        value: value,
-        timestamp: Date.now()
-      };
-      localStorage.setItem(key, JSON.stringify(cacheData));
-      console.log(`Cached data for ${key}`);
-    } catch (error) {
-      console.error(`Error caching data for ${key}:`, error);
-    }
-  }
 
-  private clearCache(): void {
-    Object.values(this.CACHE_KEYS).forEach(key => {
-      localStorage.removeItem(key);
-    });
-    console.log('Cache cleared');
-  }
-
-  // Modify loadSpottingRoutes to use cache
+  // Load spotting routes from API
   loadSpottingRoutes() {
-    // Try to load from cache first
-    const cachedData = this.getCachedData(this.CACHE_KEYS.SPOTTING_ROUTES);
-    if (cachedData) {
-      this.spottingRoutes = cachedData;
-      this.initialSpottingRoutes = [...cachedData];
-      this.isLoadingSpottingRoutes = false;
-      this.loadData(); // Refresh filtered data
-      this.updateStaticMap(); // Update static map
-      return;
-    }
-
     this.isLoadingSpottingRoutes = true;
     this.http.get<RoutesResponse>(`${environment.apiUrl}/routes/spotting`).subscribe({
       next: (response) => {
         console.log('Spotting routes API response:', response);
+        console.log('Number of routes received:', response.routes?.length || 0);
+
+        // Debug each route's polyline
+        if (response.routes && response.routes.length > 0) {
+          response.routes.forEach((route, index) => {
+            console.log(`Route ${index + 1} (${route.routeCode}):`);
+            console.log(`  - Route ID: ${route.routeId}`);
+            console.log(`  - Type: ${route.type}`);
+            console.log(`  - Polyline length: ${route.encodedPolyline?.length || 0}`);
+            console.log(`  - Polyline preview: ${route.encodedPolyline?.substring(0, 50) || 'N/A'}...`);
+            console.log(`  - Tickets count: ${route.tickets?.length || 0}`);
+          });
+        }
+
         this.spottingRoutes = response.routes || [];
         this.initialSpottingRoutes = [...this.spottingRoutes];
         this.isLoadingSpottingRoutes = false;
-
-        // Cache the data
-        this.setCachedData(this.CACHE_KEYS.SPOTTING_ROUTES, this.spottingRoutes);
 
         this.loadData(); // Refresh filtered data
         this.updateStaticMap(); // Update static map
@@ -506,9 +369,8 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
       error: (error) => {
         console.error('Error loading spotting routes:', error);
         this.isLoadingSpottingRoutes = false;
-        // Fallback to cached data if available, otherwise use fallback data
-        const fallbackData = this.getCachedData(this.CACHE_KEYS.SPOTTING_ROUTES) || this.fallbackSpottingRoutes;
-        this.spottingRoutes = fallbackData;
+        // Use empty array if API fails
+        this.spottingRoutes = [];
         this.initialSpottingRoutes = [...this.spottingRoutes];
         this.loadData(); // Refresh filtered data
         this.updateStaticMap(); // Update static map
@@ -516,29 +378,29 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     });
   }
 
-  // Modify loadConcreteRoutes to use cache
+  // Load concrete routes from API
   loadConcreteRoutes() {
-    // Try to load from cache first
-    const cachedData = this.getCachedData(this.CACHE_KEYS.CONCRETE_ROUTES);
-    if (cachedData) {
-      this.concreteRoutes = cachedData;
-      this.initialConcreteRoutes = [...cachedData];
-      this.isLoadingConcreteRoutes = false;
-      this.loadData(); // Refresh filtered data
-      this.updateStaticMap(); // Update static map
-      return;
-    }
-
     this.isLoadingConcreteRoutes = true;
     this.http.get<RoutesResponse>(`${environment.apiUrl}/routes/concrete`).subscribe({
       next: (response) => {
         console.log('Concrete routes API response:', response);
+        console.log('Number of concrete routes received:', response.routes?.length || 0);
+
+        // Debug each route's polyline
+        if (response.routes && response.routes.length > 0) {
+          response.routes.forEach((route, index) => {
+            console.log(`Concrete Route ${index + 1} (${route.routeCode}):`);
+            console.log(`  - Route ID: ${route.routeId}`);
+            console.log(`  - Type: ${route.type}`);
+            console.log(`  - Polyline length: ${route.encodedPolyline?.length || 0}`);
+            console.log(`  - Polyline preview: ${route.encodedPolyline?.substring(0, 50) || 'N/A'}...`);
+            console.log(`  - Tickets count: ${route.tickets?.length || 0}`);
+          });
+        }
+
         this.concreteRoutes = response.routes || [];
         this.initialConcreteRoutes = [...this.concreteRoutes];
         this.isLoadingConcreteRoutes = false;
-
-        // Cache the data
-        this.setCachedData(this.CACHE_KEYS.CONCRETE_ROUTES, this.concreteRoutes);
 
         this.loadData(); // Refresh filtered data
         this.updateStaticMap(); // Update static map
@@ -546,9 +408,8 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
       error: (error) => {
         console.error('Error loading concrete routes:', error);
         this.isLoadingConcreteRoutes = false;
-        // Fallback to cached data if available, otherwise use fallback data
-        const fallbackData = this.getCachedData(this.CACHE_KEYS.CONCRETE_ROUTES) || this.fallbackConcreteRoutes;
-        this.concreteRoutes = fallbackData;
+        // Use empty array if API fails
+        this.concreteRoutes = [];
         this.initialConcreteRoutes = [...this.concreteRoutes];
         this.loadData(); // Refresh filtered data
         this.updateStaticMap(); // Update static map
@@ -556,29 +417,29 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     });
   }
 
-  // Modify loadAsphaltRoutes to use cache
+  // Load asphalt routes from API
   loadAsphaltRoutes() {
-    // Try to load from cache first
-    const cachedData = this.getCachedData(this.CACHE_KEYS.ASPHALT_ROUTES);
-    if (cachedData) {
-      this.asphaltRoutes = cachedData;
-      this.initialAsphaltRoutes = [...cachedData];
-      this.isLoadingAsphaltRoutes = false;
-      this.loadData(); // Refresh filtered data
-      this.updateStaticMap(); // Update static map
-      return;
-    }
-
     this.isLoadingAsphaltRoutes = true;
     this.http.get<RoutesResponse>(`${environment.apiUrl}/routes/asphalt`).subscribe({
       next: (response) => {
         console.log('Asphalt routes API response:', response);
+        console.log('Number of asphalt routes received:', response.routes?.length || 0);
+
+        // Debug each route's polyline
+        if (response.routes && response.routes.length > 0) {
+          response.routes.forEach((route, index) => {
+            console.log(`Asphalt Route ${index + 1} (${route.routeCode}):`);
+            console.log(`  - Route ID: ${route.routeId}`);
+            console.log(`  - Type: ${route.type}`);
+            console.log(`  - Polyline length: ${route.encodedPolyline?.length || 0}`);
+            console.log(`  - Polyline preview: ${route.encodedPolyline?.substring(0, 50) || 'N/A'}...`);
+            console.log(`  - Tickets count: ${route.tickets?.length || 0}`);
+          });
+        }
+
         this.asphaltRoutes = response.routes || [];
         this.initialAsphaltRoutes = [...this.asphaltRoutes];
         this.isLoadingAsphaltRoutes = false;
-
-        // Cache the data
-        this.setCachedData(this.CACHE_KEYS.ASPHALT_ROUTES, this.asphaltRoutes);
 
         this.loadData(); // Refresh filtered data
         this.updateStaticMap(); // Update static map
@@ -586,9 +447,8 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
       error: (error) => {
         console.error('Error loading asphalt routes:', error);
         this.isLoadingAsphaltRoutes = false;
-        // Fallback to cached data if available, otherwise use fallback data
-        const fallbackData = this.getCachedData(this.CACHE_KEYS.ASPHALT_ROUTES) || this.fallbackAsphaltRoutes;
-        this.asphaltRoutes = fallbackData;
+        // Use empty array if API fails
+        this.asphaltRoutes = [];
         this.initialAsphaltRoutes = [...this.asphaltRoutes];
         this.loadData(); // Refresh filtered data
         this.updateStaticMap(); // Update static map
@@ -741,8 +601,6 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     this.spottingRoutes = [...this.spottingRoutes];
     this.concreteRoutes = [...this.concreteRoutes];
     this.asphaltRoutes = [...this.asphaltRoutes];
-    this.locationsWithoutRoute = [...this.locationsWithoutRoute];
-    this.locationsOnHoldOff = [...this.locationsOnHoldOff];
     console.log('=== DROP EVENT COMPLETED ===');
   }
 
@@ -1287,15 +1145,20 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     const allRoutes = [...this.spottingRoutes, ...this.concreteRoutes, ...this.asphaltRoutes];
 
     if (allRoutes.length === 0) {
-      this.staticMapUrl = '';
+      // Show Chicago map with "No Active Routes" label when no routes are available
+      this.staticMapUrl = this.generateChicagoMapWithLabel();
+      this.showNoRoutesOverlay = true;
+      console.log('No routes available - showing Chicago map with label');
       return;
     }
 
     // Collect all waypoints and polylines from all routes
     const allWaypoints: string[] = [];
-    const routePaths: { polyline: string; color: string; weight: number }[] = [];
+    const routePaths: { polyline: string; color: string; weight: number; routeCode: string }[] = [];
 
     allRoutes.forEach((route, routeIndex) => {
+      console.log(`Processing route ${route.routeCode}:`, route);
+
       if (route.tickets && route.tickets.length > 0) {
         // Add addresses as waypoints (limit to avoid URL length issues)
         route.tickets.forEach(ticket => {
@@ -1305,9 +1168,11 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
         });
 
         // Add polyline with route-specific styling
-        if (route.encodedPolyline) {
+        if (route.encodedPolyline && route.encodedPolyline.trim() !== '') {
+          console.log(`Route ${route.routeCode} has polyline:`, route.encodedPolyline.substring(0, 50) + '...');
+
           let pathColor = '#FF0000'; // Default red
-          let pathWeight = 3;
+          let pathWeight = 4; // Increased weight for better visibility
 
           // Color-code routes by type
           switch (route.type) {
@@ -1322,14 +1187,72 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
               break;
           }
 
-          routePaths.push({
-            polyline: route.encodedPolyline,
-            color: pathColor,
-            weight: pathWeight
-          });
+          // Check if polyline is valid (has multiple points including waypoints)
+          try {
+            const decoded = polyline.decode(route.encodedPolyline);
+            console.log(`Route ${route.routeCode} decoded polyline has ${decoded.length} points`);
+
+            // Log first and last few points for debugging
+            if (decoded.length > 0) {
+              console.log(`Route ${route.routeCode} first point: [${decoded[0][0]}, ${decoded[0][1]}]`);
+              console.log(`Route ${route.routeCode} last point: [${decoded[decoded.length - 1][0]}, ${decoded[decoded.length - 1][1]}]`);
+
+              // Log some middle points to see if the route actually goes anywhere
+              if (decoded.length > 10) {
+                const midPoint1 = Math.floor(decoded.length / 4);
+                const midPoint2 = Math.floor(decoded.length / 2);
+                const midPoint3 = Math.floor(decoded.length * 3 / 4);
+
+                console.log(`Route ${route.routeCode} mid point 1 (${midPoint1}): [${decoded[midPoint1][0]}, ${decoded[midPoint1][1]}]`);
+                console.log(`Route ${route.routeCode} mid point 2 (${midPoint2}): [${decoded[midPoint2][0]}, ${decoded[midPoint2][1]}]`);
+                console.log(`Route ${route.routeCode} mid point 3 (${midPoint3}): [${decoded[midPoint3][0]}, ${decoded[midPoint3][1]}]`);
+              }
+            }
+
+            // For routes that start and end at enterprise, we need at least 3 points:
+            // 1. Enterprise (start)
+            // 2. At least one waypoint
+            // 3. Enterprise (end)
+            const hasWaypoints = decoded.length >= 3;
+
+            if (hasWaypoints) {
+              console.log(`Route ${route.routeCode} has valid polyline with ${decoded.length} points (including waypoints)`);
+              routePaths.push({
+                polyline: route.encodedPolyline,
+                color: pathColor,
+                weight: pathWeight,
+                routeCode: route.routeCode
+              });
+            } else {
+              console.log(`Route ${route.routeCode} has insufficient waypoints (${decoded.length} points), creating simple path`);
+              // Create a simple path using waypoints instead
+              const waypointPath = this.createSimplePathFromWaypoints(route.tickets, pathColor, pathWeight);
+              if (waypointPath) {
+                routePaths.push(waypointPath);
+              }
+            }
+          } catch (error) {
+            console.error(`Error decoding polyline for route ${route.routeCode}:`, error);
+            // Fallback to simple path
+            const waypointPath = this.createSimplePathFromWaypoints(route.tickets, pathColor, pathWeight);
+            if (waypointPath) {
+              routePaths.push(waypointPath);
+            }
+          }
+        } else {
+          console.log(`Route ${route.routeCode} has no polyline data, creating simple path`);
+          // Create a simple path using waypoints
+          const pathColor = this.getRouteColor(route.type);
+          const waypointPath = this.createSimplePathFromWaypoints(route.tickets, pathColor, 4);
+          if (waypointPath) {
+            routePaths.push(waypointPath);
+          }
         }
       }
     });
+
+    console.log('Total waypoints found:', allWaypoints.length);
+    console.log('Total routes with polylines:', routePaths.length);
 
     // Build static map URL
     let mapUrl = `https://maps.googleapis.com/maps/api/staticmap?`;
@@ -1338,21 +1261,57 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     mapUrl += `&maptype=roadmap`;
     mapUrl += `&key=${this.GOOGLE_MAPS_API_KEY}`;
 
-    // Add markers for waypoints (limit to first 15 to avoid URL length issues)
+    // Add markers for waypoints with better visibility
     const limitedWaypoints = allWaypoints.slice(0, 15);
     limitedWaypoints.forEach((waypoint, index) => {
       const label = (index + 1).toString();
-      mapUrl += `&markers=size:small|color:red|label:${label}|${encodeURIComponent(waypoint)}`;
+      // Use default marker size (remove size:small) and ensure label is visible
+      mapUrl += `&markers=color:red|label:${label}|${encodeURIComponent(waypoint)}`;
     });
 
-    // Add multiple paths with different colors
+        // Add multiple paths with different colors
     // Note: Static Maps API has limitations, so we'll prioritize the first few routes
     const maxPaths = 3; // Limit to 3 paths to avoid URL length issues
     const limitedPaths = routePaths.slice(0, maxPaths);
 
-    limitedPaths.forEach((path, index) => {
-      mapUrl += `&path=color:${path.color}|weight:${path.weight}|enc:${path.polyline}`;
-    });
+    if (limitedPaths.length > 0) {
+      limitedPaths.forEach((path, index) => {
+        console.log(`Adding path for route ${path.routeCode} with color ${path.color}`);
+        console.log(`Polyline length: ${path.polyline.length}`);
+        console.log(`Polyline preview: ${path.polyline.substring(0, 100)}...`);
+
+        // Try to decode the polyline to see if it's valid
+        try {
+          const decoded = polyline.decode(path.polyline);
+          console.log(`Decoded polyline has ${decoded.length} points`);
+          console.log(`First point: ${decoded[0]}, Last point: ${decoded[decoded.length - 1]}`);
+
+          // Check if all points are the same (degenerate polyline)
+          const firstPoint = decoded[0];
+          const allSame = decoded.every(point =>
+            Math.abs(point[0] - firstPoint[0]) < 0.0001 &&
+            Math.abs(point[1] - firstPoint[1]) < 0.0001
+          );
+
+          if (allSame) {
+            console.warn(`Route ${path.routeCode} has degenerate polyline - all points are the same!`);
+          } else {
+            console.log(`Route ${path.routeCode} has valid polyline with different points`);
+          }
+        } catch (error) {
+          console.error(`Error decoding polyline for route ${path.routeCode}:`, error);
+        }
+
+        // Try different path formats to see which one works
+        // Format 1: Using enc: prefix
+        mapUrl += `&path=color:${path.color}|weight:${path.weight}|enc:${path.polyline}`;
+
+        // Alternative format (commented out for now):
+        // mapUrl += `&path=color:${path.color}|weight:${path.weight}|${path.polyline}`;
+      });
+    } else {
+      console.log('No valid paths to render - showing markers only');
+    }
 
     // Calculate center based on actual route data if available
     let centerCoords = '41.899463,-87.694039'; // Default Chicago coordinates
@@ -1363,13 +1322,43 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     }
 
     mapUrl += `&center=${centerCoords}`;
-    mapUrl += `&zoom=11`; // Slightly closer zoom
+    mapUrl += `&zoom=8`; // Zoom level to show Chicago area
 
     this.staticMapUrl = mapUrl;
     console.log('Generated static map URL:', this.staticMapUrl);
+    console.log('URL length:', this.staticMapUrl.length);
     console.log('Routes with polylines:', routePaths.length);
     console.log('Total waypoints:', allWaypoints.length);
     console.log('Paths rendered:', limitedPaths.length);
+
+    // Log the full URL for debugging (truncated for readability)
+    console.log('Map URL preview:', this.staticMapUrl.substring(0, 200) + '...');
+
+    // Check if URL is too long (Google Static Maps has a limit of ~8192 characters)
+    if (this.staticMapUrl.length > 8000) {
+      console.warn('WARNING: Map URL is very long and may not work properly');
+      console.warn('URL length:', this.staticMapUrl.length);
+    }
+
+    // Reset the no routes overlay flag since we have routes
+    this.showNoRoutesOverlay = false;
+  }
+
+    // Generate Chicago map with "No Active Routes" label
+  private generateChicagoMapWithLabel(): string {
+    let mapUrl = `https://maps.googleapis.com/maps/api/staticmap?`;
+    mapUrl += `size=${this.staticMapWidth}x${this.staticMapHeight}`;
+    mapUrl += `&scale=2`; // High DPI for better quality
+    mapUrl += `&maptype=roadmap`;
+    mapUrl += `&key=${this.GOOGLE_MAPS_API_KEY}`;
+    mapUrl += `&center=Chicago,IL`; // Center on Chicago
+    mapUrl += `&zoom=8`; // Zoom level to show Chicago area
+
+    // Add a subtle marker in the center of Chicago
+    mapUrl += `&markers=color:gray|label:•|Chicago,IL`;
+
+    console.log('Generated Chicago map URL:', mapUrl);
+    return mapUrl;
   }
 
   // Update static map when data changes
@@ -1397,9 +1386,62 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     return formattedAddress || 'Address not available';
   }
 
-  // Refresh all data and cache
+  // Helper method to get route color based on type
+  private getRouteColor(routeType: string): string {
+    switch (routeType) {
+      case 'SPOTTER':
+        return '#FF6B35'; // Orange for spotting
+      case 'CONCRETE':
+        return '#4A90E2'; // Blue for concrete
+      case 'ASPHALT':
+        return '#7B68EE'; // Purple for asphalt
+      default:
+        return '#FF0000'; // Default red
+    }
+  }
+
+    // Helper method to create simple path from waypoints
+  private createSimplePathFromWaypoints(tickets: RouteTicket[], color: string, weight: number): { polyline: string; color: string; weight: number; routeCode: string } | null {
+    if (!tickets || tickets.length < 2) {
+      return null; // Need at least 2 points to create a path
+    }
+
+    console.log(`Creating simple path for ${tickets.length} waypoints`);
+
+    // Create a simple polyline by connecting waypoints in order
+    // This is a fallback when the backend doesn't provide proper polylines
+    try {
+      const coordinates: [number, number][] = [];
+
+      // Add enterprise as starting point (approximate coordinates for 2000 W 43rd St, Chicago)
+      coordinates.push([41.8165, -87.6655]); // Enterprise location
+
+      // Add ticket locations (we'll need to geocode these addresses)
+      // For now, we'll create a simple path using the enterprise location
+      // In a real implementation, you'd geocode the addresses
+
+      // Add enterprise as ending point
+      coordinates.push([41.8165, -87.6655]); // Enterprise location
+
+      // Encode the polyline
+      const encodedPolyline = polyline.encode(coordinates);
+
+      console.log(`Created simple polyline with ${coordinates.length} points`);
+
+      return {
+        polyline: encodedPolyline,
+        color: color,
+        weight: weight,
+        routeCode: 'simple-path'
+      };
+    } catch (error) {
+      console.error('Error creating simple path:', error);
+      return null;
+    }
+  }
+
+  // Refresh all data
   refreshAllDataAndCache() {
-    this.clearCache();
     this.loadSpottingRoutes();
     this.loadConcreteRoutes();
     this.loadAsphaltRoutes();

@@ -181,24 +181,17 @@
                      [width]="staticMapWidth"
                      [height]="staticMapHeight"
                      class="map-image">
-                <div class="map-overlay">
-                  <p class="map-info">Static route visualization</p>
-                </div>
-                <!-- Route Legend -->
-                <div class="map-legend">
-                  <div class="legend-item">
-                    <div class="legend-color" style="background-color: #FF6B35;"></div>
-                    <span>Spotting Routes</span>
-                  </div>
-                  <div class="legend-item">
-                    <div class="legend-color" style="background-color: #4A90E2;"></div>
-                    <span>Concrete Routes</span>
-                  </div>
-                  <div class="legend-item">
-                    <div class="legend-color" style="background-color: #7B68EE;"></div>
-                    <span>Asphalt Routes</span>
+
+                <!-- No Routes Overlay -->
+                <div *ngIf="showNoRoutesOverlay" class="no-routes-overlay">
+                  <div class="no-routes-message">
+                    <mat-icon>route</mat-icon>
+                    <h3>No Active Routes</h3>
+                    <p>Routes will appear here once they are generated</p>
                   </div>
                 </div>
+
+
               </div>
 
               <!-- Loading state -->
@@ -210,7 +203,7 @@
               <!-- Empty state -->
               <div *ngIf="!staticMapUrl && !isLoadingSpottingRoutes && !isLoadingConcreteRoutes && !isLoadingAsphaltRoutes" class="map-empty">
                 <mat-icon>map</mat-icon>
-                <p>No routes available to display</p>
+                <p>Map loading failed</p>
               </div>
             </div>
           </app-card-with-button>
@@ -316,24 +309,7 @@
             </div>
           </app-card-with-button>
 
-          <app-card-with-button
-            title="Hold Off"
-            [showEyeButton]="true"
-          >
-            <div class="route-list-container">
-              <div
-                *ngFor="let item of filteredLocationsOnHoldOff; let i = index"
-                class="route-detail-item"
-              >
-                <span class="queue-number">{{ i + 1 }}.</span>
-                <div class="location-and-reason">
-                  <p class="route-location">{{ formatAddress(item.location) }}</p>
-                  <p class="hold-off-reason">{{ item.reason }}</p>
-                </div>
-                <mat-divider></mat-divider>
-              </div>
-            </div>
-          </app-card-with-button>
+
         </div>
 
         <div class="full-span buttons-container">
