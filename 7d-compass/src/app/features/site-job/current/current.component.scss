@@ -1,14 +1,16 @@
 .content-wrapper {
-  padding: 0 16px;
+  padding-bottom: 90px; // proteger el contenido inferior
+  padding-inline: 16px;
 
   @media (min-width: 768px) {
-    padding: 0 32px;
+    padding-inline: 32px;
   }
 
   @media (min-width: 1200px) {
-    padding: 0 64px;
+    padding-inline: 64px;
   }
 }
+
 
 .section-title {
   font-size: 1.4rem;
@@ -29,10 +31,15 @@
 
 .issue-section {
   display: flex;
-  align-items: center;
-  gap: 16px;
   flex-wrap: wrap;
-  margin-bottom: 12px;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 16px;
+  background-color: #f4f6f9;
+  border: 1px solid #dcdfe3;
+  border-radius: 8px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+  margin-bottom: 24px;
 
   .upload-container {
     display: flex;
@@ -44,17 +51,31 @@
     width: 100px;
     height: 100px;
     text-align: center;
+    background-color: white;
+    transition: border-color 0.3s ease;
 
-    mat-icon {
-      font-size: 40px;
+    &:hover {
+      border-color: #3498db;
+    }
+
+    span {
+      font-size: 0.85rem;
+      margin-top: 6px;
+      color: #555;
     }
   }
 
   .comment-field {
     flex: 1;
-    min-width: 200px;
+    min-width: 240px;
+  }
+
+  button {
+    height: 56px;
+    align-self: flex-end;
   }
 }
+
 
 .report-link {
   font-size: 0.85rem;
@@ -100,4 +121,38 @@
 .upload-button:active {
   transform: scale(0.95);
   box-shadow: 0 3px 5px rgba(0, 0, 0, 0.2);
+}
+
+.sub-title {
+  font-size: 20px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: #2c3e50;
+  border-bottom: 2px solid #3498db;
+  padding-bottom: 4px;
+  width: fit-content;
+}
+
+.info-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  background-color: #f4f6f9;
+  border: 1px solid #dcdfe3;
+  border-radius: 8px;
+  padding: 16px;
+  max-width: 400px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+}
+
+.info-list li {
+  margin-bottom: 8px;
+  font-size: 16px;
+  color: #333;
+}
+
+.info-list li strong {
+  color: #555;
+  width: 120px;
+  display: inline-block;
 }
