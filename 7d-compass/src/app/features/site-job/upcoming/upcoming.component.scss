@@ -141,3 +141,23 @@
 .address {
   margin: 0; /* Quita margen por defecto si no lo necesitas */
 }
+
+
+.no-locations {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: calc(100vh - 150px); /* Ajusta según el espacio de tu navbar/tabs */
+  text-align: center;
+  font-size: 18px;
+  color: #555;
+  padding: 16px;
+}
+
+.no-locations-text {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 500;
+}
+
