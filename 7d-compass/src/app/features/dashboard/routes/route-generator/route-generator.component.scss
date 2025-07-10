@@ -104,21 +104,137 @@
 
 /* Map container and iframe fill their container fully */
 .map-container {
+  position: relative;
   width: 100%;
-  height: 100%; /* fill parent */
-  padding: 0;
-  margin: 0;
+  height: 750px;
+  border-radius: 8px;
+  overflow: hidden;
   display: flex;
-  flex-direction: column;
-  flex-grow: 1;
+  align-items: center;
+  justify-content: center;
 }
 
-.map-container iframe {
+.static-map {
+  position: relative;
   width: 100%;
-  height: 100%; /* Make the iframe fill its parent container */
-  border: 0;
-  display: block;
+  height: 100%;
+
+  .map-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px;
+  }
+
+  .map-overlay {
+    position: absolute;
+    bottom: 8px;
+    left: 8px;
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+
+    .map-info {
+      margin: 0;
+    }
+  }
+
+  .map-legend {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    background: rgba(255, 255, 255, 0.95);
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 11px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    z-index: 1000;
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 4px;
+
+      &:last-child {
+        margin-bottom: 0;
+      }
+
+      .legend-color {
+        width: 12px;
+        height: 3px;
+        border-radius: 1px;
+        flex-shrink: 0;
+      }
+
+      span {
+        color: #333;
+        font-weight: 500;
+        white-space: nowrap;
+      }
+    }
+  }
 }
+
+.map-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  border-radius: 8px;
+
+  p {
+    margin-top: 16px;
+    color: #666;
+    font-size: 14px;
+  }
+}
+
+.map-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  border-radius: 8px;
+
+  mat-icon {
+    font-size: 48px;
+    width: 48px;
+    height: 48px;
+    color: #ccc;
+    margin-bottom: 16px;
+  }
+
+  p {
+    color: #666;
+    font-size: 14px;
+    margin: 0;
+  }
+}
+
+.map-controls {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 1000;
+
+  .hide-map-btn {
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 50%;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+
+    &:hover {
+      background: rgba(255, 255, 255, 1);
+    }
+  }
+}
+
 .extra-cards-row {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -424,4 +540,129 @@ mat-dialog-actions {
 
 .loading-state p, .empty-state p {
   margin: 0;
+}
+
+.header-controls {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 0 16px;
+
+  .refresh-btn, .reoptimize-btn {
+    mat-icon {
+      margin-right: 8px;
+    }
+  }
+}
+
+.route-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 8px;
+  padding: 0 8px;
+}
+
+// Error snackbar styling
+::ng-deep .error-snackbar {
+  background-color: #f44336 !important;
+  color: white !important;
+
+  .mat-simple-snackbar-action {
+    color: white !important;
+  }
+}
+
+/* Drag and Drop Styles */
+.route-list-container {
+  min-height: 100px;
+  padding: 8px;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+}
+
+.route-list-container.cdk-drop-list-dragging {
+  background-color: rgba(63, 81, 181, 0.1);
+  border: 2px dashed #3f51b5;
+}
+
+.route-detail-item {
+  cursor: grab;
+  transition: all 0.2s ease;
+  border-radius: 4px;
+  margin-bottom: 4px;
+  padding: 8px;
+  background: white;
+  border: 1px solid #e0e0e0;
+}
+
+.route-detail-item:hover {
+  background-color: #f5f5f5;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.route-detail-item.cdk-drag-preview {
+  background: white;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+  border-radius: 4px;
+  opacity: 0.9;
+  transform: rotate(5deg);
+}
+
+.route-detail-item.cdk-drag-placeholder {
+  opacity: 0.3;
+  background: #ccc;
+  border: 2px dashed #999;
+}
+
+.route-detail-item.cdk-drag-animating {
+  transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+/* Ready section specific styles */
+.route-list-container[data-ready-section="true"] {
+  background-color: #f8f9fa;
+  border: 2px solid #e9ecef;
+}
+
+.route-list-container[data-ready-section="true"]:hover {
+  background-color: #e9ecef;
+  border-color: #3f51b5;
+}
+
+/* Route section specific styles */
+.route-list-container[data-route-section="true"] {
+  background-color: #fff;
+  border: 2px solid #dee2e6;
+}
+
+.route-list-container[data-route-section="true"]:hover {
+  background-color: #f8f9fa;
+  border-color: #3f51b5;
+}
+
+/* Loading and empty states */
+.loading-state, .empty-state {
+  text-align: center;
+  padding: 20px;
+  color: #666;
+  font-style: italic;
+}
+
+.loading-state p, .empty-state p {
+  margin: 0;
+  font-size: 14px;
+}
+
+/* Error snackbar styling */
+.error-snackbar {
+  background-color: #f44336 !important;
+  color: white !important;
+}
+
+/* Success feedback */
+.success-feedback {
+  background-color: #4caf50 !important;
+  color: white !important;
 }
