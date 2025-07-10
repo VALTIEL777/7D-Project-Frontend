@@ -487,6 +487,185 @@ app-card-with-button .route-list-container {
   flex-direction: column;
 }
 
+// Route visibility controls
+.route-controls {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  justify-content: center;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    gap: 6px;
+  }
+}
+
+.route-toggle-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  min-width: 120px;
+  justify-content: center;
+
+  &.active {
+    background-color: rgba(0, 0, 0, 0.1);
+    border-color: #3f51b5;
+    color: #3f51b5;
+  }
+
+  &:not(.active) {
+    opacity: 0.6;
+    background-color: rgba(0, 0, 0, 0.05);
+  }
+
+  &:hover {
+    opacity: 1;
+    transform: translateY(-1px);
+  }
+
+  .route-color-indicator {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    border: 1px solid rgba(0, 0, 0, 0.2);
+  }
+}
+
+.spotting-btn.active {
+  background-color: rgba(255, 69, 0, 0.1);
+  border-color: #FF4500;
+  color: #FF4500;
+}
+
+.concrete-btn.active {
+  background-color: rgba(74, 144, 226, 0.1);
+  border-color: #4A90E2;
+  color: #4A90E2;
+}
+
+.asphalt-btn.active {
+  background-color: rgba(34, 139, 34, 0.1);
+  border-color: #228B22;
+  color: #228B22;
+}
+
+// Individual route controls
+.individual-route-controls {
+  margin-bottom: 16px;
+  padding: 12px;
+  background-color: transparent;
+  border-radius: 8px;
+  border: 1px solid white;
+
+  h4 {
+    margin: 0 0 12px 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: #333;
+    text-align: center;
+  }
+
+  .route-buttons-container {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .route-group {
+    .route-group-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: #666;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .route-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      justify-content: center;
+
+      @media (max-width: 768px) {
+        flex-direction: column;
+        align-items: center;
+      }
+    }
+  }
+}
+
+.individual-route-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  min-width: 100px;
+  justify-content: center;
+  border-width: 1px;
+  border-style: solid;
+
+  &.active {
+    opacity: 1;
+  }
+
+  &:not(.active) {
+    opacity: 0.5;
+    background-color: rgba(0, 0, 0, 0.05);
+  }
+
+  &:hover {
+    opacity: 1;
+    transform: translateY(-1px);
+  }
+
+  .route-color-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    border: 1px solid rgba(0, 0, 0, 0.2);
+  }
+
+  // Spotting route styling
+  &[style*="border-color: #FF4500"] {
+    &.active {
+      background-color: rgba(255, 69, 0, 0.1);
+      border-color: #FF4500;
+      color: #FF4500;
+    }
+  }
+
+  // Concrete route styling
+  &[style*="border-color: #4A90E2"] {
+    &.active {
+      background-color: rgba(74, 144, 226, 0.1);
+      border-color: #4A90E2;
+      color: #4A90E2;
+    }
+  }
+
+  // Asphalt route styling
+  &[style*="border-color: #228B22"] {
+    &.active {
+      background-color: rgba(34, 139, 34, 0.1);
+      border-color: #228B22;
+      color: #228B22;
+    }
+  }
+}
+
 /* Floating Action Button */
 .fab-button {
   position: fixed;
