@@ -21,7 +21,10 @@ import { SitejobTabsComponent } from '../../../shared/sitejob-tabs/sitejob-tabs.
 @Component({
   selector: 'app-upcoming',
   imports: [
-    SitejobSidenavbarComponent,MatTableModule,
+
+    SitejobSidenavbarComponent,
+    SitejobLayoutComponent,
+    MatTableModule,
     MatDividerModule,
     CommonModule,
     MATERIAL_MODULES,

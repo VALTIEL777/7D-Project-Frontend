@@ -2,12 +2,21 @@
   <mat-sidenav #drawer mode="over" class="app-sidenav">
     <div class="sidebar-content">
       <h1>Team Leader</h1>
-      <h3>{{ teamLeader }}</h3>
-        <br>
-      <h1>Team</h1>
-      <ul>
-        <li *ngFor="let member of teamMembers">{{ member }}</li>
-      </ul>
+<h3 *ngIf="teamLeader && teamLeader.trim() !== ''; else noLeader">
+  {{ teamLeader }}
+</h3>
+<ng-template #noLeader>
+  <p class="placeholder">No leader assigned</p>
+</ng-template>
+
+<h1>Team</h1>
+<ul *ngIf="teamMembers.length > 0; else noMembers">
+  <li *ngFor="let member of teamMembers">{{ member }}</li>
+</ul>
+<ng-template #noMembers>
+  <p class="placeholder">No team members assigned</p>
+</ng-template>
+
 
       <div class="photo-section">
         <mat-icon class="icon">camera_enhance</mat-icon>

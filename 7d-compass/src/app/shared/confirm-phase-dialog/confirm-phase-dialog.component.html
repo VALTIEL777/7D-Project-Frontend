@@ -1,0 +1,8 @@
+<h2 mat-dialog-title>Confirmación</h2>
+<mat-dialog-content>
+  <p>¿Estás seguro de que se ha completado la fase: <strong>{{ data.phaseName }}</strong>?</p>
+</mat-dialog-content>
+<mat-dialog-actions align="end">
+  <button mat-button (click)="cancel()">Cancelar</button>
+  <button mat-raised-button color="primary" (click)="confirm()">Confirmar</button>
+</mat-dialog-actions>
