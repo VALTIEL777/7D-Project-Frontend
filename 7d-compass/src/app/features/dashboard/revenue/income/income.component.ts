@@ -25,7 +25,6 @@ import { ColumnDefinition } from '../../../../shared/data-table/data-table.compo
   templateUrl: './income.component.html',
   styleUrl: './income.component.scss'
 })
-
 export class IncomeComponent {
   constructor(private dialog: MatDialog,
     private sanitizer: DomSanitizer
@@ -224,140 +223,25 @@ totalGeneral: number = 0;
     });
   }
 
-  ticketColumns: ColumnDefinition[] = [
-    {
-      name: 'ticketnum',
-      header: 'Ticket',
-      cell: (ticket: any) => `TK-${ticket.ticketnum}`
-    },
-    {
-      name: 'crew',
-      header: 'Crew',
-      cell: (ticket: any) => ticket.crew
-    },
-    {
-      name: 'startdate',
-      header: 'Start Date',
-      cell: (ticket: any) => ticket.startdate
-    },
-    {
-      name: 'enddate',
-      header: 'End Date',
-      cell: (ticket: any) => ticket.enddate
-    },
-    {
-      name: 'mcost',
-      header: 'Material Cost',
-      cell: (ticket: any) => `$${ticket.mcost}`
-    },
-    {
-      name: 'wcost',
-      header: 'Work Cost',
-      cell: (ticket: any) => `$${ticket.wcost}`
-    },
-    {
-      name: 'ecost',
-      header: 'Equipment Cost',
-      cell: (ticket: any) => `$${ticket.ecost}`
-    },
-    {
-      name: 'total',
-      header: 'Total',
-      cell: (ticket: any) => `$${ticket.total}`
-    },
-    {
-      name: 'actions',
-      header: 'Actions',
-      cell: () => '',
-      isActionColumn: true
-    }
-  ];
-  ticketData = [
-    {
-      ticketnum: 17,
-      crew: 'Team A',
-      startdate: '05/06/2025',
-      enddate: '05/26/2025',
-      mcost: 266,
-      wcost: 266,
-      ecost: 266,
-      total: ''
-    },
-    {
-      ticketnum: 18,
-      crew: 'Team B',
-      startdate: '05/06/2025',
-      enddate: '05/26/2025',
-      mcost: 356,
-      wcost: 348,
-      ecost: 834,
-      total: ''
-    },
-    {
-      ticketnum: 19,
-      crew: 'Team C',
-      startdate: '05/07/2025',
-      enddate: '05/27/2025',
-      mcost: 275,
-      wcost: 310,
-      ecost: 290,
-      total: ''
-    },
-    {
-      ticketnum: 20,
-      crew: 'Team A',
-      startdate: '05/08/2025',
-      enddate: '05/28/2025',
-      mcost: 260,
-      wcost: 305,
-      ecost: 275,
-      total: ''
-    },
-    {
-      ticketnum: 21,
-      crew: 'Team D',
-      startdate: '05/09/2025',
-      enddate: '05/29/2025',
-      mcost: 312,
-      wcost: 298,
-      ecost: 410,
-      total: ''
-    },
-    {
-      ticketnum: 22,
-      crew: 'Team B',
-      startdate: '05/10/2025',
-      enddate: '05/30/2025',
-      mcost: 330,
-      wcost: 289,
-      ecost: 390,
-      total: ''
-    },
-    {
-      ticketnum: 23,
-      crew: 'Team E',
-      startdate: '05/11/2025',
-      enddate: '05/31/2025',
-      mcost: 299,
-      wcost: 320,
-      ecost: 360,
-      total: ''
-    },
-    {
-      ticketnum: 24,
-      crew: 'Team C',
-      startdate: '05/12/2025',
-      enddate: '06/01/2025',
-      mcost: 310,
-      wcost: 310,
-      ecost: 310,
-      total: ''
-    }
-  ];
+  onDeleteTicket(ticket: any): void {
+    const dialogRef = this.dialog.open(ConfirmationDialogComponent, {
+      width: '450px',
+      disableClose: true,
+      panelClass: 'confirmation-dialog',
+      data: {
+        title: 'Eliminar Ticket',
+        message: `¿Estás seguro de eliminar el ticket #${ticket.ticketnum}? Esta acción no se puede deshacer.`,
+        confirmText: 'Eliminar',
+        cancelText: 'Cancelar'
+      }
+    });
 
-  onEditTicket(event: any): void {
-    // TODO: Implement edit logic or leave as stub
-    console.log('Edit ticket', event);
+    dialogRef.afterClosed().subscribe(confirmed => {
+      if (confirmed) {
+        this.ticketData = this.ticketData.filter(t => t.ticketnum !== ticket.ticketnum);
+        console.log('Ticket eliminado:', ticket);
+      }
+    });
   }
 
   invoiceColumns: ColumnDefinition[] = [
