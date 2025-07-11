@@ -183,7 +183,8 @@ limitMaterialQuantity(event: any) {
 
    this.filteredEmployees = this.employeeControl.valueChanges.pipe(
     startWith(''),
-    map(value => this._filterEmployees(value))
+    map(value => this._filterEmployees(value)),
+      startWith([]) // <-- Esto asegura que siempre se emite un array al principio
   );
 
    // 🔧 Manejo del estado del slide-toggle
@@ -205,7 +206,7 @@ limitMaterialQuantity(event: any) {
   }
 
   // Carga empleados desde backend
- loadEmployees() {
+  loadEmployees() {
   import('rxjs').then(({ forkJoin }) => {
     forkJoin({
       people: this.usersService.getAllPeople(),           // Trae todos los empleados
@@ -214,28 +215,31 @@ limitMaterialQuantity(event: any) {
       skills: this.skillsService.getAllSkills()           // Si cada skill tiene userid
     }).subscribe({
       next: ({ people, crewEmployees, crews, skills }) => {
-        this.employeeList = people.map((person: any) => {
-          const assignment = crewEmployees.find((ce: any) => ce.employeeid === person.userid);
-          const crew = assignment ? crews.find((c: any) => c.crewid === assignment.crewid) : null;
-          const personSkills = skills
-            .filter((s: any) => s.userid === person.userid)
-            .map((s: any) => s.name);
+       this.employeeList = people.map((person: any) => {
+  const assignment = crewEmployees.find((ce: any) => ce.employeeId === person.employeeId);
+  const crew = assignment ? crews.find((c: any) => c.crewid === assignment.crewid) : null;
+  const personSkills = skills
+    .filter((s: any) => s.userId === person.userId)
+    .map((s: any) => s.name);
 
-          return {
-            employeeid: person.userid,
-            name: `${person.firstname} ${person.lastname}`,
-            crewid: assignment?.crewid || null,
-            type: crew?.type || '',
-            workedhours: crew?.workedhours || 0,
-            skills: personSkills,
-            crewLeader: assignment?.crewleader || false
-          };
-        });
+  return {
+    employeeid: person.employeeId, // ✅ Este es el que debe usarse para crear CrewEmployee
+    userid: person.userId,         // ✅ Este es para identificar al usuario logueado
+    name: `${person.firstname} ${person.lastname}`,
+    crewid: assignment?.crewid || null,
+    type: crew?.type || '',
+    workedhours: crew?.workedhours || 0,
+    skills: personSkills,
+    crewLeader: assignment?.crewleader || false
+  };
+});
+
       },
       error: (err) => console.error('Error loading employee data:', err)
     });
   });
 }
+
 
 
 
@@ -296,15 +300,17 @@ loadMaterials() {
 
 loadRoutes() {
   this.routeService.getAllRoutes().subscribe({
-    next: (routes: any[]) => {
-      this.routes = routes;
-      console.log('📦 Rutas cargadas:', this.routes);
+    next: (res) => {
+      console.log('📦 Resultado crudo de getAllRoutes():', res);
+      // Verifica si necesitas res.data o algo similar
+this.routes = Array.isArray(res.routes) ? res.routes : [];
     },
     error: (err) => {
       console.error('❌ Error al cargar rutas:', err);
     }
   });
 }
+
 
 
 
@@ -335,9 +341,10 @@ updateEmployeeData() {
 }
 
 
-get employeeDataa() {
-  return this._employeeDataa;
+get employeeDataa(): any[] {
+  return Array.isArray(this._employeeDataa) ? this._employeeDataa : [];
 }
+
 
 employeeControl = new FormControl('');
 filteredEmployees!: Observable<any[]>;
@@ -347,31 +354,44 @@ displayEmployee(employee: any): string {
 
 
 private _filterEmployees(value: string | any): any[] {
-  const filterValue = typeof value === 'string' ? value.toLowerCase() : value?.name.toLowerCase();
+  if (!this.employeeList || this.employeeList.length === 0) return [];
 
-  return this.employeeList.filter(employee => employee.name.toLowerCase().includes(filterValue));
+  const filterValue = typeof value === 'string'
+    ? value.toLowerCase()
+    : value?.name?.toLowerCase() || '';
+
+  return this.employeeList.filter(employee =>
+    employee.name.toLowerCase().includes(filterValue)
+  );
 }
+
 
 onEmployeeSelected(selectedEmployee: any) {
   this.form.patchValue({ selectedEmployee: selectedEmployee });
 }
 
 
-  // EMPLEADOS
-addEmployee() {
+ addEmployee() {
   const selected = this.form.get('selectedEmployee')?.value;
   const selectedSkills = this.form.get('selectedSkills')?.value;
   let isLeader = this.form.get('isLeader')?.value;
-const workedhours = parseFloat(this.form.get('workedhours')?.value);
+  const workedhours = parseFloat(this.form.get('workedhours')?.value);
   const type = this.form.get('type')?.value;
+
+  console.log('🧪 Empleado seleccionado:', selected);
+  console.log('🧪 Skills seleccionadas:', selectedSkills);
+  console.log('🧪 isLeader:', isLeader, 'workedhours:', workedhours, 'type:', type);
 
   if (selected && selectedSkills?.length) {
     let fullName = '';
     let employeeid: number | null = null;
+let userid: number | null = null; // 👈 nuevo
 
+let found: any = null; // 👈 definido fuera del bloque
     if (typeof selected === 'string') {
       fullName = selected.trim();
       const found = this.employeeList.find(e => e.name === fullName);
+      console.log('🔍 Buscando empleado por nombre:', fullName, 'Resultado:', found);
       if (found) {
         employeeid = found.employeeid;
       } else {
@@ -381,6 +401,7 @@ const workedhours = parseFloat(this.form.get('workedhours')?.value);
     } else if (typeof selected === 'object' && selected.name && selected.employeeid) {
       fullName = selected.name;
       employeeid = selected.employeeid;
+      console.log('📌 Empleado encontrado (objeto):', selected);
     }
 
     if (!employeeid) {
@@ -392,15 +413,19 @@ const workedhours = parseFloat(this.form.get('workedhours')?.value);
     const lastname = lastnameParts.join(' ');
 
     const employeeGroup = this.fb.group({
-      num: this.employees.length + 1,
-      employeeid,
-      firstname,
-      lastname,
-      skills: [Array.isArray(selectedSkills) ? [...selectedSkills] : [selectedSkills]],
-      leader: isLeader,
-      type,   
-      workedhours 
-    });
+  num: this.employees.length + 1,
+  employeeid,
+  userid: found?.userid ?? selected.userid ?? null, // ✅ esto asegura que tienes ambos
+  firstname,
+  lastname,
+  skills: [Array.isArray(selectedSkills) ? [...selectedSkills] : [selectedSkills]],
+  leader: isLeader,
+  type,
+  workedhours
+});
+
+
+    console.log('🆕 Empleado agregado al formulario:', employeeGroup.value);
 
     this.employees.push(employeeGroup);
 
@@ -412,15 +437,14 @@ const workedhours = parseFloat(this.form.get('workedhours')?.value);
 
     this.updateEmployeeData();
 
-// 🔧 Deshabilita el toggle si ya hay líder
-if (this.hasLeaderAlready) {
-  this.form.get('isLeader')?.disable();
-} else {
-  this.form.get('isLeader')?.enable();
-}
-
+    if (this.hasLeaderAlready) {
+      this.form.get('isLeader')?.disable();
+    } else {
+      this.form.get('isLeader')?.enable();
+    }
   }
 }
+
 
 get hasLeaderAlready(): boolean {
   return this.employees.controls.some(emp => emp.get('leader')?.value === true);

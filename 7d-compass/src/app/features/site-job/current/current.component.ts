@@ -19,6 +19,7 @@ import { TicketStatusService } from '../../../core/services/route/ticketstatus.s
 
 import { MatDialog } from '@angular/material/dialog';
 import { ConfirmPhaseDialogComponent } from '../../../shared/confirm-phase-dialog/confirm-phase-dialog.component';
+import { TaskstatusService } from '../../../core/services/route/taskstatus.service';
 
 @Component({
   selector: 'app-current',
@@ -85,7 +86,7 @@ diggers: { id: number; number: string }[] = [];
         private ticketStatusService: TicketStatusService,
         private usersService: PeopleService,
         private skillsService: SkillsService,
-        private necessaryPhasesService: NecessaryPhasesService,
+        private taskstatusService: TaskstatusService,
         private photoEvidenceService: PhotoEvidenceService,
 
         private contractUnitsPhasesService: ContractUnitsPhasesService,
@@ -126,17 +127,17 @@ loadEmployees() {
       next: ({ people, crewEmployees, crews, skills }) => {
         // 🔁 Mapea todos los empleados
         this.employeeList = people.map((person: any) => {
-          const crewAssignment = crewEmployees.find((ce: any) => ce.employeeid === person.employeeid);
+const crewAssignment = crewEmployees.find((ce: any) => ce.employeeid === person.employeeId);
           const assignedCrew = crewAssignment
             ? crews.find((c: any) => c.crewid === crewAssignment.crewid)
             : null;
           const personSkills = skills
-            .filter((s: any) => s.userid === person.userid) // CORREGIDO aquí
+            .filter((s: any) => s.userId === person.userId) // CORREGIDO aquí
             .map((s: any) => s.name);
 
           return {
-            employeeid: person.employeeid,
-            userid: person.userid, // CORREGIDO aquí
+            employeeid: person.employeeId,
+            userid: person.userId, // CORREGIDO aquí
             name: `${person.firstname} ${person.lastname}`,
             crewid: crewAssignment?.crewid || null,
             type: assignedCrew?.type || '',
@@ -146,11 +147,6 @@ loadEmployees() {
           };
         });
 
-        const detectedLeader = this.employeeList.find(emp => emp.crewLeader);
-this.crewId = detectedLeader?.crewid || this.employeeList[0]?.crewid || 0;
-console.log('👷 crewId detectado:', this.crewId);
-
-
         // ✅ Obtener el userId logueado correctamente
         const storedUserId = Number(localStorage.getItem('userId')); // CORREGIDO aquí
         const person = this.employeeList.find(p => p.userid === storedUserId); // CORREGIDO aquí
@@ -159,8 +155,6 @@ console.log('👷 crewId detectado:', this.crewId);
           console.warn('⚠️ Usuario logueado no encontrado entre empleados.');
           return;
         }
-
-        this.userId = person.userid; 
 
         const currentCrewId = person.crewid;
         if (!currentCrewId) {
@@ -189,27 +183,28 @@ console.log('👷 crewId detectado:', this.crewId);
 }
 
 loadAllPhases() {
-    this.necessaryPhasesService.getAllPhases().subscribe({
-    next: (phases) => {
-    this.activities = phases.map((p: any) => ({
-  id: p.necessaryphaseid ?? p.id,
-  name: p.name,
-  description: p.description,
-  checked: false
-}));
+  this.taskstatusService.getAllTaskStatuses().subscribe({
+    next: (statuses) => {
+      this.activities = statuses.map((s: any) => ({
+        id: s.taskStatusId ?? s.id,
+        name: s.name,
+        description: s.description,
+        checked: false
+      }));
 
-// Guarda el ID de Crack Seal si existe
-const crackSealPhase = phases.find((p: any) => p.name.toLowerCase() === 'crack seal');
-this.ticketStatusId = crackSealPhase?.necessaryphaseid || 0;
+      // Guarda el ID de Crack Seal si existe
+      const crackSeal = statuses.find((s: any) => s.name.toLowerCase() === 'crack seal');
+      this.ticketStatusId = crackSeal?.taskStatusId || 0;
 
-      // Aquí podrías llamar a loadLinkedPhases() para marcar las que estén vinculadas a contractUnitId
+      // Marca las fases ya vinculadas
       this.loadLinkedPhases();
     },
     error: (err) => {
-      console.error('Error loading phases', err);
+      console.error('Error loading task statuses', err);
     }
   });
 }
+
 
 getCrewDetails(crewId: number) {
   this.crewsService.getCrewDetails(crewId).subscribe({
@@ -259,14 +254,14 @@ getCrewDetails(crewId: number) {
 
 loadLinkedPhases() {
   this.contractUnitsPhasesService.getByContractUnitId(this.contractUnitId).subscribe({
-    next: (linkedPhases) => {
-      const normalized = linkedPhases.map(lp => ({
+    next: (linkedStatuses) => {
+      const normalized = linkedStatuses.map(lp => ({
         contractUnitId: lp.contractunitid,
-        necessaryPhaseId: lp.necessaryphaseid
+        taskStatusId: lp.taskstatusid
       }));
 
       this.activities.forEach(activity => {
-        if (normalized.some(p => p.necessaryPhaseId === activity.id)) {
+        if (normalized.some(p => p.taskStatusId === activity.id)) {
           activity.checked = true;
           activity.locked = true;
         } else {
@@ -285,6 +280,7 @@ loadLinkedPhases() {
 
 
 
+
 saveSelectedActivities() {
 
   const selectedPhases = this.activities
@@ -298,7 +294,7 @@ saveSelectedActivities() {
 
   const selectedPhaseRelations = selectedPhases.map(a => ({
     contractUnitId: this.contractUnitId,
-    necessaryPhaseId: a.id,
+    taskStatusId: a.id,
     createdBy: this.userId || 1,
     updatedBy: this.userId || 1
   }));
@@ -316,6 +312,7 @@ saveSelectedActivities() {
     }
   });
 }
+
 
 private executeSave(selectedPhaseRelations: any[], selectedPhases: any[]) {
   const requests = selectedPhaseRelations.map(phase =>
@@ -338,7 +335,9 @@ private executeSave(selectedPhaseRelations: any[], selectedPhases: any[]) {
         const taskStatusId = status.taskstatusid;
         const ticketId = status.ticketid;
 
-        if (this.activities.some(a => a.name.toLowerCase() === 'clean up' && a.checked)) {
+        const hasCleanUp = this.activities.some(a => a.name.toLowerCase() === 'clean up' && a.checked);
+
+        if (hasCleanUp) {
           this.ticketStatusService.update(taskStatusId, ticketId, {
             endingDate: new Date().toISOString(),
             updatedBy: this.userId
@@ -368,6 +367,7 @@ private executeSave(selectedPhaseRelations: any[], selectedPhases: any[]) {
     }
   });
 }
+
 
 isPreviousPhaseIncomplete(currentActivity: any): boolean {
   const currentIndex = this.activities.indexOf(currentActivity);

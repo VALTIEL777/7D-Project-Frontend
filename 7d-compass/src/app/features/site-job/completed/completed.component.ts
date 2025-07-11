@@ -45,76 +45,80 @@ export class CompletedComponent implements OnInit {
     this.loadEmployees(); // 👈 primero carga empleados
   }
 
-  loadEmployees() {
-    import('rxjs').then(({ forkJoin }) => {
-      forkJoin({
-        people: this.usersService.getAllPeople(),
-        crewEmployees: this.crewEmployeesService.getAllCrewEmployees(),
-        crews: this.crewsService.getAllCrews(),
-        skills: this.skillsService.getAllSkills()
-      }).subscribe({
-        next: ({ people, crewEmployees, crews, skills }) => {
-          this.employeeList = people.map((person: any) => {
-            const crewAssignment = crewEmployees.find((ce: any) => ce.employeeid === person.employeeid);
-            const assignedCrew = crewAssignment
-              ? crews.find((c: any) => c.crewid === crewAssignment.crewid)
-              : null;
-            const personSkills = skills
-              .filter((s: any) => s.userid === person.userid)
-              .map((s: any) => s.name);
+ loadEmployees() {
+  import('rxjs').then(({ forkJoin }) => {
+    forkJoin({
+      people: this.usersService.getAllPeople(),
+      crewEmployees: this.crewEmployeesService.getAllCrewEmployees(),
+      crews: this.crewsService.getAllCrews(),
+      skills: this.skillsService.getAllSkills()
+    }).subscribe({
+      next: ({ people, crewEmployees, crews, skills }) => {
+        // 🔁 Mapeo de todos los empleados
+        this.employeeList = people.map((person: any) => {
+          const crewAssignment = crewEmployees.find((ce: any) => ce.employeeid === person.employeeId); // <-- corregido
+          const assignedCrew = crewAssignment
+            ? crews.find((c: any) => c.crewid === crewAssignment.crewid)
+            : null;
+          const personSkills = skills
+            .filter((s: any) => s.userId === person.userId) // <-- corregido
+            .map((s: any) => s.name);
 
-            return {
-              employeeid: person.employeeid,
-              userid: person.userid,
-              name: `${person.firstname} ${person.lastname}`,
-              crewid: crewAssignment?.crewid || null,
-              type: assignedCrew?.type || '',
-              workedhours: assignedCrew?.workedhours || 0,
-              skills: personSkills,
-              crewLeader: crewAssignment?.crewleader ?? false
-            };
-          });
+          return {
+            employeeid: person.employeeId,  // <-- corregido
+            userid: person.userId,          // <-- corregido
+            name: `${person.firstname} ${person.lastname}`,
+            crewid: crewAssignment?.crewid || null,
+            type: assignedCrew?.type || '',
+            workedhours: assignedCrew?.workedhours || 0,
+            skills: personSkills,
+            crewLeader: crewAssignment?.crewleader ?? false
+          };
+        });
 
-          const detectedLeader = this.employeeList.find(emp => emp.crewLeader);
-          this.crewId = detectedLeader?.crewid || this.employeeList[0]?.crewid || 0;
-          console.log('👷 crewId detectado:', this.crewId);
+        // 🔍 Buscar usuario logueado
+        const storedUserId = Number(localStorage.getItem('userId'));
+        const person = this.employeeList.find(p => p.userid === storedUserId);
 
-          const storedUserId = Number(localStorage.getItem('userId'));
-          const person = this.employeeList.find(p => p.userid === storedUserId);
+        if (!person) {
+          console.warn('⚠️ Usuario logueado no encontrado entre empleados.');
+          return;
+        }
 
-          if (!person) {
-            console.warn('⚠️ Usuario logueado no encontrado entre empleados.');
-            return;
-          }
+        this.userId = person.userid;
 
-          this.userId = person.userid;
+        const currentCrewId = person.crewid;
+        if (!currentCrewId) {
+          console.warn('⚠️ El usuario no tiene crew asignado.');
+          return;
+        }
 
-          const currentCrewId = person.crewid;
-          if (!currentCrewId) {
-            console.warn('⚠️ El usuario no tiene crew asignado.');
-            return;
-          }
+        // ✅ Establecer crewId y tipo
+        this.crewId = currentCrewId;
 
-          const assignedCrew = crews.find((c: any) => c.crewid === currentCrewId);
-          this.crewType = assignedCrew?.type || 'N/A';
+        const assignedCrew = crews.find((c: any) => c.crewid === currentCrewId);
+        this.crewType = assignedCrew?.type || 'N/A';
 
-          const teamMembers = this.employeeList.filter(e => e.crewid === currentCrewId);
-          const leader = teamMembers.find(e => e.crewLeader);
-          const members = teamMembers.filter(e => !e.crewLeader).map(e => e.name);
+        // 👥 Obtener miembros del equipo
+        const teamMembers = this.employeeList.filter(e => e.crewid === currentCrewId);
+        const leader = teamMembers.find(e => e.crewLeader);
+        const members = teamMembers.filter(e => !e.crewLeader).map(e => e.name);
 
-          this.teamLeader = leader?.name || 'N/A';
-          this.teamMembers = members;
+        this.teamLeader = leader?.name || 'N/A';
+        this.teamMembers = members;
 
-          console.log('✅ Team Leader:', this.teamLeader);
-          console.log('👥 Team Members:', this.teamMembers);
+        console.log('✅ Team Leader:', this.teamLeader);
+        console.log('👥 Team Members:', this.teamMembers);
+        console.log('👷 crewId detectado:', this.crewId);
 
-          // ⏬ Después de tener crewId, carga los tickets completados
-          this.loadCompletedTickets(this.crewId);
-        },
-        error: (err) => console.error('❌ Error loading employee data:', err)
-      });
+        // ⏬ Cargar tickets del crew
+        this.loadCompletedTickets(this.crewId);
+      },
+      error: (err) => console.error('❌ Error loading employee data:', err)
     });
-  }
+  });
+}
+
 
   loadCompletedTickets(crewId: number): void {
     this.ticketStatusService.getCompletedTickets().subscribe({
