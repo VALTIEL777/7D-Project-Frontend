@@ -173,6 +173,91 @@
 
           <!-- Right Side: Today's Routes Card -->
           <app-card-with-button title="Today's Routes" class="todays-routes-card">
+                        <!-- Route type visibility controls -->
+            <div class="route-controls">
+              <button
+                mat-stroked-button
+                [class.active]="showSpottingRoutes"
+                (click)="toggleSpottingRoutes()"
+                class="route-toggle-btn spotting-btn">
+                <div class="route-color-indicator" style="background-color: #FF4500;"></div>
+                Spotting Routes
+              </button>
+              <button
+                mat-stroked-button
+                [class.active]="showConcreteRoutes"
+                (click)="toggleConcreteRoutes()"
+                class="route-toggle-btn concrete-btn">
+                <div class="route-color-indicator" style="background-color: #4A90E2;"></div>
+                Concrete Routes
+              </button>
+                            <button
+                mat-stroked-button
+                [class.active]="showAsphaltRoutes"
+                (click)="toggleAsphaltRoutes()"
+                class="route-toggle-btn asphalt-btn">
+                <div class="route-color-indicator" style="background-color: #228B22;"></div>
+                Asphalt Routes
+              </button>
+            </div>
+
+            <!-- Individual route visibility controls -->
+            <div class="individual-route-controls">
+              <h4>Individual Routes</h4>
+              <div class="route-buttons-container">
+                <!-- Spotting Routes -->
+                <div class="route-group" *ngIf="filteredSpottingRoutes.length > 0">
+                  <div class="route-group-title">Spotting</div>
+                  <div class="route-buttons">
+                    <button
+                      *ngFor="let route of filteredSpottingRoutes"
+                      mat-stroked-button
+                      [class.active]="isRouteVisible(route.routeId)"
+                      (click)="toggleRoute(route.routeId)"
+                      class="individual-route-btn"
+                      [style.border-color]="getRouteColor(route.type)">
+                      <div class="route-color-indicator" [style.background-color]="getRouteColor(route.type)"></div>
+                      {{ route.routeCode }}
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Concrete Routes -->
+                <div class="route-group" *ngIf="filteredConcreteRoutes.length > 0">
+                  <div class="route-group-title">Concrete</div>
+                  <div class="route-buttons">
+                    <button
+                      *ngFor="let route of filteredConcreteRoutes"
+                      mat-stroked-button
+                      [class.active]="isRouteVisible(route.routeId)"
+                      (click)="toggleRoute(route.routeId)"
+                      class="individual-route-btn"
+                      [style.border-color]="getRouteColor(route.type)">
+                      <div class="route-color-indicator" [style.background-color]="getRouteColor(route.type)"></div>
+                      {{ route.routeCode }}
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Asphalt Routes -->
+                <div class="route-group" *ngIf="filteredAsphaltRoutes.length > 0">
+                  <div class="route-group-title">Asphalt</div>
+                  <div class="route-buttons">
+                    <button
+                      *ngFor="let route of filteredAsphaltRoutes"
+                      mat-stroked-button
+                      [class.active]="isRouteVisible(route.routeId)"
+                      (click)="toggleRoute(route.routeId)"
+                      class="individual-route-btn"
+                      [style.border-color]="getRouteColor(route.type)">
+                      <div class="route-color-indicator" [style.background-color]="getRouteColor(route.type)"></div>
+                      {{ route.routeCode }}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <div class="map-container">
               <!-- Static map display -->
               <div *ngIf="staticMapUrl" class="static-map">

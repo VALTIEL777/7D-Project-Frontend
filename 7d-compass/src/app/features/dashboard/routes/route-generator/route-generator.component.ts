@@ -153,6 +153,14 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
   staticMapHeight: number = 600;
   showNoRoutesOverlay: boolean = false;
 
+  // Route visibility controls
+  showSpottingRoutes: boolean = true;
+  showConcreteRoutes: boolean = true;
+  showAsphaltRoutes: boolean = true;
+
+  // Individual route visibility controls
+  visibleRoutes: Set<number> = new Set();
+
 
 
   displayedColumns: string[] = [
@@ -197,6 +205,15 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     setTimeout(() => {
       this.updateStaticMap();
     }, 1000);
+  }
+
+  // Initialize visible routes when data is loaded
+  private initializeVisibleRoutes() {
+    this.visibleRoutes.clear();
+    const allRoutes = [...this.spottingRoutes, ...this.concreteRoutes, ...this.asphaltRoutes];
+    allRoutes.forEach(route => {
+      this.visibleRoutes.add(route.routeId);
+    });
   }
 
   protected override loadData(): void {
@@ -364,6 +381,7 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
         this.isLoadingSpottingRoutes = false;
 
         this.loadData(); // Refresh filtered data
+        this.initializeVisibleRoutes(); // Initialize visible routes
         this.updateStaticMap(); // Update static map
       },
       error: (error) => {
@@ -403,6 +421,7 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
         this.isLoadingConcreteRoutes = false;
 
         this.loadData(); // Refresh filtered data
+        this.initializeVisibleRoutes(); // Initialize visible routes
         this.updateStaticMap(); // Update static map
       },
       error: (error) => {
@@ -442,6 +461,7 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
         this.isLoadingAsphaltRoutes = false;
 
         this.loadData(); // Refresh filtered data
+        this.initializeVisibleRoutes(); // Initialize visible routes
         this.updateStaticMap(); // Update static map
       },
       error: (error) => {
@@ -1152,196 +1172,254 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
       return;
     }
 
-    // Collect all waypoints and polylines from all routes
-    const allWaypoints: string[] = [];
-    const routePaths: { polyline: string; color: string; weight: number; routeCode: string }[] = [];
-
-    allRoutes.forEach((route, routeIndex) => {
-      console.log(`Processing route ${route.routeCode}:`, route);
-
-      if (route.tickets && route.tickets.length > 0) {
-        // Add addresses as waypoints (limit to avoid URL length issues)
-        route.tickets.forEach(ticket => {
-          if (ticket.address && !allWaypoints.includes(ticket.address) && allWaypoints.length < 20) {
-            allWaypoints.push(ticket.address);
-          }
-        });
-
-        // Add polyline with route-specific styling
-        if (route.encodedPolyline && route.encodedPolyline.trim() !== '') {
-          console.log(`Route ${route.routeCode} has polyline:`, route.encodedPolyline.substring(0, 50) + '...');
-
-          let pathColor = '#FF0000'; // Default red
-          let pathWeight = 4; // Increased weight for better visibility
-
-          // Color-code routes by type
-          switch (route.type) {
-            case 'SPOTTER':
-              pathColor = '#FF6B35'; // Orange for spotting
-              break;
-            case 'CONCRETE':
-              pathColor = '#4A90E2'; // Blue for concrete
-              break;
-            case 'ASPHALT':
-              pathColor = '#7B68EE'; // Purple for asphalt
-              break;
-          }
-
-          // Check if polyline is valid (has multiple points including waypoints)
-          try {
-            const decoded = polyline.decode(route.encodedPolyline);
-            console.log(`Route ${route.routeCode} decoded polyline has ${decoded.length} points`);
-
-            // Log first and last few points for debugging
-            if (decoded.length > 0) {
-              console.log(`Route ${route.routeCode} first point: [${decoded[0][0]}, ${decoded[0][1]}]`);
-              console.log(`Route ${route.routeCode} last point: [${decoded[decoded.length - 1][0]}, ${decoded[decoded.length - 1][1]}]`);
-
-              // Log some middle points to see if the route actually goes anywhere
-              if (decoded.length > 10) {
-                const midPoint1 = Math.floor(decoded.length / 4);
-                const midPoint2 = Math.floor(decoded.length / 2);
-                const midPoint3 = Math.floor(decoded.length * 3 / 4);
-
-                console.log(`Route ${route.routeCode} mid point 1 (${midPoint1}): [${decoded[midPoint1][0]}, ${decoded[midPoint1][1]}]`);
-                console.log(`Route ${route.routeCode} mid point 2 (${midPoint2}): [${decoded[midPoint2][0]}, ${decoded[midPoint2][1]}]`);
-                console.log(`Route ${route.routeCode} mid point 3 (${midPoint3}): [${decoded[midPoint3][0]}, ${decoded[midPoint3][1]}]`);
-              }
-            }
-
-            // For routes that start and end at enterprise, we need at least 3 points:
-            // 1. Enterprise (start)
-            // 2. At least one waypoint
-            // 3. Enterprise (end)
-            const hasWaypoints = decoded.length >= 3;
-
-            if (hasWaypoints) {
-              console.log(`Route ${route.routeCode} has valid polyline with ${decoded.length} points (including waypoints)`);
-              routePaths.push({
-                polyline: route.encodedPolyline,
-                color: pathColor,
-                weight: pathWeight,
-                routeCode: route.routeCode
-              });
-            } else {
-              console.log(`Route ${route.routeCode} has insufficient waypoints (${decoded.length} points), creating simple path`);
-              // Create a simple path using waypoints instead
-              const waypointPath = this.createSimplePathFromWaypoints(route.tickets, pathColor, pathWeight);
-              if (waypointPath) {
-                routePaths.push(waypointPath);
-              }
-            }
-          } catch (error) {
-            console.error(`Error decoding polyline for route ${route.routeCode}:`, error);
-            // Fallback to simple path
-            const waypointPath = this.createSimplePathFromWaypoints(route.tickets, pathColor, pathWeight);
-            if (waypointPath) {
-              routePaths.push(waypointPath);
-            }
-          }
-        } else {
-          console.log(`Route ${route.routeCode} has no polyline data, creating simple path`);
-          // Create a simple path using waypoints
-          const pathColor = this.getRouteColor(route.type);
-          const waypointPath = this.createSimplePathFromWaypoints(route.tickets, pathColor, 4);
-          if (waypointPath) {
-            routePaths.push(waypointPath);
-          }
-        }
-      }
-    });
-
-    console.log('Total waypoints found:', allWaypoints.length);
-    console.log('Total routes with polylines:', routePaths.length);
-
-    // Build static map URL
-    let mapUrl = `https://maps.googleapis.com/maps/api/staticmap?`;
-    mapUrl += `size=${this.staticMapWidth}x${this.staticMapHeight}`;
-    mapUrl += `&scale=2`; // High DPI for better quality
-    mapUrl += `&maptype=roadmap`;
-    mapUrl += `&key=${this.GOOGLE_MAPS_API_KEY}`;
-
-    // Add markers for waypoints with better visibility
-    const limitedWaypoints = allWaypoints.slice(0, 15);
-    limitedWaypoints.forEach((waypoint, index) => {
-      const label = (index + 1).toString();
-      // Use default marker size (remove size:small) and ensure label is visible
-      mapUrl += `&markers=color:red|label:${label}|${encodeURIComponent(waypoint)}`;
-    });
-
-        // Add multiple paths with different colors
-    // Note: Static Maps API has limitations, so we'll prioritize the first few routes
-    const maxPaths = 3; // Limit to 3 paths to avoid URL length issues
-    const limitedPaths = routePaths.slice(0, maxPaths);
-
-    if (limitedPaths.length > 0) {
-      limitedPaths.forEach((path, index) => {
-        console.log(`Adding path for route ${path.routeCode} with color ${path.color}`);
-        console.log(`Polyline length: ${path.polyline.length}`);
-        console.log(`Polyline preview: ${path.polyline.substring(0, 100)}...`);
-
-        // Try to decode the polyline to see if it's valid
-        try {
-          const decoded = polyline.decode(path.polyline);
-          console.log(`Decoded polyline has ${decoded.length} points`);
-          console.log(`First point: ${decoded[0]}, Last point: ${decoded[decoded.length - 1]}`);
-
-          // Check if all points are the same (degenerate polyline)
-          const firstPoint = decoded[0];
-          const allSame = decoded.every(point =>
-            Math.abs(point[0] - firstPoint[0]) < 0.0001 &&
-            Math.abs(point[1] - firstPoint[1]) < 0.0001
-          );
-
-          if (allSame) {
-            console.warn(`Route ${path.routeCode} has degenerate polyline - all points are the same!`);
-          } else {
-            console.log(`Route ${path.routeCode} has valid polyline with different points`);
-          }
-        } catch (error) {
-          console.error(`Error decoding polyline for route ${path.routeCode}:`, error);
-        }
-
-        // Try different path formats to see which one works
-        // Format 1: Using enc: prefix
-        mapUrl += `&path=color:${path.color}|weight:${path.weight}|enc:${path.polyline}`;
-
-        // Alternative format (commented out for now):
-        // mapUrl += `&path=color:${path.color}|weight:${path.weight}|${path.polyline}`;
-      });
-    } else {
-      console.log('No valid paths to render - showing markers only');
-    }
-
-    // Calculate center based on actual route data if available
-    let centerCoords = '41.899463,-87.694039'; // Default Chicago coordinates
-
-    if (allWaypoints.length > 0) {
-      // Use the first waypoint as center for better focus
-      centerCoords = encodeURIComponent(allWaypoints[0]);
-    }
-
-    mapUrl += `&center=${centerCoords}`;
-    mapUrl += `&zoom=8`; // Zoom level to show Chicago area
-
-    this.staticMapUrl = mapUrl;
-    console.log('Generated static map URL:', this.staticMapUrl);
-    console.log('URL length:', this.staticMapUrl.length);
-    console.log('Routes with polylines:', routePaths.length);
-    console.log('Total waypoints:', allWaypoints.length);
-    console.log('Paths rendered:', limitedPaths.length);
-
-    // Log the full URL for debugging (truncated for readability)
-    console.log('Map URL preview:', this.staticMapUrl.substring(0, 200) + '...');
-
-    // Check if URL is too long (Google Static Maps has a limit of ~8192 characters)
-    if (this.staticMapUrl.length > 8000) {
-      console.warn('WARNING: Map URL is very long and may not work properly');
-      console.warn('URL length:', this.staticMapUrl.length);
-    }
+    // Build static map URL using the new approach
+    this.staticMapUrl = this.buildStaticMapUrl();
 
     // Reset the no routes overlay flag since we have routes
     this.showNoRoutesOverlay = false;
+  }
+
+  // New method to build static map URL with better polyline handling
+  buildStaticMapUrl(): string {
+    const baseUrl = 'https://maps.googleapis.com/maps/api/staticmap';
+    const size = `size=${this.staticMapWidth}x${this.staticMapHeight}`;
+    const mapType = 'maptype=roadmap';
+    const scale = 'scale=2'; // High DPI for better quality
+
+    const paths: string[] = [];
+    const markers: string[] = [];
+    const allWaypoints: string[] = [];
+
+    console.log('=== BUILDING STATIC MAP URL ===');
+
+    // Process spotting routes
+    if (this.showSpottingRoutes) {
+      this.filteredSpottingRoutes.forEach((route, index) => {
+        // Check if this specific route is visible
+        if (!this.visibleRoutes.has(route.routeId)) {
+          console.log(`Skipping spotting route ${route.routeCode} - not visible`);
+          return;
+        }
+        console.log(`Processing spotting route ${index + 1}: ${route.routeCode}`);
+
+        if (route.encodedPolyline && route.encodedPolyline.trim() !== '') {
+          console.log(`  - Polyline length: ${route.encodedPolyline.length}`);
+          console.log(`  - Polyline preview: ${route.encodedPolyline.substring(0, 50)}...`);
+
+          // Validate polyline
+          try {
+            const decoded = polyline.decode(route.encodedPolyline);
+            console.log(`  - Decoded points: ${decoded.length}`);
+
+                      if (decoded.length >= 3) {
+              // For circular routes (start and end at enterprise), check if there are meaningful waypoints
+              const firstPoint = decoded[0];
+              const lastPoint = decoded[decoded.length - 1];
+              const midPoint = decoded[Math.floor(decoded.length / 2)];
+
+              // Check distance from start to middle point (should be meaningful for circular routes)
+              const distanceToMid = Math.sqrt(
+                Math.pow(midPoint[0] - firstPoint[0], 2) +
+                Math.pow(midPoint[1] - firstPoint[1], 2)
+              );
+
+              console.log(`  - Distance from start to middle point: ${distanceToMid}`);
+              console.log(`  - Total points in polyline: ${decoded.length}`);
+
+              if (distanceToMid > 0.001) { // Minimum distance threshold for meaningful route
+                // Use different shades of red-orange for each route
+                const redShades = ['0xFF0000', '0xFF4500', '0xFF6347', '0xFF7F50', '0xFF8C00', '0xFFA500', '0xFFB347', '0xFFD700'];
+                const colorIndex = paths.length % redShades.length;
+                const routeColor = redShades[colorIndex];
+
+                paths.push(`path=color:${routeColor}|weight:5|enc:${route.encodedPolyline}`);
+                console.log(`  - ✅ Added polyline path (circular route with waypoints) - Color: ${routeColor}`);
+              } else {
+                console.log(`  - ❌ Polyline has no meaningful waypoints, skipping`);
+              }
+            } else {
+              console.log(`  - ❌ Insufficient points in polyline (need at least 3 for circular route)`);
+            }
+          } catch (error) {
+            console.error(`  - ❌ Error decoding polyline:`, error);
+          }
+        }
+
+        // Add markers for tickets
+        if (route.tickets && route.tickets.length > 0) {
+          route.tickets.forEach((ticket: RouteTicket) => {
+            if (ticket.address && !allWaypoints.includes(ticket.address)) {
+              allWaypoints.push(ticket.address);
+              // Use single character labels to avoid display issues with 2+ digits
+              const label = this.getMarkerLabel(allWaypoints.length);
+              markers.push(`markers=color:red|label:${label}|${encodeURIComponent(ticket.address)}`);
+            }
+          });
+        }
+      });
+    }
+
+    // Process concrete routes
+    if (this.showConcreteRoutes) {
+      this.filteredConcreteRoutes.forEach((route, index) => {
+        // Check if this specific route is visible
+        if (!this.visibleRoutes.has(route.routeId)) {
+          console.log(`Skipping concrete route ${route.routeCode} - not visible`);
+          return;
+        }
+        console.log(`Processing concrete route ${index + 1}: ${route.routeCode}`);
+
+        if (route.encodedPolyline && route.encodedPolyline.trim() !== '') {
+          console.log(`  - Polyline length: ${route.encodedPolyline.length}`);
+
+          try {
+            const decoded = polyline.decode(route.encodedPolyline);
+            console.log(`  - Decoded points: ${decoded.length}`);
+
+                      if (decoded.length >= 3) {
+              // For circular routes (start and end at enterprise), check if there are meaningful waypoints
+              const firstPoint = decoded[0];
+              const lastPoint = decoded[decoded.length - 1];
+              const midPoint = decoded[Math.floor(decoded.length / 2)];
+
+              // Check distance from start to middle point (should be meaningful for circular routes)
+              const distanceToMid = Math.sqrt(
+                Math.pow(midPoint[0] - firstPoint[0], 2) +
+                Math.pow(midPoint[1] - firstPoint[1], 2)
+              );
+
+              console.log(`  - Distance from start to middle point: ${distanceToMid}`);
+              console.log(`  - Total points in polyline: ${decoded.length}`);
+
+              if (distanceToMid > 0.001) { // Minimum distance threshold for meaningful route
+                // Use different shades of blue-purple for each route
+                const blueShades = ['0x4A90E2', '0x1E90FF', '0x4169E1', '0x7B68EE', '0x9370DB', '0x8A2BE2', '0x9400D3', '0x800080'];
+                const colorIndex = paths.length % blueShades.length;
+                const routeColor = blueShades[colorIndex];
+
+                paths.push(`path=color:${routeColor}|weight:5|enc:${route.encodedPolyline}`);
+                console.log(`  - ✅ Added polyline path (circular route with waypoints) - Color: ${routeColor}`);
+              } else {
+                console.log(`  - ❌ Polyline has no meaningful waypoints, skipping`);
+              }
+            } else {
+              console.log(`  - ❌ Insufficient points in polyline (need at least 3 for circular route)`);
+            }
+          } catch (error) {
+            console.error(`  - ❌ Error decoding polyline:`, error);
+          }
+        }
+
+        // Add markers for tickets
+        if (route.tickets && route.tickets.length > 0) {
+          route.tickets.forEach((ticket: RouteTicket) => {
+            if (ticket.address && !allWaypoints.includes(ticket.address)) {
+              allWaypoints.push(ticket.address);
+              // Use single character labels to avoid display issues with 2+ digits
+              const label = this.getMarkerLabel(allWaypoints.length);
+              markers.push(`markers=color:red|label:${label}|${encodeURIComponent(ticket.address)}`);
+            }
+          });
+        }
+      });
+    }
+
+    // Process asphalt routes
+    if (this.showAsphaltRoutes) {
+      this.filteredAsphaltRoutes.forEach((route, index) => {
+        // Check if this specific route is visible
+        if (!this.visibleRoutes.has(route.routeId)) {
+          console.log(`Skipping asphalt route ${route.routeCode} - not visible`);
+          return;
+        }
+        console.log(`Processing asphalt route ${index + 1}: ${route.routeCode}`);
+
+        if (route.encodedPolyline && route.encodedPolyline.trim() !== '') {
+          console.log(`  - Polyline length: ${route.encodedPolyline.length}`);
+
+          try {
+            const decoded = polyline.decode(route.encodedPolyline);
+            console.log(`  - Decoded points: ${decoded.length}`);
+
+                      if (decoded.length >= 3) {
+              // For circular routes (start and end at enterprise), check if there are meaningful waypoints
+              const firstPoint = decoded[0];
+              const lastPoint = decoded[decoded.length - 1];
+              const midPoint = decoded[Math.floor(decoded.length / 2)];
+
+              // Check distance from start to middle point (should be meaningful for circular routes)
+              const distanceToMid = Math.sqrt(
+                Math.pow(midPoint[0] - firstPoint[0], 2) +
+                Math.pow(midPoint[1] - firstPoint[1], 2)
+              );
+
+              console.log(`  - Distance from start to middle point: ${distanceToMid}`);
+              console.log(`  - Total points in polyline: ${decoded.length}`);
+
+              if (distanceToMid > 0.001) { // Minimum distance threshold for meaningful route
+                // Use different shades of green-yellow for each route
+                const greenShades = ['0x32CD32', '0x228B22', '0x00FF00', '0x90EE90', '0xADFF2F', '0xFFFF00', '0xFFD700', '0xFFA500'];
+                const colorIndex = paths.length % greenShades.length;
+                const routeColor = greenShades[colorIndex];
+
+                paths.push(`path=color:${routeColor}|weight:5|enc:${route.encodedPolyline}`);
+                console.log(`  - ✅ Added polyline path (circular route with waypoints) - Color: ${routeColor}`);
+              } else {
+                console.log(`  - ❌ Polyline has no meaningful waypoints, skipping`);
+              }
+            } else {
+              console.log(`  - ❌ Insufficient points in polyline (need at least 3 for circular route)`);
+            }
+          } catch (error) {
+            console.error(`  - ❌ Error decoding polyline:`, error);
+          }
+        }
+
+        // Add markers for tickets
+        if (route.tickets && route.tickets.length > 0) {
+          route.tickets.forEach((ticket: RouteTicket) => {
+            if (ticket.address && !allWaypoints.includes(ticket.address)) {
+              allWaypoints.push(ticket.address);
+              // Use single character labels to avoid display issues with 2+ digits
+              const label = this.getMarkerLabel(allWaypoints.length);
+              markers.push(`markers=color:red|label:${label}|${encodeURIComponent(ticket.address)}`);
+            }
+          });
+        }
+      });
+    }
+
+    console.log(`Total paths to render: ${paths.length}`);
+
+    // Build the URL
+    const urlParts = [
+      baseUrl,
+      size,
+      mapType,
+      scale,
+      ...markers.slice(0, 15), // Limit markers to avoid URL length issues
+      ...paths.slice(0, 5), // Limit paths to avoid URL length issues
+      `key=${this.GOOGLE_MAPS_API_KEY}`
+    ];
+
+    // Add center and zoom
+    if (allWaypoints.length > 0) {
+      urlParts.push(`center=${encodeURIComponent(allWaypoints[0])}`);
+    } else {
+      urlParts.push('center=Chicago,IL');
+    }
+    urlParts.push('zoom=11');
+
+    const url = `${baseUrl}?${urlParts.join('&')}`;
+
+    console.log('Generated URL length:', url.length);
+    console.log('URL preview:', url.substring(0, 200) + '...');
+
+    if (url.length > 8000) {
+      console.warn('WARNING: URL is very long and may not work properly');
+    }
+
+    return url;
   }
 
     // Generate Chicago map with "No Active Routes" label
@@ -1352,7 +1430,7 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     mapUrl += `&maptype=roadmap`;
     mapUrl += `&key=${this.GOOGLE_MAPS_API_KEY}`;
     mapUrl += `&center=Chicago,IL`; // Center on Chicago
-    mapUrl += `&zoom=8`; // Zoom level to show Chicago area
+    mapUrl += `&zoom=11`; // Zoom level to show Chicago area
 
     // Add a subtle marker in the center of Chicago
     mapUrl += `&markers=color:gray|label:•|Chicago,IL`;
@@ -1386,19 +1464,7 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     return formattedAddress || 'Address not available';
   }
 
-  // Helper method to get route color based on type
-  private getRouteColor(routeType: string): string {
-    switch (routeType) {
-      case 'SPOTTER':
-        return '#FF6B35'; // Orange for spotting
-      case 'CONCRETE':
-        return '#4A90E2'; // Blue for concrete
-      case 'ASPHALT':
-        return '#7B68EE'; // Purple for asphalt
-      default:
-        return '#FF0000'; // Default red
-    }
-  }
+
 
     // Helper method to create simple path from waypoints
   private createSimplePathFromWaypoints(tickets: RouteTicket[], color: string, weight: number): { polyline: string; color: string; weight: number; routeCode: string } | null {
@@ -1437,6 +1503,64 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     } catch (error) {
       console.error('Error creating simple path:', error);
       return null;
+    }
+  }
+
+  // Toggle route visibility methods
+  toggleSpottingRoutes() {
+    this.showSpottingRoutes = !this.showSpottingRoutes;
+    this.updateStaticMap();
+  }
+
+  toggleConcreteRoutes() {
+    this.showConcreteRoutes = !this.showConcreteRoutes;
+    this.updateStaticMap();
+  }
+
+  toggleAsphaltRoutes() {
+    this.showAsphaltRoutes = !this.showAsphaltRoutes;
+    this.updateStaticMap();
+  }
+
+  // Toggle individual route visibility
+  toggleRoute(routeId: number) {
+    if (this.visibleRoutes.has(routeId)) {
+      this.visibleRoutes.delete(routeId);
+    } else {
+      this.visibleRoutes.add(routeId);
+    }
+    this.updateStaticMap();
+  }
+
+  // Check if a specific route is visible
+  isRouteVisible(routeId: number): boolean {
+    return this.visibleRoutes.has(routeId);
+  }
+
+  // Get route color for individual route buttons
+  getRouteColor(routeType: string): string {
+    switch (routeType) {
+      case 'SPOTTER':
+        return '#FF4500'; // Red-orange
+      case 'CONCRETE':
+        return '#4A90E2'; // Blue
+      case 'ASPHALT':
+        return '#228B22'; // Dark green
+      default:
+        return '#666666'; // Gray
+    }
+  }
+
+  // Get marker label that works with Google Static Maps API
+  private getMarkerLabel(index: number): string {
+    // Use letters for better visibility with Google Static Maps API
+    if (index <= 26) {
+      return String.fromCharCode(64 + index); // A-Z (65-90 in ASCII)
+    } else if (index <= 52) {
+      return String.fromCharCode(96 + (index - 26)); // a-z (97-122 in ASCII)
+    } else {
+      // For more than 52 markers, use numbers but limit to single digit
+      return (index % 9 + 1).toString(); // 1-9, then repeat
     }
   }
 
