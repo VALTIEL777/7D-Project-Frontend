@@ -460,37 +460,6 @@
 
         </div>
 
-        <!-- On Hold Card with Issues -->
-        <app-card-with-button title="On Hold" [showEyeButton]="true" class="full-span">
-          <!-- Header Row -->
-          <div style="display: flex; align-items: center; padding: 0 16px; margin: 8px 0; font-weight: 500;">
-            <div style="flex: 1;">Location</div>
-            <div style="flex: 2; text-align: left;">Comment</div>
-          </div>
-          <mat-divider></mat-divider>
-
-          <!-- Scrollable Content -->
-          <div class="scrollable-issues">
-            <div *ngIf="isLoadingTicketsWithIssues" class="loading-state">
-              <mat-spinner diameter="20"></mat-spinner>
-              <span>Loading tickets with issues...</span>
-            </div>
-            <div *ngIf="!isLoadingTicketsWithIssues && ticketsWithIssues.length === 0" class="empty-state">
-              <mat-icon>check_circle</mat-icon>
-              <span>No tickets with issues</span>
-            </div>
-            <div *ngFor="let ticket of ticketsWithIssues">
-              <div style="display: flex; padding: 8px 16px; align-items: flex-start;">
-                <div style="flex: 1;">{{ formatAddressFromIssues(ticket) }}</div>
-                <div style="flex: 2; text-align: left; white-space: normal; word-break: break-word;">
-                  {{ getCrewComments(ticket) }}
-                </div>
-              </div>
-              <mat-divider></mat-divider>
-            </div>
-          </div>
-        </app-card-with-button>
-
         <div class="full-span buttons-container">
         </div>
       </div>
