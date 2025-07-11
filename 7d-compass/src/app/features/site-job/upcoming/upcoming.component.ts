@@ -193,11 +193,17 @@ this.remainingLocations = Array.from(uniqueLocationsMap.values());
 
 
 goToCurrent(location: any) {
-  // Aquí podrías navegar a /current y guardar la info seleccionada
-  localStorage.setItem('selectedLocation', JSON.stringify(location));
-  this.router.navigate(['/current']);
+  const storedUserId = Number(localStorage.getItem('userId'));
+  const person = this.employeeList.find(p => p.userid === storedUserId);
+  const crewId = person?.crewid || 0;
 
+  console.log('🧑‍🔧 Guardando crewId:', crewId);
+
+  localStorage.setItem('selectedLocation', JSON.stringify(location));
+  localStorage.setItem('crewId', String(crewId));
+  this.router.navigate(['/current']);
 }
+
 
 get filteredLocations() {
   const filter = this.filterText.trim().toLowerCase();

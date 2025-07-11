@@ -45,11 +45,12 @@ location: {
   job?: string;
   surface?: number;
   width?: number;
-  length?: number;
-  
+  description?: string;
+  length?: number;  
 } = {
   address: ''
 };
+  currentCrewIdFromLoadEmployees: number | null = null;
 crewDetails: any[] = [];
 crewType: string = '';
 routeCode: string = '';
@@ -85,25 +86,38 @@ diggers: { id: number; number: string }[] = [];
 
   private isLocationFromStorage = false;
 
-ngOnInit() { 
+ngOnInit() {
+  // 👇 Recuperar userId desde localStorage
+  const savedUserId = Number(localStorage.getItem('userId'));
+  if (savedUserId && savedUserId !== 0) {
+    this.userId = savedUserId;
+    console.log('🆔 userId cargado desde localStorage:', this.userId);
+  } else {
+    console.warn('⚠️ userId no encontrado o inválido en localStorage');
+  }
+
   const savedLocation = localStorage.getItem('selectedLocation');
   if (savedLocation) {
     const parsedLocation = JSON.parse(savedLocation);
     this.location = parsedLocation;
     this.ticketId = parsedLocation.ticketid || 0;
-    this.contractUnitId = Number(parsedLocation.contractunitid) || 0; // Conversión a número
-    this.isLocationFromStorage = true; // ✅ Esta línea es la que faltaba
-    console.log('🗺️ Location cargada:', this.location);
-    console.log('🧾 ticketId cargado:', this.ticketId);
-    console.log('🆔 contractUnitId cargado:', this.contractUnitId);
+    this.contractUnitId = Number(parsedLocation.contractunitid) || 0;
+    this.isLocationFromStorage = true;
   }
+
+  const savedCrewId = Number(localStorage.getItem('crewId'));
+  if (savedCrewId && savedCrewId !== 0) {
+    this.crewId = savedCrewId;
+    console.log('🧑‍🔧 crewId cargado desde localStorage:', this.crewId);
+  }
+
   const savedRouteCode = localStorage.getItem('selectedRouteCode');
   if (savedRouteCode) {
     this.routeCode = savedRouteCode;
-    console.log('🛣️ routeCode cargado de localStorage:', this.routeCode);
   }
+
   this.loadEmployees();
-    this.loadAllPhases();
+  this.loadAllPhases();
 }
 
 
@@ -150,6 +164,7 @@ const crewAssignment = crewEmployees.find((ce: any) => ce.employeeid === person.
         }
 
         const currentCrewId = person.crewid;
+        this.currentCrewIdFromLoadEmployees = currentCrewId; // currentCrewId es el que ya tienes en loadEmployees()
         if (!currentCrewId) {
           console.warn('⚠️ El usuario no tiene crew asignado.');
           return;
@@ -174,28 +189,25 @@ const crewAssignment = crewEmployees.find((ce: any) => ce.employeeid === person.
     });
   });
 }
-
 loadAllPhases() {
   this.taskstatusService.getAllTaskStatuses().subscribe({
     next: (statuses) => {
       console.log('📦 Statuses recibidos:', statuses);
 
-      let filteredStatuses = statuses;
+      let orderedPhaseNames: string[] = [];
 
-      // ✅ Filtrar fases según routeCode
       if (this.routeCode.includes('SPOTTER')) {
-        filteredStatuses = statuses.filter(s =>
-          ['Spotting', 'Install Signs'].includes(s.name)
-        );
+        orderedPhaseNames = ['Spotting', 'Install Signs'];
       } else if (this.routeCode.includes('ASPHALT')) {
-        filteredStatuses = statuses.filter(s =>
-          ['Dirt', 'Grind', 'Asphalt'].includes(s.name)
-        );
+        orderedPhaseNames = ['Dirt', 'Grind', 'Asphalt', 'Clean'];
       } else if (this.routeCode.includes('CONCRETE')) {
-        filteredStatuses = statuses.filter(s =>
-          ['Stripping', 'Spotting', 'Install Signs'].includes(s.name)
-        );
+        orderedPhaseNames = ['Stripping', 'Spotting', 'Install Signs'];
       }
+
+      // 🧹 Filtrar y ordenar según orderedPhaseNames
+      const filteredStatuses = orderedPhaseNames
+        .map(name => statuses.find(s => s.name === name))
+        .filter(Boolean); // Elimina los undefined
 
       // 🔄 Convertir a actividades
       this.activities = filteredStatuses.map((s: any) => ({
@@ -206,7 +218,7 @@ loadAllPhases() {
         locked: false
       }));
 
-      // Buscar Crack Seal (si está disponible)
+      // 🔍 Buscar Crack Seal (si está disponible en general)
       const crackSeal = statuses.find((s: any) => s.name?.toLowerCase() === 'crack seal');
       this.ticketStatusId = crackSeal?.taskstatusid || 0;
 
@@ -217,7 +229,6 @@ loadAllPhases() {
     }
   });
 }
-
 
 
 
@@ -266,6 +277,7 @@ this.permits = details.reduce((acc: { id: number; number: string }[], d: any) =>
         this.location.address = `${data.fromaddressstreet} ${data.toaddressstreet} ${data.fromaddresscardinal}`;  // ${data.fromaddresssuffix}
         this.location.job = data.contractunit_name;
         this.location.surface = data.surfacetotal;
+        this.location.description = data.contractunit_description;
         this.location.width = data.width;
         this.location.length = data.length;
 
@@ -363,43 +375,57 @@ private executeSave(selectedPhaseRelations: any[], selectedPhases: any[]) {
   });
 
 
-  this.ticketStatusService.getByTicketAndCrew(this.ticketId, this.crewId).subscribe({
-    next: (status: any) => {
-      if (status) {
-        const taskStatusId = status.taskstatusid;
-        const ticketId = status.ticketid;
+ this.ticketStatusService.getByTicketAndCrew(this.ticketId, this.crewId).subscribe({
+  next: (status: any) => {
+    if (status) {
+      const taskStatusId = status.taskstatusid;
+      const ticketId = status.ticketid;
 
-        const hasCleanUp = this.activities.some(a => a.name.toLowerCase() === 'clean up' && a.checked);
+      // Aquí, por ejemplo, manejas endingDate para alguna fase en activities
+      const hasClean = this.activities.some(a => a.name.toLowerCase() === 'clean' && a.checked);
 
-        if (hasCleanUp) {
-          this.ticketStatusService.update(taskStatusId, ticketId, {
-            endingDate: new Date().toISOString(),
-            updatedBy: this.userId
-          }).subscribe(() => {
-            console.log('✅ TicketStatus actualizado con endingDate');
-          });
-        }
-      } else {
-        const crackSealPhase = selectedPhases.find(a => a.name.toLowerCase() === 'crack seal' && a.checked);
-
-        if (crackSealPhase) {
-          this.ticketStatusService.create({
-            ticketId: this.ticketId,
-            crewId: this.crewId,
-            taskStatusId: crackSealPhase.id,
-            startingDate: new Date().toISOString(),
-            createdBy: this.userId,
-            updatedBy: this.userId
-          }).subscribe(() => {
-            console.log('✅ TicketStatus creado con startingDate');
-          });
-        }
+      if (hasClean) {
+        this.ticketStatusService.update(taskStatusId, ticketId, {
+          endingDate: new Date().toISOString(),
+          updatedBy: this.userId
+        }).subscribe(() => {
+          console.log('✅ TicketStatus actualizado con endingDate');
+        });
       }
-    },
-    error: (err) => {
-      console.error('❌ Error al obtener TicketStatus:', err);
+    } else {
+      // Aquí se crea con startingDate para la PRIMERA fase marcada (en selectedPhases)
+      const firstCheckedPhase = selectedPhases.find(p => p.checked);
+
+
+      if (firstCheckedPhase) {
+
+const crewIdToUse = this.crewId || this.currentCrewIdFromLoadEmployees;
+
+  if (!crewIdToUse || crewIdToUse === 0) {
+    console.error('crewId inválido, no se puede guardar TicketStatus');
+    return;
+  }
+
+        this.ticketStatusService.create({
+          ticketId: this.ticketId,
+          crewId: this.crewId,
+          taskStatusId: firstCheckedPhase.id,
+          startingDate: new Date().toISOString(),
+          createdBy: this.userId,
+          updatedBy: this.userId
+        }).subscribe(() => {
+          console.log(`✅ TicketStatus creado con startingDate para fase ${firstCheckedPhase.name}`);
+        });
+      } else {
+        console.warn('⚠️ No hay fases seleccionadas para crear TicketStatus');
+      }
     }
-  });
+  },
+  error: (err) => {
+    console.error('❌ Error al obtener TicketStatus:', err);
+  }
+});
+
 }
 
 

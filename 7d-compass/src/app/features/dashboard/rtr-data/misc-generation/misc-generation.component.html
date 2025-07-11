@@ -218,10 +218,24 @@
   </mat-error>
 </mat-form-field>
 
+     <!-- Dentro del <form> -->
+<div class="submit-btn" style="text-align: center;">
+  <button mat-flat-button color="primary" type="submit" [disabled]="isLoading">
+    <ng-container *ngIf="!isLoading; else loadingTemplate">Save</ng-container>
+    <ng-template #loadingTemplate>
+      <mat-progress-spinner
+        diameter="20"
+        mode="indeterminate"
+        color="accent"
+        strokeWidth="3"
+        style="vertical-align: middle;">
+      </mat-progress-spinner>
+    </ng-template>
+  </button>
+</div>
 
-      <div class="submit-btn">
-        <button mat-flat-button color="primary" type="submit">Save</button>
-      </div>
+
+
     </form>
   </app-card-with-button>
 </app-dashboard-layout>
