@@ -2,13 +2,7 @@
   <div class="full-layout-container">
     <div class="dashboard-container">
       <div class="dashboard-wrapper">
-        <!-- Header with refresh and reoptimize buttons -->
-        <div class="header-controls">
-          <button mat-raised-button color="primary" (click)="reoptimizeAllRoutes()" class="reoptimize-btn">
-            <mat-icon>route</mat-icon>
-            Reoptimize All Routes
-          </button>
-        </div>
+
 
         <!-- Top Row: Route Containers and Today's Routes -->
         <div class="top-row">
@@ -20,13 +14,35 @@
             </div>
             <div cdkDropListGroup class="dashboard-grid vertical-list">
               <app-card-with-button
-                *ngFor="let route of filteredSpottingRoutes"
+                *ngFor="let route of spottingRoutes"
                 [title]="route.routeCode"
                 [showEyeButton]="true"
+                [style.display]="isRouteVisible(route.routeId) ? 'block' : 'none'"
               >
                 <div class="route-actions">
-                  <button mat-icon-button color="primary" (click)="reoptimizeSpecificRoute(route)" title="Reoptimize Route">
-                    <mat-icon>route</mat-icon>
+                  <button
+                    mat-icon-button
+                    color="primary"
+                    (click)="reoptimizeSpecificRoute(route)"
+                    [disabled]="isRouteTooLargeForReoptimization(route) || reoptimizingRoutes.has(route.routeId)"
+                    [title]="isRouteTooLargeForReoptimization(route) ? 'Route has too many locations (max 25)' : 'Reoptimize Route'"
+                    [class.disabled-button]="isRouteTooLargeForReoptimization(route)">
+                    <mat-icon *ngIf="!reoptimizingRoutes.has(route.routeId)">route</mat-icon>
+                    <mat-spinner *ngIf="reoptimizingRoutes.has(route.routeId)" diameter="20"></mat-spinner>
+                  </button>
+                  <button
+                    mat-icon-button
+                    color="warn"
+                    (click)="cancelRoute(route)"
+                    title="Cancel Route">
+                    <mat-icon>cancel</mat-icon>
+                  </button>
+                  <button
+                    mat-icon-button
+                    color="accent"
+                    (click)="completeRoute(route)"
+                    title="Complete Route">
+                    <mat-icon>check_circle</mat-icon>
                   </button>
                 </div>
                 <div
@@ -72,13 +88,35 @@
             </div>
             <div cdkDropListGroup class="dashboard-grid vertical-list">
               <app-card-with-button
-                *ngFor="let route of filteredConcreteRoutes"
+                *ngFor="let route of concreteRoutes"
                 [title]="route.routeCode"
                 [showEyeButton]="true"
+                [style.display]="isRouteVisible(route.routeId) ? 'block' : 'none'"
               >
                 <div class="route-actions">
-                  <button mat-icon-button color="primary" (click)="reoptimizeSpecificRoute(route)" title="Reoptimize Route">
-                    <mat-icon>route</mat-icon>
+                  <button
+                    mat-icon-button
+                    color="primary"
+                    (click)="reoptimizeSpecificRoute(route)"
+                    [disabled]="isRouteTooLargeForReoptimization(route) || reoptimizingRoutes.has(route.routeId)"
+                    [title]="isRouteTooLargeForReoptimization(route) ? 'Route has too many locations (max 25)' : 'Reoptimize Route'"
+                    [class.disabled-button]="isRouteTooLargeForReoptimization(route)">
+                    <mat-icon *ngIf="!reoptimizingRoutes.has(route.routeId)">route</mat-icon>
+                    <mat-spinner *ngIf="reoptimizingRoutes.has(route.routeId)" diameter="20"></mat-spinner>
+                  </button>
+                  <button
+                    mat-icon-button
+                    color="warn"
+                    (click)="cancelRoute(route)"
+                    title="Cancel Route">
+                    <mat-icon>cancel</mat-icon>
+                  </button>
+                  <button
+                    mat-icon-button
+                    color="accent"
+                    (click)="completeRoute(route)"
+                    title="Complete Route">
+                    <mat-icon>check_circle</mat-icon>
                   </button>
                 </div>
                 <div
@@ -124,13 +162,35 @@
             </div>
             <div cdkDropListGroup class="dashboard-grid vertical-list">
               <app-card-with-button
-                *ngFor="let route of filteredAsphaltRoutes"
+                *ngFor="let route of asphaltRoutes"
                 [title]="route.routeCode"
                 [showEyeButton]="true"
+                [style.display]="isRouteVisible(route.routeId) ? 'block' : 'none'"
               >
                 <div class="route-actions">
-                  <button mat-icon-button color="primary" (click)="reoptimizeSpecificRoute(route)" title="Reoptimize Route">
-                    <mat-icon>route</mat-icon>
+                  <button
+                    mat-icon-button
+                    color="primary"
+                    (click)="reoptimizeSpecificRoute(route)"
+                    [disabled]="isRouteTooLargeForReoptimization(route) || reoptimizingRoutes.has(route.routeId)"
+                    [title]="isRouteTooLargeForReoptimization(route) ? 'Route has too many locations (max 25)' : 'Reoptimize Route'"
+                    [class.disabled-button]="isRouteTooLargeForReoptimization(route)">
+                    <mat-icon *ngIf="!reoptimizingRoutes.has(route.routeId)">route</mat-icon>
+                    <mat-spinner *ngIf="reoptimizingRoutes.has(route.routeId)" diameter="20"></mat-spinner>
+                  </button>
+                  <button
+                    mat-icon-button
+                    color="warn"
+                    (click)="cancelRoute(route)"
+                    title="Cancel Route">
+                    <mat-icon>cancel</mat-icon>
+                  </button>
+                  <button
+                    mat-icon-button
+                    color="accent"
+                    (click)="completeRoute(route)"
+                    title="Complete Route">
+                    <mat-icon>check_circle</mat-icon>
                   </button>
                 </div>
                 <div
@@ -206,11 +266,11 @@
               <h4>Individual Routes</h4>
               <div class="route-buttons-container">
                 <!-- Spotting Routes -->
-                <div class="route-group" *ngIf="filteredSpottingRoutes.length > 0">
+                <div class="route-group" *ngIf="spottingRoutes.length > 0">
                   <div class="route-group-title">Spotting</div>
                   <div class="route-buttons">
                     <button
-                      *ngFor="let route of filteredSpottingRoutes"
+                      *ngFor="let route of spottingRoutes"
                       mat-stroked-button
                       [class.active]="isRouteVisible(route.routeId)"
                       (click)="toggleRoute(route.routeId)"
@@ -223,11 +283,11 @@
                 </div>
 
                 <!-- Concrete Routes -->
-                <div class="route-group" *ngIf="filteredConcreteRoutes.length > 0">
+                <div class="route-group" *ngIf="concreteRoutes.length > 0">
                   <div class="route-group-title">Concrete</div>
                   <div class="route-buttons">
                     <button
-                      *ngFor="let route of filteredConcreteRoutes"
+                      *ngFor="let route of concreteRoutes"
                       mat-stroked-button
                       [class.active]="isRouteVisible(route.routeId)"
                       (click)="toggleRoute(route.routeId)"
@@ -240,11 +300,11 @@
                 </div>
 
                 <!-- Asphalt Routes -->
-                <div class="route-group" *ngIf="filteredAsphaltRoutes.length > 0">
+                <div class="route-group" *ngIf="asphaltRoutes.length > 0">
                   <div class="route-group-title">Asphalt</div>
                   <div class="route-buttons">
                     <button
-                      *ngFor="let route of filteredAsphaltRoutes"
+                      *ngFor="let route of asphaltRoutes"
                       mat-stroked-button
                       [class.active]="isRouteVisible(route.routeId)"
                       (click)="toggleRoute(route.routeId)"
@@ -301,15 +361,16 @@
           >
             <div
               cdkDropList
-              [cdkDropListData]="filteredSpotReadyTickets"
+              [cdkDropListData]="spotReadyTickets"
               (cdkDropListDropped)="drop($event)"
               class="route-list-container"
               data-ready-section="true"
             >
               <div
-                *ngFor="let ticket of filteredSpotReadyTickets; let i = index"
+                *ngFor="let ticket of spotReadyTickets; let i = index"
                 cdkDrag
                 class="route-detail-item"
+                [style.display]="isTicketVisible(ticket) ? 'flex' : 'none'"
               >
                 <span class="queue-number">{{ i + 1 }}.</span>
                 <div class="ticket-info">
@@ -322,7 +383,7 @@
               <div *ngIf="isLoadingSpotReady" class="loading-state">
                 <p>Loading spot ready tickets...</p>
               </div>
-              <div *ngIf="!isLoadingSpotReady && filteredSpotReadyTickets.length === 0" class="empty-state">
+              <div *ngIf="!isLoadingSpotReady && spotReadyTickets.length === 0" class="empty-state">
                 <p>No spot ready tickets available</p>
               </div>
             </div>
@@ -334,15 +395,16 @@
           >
             <div
               cdkDropList
-              [cdkDropListData]="filteredAsphaltReadyTickets"
+              [cdkDropListData]="asphaltReadyTickets"
               (cdkDropListDropped)="drop($event)"
               class="route-list-container"
               data-ready-section="true"
             >
               <div
-                *ngFor="let ticket of filteredAsphaltReadyTickets; let i = index"
+                *ngFor="let ticket of asphaltReadyTickets; let i = index"
                 cdkDrag
                 class="route-detail-item"
+                [style.display]="isTicketVisible(ticket) ? 'flex' : 'none'"
               >
                 <span class="queue-number">{{ i + 1 }}.</span>
                 <div class="ticket-info">
@@ -355,7 +417,7 @@
               <div *ngIf="isLoadingAsphaltReady" class="loading-state">
                 <p>Loading asphalt ready tickets...</p>
               </div>
-              <div *ngIf="!isLoadingAsphaltReady && filteredAsphaltReadyTickets.length === 0" class="empty-state">
+              <div *ngIf="!isLoadingAsphaltReady && asphaltReadyTickets.length === 0" class="empty-state">
                 <p>No asphalt ready tickets available</p>
               </div>
             </div>
@@ -367,15 +429,16 @@
           >
             <div
               cdkDropList
-              [cdkDropListData]="filteredConcreteReadyTickets"
+              [cdkDropListData]="concreteReadyTickets"
               (cdkDropListDropped)="drop($event)"
               class="route-list-container"
               data-ready-section="true"
             >
               <div
-                *ngFor="let ticket of filteredConcreteReadyTickets; let i = index"
+                *ngFor="let ticket of concreteReadyTickets; let i = index"
                 cdkDrag
                 class="route-detail-item"
+                [style.display]="isTicketVisible(ticket) ? 'flex' : 'none'"
               >
                 <span class="queue-number">{{ i + 1 }}.</span>
                 <div class="ticket-info">
@@ -388,7 +451,7 @@
               <div *ngIf="isLoadingConcreteReady" class="loading-state">
                 <p>Loading concrete ready tickets...</p>
               </div>
-              <div *ngIf="!isLoadingConcreteReady && filteredConcreteReadyTickets.length === 0" class="empty-state">
+              <div *ngIf="!isLoadingConcreteReady && concreteReadyTickets.length === 0" class="empty-state">
                 <p>No concrete ready tickets available</p>
               </div>
             </div>
@@ -396,6 +459,37 @@
 
 
         </div>
+
+        <!-- On Hold Card with Issues -->
+        <app-card-with-button title="On Hold" [showEyeButton]="true" class="full-span">
+          <!-- Header Row -->
+          <div style="display: flex; align-items: center; padding: 0 16px; margin: 8px 0; font-weight: 500;">
+            <div style="flex: 1;">Location</div>
+            <div style="flex: 2; text-align: left;">Comment</div>
+          </div>
+          <mat-divider></mat-divider>
+
+          <!-- Scrollable Content -->
+          <div class="scrollable-issues">
+            <div *ngIf="isLoadingTicketsWithIssues" class="loading-state">
+              <mat-spinner diameter="20"></mat-spinner>
+              <span>Loading tickets with issues...</span>
+            </div>
+            <div *ngIf="!isLoadingTicketsWithIssues && ticketsWithIssues.length === 0" class="empty-state">
+              <mat-icon>check_circle</mat-icon>
+              <span>No tickets with issues</span>
+            </div>
+            <div *ngFor="let ticket of ticketsWithIssues">
+              <div style="display: flex; padding: 8px 16px; align-items: flex-start;">
+                <div style="flex: 1;">{{ formatAddressFromIssues(ticket) }}</div>
+                <div style="flex: 2; text-align: left; white-space: normal; word-break: break-word;">
+                  {{ getCrewComments(ticket) }}
+                </div>
+              </div>
+              <mat-divider></mat-divider>
+            </div>
+          </div>
+        </app-card-with-button>
 
         <div class="full-span buttons-container">
         </div>
@@ -425,9 +519,21 @@
         </form>
       </div>
       <div mat-dialog-actions align="end">
-        <button mat-button (click)="closeGenerateRouteDialog()">Cancel</button>
-        <button mat-raised-button color="primary" (click)="generateNewRoute()">Generate Route</button>
+        <button mat-button (click)="closeGenerateRouteDialog()" [disabled]="isGeneratingRoute">Cancel</button>
+        <button mat-raised-button color="primary" (click)="generateNewRoute()" [disabled]="isGeneratingRoute">
+          <mat-icon *ngIf="!isGeneratingRoute">add</mat-icon>
+          <mat-spinner *ngIf="isGeneratingRoute" diameter="20"></mat-spinner>
+          {{ isGeneratingRoute ? 'Generating...' : 'Generate Route' }}
+        </button>
       </div>
     </div>
   </ng-template>
+
+  <!-- Loading Spinner Overlay -->
+  <app-loading-spinner
+    *ngIf="isGeneratingRoute"
+    [overlay]="true"
+    message="Generating route... Please wait while we optimize your route."
+    [diameter]="60">
+  </app-loading-spinner>
 </app-dashboard-layout>

@@ -15,7 +15,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { PlusButtonComponent } from '../../../../shared/plus-button/plus-button.component';
+import { LoadingSpinnerComponent } from '../../../../shared/loading-spinner/loading-spinner.component';
 import { BaseDashboardComponent } from '../../../../shared/base-dashboard.component';
 import { FilterService } from '../../../../core/services/filter.service';
 import { HttpClient } from '@angular/common/http';
@@ -94,6 +94,58 @@ interface ReadyTicketsResponse {
   tickets: ReadyTicket[];
 }
 
+// Interface for tickets with issues
+interface TicketWithIssue {
+  ticketId: number;
+  ticketCode: string;
+  contractNumber: string;
+  contractUnitName: string;
+  amountToPay: number;
+  ticketType: string;
+  daysOutstanding: number;
+  comment7d: string;
+  quantity: number;
+  createdAt: string;
+  updatedAt: string;
+  incidentName: string;
+  addresses: string;
+  addressDetails: Array<{
+    addressId: number;
+    addressNumber: string;
+    addressCardinal: string;
+    addressStreet: string;
+    addressSuffix: string;
+    latitude: number;
+    longitude: number;
+    placeid: string;
+    fullAddress: string;
+  }>;
+  taskStatuses: Array<{
+    taskStatusId: number;
+    name: string;
+    description: string;
+    startingDate: string;
+    endingDate: string;
+    crewComment: string | null;
+    crewId: number;
+  }>;
+  taskStatusCount: number;
+}
+
+interface TicketsWithIssuesResponse {
+  success: boolean;
+  message: string;
+  summary: {
+    totalTickets: number;
+    ticketsOnHoldOff: number;
+    ticketsWillBeScheduled: number;
+    ticketsNeedsPermitExtension: number;
+    ticketsWithCrewComments: number;
+    totalCrewComments: number;
+  };
+  data: TicketWithIssue[];
+}
+
 @Component({
   selector: 'app-route-generator',
   imports: [
@@ -104,7 +156,6 @@ interface ReadyTicketsResponse {
     MatDividerModule,
     DragDropModule,
     MatButtonModule,
-    PlusButtonComponent,
     MatIconModule,
     MatDialogModule,
     FormsModule,
@@ -112,7 +163,8 @@ interface ReadyTicketsResponse {
     MatInputModule,
     MatSelectModule,
     MatProgressSpinnerModule,
-    MatSnackBarModule
+    MatSnackBarModule,
+    LoadingSpinnerComponent
   ],
   templateUrl: './route-generator.component.html',
   styleUrl: './route-generator.component.scss'
@@ -146,6 +198,14 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
   // Dialog properties
   newRouteType: string = '';
   private dialogRef: any;
+
+  // Loading states
+  isGeneratingRoute: boolean = false;
+  reoptimizingRoutes: Set<number> = new Set();
+
+  // Tickets with issues
+  ticketsWithIssues: TicketWithIssue[] = [];
+  isLoadingTicketsWithIssues = false;
 
   // Static map properties (replacing interactive map)
   staticMapUrl: string = '';
@@ -200,6 +260,7 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     this.loadSpotReadyTickets();
     this.loadAsphaltReadyTickets();
     this.loadConcreteReadyTickets();
+    this.loadTicketsWithIssues();
 
     // Generate static map after initial data load
     setTimeout(() => {
@@ -212,7 +273,14 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     this.visibleRoutes.clear();
     const allRoutes = [...this.spottingRoutes, ...this.concreteRoutes, ...this.asphaltRoutes];
     allRoutes.forEach(route => {
-      this.visibleRoutes.add(route.routeId);
+      // Only add routes that match the current type visibility settings
+      const typeVisible = (route.type === 'SPOTTER' && this.showSpottingRoutes) ||
+                         (route.type === 'CONCRETE' && this.showConcreteRoutes) ||
+                         (route.type === 'ASPHALT' && this.showAsphaltRoutes);
+
+      if (typeVisible) {
+        this.visibleRoutes.add(route.routeId);
+      }
     });
   }
 
@@ -301,24 +369,21 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
 
   // Getter for filtered route data with filtered tickets
   get filteredSpottingRoutes() {
-    const routes = this.filteredData.filter(item => item.type === 'spotting');
-    return routes.map(route => ({
+    return this.spottingRoutes.map(route => ({
       ...route,
       tickets: this.filterTicketsInRoute(route.tickets)
     }));
   }
 
   get filteredConcreteRoutes() {
-    const routes = this.filteredData.filter(item => item.type === 'concrete');
-    return routes.map(route => ({
+    return this.concreteRoutes.map(route => ({
       ...route,
       tickets: this.filterTicketsInRoute(route.tickets)
     }));
   }
 
   get filteredAsphaltRoutes() {
-    const routes = this.filteredData.filter(item => item.type === 'asphalt');
-    return routes.map(route => ({
+    return this.asphaltRoutes.map(route => ({
       ...route,
       tickets: this.filterTicketsInRoute(route.tickets)
     }));
@@ -339,17 +404,57 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     });
   }
 
+  // Helper method to check if a ticket should be visible based on current search
+  isTicketVisible(ticket: any): boolean {
+    if (!this.currentTextSearch.trim()) {
+      return true; // Show all tickets if no search term
+    }
+
+    const searchTerm = this.currentTextSearch.toLowerCase().trim();
+    if (ticket.address) {
+      return ticket.address.toLowerCase().includes(searchTerm);
+    }
+    return false;
+  }
+
   // Getter for filtered ready tickets
   get filteredSpotReadyTickets() {
-    return this.filteredData.filter(item => item.type === 'ready-ticket' && item.category === 'spot');
+    if (!this.currentTextSearch.trim()) {
+      return this.spotReadyTickets;
+    }
+    const searchTerm = this.currentTextSearch.toLowerCase().trim();
+    return this.spotReadyTickets.filter(ticket => {
+      if (ticket.address) {
+        return ticket.address.toLowerCase().includes(searchTerm);
+      }
+      return false;
+    });
   }
 
   get filteredAsphaltReadyTickets() {
-    return this.filteredData.filter(item => item.type === 'ready-ticket' && item.category === 'asphalt');
+    if (!this.currentTextSearch.trim()) {
+      return this.asphaltReadyTickets;
+    }
+    const searchTerm = this.currentTextSearch.toLowerCase().trim();
+    return this.asphaltReadyTickets.filter(ticket => {
+      if (ticket.address) {
+        return ticket.address.toLowerCase().includes(searchTerm);
+      }
+      return false;
+    });
   }
 
   get filteredConcreteReadyTickets() {
-    return this.filteredData.filter(item => item.type === 'ready-ticket' && item.category === 'concrete');
+    if (!this.currentTextSearch.trim()) {
+      return this.concreteReadyTickets;
+    }
+    const searchTerm = this.currentTextSearch.toLowerCase().trim();
+    return this.concreteReadyTickets.filter(ticket => {
+      if (ticket.address) {
+        return ticket.address.toLowerCase().includes(searchTerm);
+      }
+      return false;
+    });
   }
 
 
@@ -954,42 +1059,97 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     await this.http.post(endpoint, requestBody).toPromise();
   }
 
-  // Reoptimize all routes - updated to use actual endpoints
-  async reoptimizeAllRoutes() {
-    const confirmed = confirm('Are you sure you want to reoptimize all routes? This will recalculate the optimal order for all tickets.');
+
+
+  // Helper method to count unique locations in a route
+  getUniqueLocationCount(route: Route): number {
+    if (!route.tickets || route.tickets.length === 0) {
+      return 0;
+    }
+
+    const uniqueAddresses = new Set<string>();
+    route.tickets.forEach(ticket => {
+      if (ticket.address) {
+        uniqueAddresses.add(ticket.address.trim().toLowerCase());
+      }
+    });
+
+    return uniqueAddresses.size;
+  }
+
+  // Helper method to check if route has too many locations for reoptimization
+  isRouteTooLargeForReoptimization(route: Route): boolean {
+    return this.getUniqueLocationCount(route) > 25;
+  }
+
+    // Cancel route
+  async cancelRoute(route: Route) {
+    const confirmed = confirm(`Are you sure you want to cancel route ${route.routeCode}?`);
 
     if (!confirmed) {
       return;
     }
 
     try {
-      const allRoutes = [...this.spottingRoutes, ...this.concreteRoutes, ...this.asphaltRoutes];
+      this.snackBar.open(`Cancelling route ${route.routeCode}...`, 'Close', { duration: 3000 });
 
-      // Show loading message
-      this.snackBar.open('Reoptimizing routes...', 'Close', { duration: 3000 });
+      const endpoint = `${environment.apiUrl}/route-optimization/route/${route.routeId}/cancel`;
+      await this.http.post(endpoint, {}).toPromise();
 
-      // Reoptimize each route using the actual endpoint
-      for (const route of allRoutes) {
-        await this.reoptimizeRoute(route.routeId);
-      }
-
-      // Refresh all route data
+      // Refresh the specific route data
       this.refreshAllDataAndCache();
 
-      this.snackBar.open('All routes have been reoptimized successfully!', 'Close', { duration: 5000 });
+      this.snackBar.open(`Route ${route.routeCode} has been cancelled successfully!`, 'Close', { duration: 5000 });
     } catch (error) {
-      console.error('Error reoptimizing routes:', error);
-      this.snackBar.open('Error reoptimizing routes. Please try again.', 'Close', { duration: 5000 });
+      console.error(`Error cancelling route ${route.routeCode}:`, error);
+      this.snackBar.open(`Error cancelling route ${route.routeCode}. Please try again.`, 'Close', { duration: 5000 });
+    }
+  }
+
+  // Complete route
+  async completeRoute(route: Route) {
+    const confirmed = confirm(`Are you sure you want to complete route ${route.routeCode}?`);
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      this.snackBar.open(`Completing route ${route.routeCode}...`, 'Close', { duration: 3000 });
+
+      const endpoint = `${environment.apiUrl}/route-optimization/route/${route.routeId}/complete`;
+      await this.http.post(endpoint, {}).toPromise();
+
+      // Refresh the specific route data
+      this.refreshAllDataAndCache();
+
+      this.snackBar.open(`Route ${route.routeCode} has been completed successfully!`, 'Close', { duration: 5000 });
+    } catch (error) {
+      console.error(`Error completing route ${route.routeCode}:`, error);
+      this.snackBar.open(`Error completing route ${route.routeCode}. Please try again.`, 'Close', { duration: 5000 });
     }
   }
 
   // Reoptimize specific route - updated to use actual endpoints
   async reoptimizeSpecificRoute(route: Route) {
+    // Check if route has too many locations
+    if (this.isRouteTooLargeForReoptimization(route)) {
+      const locationCount = this.getUniqueLocationCount(route);
+      this.snackBar.open(
+        `Cannot reoptimize route ${route.routeCode}. It has ${locationCount} unique locations (maximum 25 allowed).`,
+        'Close',
+        { duration: 5000, panelClass: ['error-snackbar'] }
+      );
+      return;
+    }
+
     const confirmed = confirm(`Are you sure you want to reoptimize route ${route.routeCode}?`);
 
     if (!confirmed) {
       return;
     }
+
+    this.reoptimizingRoutes.add(route.routeId);
 
     try {
       this.snackBar.open(`Reoptimizing route ${route.routeCode}...`, 'Close', { duration: 3000 });
@@ -1003,6 +1163,8 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     } catch (error) {
       console.error(`Error reoptimizing route ${route.routeCode}:`, error);
       this.snackBar.open(`Error reoptimizing route ${route.routeCode}. Please try again.`, 'Close', { duration: 5000 });
+    } finally {
+      this.reoptimizingRoutes.delete(route.routeId);
     }
   }
 
@@ -1025,6 +1187,9 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
       alert('Please select a route type');
       return;
     }
+
+    // Set loading state
+    this.isGeneratingRoute = true;
 
     // Get ready tickets based on route type
     let readyTickets: ReadyTicket[] = [];
@@ -1109,6 +1274,7 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
       },
       error: (statusError) => {
         console.error('API status check failed:', statusError);
+        this.isGeneratingRoute = false;
         alert('Route optimization service is not available. Please try again later.');
       }
     });
@@ -1119,6 +1285,7 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     this.http.post(endpoint, requestBody).subscribe({
       next: (response) => {
         console.log('Route generation successful:', response);
+        this.isGeneratingRoute = false;
         this.closeGenerateRouteDialog();
         this.snackBar.open('Route generation completed successfully!', 'Close', { duration: 5000 });
 
@@ -1135,6 +1302,8 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
         console.error('Error url:', error.url);
         console.error('Full error response:', JSON.stringify(error, null, 2));
         console.error('========================');
+
+        this.isGeneratingRoute = false;
 
         // Handle specific Google Maps API error
         if (error.error && error.error.details &&
@@ -1534,7 +1703,25 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
 
   // Check if a specific route is visible
   isRouteVisible(routeId: number): boolean {
+    // Check if the route type is visible
+    const route = this.findRouteById(routeId);
+    if (!route) return false;
+
+    // Check route type visibility
+    const typeVisible = (route.type === 'SPOTTER' && this.showSpottingRoutes) ||
+                       (route.type === 'CONCRETE' && this.showConcreteRoutes) ||
+                       (route.type === 'ASPHALT' && this.showAsphaltRoutes);
+
+    if (!typeVisible) return false;
+
+    // Check individual route visibility
     return this.visibleRoutes.has(routeId);
+  }
+
+  // Helper method to find route by ID
+  private findRouteById(routeId: number): Route | null {
+    const allRoutes = [...this.spottingRoutes, ...this.concreteRoutes, ...this.asphaltRoutes];
+    return allRoutes.find(route => route.routeId === routeId) || null;
   }
 
   // Get route color for individual route buttons
@@ -1564,6 +1751,42 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     }
   }
 
+  // Load tickets with issues from API
+  loadTicketsWithIssues() {
+    this.isLoadingTicketsWithIssues = true;
+    this.http.get<TicketsWithIssuesResponse>(`${environment.apiUrl}/tickets/with-issues`).subscribe({
+      next: (response) => {
+        this.ticketsWithIssues = response.data;
+        this.isLoadingTicketsWithIssues = false;
+      },
+      error: (error) => {
+        console.error('Error loading tickets with issues:', error);
+        this.isLoadingTicketsWithIssues = false;
+        // Fallback to empty array if API fails
+        this.ticketsWithIssues = [];
+      }
+    });
+  }
+
+  // Helper method to format address from addressDetails
+  formatAddressFromIssues(ticket: TicketWithIssue): string {
+    if (ticket.addressDetails && ticket.addressDetails.length > 0) {
+      const address = ticket.addressDetails[0];
+      return `${address.addressNumber} ${address.addressCardinal} ${address.addressStreet} ${address.addressSuffix}`;
+    }
+    return ticket.addresses || 'N/A';
+  }
+
+  // Helper method to get non-null crew comments
+  getCrewComments(ticket: TicketWithIssue): string {
+    const comments = ticket.taskStatuses
+      ?.filter(status => status.crewComment && status.crewComment.trim() !== '')
+      ?.map(status => status.crewComment)
+      ?.join(', ');
+
+    return comments || 'No crew comments';
+  }
+
   // Refresh all data
   refreshAllDataAndCache() {
     this.loadSpottingRoutes();
@@ -1572,6 +1795,7 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     this.loadSpotReadyTickets();
     this.loadAsphaltReadyTickets();
     this.loadConcreteReadyTickets();
+    this.loadTicketsWithIssues();
     this.updateStaticMap(); // Update static map after refresh
   }
 }
