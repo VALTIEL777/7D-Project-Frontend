@@ -60,7 +60,7 @@ remainingLocations: {
 }[] = [];
 
 filterText: string = '';
-
+isLoading: boolean = false;
 crewDetails: any[] = [];
 
   constructor(
@@ -80,6 +80,7 @@ crewDetails: any[] = [];
   }
 
 loadEmployees() {
+        this.isLoading = true;
   import('rxjs').then(({ forkJoin }) => {
     forkJoin({
       people: this.usersService.getAllPeople(),
@@ -139,6 +140,8 @@ const crewAssignment = crewEmployees.find((ce: any) => ce.employeeid === person.
 
         console.log('✅ Team Leader:', this.teamLeader);
         console.log('👥 Team Members:', this.teamMembers);
+              this.isLoading = false;
+
       },
       error: (err) => console.error('❌ Error loading employee data:', err)
     });
@@ -146,6 +149,7 @@ const crewAssignment = crewEmployees.find((ce: any) => ce.employeeid === person.
 }
 
 getCrewDetails(crewId: number) {
+  this.isLoading = true;
   this.crewsService.getCrewDetails(crewId).subscribe({
     next: (details) => {
       this.crewDetails = details;
@@ -157,7 +161,7 @@ const uniqueLocationsMap = new Map<number, any>();
 details.forEach((data: any) => {
   if (!uniqueLocationsMap.has(data.ticketid)) {
     uniqueLocationsMap.set(data.ticketid, {
-      address: `${data.fromaddressstreet} ${data.toaddressstreet} ${data.fromaddresscardinal} ${data.fromaddresssuffix}`,
+      address: `${data.fromaddressstreet} ${data.toaddressstreet} ${data.fromaddresscardinal}`,  // ${data.fromaddresssuffix}
       job: data.contractunit_name || '',
       surface: data.surfacetotal,
       width: data.width,
@@ -178,9 +182,11 @@ this.remainingLocations = Array.from(uniqueLocationsMap.values());
         this.location = this.remainingLocations[0];
         console.log('📍 Primera location activa:', this.location);
       }
+      this.isLoading = false;
     },
     error: (err) => {
       console.error('❌ Error obteniendo detalles del crew:', err);
+      this.isLoading = false;
     }
   });
 }

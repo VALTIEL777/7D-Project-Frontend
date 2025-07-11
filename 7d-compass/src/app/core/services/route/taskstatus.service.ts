@@ -5,6 +5,7 @@ import { environment } from '../../../../environments/environment';
 
 export interface TaskStatus {
   taskStatusId?: number;
+  taskstatusid?: number;
   name: string;
   description: string;
   createdBy?: number;

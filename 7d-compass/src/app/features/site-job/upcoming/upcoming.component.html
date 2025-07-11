@@ -1,31 +1,39 @@
 <app-sitejob-sidenavbar [teamLeader]="teamLeader" [teamMembers]="teamMembers">
+  
+  <app-sitejob-layout></app-sitejob-layout>
 
-  <div class="content-wrapper">
+  <!-- 🔄 Spinner de carga -->
+  <div *ngIf="isLoading" class="loader-container">
+    <mat-spinner diameter="50"></mat-spinner>
+  </div>
+
+  <!-- ✅ Contenido visible solo cuando no hay carga -->
+  <div *ngIf="!isLoading" class="content-wrapper">
     <h2 class="section-title">Remaining Locations</h2>
 
     <!-- 🔍 Campo de búsqueda -->
     <mat-form-field appearance="outline" style="width: 100%; margin-bottom: 16px;">
-      <mat-label>Search location	</mat-label>
-        <mat-icon matPrefix>search</mat-icon>
-      <input matInput [(ngModel)]="filterText" placeholder="Search by address or job type	">
+      <mat-label>Search location</mat-label>
+      <mat-icon matPrefix>search</mat-icon>
+      <input matInput [(ngModel)]="filterText" placeholder="Search by address or job type">
     </mat-form-field>
 
     <!-- ❌ Mostrar mensaje si no hay resultados -->
-<div *ngIf="filteredLocations.length === 0" class="no-locations">
-  <p class="no-locations-text">
-    <mat-icon color="warn">info</mat-icon>
-    There is no route assigned yet.
-  </p>
-</div>
+    <div *ngIf="filteredLocations.length === 0" class="no-locations">
+      <p class="no-locations-text">
+        <mat-icon color="warn">info</mat-icon>
+        There is no route assigned yet.
+      </p>
+    </div>
 
     <!-- 📍 Lista filtrada -->
     <div *ngFor="let location of filteredLocations" class="location-card">
-<div class="address-container">
-  <p class="address"><strong>{{ location.address }}</strong></p>
-  <button mat-raised-button matButton="filled" class="custom-select-button" (click)="goToCurrent(location)">
-    <mat-icon class="icon">place</mat-icon>Go to location</button>
-</div>
-
+      <div class="address-container">
+        <p class="address"><strong>{{ location.address }}</strong></p>
+        <button mat-raised-button class="custom-select-button" (click)="goToCurrent(location)">
+          <mat-icon class="icon">place</mat-icon>Go to location
+        </button>
+      </div>
       <hr class="divider" />
     </div>
   </div>

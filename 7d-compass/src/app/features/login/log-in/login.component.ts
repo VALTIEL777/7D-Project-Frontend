@@ -51,10 +51,10 @@ login(): void {
 
       const role = response.user?.role?.toLowerCase();
 
-      if (role === 'operario') {
+      if (role === 'operator') {
         this.router.navigate(['/upcoming']);
       } else {
-        this.router.navigate(['/dashboard']);
+        this.router.navigate(['/overview']);
       }
     },
     error: (error) => {

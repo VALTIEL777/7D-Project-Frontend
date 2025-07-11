@@ -11,6 +11,12 @@
   }
 }
 
+.loader-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 40px 0;
+}
 
 .section-title {
   font-size: 1.4rem;

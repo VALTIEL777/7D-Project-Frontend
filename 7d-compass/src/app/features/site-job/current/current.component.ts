@@ -20,6 +20,7 @@ import { TicketStatusService } from '../../../core/services/route/ticketstatus.s
 import { MatDialog } from '@angular/material/dialog';
 import { ConfirmPhaseDialogComponent } from '../../../shared/confirm-phase-dialog/confirm-phase-dialog.component';
 import { TaskstatusService } from '../../../core/services/route/taskstatus.service';
+import { RouteStateService } from '../../../core/services/shared/route-state.service';
 
 @Component({
   selector: 'app-current',
@@ -51,7 +52,7 @@ location: {
 };
 crewDetails: any[] = [];
 crewType: string = '';
-
+routeCode: string = '';
 contractUnitId: number = 0;
 userId: number = 0;
 selectedFile!: File;
@@ -65,16 +66,6 @@ name: string = 'Photo Evidence'; // nombre opcional o dinámico
 
 activities: any[] = [];
 
-temporal = {
-  
-  activities: ['Checked equipment', 'Setup cones', 'Inspected work zone'],
-  issues: ['Missing permit', 'Blocked sidewalk', 'Damaged signage'],
-  supervisor: {
-    name: 'Renee Gonzalez',
-    phone: '234-534-2394'
-  }
-};
-
 permits: { id: number; number: string }[] = [];
 diggers: { id: number; number: string }[] = [];
 
@@ -82,15 +73,14 @@ diggers: { id: number; number: string }[] = [];
   constructor(
      private crewsService: CrewsService,
         private crewEmployeesService: CrewEmployeesService,
-
         private ticketStatusService: TicketStatusService,
         private usersService: PeopleService,
         private skillsService: SkillsService,
         private taskstatusService: TaskstatusService,
         private photoEvidenceService: PhotoEvidenceService,
-
         private contractUnitsPhasesService: ContractUnitsPhasesService,
-        private dialog: MatDialog
+        private dialog: MatDialog,
+        private routeState: RouteStateService
   ){}
 
   private isLocationFromStorage = false;
@@ -107,10 +97,13 @@ ngOnInit() {
     console.log('🧾 ticketId cargado:', this.ticketId);
     console.log('🆔 contractUnitId cargado:', this.contractUnitId);
   }
-
+  const savedRouteCode = localStorage.getItem('selectedRouteCode');
+  if (savedRouteCode) {
+    this.routeCode = savedRouteCode;
+    console.log('🛣️ routeCode cargado de localStorage:', this.routeCode);
+  }
   this.loadEmployees();
     this.loadAllPhases();
-
 }
 
 
@@ -185,25 +178,49 @@ const crewAssignment = crewEmployees.find((ce: any) => ce.employeeid === person.
 loadAllPhases() {
   this.taskstatusService.getAllTaskStatuses().subscribe({
     next: (statuses) => {
-      this.activities = statuses.map((s: any) => ({
-        id: s.taskStatusId ?? s.id,
+      console.log('📦 Statuses recibidos:', statuses);
+
+      let filteredStatuses = statuses;
+
+      // ✅ Filtrar fases según routeCode
+      if (this.routeCode.includes('SPOTTER')) {
+        filteredStatuses = statuses.filter(s =>
+          ['Spotting', 'Install Signs'].includes(s.name)
+        );
+      } else if (this.routeCode.includes('ASPHALT')) {
+        filteredStatuses = statuses.filter(s =>
+          ['Dirt', 'Grind', 'Asphalt'].includes(s.name)
+        );
+      } else if (this.routeCode.includes('CONCRETE')) {
+        filteredStatuses = statuses.filter(s =>
+          ['Stripping', 'Spotting', 'Install Signs'].includes(s.name)
+        );
+      }
+
+      // 🔄 Convertir a actividades
+      this.activities = filteredStatuses.map((s: any) => ({
+        id: s.taskstatusid,
         name: s.name,
         description: s.description,
-        checked: false
+        checked: false,
+        locked: false
       }));
 
-      // Guarda el ID de Crack Seal si existe
-      const crackSeal = statuses.find((s: any) => s.name.toLowerCase() === 'crack seal');
-      this.ticketStatusId = crackSeal?.taskStatusId || 0;
+      // Buscar Crack Seal (si está disponible)
+      const crackSeal = statuses.find((s: any) => s.name?.toLowerCase() === 'crack seal');
+      this.ticketStatusId = crackSeal?.taskstatusid || 0;
 
-      // Marca las fases ya vinculadas
       this.loadLinkedPhases();
     },
     error: (err) => {
-      console.error('Error loading task statuses', err);
+      console.error('❌ Error loading task statuses', err);
     }
   });
 }
+
+
+
+
 
 
 getCrewDetails(crewId: number) {
@@ -216,26 +233,37 @@ getCrewDetails(crewId: number) {
 
 
       // 🔍 Extraer permisos únicos
-      this.permits = details.reduce((acc: { id: number; number: string }[], d: any) => {
-        if (d.permitid && d.permitnumber && !acc.find(p => p.id === d.permitid)) {
-          acc.push({ id: d.permitid, number: d.permitnumber });
-        }
-        return acc;
-      }, []);
+this.permits = details.reduce((acc: { id: number; number: string }[], d: any) => {
+  if (
+    d.permitid &&
+    d.permitnumber &&
+    d.ticketid === this.ticketId && // ✅ filtra solo los del ticket actual
+    !acc.find(p => p.id === d.permitid)
+  ) {
+    acc.push({ id: d.permitid, number: d.permitnumber });
+  }
+  return acc;
+}, []);
 
       // 🔍 Extraer diggers únicos
-      this.diggers = details.reduce((acc: { id: number; number: string }[], d: any) => {
-        if (d.diggerid && d.diggernumber && !acc.find(dg => dg.id === d.diggerid)) {
-          acc.push({ id: d.diggerid, number: d.diggernumber });
-        }
-        return acc;
-      }, []);
+     this.diggers = details.reduce((acc: { id: number; number: string }[], d: any) => {
+  if (
+    d.diggerid &&
+    d.diggernumber &&
+    d.ticketid === this.ticketId && // ✅ filtro opcional
+    !acc.find(dg => dg.id === d.diggerid)
+  ) {
+    acc.push({ id: d.diggerid, number: d.diggernumber });
+  }
+  return acc;
+}, []);
+
 
       // 🗺️ Solo cargar ubicación por defecto si no viene del localStorage
       if (details.length > 0 && !this.isLocationFromStorage) {
         const data = details[0];
 
-        this.location.address = `${data.fromaddressstreet} ${data.toaddressstreet} ${data.fromaddresscardinal} ${data.fromaddresssuffix}`;
+        this.location.address = `${data.fromaddressstreet} ${data.toaddressstreet} ${data.fromaddresscardinal}`;  // ${data.fromaddresssuffix}
         this.location.job = data.contractunit_name;
         this.location.surface = data.surfacetotal;
         this.location.width = data.width;
@@ -282,9 +310,15 @@ loadLinkedPhases() {
 
 
 saveSelectedActivities() {
+  console.table(this.activities, ['id', 'name', 'checked', 'locked']);
+
 
   const selectedPhases = this.activities
     .filter(a => a.checked && !a.locked && a.id != null);
+
+    console.log('📋 Actividades disponibles:', this.activities);
+console.log('🆕 Seleccionadas para guardar:', selectedPhases);
+
 
   if (selectedPhases.length === 0) {
     console.warn('⚠️ No hay fases nuevas para guardar.');

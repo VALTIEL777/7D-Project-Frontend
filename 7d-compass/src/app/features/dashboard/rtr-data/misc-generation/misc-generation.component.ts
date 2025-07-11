@@ -21,6 +21,7 @@ import { SupplierService } from '../../../../core/services/material/supplier.ser
 import { forkJoin, map, Observable, startWith } from 'rxjs';
 import { SkillsService } from '../../../../core/services/human-resources/skills.service';
 import { RoutesService } from '../../../../core/services/route/route.service';
+import { RouteStateService } from '../../../../core/services/shared/route-state.service';
 
 interface ColumnDefinition {
   name: string;
@@ -97,7 +98,8 @@ routes: any[] = [];
     private supplierService: SupplierService,
     private usersService: PeopleService,
     private skillsService: SkillsService,
-    private routeService: RoutesService
+    private routeService: RoutesService,
+    private routeState: RouteStateService
   ) {
     this.form = this.fb.group({
       type: [null, ],
@@ -706,7 +708,14 @@ save() {
     return;
   }
 
-    const selectedRouteId = this.form.get('route')?.value;
+      const selectedRouteId = this.form.get('route')?.value;
+  const selectedRoute = this.routes.find(r => r.routeid === selectedRouteId);
+  const selectedRouteCode = selectedRoute?.routecode;
+  localStorage.setItem('selectedRouteCode', selectedRouteCode || '');
+
+console.log('📍 routeCode seleccionado:', selectedRouteCode); // Agrega este log
+
+  this.routeState.setRouteCode(selectedRouteCode || '');
   if (!selectedRouteId) {
     console.warn('⚠️ No hay ruta seleccionada');
     return;
@@ -827,5 +836,4 @@ console.log('🔧 Requests de Equipos:', equipment$);
     });
   });
 }
-
 }

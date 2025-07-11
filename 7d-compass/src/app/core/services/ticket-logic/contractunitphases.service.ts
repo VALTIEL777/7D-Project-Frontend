@@ -3,7 +3,6 @@ import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 
-
 @Injectable({
   providedIn: 'root'
 })
@@ -12,29 +11,28 @@ export class ContractUnitsPhasesService {
 
   constructor(private http: HttpClient) {}
 
-  // POST individual
+  // POST
   create(data: any): Observable<any> {
     return this.http.post(this.baseUrl, data);
   }
 
-  // Opcional: GET all
+  // GET all
   getAll(): Observable<any[]> {
     return this.http.get<any[]>(this.baseUrl);
   }
 
-  // Opcional: GET by IDs
-  getById(contractUnitId: number, necessaryPhaseId: number): Observable<any> {
-    return this.http.get<any>(`${this.baseUrl}/${contractUnitId}/${necessaryPhaseId}`);
+  // GET by composite key
+  getById(contractUnitId: number, taskStatusId: number): Observable<any> {
+    return this.http.get<any>(`${this.baseUrl}/${contractUnitId}/${taskStatusId}`);
   }
 
- getByContractUnitId(contractUnitId: number): Observable<any[]> {
-  return this.http.get<any[]>(`${this.baseUrl}/byContractUnit/${contractUnitId}`);
-}
+  // GET by contractUnitId
+  getByContractUnitId(contractUnitId: number): Observable<any[]> {
+    return this.http.get<any[]>(`${this.baseUrl}/byContractUnit/${contractUnitId}`);
+  }
 
-
-
-  // Opcional: DELETE
-  delete(contractUnitId: number, necessaryPhaseId: number): Observable<any> {
-    return this.http.delete(`${this.baseUrl}/${contractUnitId}/${necessaryPhaseId}`);
+  // DELETE by composite key
+  delete(contractUnitId: number, taskStatusId: number): Observable<any> {
+    return this.http.delete(`${this.baseUrl}/${contractUnitId}/${taskStatusId}`);
   }
 }

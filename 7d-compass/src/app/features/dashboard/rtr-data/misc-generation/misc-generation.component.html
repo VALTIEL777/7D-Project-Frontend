@@ -210,7 +210,7 @@
   <mat-label>Route</mat-label>
   <mat-select formControlName="route" required>
     <mat-option *ngFor="let route of routes" [value]="route.routeid">
-      RTE-{{ route.routeid }}
+      {{ route.routecode }}
     </mat-option>
   </mat-select>
   <mat-error *ngIf="form.get('route')?.hasError('required')">

@@ -10,8 +10,6 @@
 <h3 class="sub-title">General Info</h3>
 <ul class="info-list">
   <li><strong>Job:</strong> {{ location.job }}</li>
-  <li><strong>Surface:</strong> {{ location.surface }} m²</li>
-
   <li><strong>Size:</strong> {{ location.width }} x {{ location.length }} m</li>
   <li><strong>Crew type:</strong> {{ crewType }}</li>
 </ul>
@@ -102,8 +100,12 @@
 
 <!-- Contact Supervisor -->
 <h3 class="sub-title">Contact supervisor</h3>
-<p><strong>name:</strong> {{ temporal.supervisor.name }}</p>
-<p><strong>phone:</strong> {{ temporal.supervisor.phone }}</p>
+<p><strong>name:</strong>
+   <!-- {{ temporal.supervisor.name }} --> Renee Mercado 
+</p>
+<p><strong>phone:</strong>
+  <!-- {{ temporal.supervisor.phone }} --> 7737946851 
+  </p>
     <mat-divider></mat-divider>
 </div>
   <app-sitejob-tabs></app-sitejob-tabs>
