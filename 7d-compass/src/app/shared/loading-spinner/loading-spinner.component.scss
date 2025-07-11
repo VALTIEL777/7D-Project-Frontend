@@ -1,0 +1,42 @@
+@use '../../../variables' as *;
+
+.loading-spinner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+
+  &.overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.9);
+    z-index: 9999;
+    padding: 0;
+  }
+
+  .spinner-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    text-align: center;
+  }
+
+  .loading-message {
+    margin: 0;
+    color: #666;
+    font-size: 14px;
+    font-weight: 500;
+    max-width: 200px;
+    line-height: 1.4;
+  }
+
+  mat-spinner {
+    ::ng-deep .mat-mdc-progress-spinner-circle {
+      stroke: $deep-blue !important;
+    }
+  }
+}
