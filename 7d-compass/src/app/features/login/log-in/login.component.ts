@@ -25,8 +25,8 @@ export class LoginComponent implements OnInit {
 
   ngOnInit(): void {
     this.loginForm = this.formB.group({
-      identifier: ['', [Validators.required, Validators.minLength(4)]],
-      password: ['', [Validators.required, Validators.minLength(6)]],
+      identifier: ['', [Validators.required, Validators.minLength(3)]],
+      password: ['', [Validators.required, Validators.minLength(3)]],
     });
   }
 
@@ -51,10 +51,10 @@ login(): void {
 
       const role = response.user?.role?.toLowerCase();
 
-      if (role === 'operario') {
+      if (role === 'operator') {
         this.router.navigate(['/upcoming']);
       } else {
-        this.router.navigate(['/dashboard']);
+        this.router.navigate(['/overview']);
       }
     },
     error: (error) => {

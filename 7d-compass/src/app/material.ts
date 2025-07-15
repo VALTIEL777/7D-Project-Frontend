@@ -33,6 +33,6 @@ export const MATERIAL_MODULES = [
   MatProgressSpinnerModule,
   MatSnackBarModule,
   MatDialogModule,
-  MatButtonToggleModule
+  MatButtonToggleModule,
   MatAutocompleteModule
 ];

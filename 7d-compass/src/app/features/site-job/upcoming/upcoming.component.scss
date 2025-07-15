@@ -1,13 +1,21 @@
 .content-wrapper {
-  padding: 0 16px;
+  padding-bottom: 90px; // proteger el contenido inferior
+  padding-inline: 16px;
 
   @media (min-width: 768px) {
-    padding: 0 32px;
+    padding-inline: 32px;
   }
 
   @media (min-width: 1200px) {
-    padding: 0 64px;
+    padding-inline: 64px;
   }
+}
+
+.loader-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 40px 0;
 }
 
 .section-title {
@@ -101,3 +109,61 @@
   transform: scale(0.95);
   box-shadow: 0 3px 5px rgba(0, 0, 0, 0.2);
 }
+
+.custom-select-button {
+  padding: 10px 24px;
+  font-weight: bold;
+  border-radius: 8px;
+  background-color: #005cbb;
+  color: #d3d4d4;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  transition: background-color 0.3s, box-shadow 0.3s;
+}
+
+.custom-select-button:hover {
+  background-color: #1976d2;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.icon {
+  vertical-align: middle;
+  margin-right: 6px;
+}
+
+.address {
+  font-size: 18px;
+}
+
+.address-container {
+  display: flex;
+  align-items: center;
+}
+
+.custom-select-button {
+  margin-left: auto; /* Esto empuja el botón hacia la derecha */
+}
+
+
+.address {
+  margin: 0; /* Quita margen por defecto si no lo necesitas */
+}
+
+
+.no-locations {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: calc(100vh - 150px); /* Ajusta según el espacio de tu navbar/tabs */
+  text-align: center;
+  font-size: 18px;
+  color: #555;
+  padding: 16px;
+}
+
+.no-locations-text {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 500;
+}
+

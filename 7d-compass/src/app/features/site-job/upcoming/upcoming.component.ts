@@ -16,10 +16,20 @@ import { SkillsService } from '../../../core/services/human-resources/skills.ser
 import { RoutesService } from '../../../core/services/route/route.service';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
+import { SitejobTabsComponent } from '../../../shared/sitejob-tabs/sitejob-tabs.component';
 
 @Component({
   selector: 'app-upcoming',
-  imports: [SitejobLayoutComponent,SitejobSidenavbarComponent,MatTableModule, MatDividerModule,CommonModule,MATERIAL_MODULES, FormsModule],
+  imports: [
+
+    SitejobSidenavbarComponent,
+    SitejobLayoutComponent,
+    MatTableModule,
+    MatDividerModule,
+    CommonModule,
+    MATERIAL_MODULES,
+    FormsModule, 
+    SitejobTabsComponent],
   templateUrl: './upcoming.component.html',
   styleUrl: './upcoming.component.scss'
 })
@@ -50,7 +60,7 @@ remainingLocations: {
 }[] = [];
 
 filterText: string = '';
-
+isLoading: boolean = false;
 crewDetails: any[] = [];
 
   constructor(
@@ -70,6 +80,7 @@ crewDetails: any[] = [];
   }
 
 loadEmployees() {
+        this.isLoading = true;
   import('rxjs').then(({ forkJoin }) => {
     forkJoin({
       people: this.usersService.getAllPeople(),
@@ -80,17 +91,17 @@ loadEmployees() {
       next: ({ people, crewEmployees, crews, skills }) => {
         // 🔁 Mapea todos los empleados
         this.employeeList = people.map((person: any) => {
-          const crewAssignment = crewEmployees.find((ce: any) => ce.employeeid === person.employeeid);
+const crewAssignment = crewEmployees.find((ce: any) => ce.employeeid === person.employeeId);
           const assignedCrew = crewAssignment
             ? crews.find((c: any) => c.crewid === crewAssignment.crewid)
             : null;
           const personSkills = skills
-            .filter((s: any) => s.userid === person.userid) // CORREGIDO aquí
+            .filter((s: any) => s.userId === person.userId) // CORREGIDO aquí
             .map((s: any) => s.name);
 
           return {
-            employeeid: person.employeeid,
-            userid: person.userid, // CORREGIDO aquí
+            employeeid: person.employeeId,
+            userid: person.userId, // CORREGIDO aquí
             name: `${person.firstname} ${person.lastname}`,
             crewid: crewAssignment?.crewid || null,
             type: assignedCrew?.type || '',
@@ -129,6 +140,8 @@ loadEmployees() {
 
         console.log('✅ Team Leader:', this.teamLeader);
         console.log('👥 Team Members:', this.teamMembers);
+              this.isLoading = false;
+
       },
       error: (err) => console.error('❌ Error loading employee data:', err)
     });
@@ -136,19 +149,31 @@ loadEmployees() {
 }
 
 getCrewDetails(crewId: number) {
+  this.isLoading = true;
   this.crewsService.getCrewDetails(crewId).subscribe({
     next: (details) => {
       this.crewDetails = details;
 
       // Mapear todos los tickets asociados a su información de ubicación
-      this.remainingLocations = details.map((data: any) => ({
-        address: `${data.fromaddressstreet} ${data.toaddressstreet} ${data.fromaddresscardinal} ${data.fromaddresssuffix}`,
-        job: data.contractunit_description || '',
-        surface: data.surfacetotal,
-        width: data.width,
-        length: data.length,
-        ticketid: data.ticketid
-      }));
+     // Evita ubicaciones duplicadas por ticketid
+const uniqueLocationsMap = new Map<number, any>();
+
+details.forEach((data: any) => {
+  if (!uniqueLocationsMap.has(data.ticketid)) {
+    uniqueLocationsMap.set(data.ticketid, {
+      address: `${data.fromaddressstreet} ${data.toaddressstreet} ${data.fromaddresscardinal}`,  // ${data.fromaddresssuffix}
+      job: data.contractunit_name || '',
+      surface: data.surfacetotal,
+      width: data.width,
+      length: data.length,
+      ticketid: data.ticketid,
+      contractunitid: data.contractunitid
+    });
+  }
+});
+
+this.remainingLocations = Array.from(uniqueLocationsMap.values());
+
 
       console.log('📌 Remaining locations:', this.remainingLocations);
 
@@ -157,20 +182,28 @@ getCrewDetails(crewId: number) {
         this.location = this.remainingLocations[0];
         console.log('📍 Primera location activa:', this.location);
       }
+      this.isLoading = false;
     },
     error: (err) => {
       console.error('❌ Error obteniendo detalles del crew:', err);
+      this.isLoading = false;
     }
   });
 }
 
 
 goToCurrent(location: any) {
-  // Aquí podrías navegar a /current y guardar la info seleccionada
-  localStorage.setItem('selectedLocation', JSON.stringify(location));
-  this.router.navigate(['/current']);
+  const storedUserId = Number(localStorage.getItem('userId'));
+  const person = this.employeeList.find(p => p.userid === storedUserId);
+  const crewId = person?.crewid || 0;
 
+  console.log('🧑‍🔧 Guardando crewId:', crewId);
+
+  localStorage.setItem('selectedLocation', JSON.stringify(location));
+  localStorage.setItem('crewId', String(crewId));
+  this.router.navigate(['/current']);
 }
+
 
 get filteredLocations() {
   const filter = this.filterText.trim().toLowerCase();

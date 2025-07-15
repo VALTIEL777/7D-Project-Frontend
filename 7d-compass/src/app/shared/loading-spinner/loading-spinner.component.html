@@ -1,0 +1,6 @@
+<div class="loading-spinner" [class.overlay]="overlay">
+  <div class="spinner-container">
+    <mat-spinner [diameter]="diameter"></mat-spinner>
+    <p *ngIf="showMessage" class="loading-message">{{ message }}</p>
+  </div>
+</div>

@@ -21,6 +21,8 @@ import { SupplierService } from '../../../../core/services/material/supplier.ser
 import { forkJoin, map, Observable, startWith } from 'rxjs';
 import { SkillsService } from '../../../../core/services/human-resources/skills.service';
 import { RoutesService } from '../../../../core/services/route/route.service';
+import { RouteStateService } from '../../../../core/services/shared/route-state.service';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 
 interface ColumnDefinition {
   name: string;
@@ -36,6 +38,7 @@ interface ColumnDefinition {
     CommonModule,
     FormsModule,
     ReactiveFormsModule,
+    MatSnackBarModule,
     MATERIAL_MODULES,
     DashboardLayoutComponent,
     CardWithButtonComponent,
@@ -57,8 +60,22 @@ employeeList: {
   skills?: string[];   
   crewLeader: boolean;
 }[] = [];
+isLoading = false;
 
-  typeList = ['Crack Seal', 'Clean Up', 'Asphalt'];
+typeList = [
+  'Crack Seal',
+  'Asphalt',
+  'Sawcut',
+  'Framing',
+  'Pour',
+  'Clean',
+  'Dirt',
+  'Grind',
+  'Stripping',
+  'Spotting',
+  'Install Signs',
+  'Steel Plate Pick Up'
+];
   skillList = ['Driver', 'Tool', 'Machine', 'Measure'];
   skillIcons: { [key: string]: string } = {
     Driver: 'directions_car',
@@ -97,7 +114,9 @@ routes: any[] = [];
     private supplierService: SupplierService,
     private usersService: PeopleService,
     private skillsService: SkillsService,
-    private routeService: RoutesService
+    private routeService: RoutesService,
+    private routeState: RouteStateService,
+    private snackBar: MatSnackBar
   ) {
     this.form = this.fb.group({
       type: [null, ],
@@ -183,7 +202,8 @@ limitMaterialQuantity(event: any) {
 
    this.filteredEmployees = this.employeeControl.valueChanges.pipe(
     startWith(''),
-    map(value => this._filterEmployees(value))
+    map(value => this._filterEmployees(value)),
+      startWith([]) // <-- Esto asegura que siempre se emite un array al principio
   );
 
    // 🔧 Manejo del estado del slide-toggle
@@ -205,7 +225,7 @@ limitMaterialQuantity(event: any) {
   }
 
   // Carga empleados desde backend
- loadEmployees() {
+  loadEmployees() {
   import('rxjs').then(({ forkJoin }) => {
     forkJoin({
       people: this.usersService.getAllPeople(),           // Trae todos los empleados
@@ -214,28 +234,31 @@ limitMaterialQuantity(event: any) {
       skills: this.skillsService.getAllSkills()           // Si cada skill tiene userid
     }).subscribe({
       next: ({ people, crewEmployees, crews, skills }) => {
-        this.employeeList = people.map((person: any) => {
-          const assignment = crewEmployees.find((ce: any) => ce.employeeid === person.userid);
-          const crew = assignment ? crews.find((c: any) => c.crewid === assignment.crewid) : null;
-          const personSkills = skills
-            .filter((s: any) => s.userid === person.userid)
-            .map((s: any) => s.name);
+       this.employeeList = people.map((person: any) => {
+  const assignment = crewEmployees.find((ce: any) => ce.employeeId === person.employeeId);
+  const crew = assignment ? crews.find((c: any) => c.crewid === assignment.crewid) : null;
+  const personSkills = skills
+    .filter((s: any) => s.userId === person.userId)
+    .map((s: any) => s.name);
 
-          return {
-            employeeid: person.userid,
-            name: `${person.firstname} ${person.lastname}`,
-            crewid: assignment?.crewid || null,
-            type: crew?.type || '',
-            workedhours: crew?.workedhours || 0,
-            skills: personSkills,
-            crewLeader: assignment?.crewleader || false
-          };
-        });
+  return {
+    employeeid: person.employeeId, // ✅ Este es el que debe usarse para crear CrewEmployee
+    userid: person.userId,         // ✅ Este es para identificar al usuario logueado
+    name: `${person.firstname} ${person.lastname}`,
+    crewid: assignment?.crewid || null,
+    type: crew?.type || '',
+    workedhours: crew?.workedhours || 0,
+    skills: personSkills,
+    crewLeader: assignment?.crewleader || false
+  };
+});
+
       },
       error: (err) => console.error('Error loading employee data:', err)
     });
   });
 }
+
 
 
 
@@ -296,15 +319,17 @@ loadMaterials() {
 
 loadRoutes() {
   this.routeService.getAllRoutes().subscribe({
-    next: (routes: any[]) => {
-      this.routes = routes;
-      console.log('📦 Rutas cargadas:', this.routes);
+    next: (res) => {
+      console.log('📦 Resultado crudo de getAllRoutes():', res);
+      // Verifica si necesitas res.data o algo similar
+this.routes = Array.isArray(res.routes) ? res.routes : [];
     },
     error: (err) => {
       console.error('❌ Error al cargar rutas:', err);
     }
   });
 }
+
 
 
 
@@ -335,9 +360,10 @@ updateEmployeeData() {
 }
 
 
-get employeeDataa() {
-  return this._employeeDataa;
+get employeeDataa(): any[] {
+  return Array.isArray(this._employeeDataa) ? this._employeeDataa : [];
 }
+
 
 employeeControl = new FormControl('');
 filteredEmployees!: Observable<any[]>;
@@ -347,31 +373,44 @@ displayEmployee(employee: any): string {
 
 
 private _filterEmployees(value: string | any): any[] {
-  const filterValue = typeof value === 'string' ? value.toLowerCase() : value?.name.toLowerCase();
+  if (!this.employeeList || this.employeeList.length === 0) return [];
 
-  return this.employeeList.filter(employee => employee.name.toLowerCase().includes(filterValue));
+  const filterValue = typeof value === 'string'
+    ? value.toLowerCase()
+    : value?.name?.toLowerCase() || '';
+
+  return this.employeeList.filter(employee =>
+    employee.name.toLowerCase().includes(filterValue)
+  );
 }
+
 
 onEmployeeSelected(selectedEmployee: any) {
   this.form.patchValue({ selectedEmployee: selectedEmployee });
 }
 
 
-  // EMPLEADOS
-addEmployee() {
+ addEmployee() {
   const selected = this.form.get('selectedEmployee')?.value;
   const selectedSkills = this.form.get('selectedSkills')?.value;
   let isLeader = this.form.get('isLeader')?.value;
-const workedhours = parseFloat(this.form.get('workedhours')?.value);
+  const workedhours = parseFloat(this.form.get('workedhours')?.value);
   const type = this.form.get('type')?.value;
+
+  console.log('🧪 Empleado seleccionado:', selected);
+  console.log('🧪 Skills seleccionadas:', selectedSkills);
+  console.log('🧪 isLeader:', isLeader, 'workedhours:', workedhours, 'type:', type);
 
   if (selected && selectedSkills?.length) {
     let fullName = '';
     let employeeid: number | null = null;
+let userid: number | null = null; // 👈 nuevo
 
+let found: any = null; // 👈 definido fuera del bloque
     if (typeof selected === 'string') {
       fullName = selected.trim();
       const found = this.employeeList.find(e => e.name === fullName);
+      console.log('🔍 Buscando empleado por nombre:', fullName, 'Resultado:', found);
       if (found) {
         employeeid = found.employeeid;
       } else {
@@ -381,6 +420,7 @@ const workedhours = parseFloat(this.form.get('workedhours')?.value);
     } else if (typeof selected === 'object' && selected.name && selected.employeeid) {
       fullName = selected.name;
       employeeid = selected.employeeid;
+      console.log('📌 Empleado encontrado (objeto):', selected);
     }
 
     if (!employeeid) {
@@ -392,15 +432,19 @@ const workedhours = parseFloat(this.form.get('workedhours')?.value);
     const lastname = lastnameParts.join(' ');
 
     const employeeGroup = this.fb.group({
-      num: this.employees.length + 1,
-      employeeid,
-      firstname,
-      lastname,
-      skills: [Array.isArray(selectedSkills) ? [...selectedSkills] : [selectedSkills]],
-      leader: isLeader,
-      type,   
-      workedhours 
-    });
+  num: this.employees.length + 1,
+  employeeid,
+  userid: found?.userid ?? selected.userid ?? null, // ✅ esto asegura que tienes ambos
+  firstname,
+  lastname,
+  skills: [Array.isArray(selectedSkills) ? [...selectedSkills] : [selectedSkills]],
+  leader: isLeader,
+  type,
+  workedhours
+});
+
+
+    console.log('🆕 Empleado agregado al formulario:', employeeGroup.value);
 
     this.employees.push(employeeGroup);
 
@@ -412,15 +456,14 @@ const workedhours = parseFloat(this.form.get('workedhours')?.value);
 
     this.updateEmployeeData();
 
-// 🔧 Deshabilita el toggle si ya hay líder
-if (this.hasLeaderAlready) {
-  this.form.get('isLeader')?.disable();
-} else {
-  this.form.get('isLeader')?.enable();
-}
-
+    if (this.hasLeaderAlready) {
+      this.form.get('isLeader')?.disable();
+    } else {
+      this.form.get('isLeader')?.enable();
+    }
   }
 }
+
 
 get hasLeaderAlready(): boolean {
   return this.employees.controls.some(emp => emp.get('leader')?.value === true);
@@ -682,13 +725,20 @@ save() {
     return;
   }
 
-    const selectedRouteId = this.form.get('route')?.value;
+  this.isLoading = true; // <-- iniciar loader
+
+  const selectedRouteId = this.form.get('route')?.value;
+  const selectedRoute = this.routes.find(r => r.routeid === selectedRouteId);
+  const selectedRouteCode = selectedRoute?.routecode;
+  localStorage.setItem('selectedRouteCode', selectedRouteCode || '');
+
+  this.routeState.setRouteCode(selectedRouteCode || '');
   if (!selectedRouteId) {
     console.warn('⚠️ No hay ruta seleccionada');
+    this.isLoading = false; // detener loader
     return;
   }
 
-  // Agrupar empleados por tipo de crew
   const crewsPorTipo = new Map<string, typeof this._employeeDataa>();
   for (const emp of this._employeeDataa) {
     if (!crewsPorTipo.has(emp.type)) {
@@ -698,11 +748,8 @@ save() {
   }
 
   crewsPorTipo.forEach((empleados, tipo) => {
-    // Obtener las horas trabajadas (del primer empleado del grupo)
     const rawHoras = empleados[0]?.workedhours;
-    const horas = typeof rawHoras === 'number' && !isNaN(rawHoras)
-      ? Number(rawHoras.toFixed(2))
-      : 0;
+    const horas = typeof rawHoras === 'number' && !isNaN(rawHoras) ? Number(rawHoras.toFixed(2)) : 0;
 
     const crewData = {
       type: tipo,
@@ -713,28 +760,16 @@ save() {
       updatedBy: 1
     };
 
-    console.log('🛠️ Creando crew con:', crewData);
-
     this.crewsService.createCrew(crewData).subscribe({
       next: (createdCrew) => {
-        console.log('📥 Respuesta de createCrew:', createdCrew);
-
-        // Extraer ID del crew
         const crewid = createdCrew?.crewid ?? createdCrew?.crewId ?? createdCrew?.id;
-        console.log('📌 crewid extraído:', crewid);
-        console.log('🔍 Tipo de crewid:', typeof crewid, crewid);
 
         if (!crewid) {
-          console.error('❌ crewId no recibido. Cancelando operaciones relacionadas.');
+          console.error('❌ crewId no recibido.');
+          this.isLoading = false;
           return;
         }
 
-        console.log('🧪 Datos antes de crear empleados: ', empleados);
-console.log('🧪 Datos materiales: ', this._materialDataa);
-console.log('🧪 Datos equipo: ', this._equipmentDataa);
-console.log('📌 crewid extraído:', crewid);
-
-        // Crear empleados asignados
         const employees$ = empleados
           .filter(emp => !!emp.employeeid)
           .map(emp => this.crewEmployeesService.createCrewEmployee({
@@ -744,12 +779,7 @@ console.log('📌 crewid extraído:', crewid);
             createdBy: 1,
             updatedBy: 1
           }));
-          console.log('🧍 Empleados recibidos para crear CrewEmployees:', empleados);
 
-
-    console.log('🧪 crewid justo antes de crear materiales y equipo:', crewid); // <-- aquí
-
-        // Crear inventario usado
         const materials$ = this._materialDataa
           .filter(mat => !!mat.inventoryid)
           .map(mat => this.usedInventoryService.createUsedInventory({
@@ -761,7 +791,6 @@ console.log('📌 crewid extraído:', crewid);
             updatedBy: 1
           }));
 
-        // Crear equipo usado
         const equipment$ = this._equipmentDataa
           .filter(eq => !!eq.equipmentid)
           .map(eq => this.usedEquipmentService.createUsedEquipment({
@@ -777,31 +806,36 @@ console.log('📌 crewid extraído:', crewid);
             updatedBy: 1
           }));
 
-console.log('📦 Requests de Inventario:', materials$);
-console.log('🔧 Requests de Equipos:', equipment$);
-
-
-        // Ejecutar todas las llamadas juntas
         import('rxjs').then(({ forkJoin }) => {
           forkJoin([...employees$, ...materials$, ...equipment$]).subscribe({
             next: () => {
-              console.log(`✅ Crew '${tipo}' y entidades relacionadas creadas exitosamente`);
+              console.log(`✅ Crew creado correctamente`);
               this.form.reset();
               this.employees.clear();
               this.materials.clear();
               this.equipment.clear();
+              this.isLoading = false; // detener loader
+              
+              this.snackBar.open('Crew saved successfully!', 'Close', {
+  duration: 3000, // milisegundos
+  horizontalPosition: 'center',
+  verticalPosition: 'top',
+  panelClass: ['success-snackbar'] // opcional para estilo
+});
+
             },
             error: (err) => {
               console.error('❌ Error al crear entidades relacionadas', err);
+              this.isLoading = false; // detener loader
             }
           });
         });
       },
       error: (err) => {
         console.error('❌ Error al crear crew', err);
+        this.isLoading = false; // detener loader
       }
     });
   });
 }
-
 }

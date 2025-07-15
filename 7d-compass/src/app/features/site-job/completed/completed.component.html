@@ -1,24 +1,51 @@
-<app-sitejob-sidenavbar [teamLeader]="'Alice Johnson'" [teamMembers]="['Bob', 'Carol', 'Dave']">
+<app-sitejob-sidenavbar [teamLeader]="teamLeader" [teamMembers]="teamMembers">
 
 <app-sitejob-layout></app-sitejob-layout>
 <div class="content-wrapper">
-  <h2 class="section-title">Previous Locations</h2>
+  <h2 class="section-title">Completed Locations</h2>
 
-  <div *ngFor="let location of previousLocations" class="location-card">
-    <p class="address"> <strong>{{ location.address }}</strong></p>
 
-    <ul class="info-list">
-      <li *ngFor="let action of location.actions">
-        <mat-icon class="icon">check_box</mat-icon> {{ action }}
-      </li>
-    </ul>
-
-    <div class="photo-comment">
-      <img  [src]="location.imageUrl" alt="location image" class="location-image" />
-      <button mat-stroked-button color="primary">{{ location.comment }}</button>
-    </div>
-
-    <hr class="divider" />
+    <!-- Mostrar mensaje si no hay ubicaciones completadas -->
+  <div *ngIf="previousLocations.length === 0" class="no-locations">
+    <p class="no-locations-text">
+      <mat-icon color="warn">info</mat-icon>
+      There are no completed locations yet.
+    </p>
   </div>
+
+<div *ngFor="let location of previousLocations" class="location-card">
+  <div class="location-header">
+    <p class="address">
+      <mat-icon class="location-icon">place</mat-icon>
+      <strong>{{ location.address }}</strong>
+    </p>
+
+    <p class="date-info">
+      <mat-icon class="calendar-icon">calendar_today</mat-icon>
+      <strong>Started:</strong> {{ location.startingDate | date:'medium' }}<br />
+      <mat-icon class="calendar-icon">calendar_today</mat-icon>
+      <strong>Completed:</strong> {{ location.endingDate | date:'medium' }}
+    </p>
+  </div>
+
+  <ul class="info-list">
+    <li *ngFor="let action of location.actions">
+      <mat-icon class="icon">check_circle</mat-icon>
+      {{ action }}
+    </li>
+  </ul>
+
+  <div class="photo-comment">
+    <img [src]="location.imageUrl" alt="location image" class="location-image" />
+    <button mat-raised-button color="primary" class="comment-btn">
+      {{ location.comment }}
+    </button>
+  </div>
+
+  <hr class="divider" />
 </div>
+
+</div>
+
+  <app-sitejob-tabs></app-sitejob-tabs>
 </app-sitejob-sidenavbar>
