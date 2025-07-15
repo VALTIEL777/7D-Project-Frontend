@@ -190,6 +190,16 @@
   </mat-error>
 </mat-form-field>
 
+<!-- HOURS LENT -->
+<mat-form-field appearance="fill">
+  <mat-label>Hours Lent</mat-label>
+  <mat-select formControlName="newEquipmentHoursLent">
+    <mat-option *ngFor="let hour of [1,2,3,4,5,6,7,8,9,10,11,12]" [value]="hour">
+      {{ hour }} hours
+    </mat-option>
+  </mat-select>
+</mat-form-field>
+
 
         <button mat-fab color="primary" (click)="addEquipment()" type="button">
           <mat-icon>add</mat-icon>

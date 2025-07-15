@@ -22,4 +22,5 @@ export const environment = {
   contractUnitPhasesServiceUrl: 'http://localhost:3000/api/contractunitsphases',
   ticketStatusServiceUrl:'http://localhost:3000/api/ticketstatus',  
     taskStatusServiceUrl:'http://localhost:3000/api/taskstatus',
+    wayfindingServiceUrl: 'http://localhost:3000/api/wayfinding'
 };

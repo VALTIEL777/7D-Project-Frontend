@@ -88,7 +88,8 @@ materialOptions: {
   value: number;         // El `inventoryId` u otro identificador
   viewValue: string;     // El nombre del material
   unit: string;          // Unidad del material (e.g. 'Kg', 'Bags')
-  quantity: number;      // Cantidad usada si aplica, o 0 por defecto
+  quantity: number;
+  costperunit : number;      // Cantidad usada si aplica, o 0 por defecto
 }[] = [];
   unitOptions = ['Bolsa'];
 
@@ -97,6 +98,7 @@ equipmentOptions: {
   viewValue: string;      // equipmentName
   supplier: string;       // supplierName
   quantity: number;       // from UsedEquipment
+  hourlyrate: number;
 }[] = [];
 
 routes: any[] = [];
@@ -135,6 +137,7 @@ routes: any[] = [];
       newEquipmentName: [null],
       newEquipmentQuantity: [null, [ Validators.max(12)]],
       newEquipmentSupplier: [null],
+      newEquipmentHoursLent: [null],
       equipment: this.fb.array([]),
 
       route: [null,]
@@ -282,7 +285,8 @@ loadMaterials() {
           value: inv.inventoryid,
           viewValue: inv.name,
           unit: inv.unit,
-          quantity: used?.quantity || 0  // si no hay usado, pone 0
+          quantity: used?.quantity || 0,  // si no hay usado, pone 0
+          costperunit: Number(inv.costperunit) 
         };
       });
     },
@@ -308,7 +312,8 @@ loadMaterials() {
             value: eq.equipmentid,
             viewValue: eq.equipmentname,
             quantity: usedEq?.quantity || 0,
-            supplier: supplier?.name || 'Unknown'
+            supplier: supplier?.name || 'Unknown',
+            hourlyrate: Number(eq.hourlyrate) || 0
           };
         });
       },
@@ -545,26 +550,39 @@ onMaterialSelected(inventoryid: number) {
 }
 private _materialDataa: any[] = [];
 
-updateMaterialData() {
-  this._materialDataa = this.materials.controls.map(ctrl => ctrl.value);
+private updateMaterialData(): void {
+  this._materialDataa = this.materials.controls.map(ctrl => {
+    const quantity = Number(ctrl.value.quantity) || 0;
+    const costPerUnit = Number(ctrl.value.costperunit) || 0;
+    return {
+      ...ctrl.value,
+      materialcost: quantity * costPerUnit
+    };
+  });
 }
+
 get materialDataa() {
   return this._materialDataa;
 }
 
 addMaterial() {
   const selectedMaterialId = this.form.get('newMaterialName')?.value;
-  const quantity = this.form.get('newMaterialQuantity')?.value;
+  const quantity = Number(this.form.get('newMaterialQuantity')?.value) || 0;
 
   const selected = this.materialOptions.find(m => m.value === selectedMaterialId);
 
   if (selected && quantity > 0) {
+    const costPerUnit = Number(selected.costperunit) || 0;
+    const materialCost = quantity * costPerUnit;
+
     this.materials.push(this.fb.group({
       num: this.materials.length + 1,
       inventoryid: selected.value,
       name: selected.viewValue,
       quantity,
-      unit: selected.unit
+      unit: selected.unit,
+      costperunit: costPerUnit,
+      materialcost: materialCost // ✅ Se guarda el costo total aquí
     }));
 
     // Limpiar campos del formulario
@@ -573,9 +591,11 @@ addMaterial() {
       newMaterialQuantity: ''
     });
     this.selectedMaterialUnit = '';
-    this.updateMaterialData();
+
+    this.updateMaterialData(); // ✅ Refuerza los datos para el save()
   }
 }
+
 
 onEditMaterial(material: any) {
   const dialogRef = this.dialog.open(SearchDialogComponent, {
@@ -627,8 +647,9 @@ onDeleteMaterial(material: any) {
 equipmentColumns: ColumnDefinition[] = [
   { name: 'num', header: 'No.', cell: e => e.num?.toString() ?? '' },
   { name: 'name', header: 'Equipment', cell: e => e.name ?? '' },
-  { name: 'quantity', header: 'Quantity', cell: e => e.quantity?.toString() ?? '' },
   { name: 'supplier', header: 'Supplier', cell: e => e.supplier ?? '' },
+  { name: 'quantity', header: 'Quantity', cell: e => e.quantity?.toString() ?? '' },
+  { name: 'hourslent', header: 'Hours Lent', cell: e => e.hourslent?.toString() ?? '0' },
   { name: 'actions', header: 'Actions', cell: () => '', isActionColumn: true }
 ];
 
@@ -641,9 +662,19 @@ onEquipmentSelected(equipmentid: number) {
   this.selectedEquipmentSupplier = selected?.supplier || '';
 }
 
-updateEquipmentData() {
-  this._equipmentDataa = this.equipment.controls.map(ctrl => ctrl.value);
+private updateEquipmentData(): void {
+  this._equipmentDataa = this.equipment.controls.map(ctrl => {
+    const quantity = Number(ctrl.value.quantity) || 0;
+    const hoursLent = Number(ctrl.value.hourslent) || 0;
+    const hourlyRate = Number(ctrl.value.hourlyrate) || 0;
+
+    return {
+      ...ctrl.value,
+      equipmentcost: quantity * hoursLent * hourlyRate
+    };
+  });
 }
+
 
 get equipmentDataa() {
   return this._equipmentDataa;
@@ -651,27 +682,38 @@ get equipmentDataa() {
 
 addEquipment() {
   const equipmentid = this.form.get('newEquipmentName')?.value;
-  const quantity = this.form.get('newEquipmentQuantity')?.value;
+  const quantity = Number(this.form.get('newEquipmentQuantity')?.value) || 0;
+  const hourslent = Number(this.form.get('newEquipmentHoursLent')?.value) || 0;
 
   const selected = this.equipmentOptions.find(e => e.value === equipmentid);
 
   if (selected && quantity > 0) {
+    const hourlyRate = Number(selected.hourlyrate) || 0;
+    const equipmentCost = quantity * hourslent * hourlyRate;
+
     this.equipment.push(this.fb.group({
       num: this.equipment.length + 1,
       equipmentid: selected.value,
       name: selected.viewValue,
       quantity,
-      supplier: selected.supplier
+      supplier: selected.supplier,
+      hourlyrate: hourlyRate,
+      hourslent,
+      equipmentcost: equipmentCost // ✅ Se calcula aquí
     }));
 
+    // Limpiar los campos del formulario
     this.form.patchValue({
       newEquipmentName: '',
-      newEquipmentQuantity: ''
+      newEquipmentQuantity: '',
+      newEquipmentHoursLent: ''
     });
     this.selectedEquipmentSupplier = '';
+
     this.updateEquipmentData();
   }
 }
+
 
 onEditEquipment(equipment: any) {
   const dialogRef = this.dialog.open(SearchDialogComponent, {
@@ -724,6 +766,7 @@ save() {
     console.warn('Formulario inválido');
     return;
   }
+  
 
   this.isLoading = true; // <-- iniciar loader
 
@@ -746,6 +789,16 @@ save() {
     }
     crewsPorTipo.get(emp.type)?.push(emp);
   }
+
+    // ✅ FORZAR ACTUALIZACIÓN DE LOS DATOS
+  this.updateEmployeeData();
+  this.updateMaterialData();
+  this.updateEquipmentData();
+
+  // ✅ LOG ANTES DE ENVIAR
+  console.log('📦 Material data to send:', this._materialDataa);
+  console.log('📦 Equipment data to send:', this._equipmentDataa);
+
 
   crewsPorTipo.forEach((empleados, tipo) => {
     const rawHoras = empleados[0]?.workedhours;
@@ -781,30 +834,39 @@ save() {
           }));
 
         const materials$ = this._materialDataa
-          .filter(mat => !!mat.inventoryid)
-          .map(mat => this.usedInventoryService.createUsedInventory({
-            CrewId: crewid,
-            inventoryId: mat.inventoryid,
-            quantity: mat.quantity,
-            materialCost: 0,
-            createdBy: 1,
-            updatedBy: 1
-          }));
+  .filter(mat => !!mat.inventoryid)
+  .map(mat => {
+    const quantity = Number(mat.quantity) || 0;
+    const costPerUnit = Number(mat.costperunit) || 0;
+    const materialCost = quantity * costPerUnit;
 
+    return this.usedInventoryService.createUsedInventory({
+      CrewId: crewid,
+      inventoryId: mat.inventoryid,
+      quantity,
+      MaterialCost: materialCost,
+      createdBy: 1,
+      updatedBy: 1
+    });
+  });
+
+
+          
         const equipment$ = this._equipmentDataa
-          .filter(eq => !!eq.equipmentid)
-          .map(eq => this.usedEquipmentService.createUsedEquipment({
-            CrewId: crewid,
-            equipmentId: eq.equipmentid,
-            startdate: new Date(),
-            enddate: new Date(),
-            hoursLent: 0,
-            quantity: eq.quantity,
-            equipmentCost: 0,
-            observation: '',
-            createdBy: 1,
-            updatedBy: 1
-          }));
+  .filter(eq => !!eq.equipmentid)
+  .map(eq => this.usedEquipmentService.createUsedEquipment({
+    CrewId: crewid,
+    equipmentId: eq.equipmentid,
+    startdate: new Date(),
+    enddate: new Date(),
+    hoursLent: eq.hourslent,
+    quantity: eq.quantity,
+    equipmentCost: eq.equipmentcost, // ✅ ya viene calculado correctamente
+    observation: '',
+    createdBy: 1,
+    updatedBy: 1
+  }));
+
 
         import('rxjs').then(({ forkJoin }) => {
           forkJoin([...employees$, ...materials$, ...equipment$]).subscribe({

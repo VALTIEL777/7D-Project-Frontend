@@ -5,15 +5,18 @@ import { environment } from '../../../environments/environment';
 
 export interface Ticket {
   ticketId?: number;
+  ticketid?: number;
   incidentId?: number;
   incidentName?: string;
   quadrantId?: number;
   contractUnitId?: number;
   contractUnitName?: string;
   wayfindingId?: number;
+    wayfindingid?: number;
   paymentId?: number | null;
   mobilizationId?: number | null;
   ticketCode: string;
+  ticketcode: string;
   quantity: number;
   daysOutstanding: number | null;
   comment7d: string | null;

@@ -1,5 +1,12 @@
 <app-dashboard-layout>
-      <div style="display: flex; flex-direction: column; gap: 1rem;">
+  
+      <div *ngIf="isLoading" style="display:flex; justify-content:center; align-items:center; height:300px;">
+    <mat-spinner diameter="60"></mat-spinner>
+  </div>
+
+  <!-- 🔥 El contenido solo se muestra cuando termina la carga -->
+  <div *ngIf="!isLoading" style="display: flex; flex-direction: column; gap: 1rem;">
+        
 
       <app-card-with-button title="Crew Payment" [showEyeButton]="false">
         <app-data-table
@@ -21,7 +28,7 @@
         [title]="'Team'"
         [data]="invoiceData"
         [columns]="invoiceColumns"
-        (edit)="onEditTicket($event)"
+        (edit)="onEditInvoice($event)"
         (delete)="onDeleteTicket($event)">
         </app-data-table>
       </app-card-with-button>

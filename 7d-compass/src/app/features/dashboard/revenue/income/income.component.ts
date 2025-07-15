@@ -1,12 +1,21 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { DashboardLayoutComponent } from "../../../../shared/dashboard-layout/dashboard-layout.component";
 import { DataTableComponent } from '../../../../shared/data-table/data-table.component';
 import { CardWithButtonComponent } from '../../../../shared/card-with-button/card-with-button.component';
 import { ConfirmationDialogComponent } from '../../../../shared/confirmation-dialog/confirmation-dialog.component';
 import { SearchDialogComponent } from '../../../../shared/search-dialog/search-dialog.component';
+import { forkJoin } from 'rxjs';
 import { MatDialog } from '@angular/material/dialog';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { ColumnDefinition } from '../../../../shared/data-table/data-table.component';
+import { CrewsService } from '../../../../core/services/human-resources/crew.service';
+import { UsedInventoryService } from '../../../../core/services/material/used-inventory.service';
+import { TicketStatusService } from '../../../../core/services/route/ticketstatus.service';
+import { UsedEquipmentService } from '../../../../core/services/material/used-equipment.service';
+import { RoutesService } from '../../../../core/services/route/route.service';
+import { TicketService } from '../../../../core/services/ticket.service';
+import { MATERIAL_MODULES } from '../../../../material';
+import { CommonModule } from '@angular/common';
 
 
 
@@ -21,207 +30,224 @@ import { ColumnDefinition } from '../../../../shared/data-table/data-table.compo
 
 @Component({
   selector: 'app-income',
-  imports: [DashboardLayoutComponent, DataTableComponent,CardWithButtonComponent],
+  imports: [DashboardLayoutComponent, DataTableComponent,CardWithButtonComponent, MATERIAL_MODULES, CommonModule],
   templateUrl: './income.component.html',
   styleUrl: './income.component.scss'
 })
-export class IncomeComponent {
-  constructor(private dialog: MatDialog,
-    private sanitizer: DomSanitizer
-   ) {}
-     sanitize(html: string): SafeHtml {
+export class IncomeComponent implements OnInit {
+  isLoading: boolean = false; 
+  constructor(
+    private dialog: MatDialog,
+    private sanitizer: DomSanitizer,
+    private crewsService: CrewsService,
+    private ticketStatusService: TicketStatusService,
+    private usedInventoryService: UsedInventoryService,
+    private usedEquipmentService: UsedEquipmentService,
+    private routesService: RoutesService,
+     private ticketService: TicketService
+  ) {}
+
+  sanitize(html: string): SafeHtml {
     return this.sanitizer.bypassSecurityTrustHtml(html);
   }
 
-
   ticketColumns: ColumnDefinition[] = [
-  {
-    name: 'ticketnum',
-    header: 'Ticket',
-    cell: (ticket: any) => `TK-${ticket.ticketnum}`
-  },
-   {
-    name: 'crew',
-    header: 'Crew',
-    cell: (ticket: any) => ticket.crew
-  },
-  {
-    name: 'startdate',
-    header: 'Start Date',
-    cell: (ticket: any) => ticket.startdate
-  },
-  {
-    name: 'enddate',
-    header: 'End Date',
-    cell: (ticket: any) => ticket.enddate
-  },
-  {
-    name: 'mcost',
-    header: 'Material Cost',
-    cell: (ticket: any) => `$${ticket.mcost}`
-  },
-  {
-    name: 'wcost',
-    header: 'Work Cost',
-    cell: (ticket: any) => `$${ticket.wcost}`
-  },
-  {
-    name: 'ecost',
-    header: 'Equipment Cost',
-    cell: (ticket: any) => `$${ticket.ecost}`
-  },
-  {
-    name: 'total',
-    header: 'Total',
-    cell: (ticket: any) => `$${ticket.total}`
-  },
-  {
-    name: 'actions',
-    header: 'Actions',
-    cell: () => '',
-    isActionColumn: true
+    { name: 'ticketnum', header: 'Ticket', cell: (t: any) => t.ticketnum },
+    { name: 'routecode', header: 'Route', cell: (t: any) => t.routecode },
+    { name: 'crew', header: 'Crew', cell: (t: any) => t.crew },
+    { name: 'startdate', header: 'Start Date', cell: (t: any) => t.startdate },
+    { name: 'enddate', header: 'End Date', cell: (t: any) => t.enddate },
+    { name: 'mcost', header: 'Material Cost', cell: (t: any) => `$${t.mcost}` },
+    { name: 'wcost', header: 'Work Cost', cell: (t: any) => `$${t.wcost}` },
+    { name: 'ecost', header: 'Equipment Cost', cell: (t: any) => `$${t.ecost}` },
+    { name: 'total', header: 'Total', cell: (t: any) => `$${t.total}` },
+    { name: 'actions', header: 'Actions', cell: () => '', isActionColumn: true }
+  ];
+
+  ticketData: any[] = [];
+  invoiceData: any[] = [];
+  totalGeneral: number = 0;
+  totalIncome: number = 0;
+
+  invoiceColumns: ColumnDefinition[] = [
+    { name: 'ticketnum', header: 'Ticket', cell: (t: any) => t.ticketnum },
+    { name: 'startdate', header: 'Start Date', cell: (t: any) => t.startdate },
+    { name: 'enddate', header: 'End Date', cell: (t: any) => t.enddate },
+    { name: 'our', header: 'Our calculation', cell: (t: any) => `$${t.our}` },
+    { name: 'invoiceweb', header: 'Invoice by web', cell: (t: any) => `$${t.invoiceweb}` },
+    {
+      name: 'income',
+      header: 'Income',
+      cell: (t: any) => {
+        const diff = Number(t.invoiceweb) - Number(t.our);
+        const sign = diff > 0 ? '+' : diff < 0 ? '-' : '';
+        const color = diff > 0 ? 'green' : diff < 0 ? 'red' : 'gray';
+        return this.sanitize(`<span style="color:${color}; font-weight:bold;">${sign}$${Math.abs(diff)}</span>`);
+      },
+      isHtml: true
+    },
+    { name: 'actions', header: 'Actions', cell: () => '', isActionColumn: true }
+  ];
+
+  ngOnInit(): void {
+    this.loadTicketData();
   }
-];
-ticketData = [
-   {
-    ticketnum: 17,
-    crew: 'Team A',
-    startdate: '05/06/2025',
-    enddate: '05/26/2025',
-    mcost: 266,
-    wcost: 266,
-    ecost: 266,
-    total: ''
-  },
-  {
-    ticketnum: 18,
-    crew: 'Team B',
-    startdate: '05/06/2025',
-    enddate: '05/26/2025',
-    mcost: 356,
-    wcost: 348,
-    ecost: 834,
-    total: ''
-  },
-   {
-    ticketnum: 19,
-    crew: 'Team C',
-    startdate: '05/07/2025',
-    enddate: '05/27/2025',
-    mcost: 275,
-    wcost: 310,
-    ecost: 290,
-    total: ''
-  },
-  {
-    ticketnum: 20,
-    crew: 'Team A',
-    startdate: '05/08/2025',
-    enddate: '05/28/2025',
-    mcost: 260,
-    wcost: 305,
-    ecost: 275,
-    total: ''
-  },
-  {
-    ticketnum: 21,
-    crew: 'Team D',
-    startdate: '05/09/2025',
-    enddate: '05/29/2025',
-    mcost: 312,
-    wcost: 298,
-    ecost: 410,
-    total: ''
-  },
-  {
-    ticketnum: 22,
-    crew: 'Team B',
-    startdate: '05/10/2025',
-    enddate: '05/30/2025',
-    mcost: 330,
-    wcost: 289,
-    ecost: 390,
-    total: ''
-  },
-  {
-    ticketnum: 23,
-    crew: 'Team E',
-    startdate: '05/11/2025',
-    enddate: '05/31/2025',
-    mcost: 299,
-    wcost: 320,
-    ecost: 360,
-    total: ''
-  },
-  {
-    ticketnum: 24,
-    crew: 'Team C',
-    startdate: '05/12/2025',
-    enddate: '06/01/2025',
-    mcost: 310,
-    wcost: 310,
-    ecost: 310,
-    total: ''
-  }
-];
-totalGeneral: number = 0;
-    totalIncome: number = 0;
 
- ngOnInit(): void {
-  // Calcular total general de tickets
-  this.totalGeneral = 0;
-  this.ticketData.forEach(ticket => {
-    const m = Number(ticket.mcost) || 0;
-    const w = Number(ticket.wcost) || 0;
-    const e = Number(ticket.ecost) || 0;
+  /** ✅ Carga datos reales usando forkJoin */
+private loadTicketData(): void {
+   this.isLoading = true;
+  forkJoin({
+    crews: this.crewsService.getAllCrews(),
+    ticketStatus: this.ticketStatusService.getAll(),
+    usedInventory: this.usedInventoryService.getAllUsedInventory(),
+    usedEquipment: this.usedEquipmentService.getAllUsedEquipment(),
+    routes: this.routesService.getAllRoutes(),
+    tickets: this.ticketService.getAllTickets()
+  }).subscribe({
+    next: ({ crews, ticketStatus, usedInventory, usedEquipment, routes, tickets }) => {
+      const routeList = Array.isArray(routes) ? routes : routes.routes;
 
-    const totalTicket = m + w + e;
-    ticket.total = totalTicket.toString();
-    this.totalGeneral += totalTicket;
-  });
+      this.ticketData = ticketStatus.map((ticket: any) => {
+        const crewId = ticket.crewid || ticket.crewId;
+        const crew = crews.find((c: any) => c.crewid === crewId || c.crewId === crewId);
 
-  // Sincronizar "total" con "our"
-  this.invoiceData = this.invoiceData.map(invoice => {
-    const matchedTicket = this.ticketData.find(t => t.ticketnum === invoice.ticketnum);
-    if (matchedTicket) {
-      invoice.our = Number(matchedTicket.total); // Asegura que se pase como número
-    }
-    const diff = invoice.invoiceweb - invoice.our;
-    invoice.income = `${diff > 0 ? '+' : diff < 0 ? '-' : ''}$${Math.abs(diff)}`;
-    this.totalIncome += diff;
-    return invoice;
-  });
+        const mcost = usedInventory
+          .filter((inv: any) => inv.crewid === crewId || inv.crewId === crewId)
+          .reduce((sum: number, inv: any) => sum + Number(inv.materialcost || inv.MaterialCost || 0), 0);
+
+        const ecost = usedEquipment
+          .filter((eq: any) => eq.crewid === crewId || eq.crewId === crewId)
+          .reduce((sum: number, eq: any) => sum + Number(eq.equipmentcost || eq.equipmentCost || 0), 0);
+
+        const wcost = Number(crew?.workedhours || 0) * 20;
+
+        const route = routeList.find((r: any) => r.routeid === crew?.routeid);
+        const routecode = route?.routecode || 'No Route';
+
+        const ticketInfo = tickets.find((t: any) => t.ticketId === ticket.ticketid || t.ticketid === ticket.ticketid);
+        const ticketCode = ticketInfo?.ticketCode || `TK-${ticket.ticketid}`;
+
+        // ✅ Formatear fechas y permitir que sean opcionales
+        const formatDate = (dateStr: string | null | undefined): string =>
+          dateStr ? new Date(dateStr).toLocaleDateString('en-US') : 'No start date';
+
+        return {
+          ticketnum: ticketCode,
+          crew: crew?.type || 'Unknown',
+          routecode,
+          startdate: formatDate(ticket.startingdate), // ✅ Ahora está formateado y no falla si es null
+          enddate: ticket.endingdate ? new Date(ticket.endingdate).toLocaleDateString('en-US') : 'Not finalized yet',
+          mcost,
+          wcost,
+          ecost,
+          total: '' // Se calcula abajo
+        };
+      });
+
+      // ✅ Calcular total individual por ticket
+      this.ticketData.forEach(ticket => {
+        const m = Number(ticket.mcost) || 0;
+        const w = Number(ticket.wcost) || 0;
+        const e = Number(ticket.ecost) || 0;
+        ticket.total = (m + w + e).toString();
+      });
+
+      // ✅ Agrupar para InvoiceData
+      const groupedTickets = this.ticketData.reduce((acc, ticket) => {
+        if (!acc[ticket.ticketnum]) {
+          acc[ticket.ticketnum] = {
+            ticketnum: ticket.ticketnum,
+            startdate: ticket.startdate,
+            enddate: ticket.enddate,
+            our: 0,
+            invoiceweb: 0,
+            income: ''
+          };
+        }
+        acc[ticket.ticketnum].our += Number(ticket.total || 0);
+        return acc;
+      }, {} as Record<string, any>);
+
+      this.invoiceData = Object.values(groupedTickets).map(invoice => {
+        const inv = invoice as any;
+        const diff = inv.invoiceweb - inv.our;
+        inv.income = `${diff > 0 ? '+' : diff < 0 ? '-' : ''}$${Math.abs(diff)}`;
+        return inv;
+      });
+
+      // ✅ Totales generales
+      this.totalGeneral = this.ticketData.reduce((sum, t) => sum + (Number(t.total) || 0), 0);
+      this.totalIncome = this.invoiceData.reduce((sum, i) => sum + (Number(i.income.replace(/[^0-9\-\.]/g, '')) || 0), 0);
+
+      console.log('✅ TicketData procesado:', this.ticketData);
+      console.log('✅ InvoiceData calculado dinámicamente:', this.invoiceData);
+    },
+ error: err => {
+        console.error('❌ Error cargando datos en IncomeComponent:', err);
+        this.isLoading = false; // 🔥 Oculta loader en caso de error
+      },
+      complete: () => {
+        this.isLoading = false; // 🔥 Oculta loader cuando termina
+      }  });
 }
 
 
 
-  onEditTicket(ticket: any): void {
-    const dialogRef = this.dialog.open(SearchDialogComponent, {
-      width: '500px',
-      data: {
-        title: `Ticket: #${ticket.ticketnum}`,
-        data: { ...ticket },
-        excludedFields: []
-      }
-    });
+  /** 
+ * ✅ Obtiene el total general sumando todos los registros con el mismo ticketnum
+ * @param ticketnum El código del ticket a sumar
+ */
+getTotalGeneralByTicket(ticketnum: string): number {
+  return this.ticketData
+    .filter(t => t.ticketnum === ticketnum)
+    .reduce((sum, t) => sum + (Number(t.total) || 0), 0);
+}
 
-    dialogRef.afterClosed().subscribe(result => {
-      if (result) {
-        const index = this.ticketData.findIndex(t => t.ticketnum === ticket.ticketnum);
-        if (index !== -1) {
-          const updated = {
-            ...this.ticketData[index],
-            ...result
-          };
-          // Recalcular total
-          updated.total = (Number(updated.mcost || 0) + Number(updated.wcost || 0) + Number(updated.ecost || 0)).toString();
-          this.ticketData[index] = updated;
 
-          console.log('Ticket actualizado:', updated);
-        }
+onEditTicket(ticket: any): void {
+  // Abre el diálogo para editar el ticket, pasando los datos actuales
+  const dialogRef = this.dialog.open(SearchDialogComponent, {
+    width: '500px',
+    data: { 
+      title: `Ticket: #${ticket.ticketnum}`, 
+      data: { ...ticket }, 
+      excludedFields: [] 
+    }
+  });
+
+  // Se suscribe al cierre del diálogo para procesar los cambios
+  dialogRef.afterClosed().subscribe(result => {
+    if (result) {
+      // Busca el índice del ticket que se editó
+      const index = this.ticketData.findIndex(t => t.ticketnum === ticket.ticketnum);
+      if (index !== -1) {
+        // Mezcla los datos existentes con los actualizados
+        const updated = { ...this.ticketData[index], ...result };
+        
+        // Recalcula el total sumando costos, asegurando que sean números
+        const mcost = Number(updated.mcost) || 0;
+        const wcost = Number(updated.wcost) || 0;
+        const ecost = Number(updated.ecost) || 0;
+        updated.total = (mcost + wcost + ecost).toString();
+
+        // Actualiza el array con el ticket modificado
+        this.ticketData[index] = updated;
+
+        // Opcional: actualizar totales generales si usas esa lógica
+        this.updateTotals();
+
+        console.log('Ticket actualizado:', updated);
       }
-    });
-  }
+    }
+  });
+}
+
+// Método para actualizar totales generales (si no lo tienes, puedes agregarlo)
+private updateTotals(): void {
+  this.totalGeneral = this.ticketData.reduce((sum, t) => sum + (Number(t.total) || 0), 0);
+  // Puedes actualizar otros totales o estados relacionados aquí
+}
+
 
   onDeleteTicket(ticket: any): void {
     const dialogRef = this.dialog.open(ConfirmationDialogComponent, {
@@ -244,119 +270,53 @@ totalGeneral: number = 0;
     });
   }
 
-  invoiceColumns: ColumnDefinition[] = [
-  {
-    name: 'ticketnum',
-    header: 'Ticket',
-    cell: (ticket: any) => `TK-${ticket.ticketnum}`
-  },
-  {
-    name: 'startdate',
-    header: 'Start Date',
-    cell: (ticket: any) => ticket.startdate
-  },
-  {
-    name: 'enddate',
-    header: 'End Date',
-    cell: (ticket: any) => ticket.enddate
-  },
-  {
-    name: 'our',
-    header: 'Our calculation',
-    cell: (ticket: any) => `$${ticket.our}`
-  },
-  {
-    name: 'invoiceweb',
-    header: 'Invoice by web',
-    cell: (ticket: any) => `$${ticket.invoiceweb}`
-  },
-  {
-  name: 'income',
-  header: 'Income',
-  cell: (ticket: any) => {
-  const diff = Number(ticket.invoiceweb) - Number(ticket.our);
-  const sign = diff > 0 ? '+' : diff < 0 ? '-' : '';
-  const color = diff > 0 ? 'green' : diff < 0 ? 'red' : 'gray';
-  const html = `<span style="color:${color}; font-weight: bold;">${sign}$${Math.abs(diff)}</span>`;
-  return this.sanitize(html); // 👈 sanitización aquí
-},
-isHtml: true
-},
+  private updateInvoiceTotals(): void {
+  this.totalIncome = this.invoiceData.reduce((sum, inv) => {
+    const diff = Number(inv.invoiceweb) - Number(inv.our);
+    return sum + diff;
+  }, 0);
+
+  console.log('✅ Total income recalculado:', this.totalIncome);
+}
+
 
   
-  {
-    name: 'actions',
-    header: 'Actions',
-    cell: () => '',
-    isActionColumn: true
-  }
-];
-invoiceData = [
-   {
-    ticketnum: 17,
-    startdate: '05/06/2025',
-    enddate: '05/26/2025',
-    our: 266,
-    invoiceweb: 266,
-    income: ''
-  },
-  {
-    ticketnum: 18,
-    startdate: '05/06/2025',
-    enddate: '05/26/2025',
-    our: 265,
-    invoiceweb: 1538,
-    income:''
-  },
-   {
-    ticketnum: 19,
-    startdate: '05/07/2025',
-    enddate: '05/27/2025',
-    our: 270,
-    invoiceweb: 7270,
-    income: ''
-  },
-  {
-    ticketnum: 20,
-    startdate: '05/08/2025',
-    enddate: '05/28/2025',
-    our: 268,
-    invoiceweb: 269,
-    income: ''
-  },
-  {
-    ticketnum: 21,
-    startdate: '05/09/2025',
-    enddate: '05/29/2025',
-    our: 271,
-    invoiceweb: 271,
-    income: ''
-  },
-  {
-    ticketnum: 22,
-    startdate: '05/10/2025',
-    enddate: '05/30/2025',
-    our: 273,
-    invoiceweb: 272,
-    income: ''
-  },
-  {
-    ticketnum: 23,
-    startdate: '05/11/2025',
-    enddate: '05/31/2025',
-    our: 274,
-    invoiceweb: 274,
-    income: ''
-  },
-  {
-    ticketnum: 24,
-    startdate: '05/12/2025',
-    enddate: '06/01/2025',
-    our: 2789,
-    invoiceweb: 7788,
-    income: ''
-  }
-];
+  onEditInvoice(invoice: any) {
+  const dialogRef = this.dialog.open(SearchDialogComponent, {
+    width: '500px',
+    data: {
+      title: `Invoice: ${invoice.ticketnum}`,
+      data: { ...invoice },
+      excludedFields: []
+    }
+  });
+
+  dialogRef.afterClosed().subscribe(result => {
+    if (result) {
+      const index = this.invoiceData.findIndex(inv => inv.ticketnum === invoice.ticketnum);
+      if (index !== -1) {
+        // Mezclamos datos actualizados
+        const updated = { ...this.invoiceData[index], ...result };
+
+        // Recalculamos income
+        const diff = Number(updated.invoiceweb) - Number(updated.our);
+        updated.income = `${diff > 0 ? '+' : diff < 0 ? '-' : ''}$${Math.abs(diff)}`;
+
+        // ✅ Actualizamos el array
+        this.invoiceData[index] = updated;
+
+        // ✅ Forzamos el cambio de referencia (IMPORTANTE)
+        this.invoiceData = [...this.invoiceData];
+
+        // Opcional: recalcular totales generales
+        this.updateInvoiceTotals();
+
+        console.log('✅ Invoice actualizado:', updated);
+      }
+    }
+  });
+}
+
 
 
 }
