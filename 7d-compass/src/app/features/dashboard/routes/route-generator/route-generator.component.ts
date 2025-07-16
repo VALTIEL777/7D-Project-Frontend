@@ -1093,7 +1093,22 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     try {
       this.snackBar.open(`Cancelling route ${route.routeCode}...`, 'Close', { duration: 3000 });
 
-      const endpoint = `${environment.apiUrl}/route-optimization/route/${route.routeId}/cancel`;
+      // Use the correct endpoint based on route type
+      let endpoint: string;
+      switch (route.type) {
+        case 'SPOTTER':
+          endpoint = `${environment.apiUrl}/route-optimization/route/${route.routeId}/cancel-spotting`;
+          break;
+        case 'CONCRETE':
+          endpoint = `${environment.apiUrl}/route-optimization/route/${route.routeId}/cancel-concrete`;
+          break;
+        case 'ASPHALT':
+          endpoint = `${environment.apiUrl}/route-optimization/route/${route.routeId}/cancel-asphalt`;
+          break;
+        default:
+          throw new Error(`Unknown route type: ${route.type}`);
+      }
+
       await this.http.post(endpoint, {}).toPromise();
 
       // Refresh the specific route data
@@ -1178,6 +1193,8 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
   closeGenerateRouteDialog() {
     if (this.dialogRef) {
       this.dialogRef.close();
+      // Reset form after dialog closes
+      this.newRouteType = '';
     }
   }
 
@@ -1323,9 +1340,6 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
         }
       }
     });
-
-    // Reset form
-    this.newRouteType = '';
   }
 
   // Generate static map for route visualization
@@ -1571,9 +1585,11 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
       `key=${this.GOOGLE_MAPS_API_KEY}`
     ];
 
-    // Add center and zoom
+    // Add center and zoom - center on waypoints, not start/end points
     if (allWaypoints.length > 0) {
-      urlParts.push(`center=${encodeURIComponent(allWaypoints[0])}`);
+      // Use the middle waypoint for better centering
+      const centerIndex = Math.floor(allWaypoints.length / 2);
+      urlParts.push(`center=${encodeURIComponent(allWaypoints[centerIndex])}`);
     } else {
       urlParts.push('center=Chicago,IL');
     }
@@ -1701,7 +1717,7 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     this.updateStaticMap();
   }
 
-  // Check if a specific route is visible
+  // Check if a specific route is visible on the map (for polylines)
   isRouteVisible(routeId: number): boolean {
     // Check if the route type is visible
     const route = this.findRouteById(routeId);
@@ -1716,6 +1732,11 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
 
     // Check individual route visibility
     return this.visibleRoutes.has(routeId);
+  }
+
+  // Check if a route should be displayed in the routes section (always show)
+  isRouteDisplayed(routeId: number): boolean {
+    return true; // Always show routes in the routes section
   }
 
   // Helper method to find route by ID

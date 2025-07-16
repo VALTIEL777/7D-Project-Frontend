@@ -17,7 +17,7 @@
                 *ngFor="let route of spottingRoutes"
                 [title]="route.routeCode"
                 [showEyeButton]="true"
-                [style.display]="isRouteVisible(route.routeId) ? 'block' : 'none'"
+                [style.display]="isRouteDisplayed(route.routeId) ? 'block' : 'none'"
               >
                 <div class="route-actions">
                   <button
@@ -91,7 +91,7 @@
                 *ngFor="let route of concreteRoutes"
                 [title]="route.routeCode"
                 [showEyeButton]="true"
-                [style.display]="isRouteVisible(route.routeId) ? 'block' : 'none'"
+                [style.display]="isRouteDisplayed(route.routeId) ? 'block' : 'none'"
               >
                 <div class="route-actions">
                   <button
@@ -165,7 +165,7 @@
                 *ngFor="let route of asphaltRoutes"
                 [title]="route.routeCode"
                 [showEyeButton]="true"
-                [style.display]="isRouteVisible(route.routeId) ? 'block' : 'none'"
+                [style.display]="isRouteDisplayed(route.routeId) ? 'block' : 'none'"
               >
                 <div class="route-actions">
                   <button
