@@ -38,6 +38,23 @@ export interface DeleteResponse {
   message: string;
 }
 
+export interface PaymentInvoiceInfo {
+  ticketCode: string;
+  amountToPay: number;
+  calculatedCost: number;
+  invoiceNumber: string;
+  amountRequested: number;
+  amountPaid: number | null;
+  statusPaid: string | null;
+}
+
+export interface PaymentInvoiceInfoResponse {
+  success: boolean;
+  message: string;
+  count: number;
+  data: PaymentInvoiceInfo[];
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -69,5 +86,10 @@ export class TicketService {
   // Delete ticket by ID
   deleteTicket(id: number): Observable<DeleteResponse> {
     return this.http.delete<DeleteResponse>(`${this.baseUrl}/${id}`);
+  }
+
+  // Get payment and invoice info for tickets
+  getPaymentInvoiceInfo(): Observable<PaymentInvoiceInfoResponse> {
+    return this.http.get<PaymentInvoiceInfoResponse>(`${environment.apiUrl}/tickets/payment-invoice-info`);
   }
 }

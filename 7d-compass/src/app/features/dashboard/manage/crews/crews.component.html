@@ -10,3 +10,28 @@
     </app-data-table>
   </app-card-with-button>
 </app-dashboard-layout>
+
+<app-fab-button
+  title="Add Crew"
+  icon="group"
+  tooltip="Create new crew"
+  dialogTitle="Create New Crew"
+  [fields]="[
+    { name: 'crewtype', label: 'Crew Type', type: 'select', required: true, options: [
+      { value: 'excavation', label: 'Excavation' },
+      { value: 'paving', label: 'Paving' },
+      { value: 'maintenance', label: 'Maintenance' },
+      { value: 'traffic', label: 'Traffic Control' }
+    ]},
+    { name: 'description', label: 'Description', type: 'textarea', required: false },
+    { name: 'supervisorid', label: 'Supervisor ID', type: 'number', required: false },
+    { name: 'equipmentid', label: 'Equipment ID', type: 'number', required: false },
+    { name: 'inventoryid', label: 'Inventory ID', type: 'number', required: false },
+    { name: 'status', label: 'Status', type: 'select', required: true, options: [
+      { value: 'active', label: 'Active' },
+      { value: 'inactive', label: 'Inactive' }
+    ]}
+  ]"
+  [excludedFields]="['crewid', 'createdAt', 'updatedAt', 'createdBy', 'updatedBy', 'deletedAt']"
+  (itemCreated)="onCreateCrew($event)">
+</app-fab-button>

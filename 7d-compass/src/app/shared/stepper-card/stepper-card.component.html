@@ -513,7 +513,9 @@
             <mat-icon color="warn">warning</mat-icon>
             <p>Please review all previous steps before proceeding. This will save all data to the database.</p>
           </div>
+        </div>
 
+        <div *ngIf="!saveResults" class="save-button-container">
           <button
             mat-raised-button
             color="warn"

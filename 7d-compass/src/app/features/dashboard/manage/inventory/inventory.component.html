@@ -17,4 +17,26 @@
       </app-data-table>
     </app-card-with-button>
   </app-dashboard-layout>
+
+<app-fab-button
+  title="Add Inventory"
+  icon="inventory_2"
+  tooltip="Create new inventory item"
+  dialogTitle="Create New Inventory Item"
+  [fields]="[
+    { name: 'itemname', label: 'Item Name', type: 'text', required: true },
+    { name: 'supplier', label: 'Supplier', type: 'text', required: true },
+    { name: 'category', label: 'Category', type: 'select', required: true, options: [
+      { value: 'tools', label: 'Tools' },
+      { value: 'materials', label: 'Materials' },
+      { value: 'equipment', label: 'Equipment' }
+    ]},
+    { name: 'quantity', label: 'Quantity', type: 'number', required: true },
+    { name: 'unitprice', label: 'Unit Price', type: 'number', required: false },
+    { name: 'location', label: 'Location', type: 'text', required: false },
+    { name: 'description', label: 'Description', type: 'textarea', required: false }
+  ]"
+  [excludedFields]="['inventoryid', 'createdAt', 'updatedAt', 'createdBy', 'updatedBy', 'deletedAt']"
+  (itemCreated)="onCreateInventory($event)">
+</app-fab-button>
 </ng-container>

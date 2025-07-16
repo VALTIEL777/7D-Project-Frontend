@@ -12,7 +12,7 @@ export interface ColumnDefinition {
   header: string;
   cell: (element: any) => string | SafeHtml; // ✅ Permitimos ambos tipos
   isActionColumn?: boolean;
-    isHtml?: boolean; 
+    isHtml?: boolean;
 
 }
 

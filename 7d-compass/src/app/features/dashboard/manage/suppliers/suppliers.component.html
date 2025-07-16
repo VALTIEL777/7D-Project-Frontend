@@ -10,3 +10,21 @@
     </app-data-table>
   </app-card-with-button>
 </app-dashboard-layout>
+
+<app-fab-button
+  title="Add Supplier"
+  icon="business"
+  tooltip="Create new supplier"
+  dialogTitle="Create New Supplier"
+  [fields]="[
+    { name: 'suppliername', label: 'Supplier Name', type: 'text', required: true },
+    { name: 'phone', label: 'Phone', type: 'text', required: true },
+    { name: 'email', label: 'Email', type: 'email', required: false },
+    { name: 'address', label: 'Address', type: 'textarea', required: false },
+    { name: 'contactperson', label: 'Contact Person', type: 'text', required: false },
+    { name: 'taxid', label: 'Tax ID', type: 'text', required: false },
+    { name: 'paymentterms', label: 'Payment Terms', type: 'text', required: false }
+  ]"
+  [excludedFields]="['supplierid', 'createdAt', 'updatedAt', 'createdBy', 'updatedBy', 'deletedAt']"
+  (itemCreated)="onCreateSupplier($event)">
+</app-fab-button>

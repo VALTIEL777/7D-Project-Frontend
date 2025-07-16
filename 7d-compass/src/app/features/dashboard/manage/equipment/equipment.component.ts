@@ -8,6 +8,7 @@ import { ConfirmationDialogComponent } from '../../../../shared/confirmation-dia
 import { EquipmentService } from '../../../../core/services/material/equipment.service';
 import { BaseDashboardComponent } from '../../../../shared/base-dashboard.component';
 import { FilterService } from '../../../../core/services/filter.service';
+import { FabButtonComponent } from '../../../../shared/fab-button/fab-button.component';
 
 interface ColumnDefinition {
   name: string;
@@ -22,7 +23,8 @@ interface ColumnDefinition {
   imports: [
     DashboardLayoutComponent,
     CardWithButtonComponent,
-    DataTableComponent
+    DataTableComponent,
+    FabButtonComponent
   ],
   templateUrl: './equipment.component.html',
   styleUrl: './equipment.component.scss'
@@ -211,5 +213,34 @@ export class EquipmentComponent extends BaseDashboardComponent implements OnInit
         });
       }
     });
+  }
+
+  onCreateEquipment(newEquipment: any): void {
+    const equipmentToCreate = {
+      ...newEquipment,
+      type: newEquipment.type?.toLowerCase(),
+      isavailable: newEquipment.status === 'Available',
+      createdBy: this.getCurrentUserId(),
+      updatedBy: this.getCurrentUserId()
+    };
+
+    this.equipmentService.createEquipment(equipmentToCreate).subscribe({
+      next: (createdEquipment) => {
+        this.tableData = [...this.tableData, createdEquipment];
+        this.allData = [...this.tableData];
+        this.applyFilters();
+        console.log('Equipment created:', createdEquipment);
+      },
+      error: (err) => {
+        console.error('Error creating equipment:', err);
+      }
+    });
+  }
+
+  // Helper method to get current user ID (should be replaced with actual auth service)
+  private getCurrentUserId(): number {
+    // TODO: Implement this when auth service is available
+    // return this.authService.getCurrentUser()?.id || 1;
+    return 1; // Default for now
   }
 }

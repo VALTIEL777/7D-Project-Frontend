@@ -10,3 +10,32 @@
     </app-data-table>
   </app-card-with-button>
 </app-dashboard-layout>
+
+<app-fab-button
+  title="Add Contract Unit"
+  icon="add"
+  tooltip="Create new contract unit"
+  dialogTitle="Create New Contract Unit"
+  [fields]="[
+    { name: 'itemCode', label: 'Item Code', type: 'text', required: true },
+    { name: 'name', label: 'Name', type: 'text', required: true },
+    { name: 'unit', label: 'Unit', type: 'select', required: true, options: [
+      { value: 'each', label: 'Each' },
+      { value: 'square foot', label: 'Square Foot' },
+      { value: 'foot', label: 'Foot' }
+    ]},
+    { name: 'description', label: 'Description', type: 'textarea', required: false },
+    { name: 'workNotIncluded', label: 'Work Not Included', type: 'textarea', required: false },
+    { name: 'costPerUnit', label: 'Cost Per Unit', type: 'number', required: false },
+    { name: 'zone', label: 'Zone', type: 'select', required: false, options: [
+      { value: 'central', label: 'Central' },
+      { value: 'north', label: 'North' }
+    ]},
+    { name: 'paymentClause', label: 'Payment Clause', type: 'textarea', required: false },
+    { name: 'neededMobilization', label: 'Needed Mobilization', type: 'number', required: false },
+    { name: 'neededContractUnit', label: 'Needed Contract Unit', type: 'number', required: false },
+    { name: 'cdotStandardImg', label: 'CDOT Standard Image', type: 'text', required: false }
+  ]"
+  [excludedFields]="['contractUnitId', 'createdAt', 'updatedAt', 'createdBy', 'updatedBy', 'deletedAt']"
+  (itemCreated)="onCreateContractUnit($event)">
+</app-fab-button>

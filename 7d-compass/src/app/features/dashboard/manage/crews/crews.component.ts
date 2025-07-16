@@ -8,6 +8,7 @@ import { SearchDialogComponent } from '../../../../shared/search-dialog/search-d
 import { CrewsService } from '../../../../core/services/human-resources/crew.service';
 import { BaseDashboardComponent } from '../../../../shared/base-dashboard.component';
 import { FilterService } from '../../../../core/services/filter.service';
+import { FabButtonComponent } from '../../../../shared/fab-button/fab-button.component';
 
 interface ColumnDefinition {
   name: string;
@@ -23,6 +24,7 @@ interface ColumnDefinition {
     DashboardLayoutComponent,
     CardWithButtonComponent,
     DataTableComponent,
+    FabButtonComponent,
   ],
   templateUrl: './crews.component.html',
   styleUrl: './crews.component.scss'
@@ -170,5 +172,32 @@ export class CrewsComponent extends BaseDashboardComponent implements OnInit {
         // Aquí podrías también llamar a this.crewsService.deleteCrew(crew.crewId)
       }
     });
+  }
+
+  onCreateCrew(newCrew: any): void {
+    const crewToCreate = {
+      ...newCrew,
+      createdBy: this.getCurrentUserId(),
+      updatedBy: this.getCurrentUserId()
+    };
+
+    this.crewsService.createCrew(crewToCreate).subscribe({
+      next: (createdCrew) => {
+        this.tableData = [...this.tableData, createdCrew];
+        this.allData = [...this.tableData];
+        this.applyFilters();
+        console.log('Crew created:', createdCrew);
+      },
+      error: (err) => {
+        console.error('Error creating crew:', err);
+      }
+    });
+  }
+
+  // Helper method to get current user ID (should be replaced with actual auth service)
+  private getCurrentUserId(): number {
+    // TODO: Implement this when auth service is available
+    // return this.authService.getCurrentUser()?.id || 1;
+    return 1; // Default for now
   }
 }

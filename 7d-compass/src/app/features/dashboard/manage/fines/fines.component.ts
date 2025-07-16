@@ -8,6 +8,7 @@ import { ConfirmationDialogComponent } from '../../../../shared/confirmation-dia
 import { FinesService } from '../../../../core/services/payments/fines.service';
 import { BaseDashboardComponent } from '../../../../shared/base-dashboard.component';
 import { FilterService } from '../../../../core/services/filter.service';
+import { FabButtonComponent } from '../../../../shared/fab-button/fab-button.component';
 
 interface ColumnDefinition {
   name: string;
@@ -23,6 +24,7 @@ interface ColumnDefinition {
     DashboardLayoutComponent,
     CardWithButtonComponent,
     DataTableComponent,
+    FabButtonComponent,
   ],
   templateUrl: './fines.component.html',
   styleUrl: './fines.component.scss'
@@ -172,5 +174,32 @@ export class FinesComponent extends BaseDashboardComponent implements OnInit {
         });
       }
     });
+  }
+
+  onCreateFine(newFine: any): void {
+    const fineToCreate = {
+      ...newFine,
+      createdBy: this.getCurrentUserId(),
+      updatedBy: this.getCurrentUserId()
+    };
+
+    this.finesService.createFine(fineToCreate).subscribe({
+      next: (createdFine) => {
+        this.tableData = [...this.tableData, createdFine];
+        this.allData = [...this.tableData];
+        this.applyFilters();
+        console.log('Fine created:', createdFine);
+      },
+      error: (err) => {
+        console.error('Error creating fine:', err);
+      }
+    });
+  }
+
+  // Helper method to get current user ID (should be replaced with actual auth service)
+  private getCurrentUserId(): number {
+    // TODO: Implement this when auth service is available
+    // return this.authService.getCurrentUser()?.id || 1;
+    return 1; // Default for now
   }
 }

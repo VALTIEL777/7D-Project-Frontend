@@ -10,6 +10,7 @@ import { BaseDashboardComponent } from '../../../../shared/base-dashboard.compon
 import { FilterService } from '../../../../core/services/filter.service';
 import { TicketService, Ticket } from '../../../../core/services/ticket.service';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { FabButtonComponent } from '../../../../shared/fab-button/fab-button.component';
 
 interface ColumnDefinition {
   name: string;
@@ -27,7 +28,8 @@ interface ColumnDefinition {
     CardWithButtonComponent,
     DataTableComponent,
     ConfirmationDialogComponent,
-    SearchDialogComponent
+    SearchDialogComponent,
+    FabButtonComponent
   ],
   templateUrl: './ticket.component.html',
   styleUrl: './ticket.component.scss'
@@ -165,6 +167,26 @@ export class TicketComponent extends BaseDashboardComponent implements OnInit {
       error: (err) => {
         console.error('Error loading tickets:', err);
         // Removed error toast since backend might not be running
+      }
+    });
+  }
+
+  onCreateTicket(newTicket: any): void {
+    const ticketToCreate = {
+      ...newTicket,
+      createdBy: this.getCurrentUserId(),
+      updatedBy: this.getCurrentUserId()
+    };
+
+    this.ticketService.createTicket(ticketToCreate).subscribe({
+      next: (createdTicket) => {
+        this.tableData = [...this.tableData, createdTicket];
+        this.allData = [...this.tableData];
+        this.applyFilters();
+        console.log('Ticket created:', createdTicket);
+      },
+      error: (err) => {
+        console.error('Error creating ticket:', err);
       }
     });
   }

@@ -12,6 +12,7 @@ import { BaseDashboardComponent } from '../../../../shared/base-dashboard.compon
 import { FilterService } from '../../../../core/services/filter.service';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { FabButtonComponent } from '../../../../shared/fab-button/fab-button.component';
 
 interface ColumnDefinition {
   name: string;
@@ -28,6 +29,7 @@ interface ColumnDefinition {
     DashboardLayoutComponent,
     CardWithButtonComponent,
     DataTableComponent,
+    FabButtonComponent,
     MatProgressSpinnerModule,
   ],
   templateUrl: './inventory.component.html',
@@ -154,6 +156,26 @@ export class InventoryComponent extends BaseDashboardComponent implements OnInit
       error: (err) => {
         this.suppliersLoading = false;
         console.error('Error loading suppliers:', err);
+      }
+    });
+  }
+
+  onCreateInventory(newInventory: any): void {
+    const inventoryToCreate = {
+      ...newInventory,
+      createdBy: this.getCurrentUserId(),
+      updatedBy: this.getCurrentUserId()
+    };
+
+    this.inventoryService.createInventory(inventoryToCreate).subscribe({
+      next: (createdInventory) => {
+        this.tableData = [...this.tableData, createdInventory];
+        this.allData = [...this.tableData];
+        this.applyFilters();
+        console.log('Inventory created:', createdInventory);
+      },
+      error: (err) => {
+        console.error('Error creating inventory:', err);
       }
     });
   }

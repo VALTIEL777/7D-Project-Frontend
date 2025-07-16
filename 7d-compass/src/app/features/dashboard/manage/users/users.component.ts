@@ -8,6 +8,7 @@ import { ConfirmationDialogComponent } from '../../../../shared/confirmation-dia
 import { PeopleService } from '../../../../core/services/human-resources/users.service';
 import { BaseDashboardComponent } from '../../../../shared/base-dashboard.component';
 import { FilterService } from '../../../../core/services/filter.service';
+import { FabButtonComponent } from '../../../../shared/fab-button/fab-button.component';
 
 interface ColumnDefinition {
   name: string;
@@ -23,6 +24,7 @@ interface ColumnDefinition {
     DashboardLayoutComponent,
     CardWithButtonComponent,
     DataTableComponent,
+    FabButtonComponent,
   ],
   templateUrl: './users.component.html',
   styleUrl: './users.component.scss'
@@ -85,6 +87,26 @@ export class UsersComponent extends BaseDashboardComponent implements OnInit {
   // Getter for filtered user data
   get filteredUserData() {
     return this.filteredData;
+  }
+
+  onCreateUser(newUser: any): void {
+    const userToCreate = {
+      ...newUser,
+      createdBy: this.getCurrentUserId(),
+      updatedBy: this.getCurrentUserId()
+    };
+
+    this.peopleService.createPeople(userToCreate).subscribe({
+      next: (createdUser) => {
+        this.tableData = [...this.tableData, createdUser];
+        this.allData = [...this.tableData];
+        this.applyFilters();
+        console.log('User created:', createdUser);
+      },
+      error: (err) => {
+        console.error('Error creating user:', err);
+      }
+    });
   }
 
 onEdit(user: any) {
@@ -169,4 +191,11 @@ onDelete(user: any) {
     }
   });
 }
+
+  // Helper method to get current user ID (should be replaced with actual auth service)
+  private getCurrentUserId(): number {
+    // TODO: Implement this when auth service is available
+    // return this.authService.getCurrentUser()?.id || 1;
+    return 1; // Default for now
+  }
 }

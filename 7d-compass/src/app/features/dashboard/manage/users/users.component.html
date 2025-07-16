@@ -10,3 +10,25 @@
     </app-data-table>
   </app-card-with-button>
 </app-dashboard-layout>
+
+<app-fab-button
+  title="Add User"
+  icon="person_add"
+  tooltip="Create new user"
+  dialogTitle="Create New User"
+  [fields]="[
+    { name: 'firstname', label: 'First Name', type: 'text', required: true },
+    { name: 'lastname', label: 'Last Name', type: 'text', required: true },
+    { name: 'username', label: 'Username', type: 'text', required: true },
+    { name: 'email', label: 'Email', type: 'email', required: false },
+    { name: 'phone', label: 'Phone', type: 'text', required: false },
+    { name: 'role', label: 'Role', type: 'select', required: false, options: [
+      { value: 'Side Worker', label: 'Side Worker' },
+      { value: 'Admin', label: 'Admin' },
+      { value: 'Accounting', label: 'Accounting' },
+      { value: 'Assistant', label: 'Assistant' }
+    ]}
+  ]"
+  [excludedFields]="['employeeid', 'createdAt', 'updatedAt', 'createdBy', 'updatedBy', 'deletedAt']"
+  (itemCreated)="onCreateUser($event)">
+</app-fab-button>

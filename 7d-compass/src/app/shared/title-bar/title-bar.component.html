@@ -12,49 +12,20 @@
         </button>
 
         <span class="toolbar-title">{{ pageTitle }}</span>
-
-        <!-- Right section content moved here ONLY on mobile -->
-<ng-container *ngIf="isMobile">
-  <div class="mobile-right-buttons">
-    <button
-      mat-icon-button
-      [matMenuTriggerFor]="notificationMenu"
-      aria-label="Notifications"
-      class="notification-button"
-      (menuOpened)="onNotificationsOpened()"
-    >
-      <mat-icon>notifications</mat-icon>
-      <span
-        class="notification-badge"
-        *ngIf="hasUnreadNotifications && notificationCount > 0"
-      >
-        {{ notificationCount }}
-      </span>
-    </button>
-
-    <button
-      mat-icon-button
-      [matMenuTriggerFor]="userMenu"
-      aria-label="User menu"
-      class="user-icon-button"
-    >
-      <mat-icon>account_circle</mat-icon>
-    </button>
-
-    <button mat-icon-button (click)="toggleFilterBar()" aria-label="Filter">
-      <mat-icon>{{ showFilterBar ? 'filter_alt_off' : 'filter_alt' }}</mat-icon>
-    </button>
-  </div>
-</ng-container>
       </div>
 
       <!-- CENTER SECTION -->
+      <!-- Search bar hidden for now -->
+      <!--
       <div class="center-section">
         <app-search-bar></app-search-bar>
       </div>
+      -->
 
-      <!-- RIGHT SECTION (only visible on desktop) -->
-      <div class="right-section" *ngIf="!isMobile">
+      <!-- RIGHT SECTION (visible on both mobile and desktop) -->
+      <div class="right-section">
+        <!-- Notification and user buttons hidden -->
+        <!--
         <button
           mat-icon-button
           [matMenuTriggerFor]="notificationMenu"
@@ -79,7 +50,7 @@
         >
           <mat-icon>account_circle</mat-icon>
         </button>
-
+        -->
         <button mat-icon-button (click)="toggleFilterBar()" aria-label="Filter">
           <mat-icon>{{ showFilterBar ? 'filter_alt_off' : 'filter_alt' }}</mat-icon>
         </button>
@@ -102,7 +73,8 @@
         </mat-form-field>
       </div>
 
-      <!-- Date Range Filters -->
+      <!-- Date Range Filters - Hidden for now -->
+      <!--
       <div class="date-range-section">
         <span class="filter-label">{{ customFilterLabels.dateLabel }}</span>
         <div class="date-buttons">
@@ -117,6 +89,7 @@
           </button>
         </div>
       </div>
+      -->
     </div>
 
     <!-- Clear filters button -->
@@ -133,6 +106,8 @@
   </div>
 </div>
 
+<!-- Notification and user menus hidden -->
+<!--
 <mat-menu #notificationMenu="matMenu" class="notification-menu">
   <div class="notification-header">
     <h3>Notifications</h3>
@@ -180,3 +155,4 @@
     <span>Log Out</span>
   </button>
 </mat-menu>
+-->

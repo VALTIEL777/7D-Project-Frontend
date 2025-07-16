@@ -8,6 +8,7 @@ import { ConfirmationDialogComponent } from '../../../../shared/confirmation-dia
 import { SupplierService } from '../../../../core/services/material/supplier.service';
 import { BaseDashboardComponent } from '../../../../shared/base-dashboard.component';
 import { FilterService } from '../../../../core/services/filter.service';
+import { FabButtonComponent } from '../../../../shared/fab-button/fab-button.component';
 
 interface ColumnDefinition {
   name: string;
@@ -23,6 +24,7 @@ interface ColumnDefinition {
     DashboardLayoutComponent,
     CardWithButtonComponent,
     DataTableComponent,
+    FabButtonComponent,
   ],
   templateUrl: './suppliers.component.html',
   styleUrl: './suppliers.component.scss'
@@ -166,5 +168,32 @@ export class SuppliersComponent extends BaseDashboardComponent implements OnInit
         });
       }
     });
+  }
+
+  onCreateSupplier(newSupplier: any): void {
+    const supplierToCreate = {
+      ...newSupplier,
+      createdBy: this.getCurrentUserId(),
+      updatedBy: this.getCurrentUserId()
+    };
+
+    this.supplierService.createSupplier(supplierToCreate).subscribe({
+      next: (createdSupplier) => {
+        this.tableData = [...this.tableData, createdSupplier];
+        this.allData = [...this.tableData];
+        this.applyFilters();
+        console.log('Supplier created:', createdSupplier);
+      },
+      error: (err) => {
+        console.error('Error creating supplier:', err);
+      }
+    });
+  }
+
+  // Helper method to get current user ID (should be replaced with actual auth service)
+  private getCurrentUserId(): number {
+    // TODO: Implement this when auth service is available
+    // return this.authService.getCurrentUser()?.id || 1;
+    return 1; // Default for now
   }
 }

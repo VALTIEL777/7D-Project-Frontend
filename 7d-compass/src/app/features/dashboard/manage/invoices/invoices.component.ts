@@ -9,6 +9,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { Invoice, InvoiceService } from '../../../../core/services/payments/invoices.service';
 import { BaseDashboardComponent } from '../../../../shared/base-dashboard.component';
 import { FilterService } from '../../../../core/services/filter.service';
+import { FabButtonComponent } from '../../../../shared/fab-button/fab-button.component';
 
 interface ColumnDefinition {
   name: string;
@@ -24,6 +25,7 @@ interface ColumnDefinition {
     DashboardLayoutComponent,
     CardWithButtonComponent,
     DataTableComponent,
+    FabButtonComponent,
   ],
   templateUrl: './invoices.component.html',
   styleUrl: './invoices.component.scss'
@@ -237,6 +239,34 @@ export class InvoicesComponent extends BaseDashboardComponent implements OnInit 
             this.snackBar.open('Error deleting invoice', 'Close', { duration: 3000 });
           }
         });
+      }
+    });
+  }
+
+  onCreateInvoice(newInvoice: any): void {
+    const invoiceToCreate = {
+      ...newInvoice,
+      createdBy: this.getCurrentUserId(),
+      updatedBy: this.getCurrentUserId()
+    };
+
+    this.invoiceService.createInvoice(invoiceToCreate).subscribe({
+      next: (response) => {
+        // Fetch the full created invoice to get all fields
+        this.invoiceService.getInvoiceById(response.invoiceId).subscribe({
+          next: (createdInvoice) => {
+            this.tableData = [...this.tableData, createdInvoice];
+            this.allData = [...this.tableData];
+            this.applyFilters();
+            console.log('Invoice created:', createdInvoice);
+          },
+          error: (err) => {
+            console.error('Error fetching created invoice:', err);
+          }
+        });
+      },
+      error: (err) => {
+        console.error('Error creating invoice:', err);
       }
     });
   }

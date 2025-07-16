@@ -10,3 +10,23 @@
     </app-data-table>
   </app-card-with-button>
 </app-dashboard-layout>
+
+<app-fab-button
+  title="Add Payment"
+  icon="payment"
+  tooltip="Create new payment"
+  dialogTitle="Create New Payment"
+  [fields]="[
+    { name: 'paymentNumber', label: 'Payment Number', type: 'text', required: true },
+    { name: 'datePaid', label: 'Date Paid', type: 'date', required: true },
+    { name: 'amountPaid', label: 'Amount Paid', type: 'number', required: true },
+    { name: 'status', label: 'Status', type: 'select', required: true, options: [
+      { value: 'pending', label: 'Pending' },
+      { value: 'completed', label: 'Completed' },
+      { value: 'cancelled', label: 'Cancelled' }
+    ]},
+    { name: 'paymentURL', label: 'Payment URL', type: 'text', required: false }
+  ]"
+  [excludedFields]="['checkId', 'createdAt', 'updatedAt', 'createdBy', 'updatedBy']"
+  (itemCreated)="onCreatePayment($event)">
+</app-fab-button>
