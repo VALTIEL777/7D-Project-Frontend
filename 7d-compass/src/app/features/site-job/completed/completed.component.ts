@@ -11,6 +11,7 @@ import { PeopleService } from '../../../core/services/human-resources/users.serv
 import { CrewsService } from '../../../core/services/human-resources/crew.service';
 import { CrewEmployeesService } from '../../../core/services/human-resources/crewemployees.service';
 import { SkillsService } from '../../../core/services/human-resources/skills.service';
+import { PhotoEvidenceService } from '../../../core/services/route/photoevidence.service';
 
 @Component({
   selector: 'app-completed',
@@ -38,7 +39,8 @@ export class CompletedComponent implements OnInit {
     private usersService: PeopleService,
     private crewEmployeesService: CrewEmployeesService,
     private crewsService: CrewsService,
-    private skillsService: SkillsService
+    private skillsService: SkillsService,
+    private photoEvidenceService: PhotoEvidenceService
   ) {}
 
   ngOnInit(): void {
@@ -120,23 +122,46 @@ export class CompletedComponent implements OnInit {
 }
 
 
-  loadCompletedTickets(crewId: number): void {
-    this.ticketStatusService.getCompletedTickets().subscribe({
-      next: (data) => {
-        this.previousLocations = data
-          .filter(ticket => ticket.crewid === crewId)
-          .map(ticket => ({
-            address: `${ticket.fromaddressstreet} ${ticket.toaddressstreet} ${ticket.fromaddresscardinal ?? ''} ${ticket.fromaddresssuffix ?? ''}`,
-            actions: ['Completed work'], // Aquí podrías mapear fases reales
-            imageUrl: '/assets/imgs/completed1.JPG', // Aquí puedes incluir URL real si la tienes
-            comment: `Surface: ${ticket.surfacetotal} m²`,
-            startingDate: ticket.startingdate,
-            endingDate: ticket.endingdate
-          }));
-      },
-      error: (err) => {
-        console.error('❌ Error loading completed tickets:', err);
-      }
-    });
-  }
+loadCompletedTickets(crewId: number): void {
+  this.ticketStatusService.getCompletedTickets().subscribe({
+    next: (tickets) => {
+      this.photoEvidenceService.getAllPhotoEvidence().subscribe({
+        next: (photos) => {
+          this.previousLocations = tickets
+  .filter(ticket => ticket.crewid === crewId)
+  .map(ticket => {
+    const evidences = photos.filter(p => p.ticketid === ticket.ticketid);
+    const images = evidences.map(e => ({
+      url: e.photourl,
+      name: e.name,
+      comment: e.comment
+    }));
+
+    return {
+      address: `${ticket.fromaddressstreet} ${ticket.toaddressstreet} ${ticket.fromaddresscardinal ?? ''} ${ticket.fromaddresssuffix ?? ''}`,
+      actions: ['Completed work'],
+      images: images,
+      startingDate: ticket.startingdate,
+      endingDate: ticket.endingdate
+    };
+  });
+
+            console.log('Previous locations con fotos:', this.previousLocations);
+
+        },
+        error: (err) => console.error('❌ Error loading photo evidence:', err)
+      });
+    },
+    error: (err) => console.error('❌ Error loading completed tickets:', err)
+  });
+}
+
+showImages: boolean = false;
+
+toggleImages() {
+  this.showImages = !this.showImages;
+}
+
+
+
 }

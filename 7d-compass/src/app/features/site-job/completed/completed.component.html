@@ -35,12 +35,23 @@
     </li>
   </ul>
 
-  <div class="photo-comment">
-    <img [src]="location.imageUrl" alt="location image" class="location-image" />
-    <button mat-raised-button color="primary" class="comment-btn">
-      {{ location.comment }}
-    </button>
+ <div class="photo-comment" *ngIf="location.images && location.images.length > 0">
+  
+  <button mat-button (click)="toggleImages()">
+    {{ showImages ? 'Hide Images' : 'Show Images' }} ({{ location.images.length }})
+  </button>
+  
+  <div *ngIf="showImages" class="images-container">
+    <div *ngFor="let img of location.images" class="photo-item">
+      <p class="photo-name">{{ img.name }}</p>
+      <img [src]="img.url" [alt]="img.name" class="location-image" />
+      <p class="photo-comment-text">{{ img.comment || 'No issues reported' }}</p>
+    </div>
   </div>
+
+</div>
+
+
 
   <hr class="divider" />
 </div>

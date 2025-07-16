@@ -23,6 +23,7 @@ import { SkillsService } from '../../../../core/services/human-resources/skills.
 import { RoutesService } from '../../../../core/services/route/route.service';
 import { RouteStateService } from '../../../../core/services/shared/route-state.service';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { EmployeeSkillsService } from '../../../../core/services/human-resources/employeeskills.service';
 
 interface ColumnDefinition {
   name: string;
@@ -88,7 +89,8 @@ materialOptions: {
   value: number;         // El `inventoryId` u otro identificador
   viewValue: string;     // El nombre del material
   unit: string;          // Unidad del material (e.g. 'Kg', 'Bags')
-  quantity: number;      // Cantidad usada si aplica, o 0 por defecto
+  quantity: number;
+  costperunit : number;      // Cantidad usada si aplica, o 0 por defecto
 }[] = [];
   unitOptions = ['Bolsa'];
 
@@ -97,6 +99,7 @@ equipmentOptions: {
   viewValue: string;      // equipmentName
   supplier: string;       // supplierName
   quantity: number;       // from UsedEquipment
+  hourlyrate: number;
 }[] = [];
 
 routes: any[] = [];
@@ -116,7 +119,8 @@ routes: any[] = [];
     private skillsService: SkillsService,
     private routeService: RoutesService,
     private routeState: RouteStateService,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    private employeeSkillsService: EmployeeSkillsService
   ) {
     this.form = this.fb.group({
       type: [null, ],
@@ -135,6 +139,7 @@ routes: any[] = [];
       newEquipmentName: [null],
       newEquipmentQuantity: [null, [ Validators.max(12)]],
       newEquipmentSupplier: [null],
+      newEquipmentHoursLent: [null],
       equipment: this.fb.array([]),
 
       route: [null,]
@@ -282,7 +287,8 @@ loadMaterials() {
           value: inv.inventoryid,
           viewValue: inv.name,
           unit: inv.unit,
-          quantity: used?.quantity || 0  // si no hay usado, pone 0
+          quantity: used?.quantity || 0,  // si no hay usado, pone 0
+          costperunit: Number(inv.costperunit) 
         };
       });
     },
@@ -308,7 +314,8 @@ loadMaterials() {
             value: eq.equipmentid,
             viewValue: eq.equipmentname,
             quantity: usedEq?.quantity || 0,
-            supplier: supplier?.name || 'Unknown'
+            supplier: supplier?.name || 'Unknown',
+            hourlyrate: Number(eq.hourlyrate) || 0
           };
         });
       },
@@ -385,84 +392,85 @@ private _filterEmployees(value: string | any): any[] {
 }
 
 
-onEmployeeSelected(selectedEmployee: any) {
-  this.form.patchValue({ selectedEmployee: selectedEmployee });
+onEmployeeSelected(employee: any) {
+  if (!employee) {
+    this.form.get('selectedEmployee')!.setValue(null);
+    this.form.get('selectedSkills')!.setValue([]);
+    return;
+  }
+
+  this.form.get('selectedEmployee')!.setValue(employee);
+
+  this.employeeSkillsService.getEmployeeSkillsByEmployee(employee.employeeid).subscribe({
+    next: (employeeSkills: any[]) => {
+      const skillNames = employeeSkills.map(es => es.skillname);
+      const filteredSkillNames = skillNames.filter(name =>
+        this.skillList.includes(name)
+      );
+      console.log('✅ Skills cargadas:', filteredSkillNames);
+
+      // ✅ Rellena el <mat-select>
+      this.form.get('selectedSkills')!.setValue(filteredSkillNames);
+    },
+    error: (err) => {
+      console.error('❌ Error loading employee skills', err);
+      this.form.get('selectedSkills')!.setValue([]);
+    }
+  });
 }
 
 
- addEmployee() {
+
+
+addEmployee() {
   const selected = this.form.get('selectedEmployee')?.value;
   const selectedSkills = this.form.get('selectedSkills')?.value;
-  let isLeader = this.form.get('isLeader')?.value;
+  const isLeader = this.form.get('isLeader')?.value;
   const workedhours = parseFloat(this.form.get('workedhours')?.value);
   const type = this.form.get('type')?.value;
 
-  console.log('🧪 Empleado seleccionado:', selected);
-  console.log('🧪 Skills seleccionadas:', selectedSkills);
-  console.log('🧪 isLeader:', isLeader, 'workedhours:', workedhours, 'type:', type);
+  if (!selected || !selected.employeeid) {
+    console.warn('⚠️ No se puede agregar el empleado. Falta información.');
+    return;
+  }
 
-  if (selected && selectedSkills?.length) {
-    let fullName = '';
-    let employeeid: number | null = null;
-let userid: number | null = null; // 👈 nuevo
+  const [firstname, ...lastnameParts] = selected.name.trim().split(' ');
+  const lastname = lastnameParts.join(' ');
 
-let found: any = null; // 👈 definido fuera del bloque
-    if (typeof selected === 'string') {
-      fullName = selected.trim();
-      const found = this.employeeList.find(e => e.name === fullName);
-      console.log('🔍 Buscando empleado por nombre:', fullName, 'Resultado:', found);
-      if (found) {
-        employeeid = found.employeeid;
-      } else {
-        console.warn('⚠️ Empleado no encontrado:', fullName);
-        return;
-      }
-    } else if (typeof selected === 'object' && selected.name && selected.employeeid) {
-      fullName = selected.name;
-      employeeid = selected.employeeid;
-      console.log('📌 Empleado encontrado (objeto):', selected);
-    }
+  const employeeGroup = this.fb.group({
+    num: this.employees.length + 1,
+    employeeid: selected.employeeid,
+    userid: selected.userid ?? null,
+    firstname,
+    lastname,
+    skills: [Array.isArray(selectedSkills) ? [...selectedSkills] : [selectedSkills]],
+    leader: isLeader,
+    type,
+    workedhours
+  });
 
-    if (!employeeid) {
-      console.warn('⚠️ employeeid es null. No se puede agregar el empleado.');
-      return;
-    }
+  this.employees.push(employeeGroup);
 
-    const [firstname, ...lastnameParts] = fullName.trim().split(' ');
-    const lastname = lastnameParts.join(' ');
+  this.form.patchValue({
+    selectedEmployee: null,
+    selectedSkills: [],
+    isLeader: false
+  });
 
-    const employeeGroup = this.fb.group({
-  num: this.employees.length + 1,
-  employeeid,
-  userid: found?.userid ?? selected.userid ?? null, // ✅ esto asegura que tienes ambos
-  firstname,
-  lastname,
-  skills: [Array.isArray(selectedSkills) ? [...selectedSkills] : [selectedSkills]],
-  leader: isLeader,
-  type,
-  workedhours
-});
+ // ✅ Limpia el input del autocompletado
+  this.employeeControl.setValue('');
+  this.employeeControl.markAsPristine();
+  this.employeeControl.markAsUntouched();
 
+  this.updateEmployeeData();
 
-    console.log('🆕 Empleado agregado al formulario:', employeeGroup.value);
-
-    this.employees.push(employeeGroup);
-
-    this.form.patchValue({
-      selectedEmployee: null,
-      selectedSkills: [],
-      isLeader: false
-    });
-
-    this.updateEmployeeData();
-
-    if (this.hasLeaderAlready) {
-      this.form.get('isLeader')?.disable();
-    } else {
-      this.form.get('isLeader')?.enable();
-    }
+  if (this.hasLeaderAlready) {
+    this.form.get('isLeader')?.disable();
+  } else {
+    this.form.get('isLeader')?.enable();
   }
 }
+
 
 
 get hasLeaderAlready(): boolean {
@@ -545,26 +553,39 @@ onMaterialSelected(inventoryid: number) {
 }
 private _materialDataa: any[] = [];
 
-updateMaterialData() {
-  this._materialDataa = this.materials.controls.map(ctrl => ctrl.value);
+private updateMaterialData(): void {
+  this._materialDataa = this.materials.controls.map(ctrl => {
+    const quantity = Number(ctrl.value.quantity) || 0;
+    const costPerUnit = Number(ctrl.value.costperunit) || 0;
+    return {
+      ...ctrl.value,
+      materialcost: quantity * costPerUnit
+    };
+  });
 }
+
 get materialDataa() {
   return this._materialDataa;
 }
 
 addMaterial() {
   const selectedMaterialId = this.form.get('newMaterialName')?.value;
-  const quantity = this.form.get('newMaterialQuantity')?.value;
+  const quantity = Number(this.form.get('newMaterialQuantity')?.value) || 0;
 
   const selected = this.materialOptions.find(m => m.value === selectedMaterialId);
 
   if (selected && quantity > 0) {
+    const costPerUnit = Number(selected.costperunit) || 0;
+    const materialCost = quantity * costPerUnit;
+
     this.materials.push(this.fb.group({
       num: this.materials.length + 1,
       inventoryid: selected.value,
       name: selected.viewValue,
       quantity,
-      unit: selected.unit
+      unit: selected.unit,
+      costperunit: costPerUnit,
+      materialcost: materialCost // ✅ Se guarda el costo total aquí
     }));
 
     // Limpiar campos del formulario
@@ -573,9 +594,11 @@ addMaterial() {
       newMaterialQuantity: ''
     });
     this.selectedMaterialUnit = '';
-    this.updateMaterialData();
+
+    this.updateMaterialData(); // ✅ Refuerza los datos para el save()
   }
 }
+
 
 onEditMaterial(material: any) {
   const dialogRef = this.dialog.open(SearchDialogComponent, {
@@ -627,8 +650,9 @@ onDeleteMaterial(material: any) {
 equipmentColumns: ColumnDefinition[] = [
   { name: 'num', header: 'No.', cell: e => e.num?.toString() ?? '' },
   { name: 'name', header: 'Equipment', cell: e => e.name ?? '' },
-  { name: 'quantity', header: 'Quantity', cell: e => e.quantity?.toString() ?? '' },
   { name: 'supplier', header: 'Supplier', cell: e => e.supplier ?? '' },
+  { name: 'quantity', header: 'Quantity', cell: e => e.quantity?.toString() ?? '' },
+  { name: 'hourslent', header: 'Hours Lent', cell: e => e.hourslent?.toString() ?? '0' },
   { name: 'actions', header: 'Actions', cell: () => '', isActionColumn: true }
 ];
 
@@ -641,9 +665,19 @@ onEquipmentSelected(equipmentid: number) {
   this.selectedEquipmentSupplier = selected?.supplier || '';
 }
 
-updateEquipmentData() {
-  this._equipmentDataa = this.equipment.controls.map(ctrl => ctrl.value);
+private updateEquipmentData(): void {
+  this._equipmentDataa = this.equipment.controls.map(ctrl => {
+    const quantity = Number(ctrl.value.quantity) || 0;
+    const hoursLent = Number(ctrl.value.hourslent) || 0;
+    const hourlyRate = Number(ctrl.value.hourlyrate) || 0;
+
+    return {
+      ...ctrl.value,
+      equipmentcost: quantity * hoursLent * hourlyRate
+    };
+  });
 }
+
 
 get equipmentDataa() {
   return this._equipmentDataa;
@@ -651,27 +685,38 @@ get equipmentDataa() {
 
 addEquipment() {
   const equipmentid = this.form.get('newEquipmentName')?.value;
-  const quantity = this.form.get('newEquipmentQuantity')?.value;
+  const quantity = Number(this.form.get('newEquipmentQuantity')?.value) || 0;
+  const hourslent = Number(this.form.get('newEquipmentHoursLent')?.value) || 0;
 
   const selected = this.equipmentOptions.find(e => e.value === equipmentid);
 
   if (selected && quantity > 0) {
+    const hourlyRate = Number(selected.hourlyrate) || 0;
+    const equipmentCost = quantity * hourslent * hourlyRate;
+
     this.equipment.push(this.fb.group({
       num: this.equipment.length + 1,
       equipmentid: selected.value,
       name: selected.viewValue,
       quantity,
-      supplier: selected.supplier
+      supplier: selected.supplier,
+      hourlyrate: hourlyRate,
+      hourslent,
+      equipmentcost: equipmentCost // ✅ Se calcula aquí
     }));
 
+    // Limpiar los campos del formulario
     this.form.patchValue({
       newEquipmentName: '',
-      newEquipmentQuantity: ''
+      newEquipmentQuantity: '',
+      newEquipmentHoursLent: ''
     });
     this.selectedEquipmentSupplier = '';
+
     this.updateEquipmentData();
   }
 }
+
 
 onEditEquipment(equipment: any) {
   const dialogRef = this.dialog.open(SearchDialogComponent, {
@@ -724,6 +769,7 @@ save() {
     console.warn('Formulario inválido');
     return;
   }
+  
 
   this.isLoading = true; // <-- iniciar loader
 
@@ -746,6 +792,16 @@ save() {
     }
     crewsPorTipo.get(emp.type)?.push(emp);
   }
+
+    // ✅ FORZAR ACTUALIZACIÓN DE LOS DATOS
+  this.updateEmployeeData();
+  this.updateMaterialData();
+  this.updateEquipmentData();
+
+  // ✅ LOG ANTES DE ENVIAR
+  console.log('📦 Material data to send:', this._materialDataa);
+  console.log('📦 Equipment data to send:', this._equipmentDataa);
+
 
   crewsPorTipo.forEach((empleados, tipo) => {
     const rawHoras = empleados[0]?.workedhours;
@@ -781,30 +837,39 @@ save() {
           }));
 
         const materials$ = this._materialDataa
-          .filter(mat => !!mat.inventoryid)
-          .map(mat => this.usedInventoryService.createUsedInventory({
-            CrewId: crewid,
-            inventoryId: mat.inventoryid,
-            quantity: mat.quantity,
-            materialCost: 0,
-            createdBy: 1,
-            updatedBy: 1
-          }));
+  .filter(mat => !!mat.inventoryid)
+  .map(mat => {
+    const quantity = Number(mat.quantity) || 0;
+    const costPerUnit = Number(mat.costperunit) || 0;
+    const materialCost = quantity * costPerUnit;
 
+    return this.usedInventoryService.createUsedInventory({
+      CrewId: crewid,
+      inventoryId: mat.inventoryid,
+      quantity,
+      MaterialCost: materialCost,
+      createdBy: 1,
+      updatedBy: 1
+    });
+  });
+
+
+          
         const equipment$ = this._equipmentDataa
-          .filter(eq => !!eq.equipmentid)
-          .map(eq => this.usedEquipmentService.createUsedEquipment({
-            CrewId: crewid,
-            equipmentId: eq.equipmentid,
-            startdate: new Date(),
-            enddate: new Date(),
-            hoursLent: 0,
-            quantity: eq.quantity,
-            equipmentCost: 0,
-            observation: '',
-            createdBy: 1,
-            updatedBy: 1
-          }));
+  .filter(eq => !!eq.equipmentid)
+  .map(eq => this.usedEquipmentService.createUsedEquipment({
+    CrewId: crewid,
+    equipmentId: eq.equipmentid,
+    startdate: new Date(),
+    enddate: new Date(),
+    hoursLent: eq.hourslent,
+    quantity: eq.quantity,
+    equipmentCost: eq.equipmentcost, // ✅ ya viene calculado correctamente
+    observation: '',
+    createdBy: 1,
+    updatedBy: 1
+  }));
+
 
         import('rxjs').then(({ forkJoin }) => {
           forkJoin([...employees$, ...materials$, ...equipment$]).subscribe({

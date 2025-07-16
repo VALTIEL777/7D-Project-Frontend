@@ -16,59 +16,71 @@
 </ul>
 
 
-<!-- Activities -->
+<!-- ✅ ACTIVITIES + PHOTO EVIDENCE UNIDOS -->
+
 <h3 class="sub-title">Activities</h3>
 <ul class="info-list">
   <li *ngFor="let activity of activities">
-
-    <mat-checkbox [(ngModel)]="activity.checked"    [disabled]="activity.locked || isPreviousPhaseIncomplete(activity)"
->{{ activity.name }}</mat-checkbox>
+    <mat-checkbox
+      [(ngModel)]="activity.checked"
+      [disabled]="activity.locked || isPreviousPhaseIncomplete(activity)"
+    >
+      {{ activity.name }}
+    </mat-checkbox>
   </li>
-  <button mat-raised-button color="primary" (click)="saveSelectedActivities()">
-  Save Selected Activities
-</button>
 </ul>
-    <mat-divider></mat-divider>
-<!-- Upload Image & Issue -->
- <h3 class="sub-title">Photo evidence</h3>
+
+<!-- 📸 PHOTO EVIDENCE -->
+<mat-divider></mat-divider>
+<h3 class="sub-title">Photo Evidence</h3>
 <div class="issue-section">
+
   <div class="upload-container">
     <label class="upload-button">
       <input
-  type="file"
-  accept="image/*"
-  capture="environment"
-  hidden
-  (change)="onFileSelected($event)"
-/>
-
+        type="file"
+        accept="image/*"
+        capture="environment"
+        hidden
+        (change)="onFileSelected($event)"
+      />
       <mat-icon style="font-size: 25px;">camera_enhance</mat-icon>
     </label>
-    <span>Upload Image</span>
+    <span>{{ selectedFile ? selectedFile.name : 'Upload Image' }}</span>
   </div>
 
-  <!-- Input para el nombre de la imagen -->
+  <!-- Nombre de la foto -->
   <mat-form-field appearance="outline" class="comment-field">
     <mat-label>Photo Name</mat-label>
-    <input matInput [(ngModel)]="name" placeholder="e.g. Work zone photo" />
+    <input
+      matInput
+      [(ngModel)]="name"
+      placeholder="e.g. Work zone photo"
+    />
   </mat-form-field>
 
-  <!-- Input para el comentario -->
+  <!-- Comentario -->
   <mat-form-field appearance="outline" class="comment-field">
-    <mat-label>Comment</mat-label>
-    <input matInput [(ngModel)]="comment" placeholder="e.g. Missing permit, blocked entrance..." />
+    <mat-label>Issue</mat-label>
+    <input
+      matInput
+      [(ngModel)]="comment"
+      placeholder="e.g. Missing permit, blocked entrance..."
+    />
   </mat-form-field>
 
-  <!-- Botón para subir -->
+  <!-- ✅ BOTÓN ÚNICO PARA GUARDAR FASE + EVIDENCIA -->
   <button
     mat-raised-button
     color="primary"
-    (click)="uploadPhotoEvidence()"
-    [disabled]="!selectedFile"
+    (click)="saveSelectedActivities()"
+    [disabled]="isSaveDisabled"
   >
-    Upload Evidence
+    Save Phases & Upload Photo
   </button>
+
 </div>
+
 
 
 <!-- Permits -->
@@ -101,12 +113,13 @@
 
 <!-- Contact Supervisor -->
 <h3 class="sub-title">Contact supervisor</h3>
-<p><strong>name:</strong>
-   <!-- {{ temporal.supervisor.name }} --> Renee Mercado 
+<p *ngIf="supervisor"><strong>name:</strong>
+   {{ supervisor.firstname }} {{ supervisor.lastname }}
 </p>
-<p><strong>phone:</strong>
-  <!-- {{ temporal.supervisor.phone }} --> 7737946851 
-  </p>
+<p *ngIf="supervisor"><strong>phone:</strong>
+   {{ supervisor.phone }}
+</p>
+
     <mat-divider></mat-divider>
 </div>
   <app-sitejob-tabs></app-sitejob-tabs>

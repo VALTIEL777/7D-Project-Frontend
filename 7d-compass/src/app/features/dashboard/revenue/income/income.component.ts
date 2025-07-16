@@ -4,6 +4,7 @@ import { DataTableComponent } from '../../../../shared/data-table/data-table.com
 import { CardWithButtonComponent } from '../../../../shared/card-with-button/card-with-button.component';
 import { ConfirmationDialogComponent } from '../../../../shared/confirmation-dialog/confirmation-dialog.component';
 import { SearchDialogComponent } from '../../../../shared/search-dialog/search-dialog.component';
+import { forkJoin } from 'rxjs';
 import { MatDialog } from '@angular/material/dialog';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { ColumnDefinition } from '../../../../shared/data-table/data-table.component';

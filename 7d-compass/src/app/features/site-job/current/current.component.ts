@@ -21,6 +21,8 @@ import { MatDialog } from '@angular/material/dialog';
 import { ConfirmPhaseDialogComponent } from '../../../shared/confirm-phase-dialog/confirm-phase-dialog.component';
 import { TaskstatusService } from '../../../core/services/route/taskstatus.service';
 import { RouteStateService } from '../../../core/services/shared/route-state.service';
+import { TicketService } from '../../../core/services/ticket.service';
+import { QuadrantsService } from '../../../core/services/location/quadrants.service';
 
 @Component({
   selector: 'app-current',
@@ -64,6 +66,7 @@ comment: string = '';
 latitude: number = 0; // puedes obtenerla desde GPS o dejar en 0
 longitude: number = 0;
 name: string = 'Photo Evidence'; // nombre opcional o dinámico
+ supervisor: any = {};
 
 activities: any[] = [];
 
@@ -81,7 +84,9 @@ diggers: { id: number; number: string }[] = [];
         private photoEvidenceService: PhotoEvidenceService,
         private contractUnitsPhasesService: ContractUnitsPhasesService,
         private dialog: MatDialog,
-        private routeState: RouteStateService
+        private ticketService: TicketService,
+        private peopleService: PeopleService,
+        private quadrantService: QuadrantsService
   ){}
 
   private isLocationFromStorage = false;
@@ -118,6 +123,10 @@ ngOnInit() {
 
   this.loadEmployees();
   this.loadAllPhases();
+
+     if (this.ticketId) {
+    this.loadSupervisor();
+  }
 }
 
 
@@ -231,6 +240,30 @@ loadAllPhases() {
 }
 
 
+  loadSupervisor() {
+ this.ticketService.getTicketById(this.ticketId).subscribe(ticket => {
+  const quadrantId = ticket.quadrantId;
+
+  if (!quadrantId) {
+    console.warn('⚠️ No se encontró quadrantId en el ticket');
+    return;
+  }
+
+  this.quadrantService.getQuadrantById(quadrantId).subscribe(quadrant => {
+    const supervisorId = quadrant.supervisorId;
+    if (!supervisorId) {
+      console.warn('⚠️ No se encontró supervisorId en el cuadrante');
+      return;
+    }
+
+    this.peopleService.getPeopleById(supervisorId).subscribe(supervisor => {
+      this.supervisor = supervisor;
+      console.log('✅ Supervisor cargado:', this.supervisor);
+    });
+  });
+});
+
+}
 
 
 
@@ -293,28 +326,32 @@ this.permits = details.reduce((acc: { id: number; number: string }[], d: any) =>
 }
 
 loadLinkedPhases() {
-  this.contractUnitsPhasesService.getByContractUnitId(this.contractUnitId).subscribe({
-    next: (linkedStatuses) => {
-      const normalized = linkedStatuses.map(lp => ({
-        contractUnitId: lp.contractunitid,
-        taskStatusId: lp.taskstatusid
-      }));
+  this.ticketStatusService.getByTicket(this.ticketId).subscribe({
+  next: (ticketStatuses: any[] | null) => {
+    const safeStatuses = Array.isArray(ticketStatuses) ? ticketStatuses : [];
+    const normalized = safeStatuses.map(ts => Number(ts.taskstatusid));
 
-      this.activities.forEach(activity => {
-        if (normalized.some(p => p.taskStatusId === activity.id)) {
-          activity.checked = true;
-          activity.locked = true;
-        } else {
-          activity.checked = false;
-          activity.locked = false;
-        }
-      });
-    },
-    error: (err) => {
-      console.error('❌ Error al cargar fases vinculadas:', err);
-    }
-  });
+    this.activities.forEach(activity => {
+      const activityId = Number(activity.id);
+      if (normalized.includes(activityId)) {
+        activity.checked = true;
+        activity.locked = true;
+      } else {
+        activity.checked = false;
+        activity.locked = false;
+      }
+    });
+  },
+  error: (err) => {
+    console.error('Error al cargar fases vinculadas:', err);
+  }
+});
+
+
 }
+
+
+
 
 
 
@@ -324,26 +361,16 @@ loadLinkedPhases() {
 saveSelectedActivities() {
   console.table(this.activities, ['id', 'name', 'checked', 'locked']);
 
-
   const selectedPhases = this.activities
     .filter(a => a.checked && !a.locked && a.id != null);
 
-    console.log('📋 Actividades disponibles:', this.activities);
-console.log('🆕 Seleccionadas para guardar:', selectedPhases);
-
+  console.log('📋 Actividades disponibles:', this.activities);
+  console.log('🆕 Seleccionadas para guardar:', selectedPhases);
 
   if (selectedPhases.length === 0) {
     console.warn('⚠️ No hay fases nuevas para guardar.');
     return;
   }
-
-
-  const selectedPhaseRelations = selectedPhases.map(a => ({
-    contractUnitId: this.contractUnitId,
-    taskStatusId: a.id,
-    createdBy: this.userId || 1,
-    updatedBy: this.userId || 1
-  }));
 
   const selectedNames = selectedPhases.map(p => p.name).join(', ');
 
@@ -354,79 +381,84 @@ console.log('🆕 Seleccionadas para guardar:', selectedPhases);
 
   dialogRef.afterClosed().subscribe(result => {
     if (result) {
-      this.executeSave(selectedPhaseRelations, selectedPhases);
+      this.executeSaveAndPhoto(selectedPhases);
     }
   });
 }
 
 
-private executeSave(selectedPhaseRelations: any[], selectedPhases: any[]) {
-  const requests = selectedPhaseRelations.map(phase =>
-    this.contractUnitsPhasesService.create(phase)
-  );
-
-  forkJoin(requests).subscribe({
-    next: () => {
-      console.log('✅ Fases nuevas guardadas con éxito.');
-
-      this.loadLinkedPhases();
-    },
-    error: (err) => console.error('❌ Error al guardar fases', err)
-  });
 
 
- this.ticketStatusService.getByTicketAndCrew(this.ticketId, this.crewId).subscribe({
-  next: (status: any) => {
-    if (status) {
-      const taskStatusId = status.taskstatusid;
-      const ticketId = status.ticketid;
-
-      // Aquí, por ejemplo, manejas endingDate para alguna fase en activities
-      const hasClean = this.activities.some(a => a.name.toLowerCase() === 'clean' && a.checked);
-
-      if (hasClean) {
-        this.ticketStatusService.update(taskStatusId, ticketId, {
-          endingDate: new Date().toISOString(),
-          updatedBy: this.userId
-        }).subscribe(() => {
-          console.log('✅ TicketStatus actualizado con endingDate');
-        });
-      }
-    } else {
-      // Aquí se crea con startingDate para la PRIMERA fase marcada (en selectedPhases)
-      const firstCheckedPhase = selectedPhases.find(p => p.checked);
-
-
-      if (firstCheckedPhase) {
-
-const crewIdToUse = this.crewId || this.currentCrewIdFromLoadEmployees;
+private executeSaveAndPhoto(selectedPhases: any[]) {
+  const crewIdToUse = this.crewId || this.currentCrewIdFromLoadEmployees;
 
   if (!crewIdToUse || crewIdToUse === 0) {
-    console.error('crewId inválido, no se puede guardar TicketStatus');
+    console.error('❌ crewId inválido, no se puede guardar TicketStatus');
     return;
   }
 
-        this.ticketStatusService.create({
+  this.ticketStatusService.getByTicket(this.ticketId).subscribe({
+    next: (existingStatuses: any[]) => {
+      let alreadyStarted = existingStatuses && existingStatuses.length > 0;
+      let startingDateToUse: string | null = null;
+
+      if (alreadyStarted) {
+        startingDateToUse = existingStatuses[0].startingdate;
+        console.log(`ℹ️ Usando startingDate existente: ${startingDateToUse}`);
+      }
+
+      selectedPhases.forEach(phase => {
+        const savePhase$ = this.ticketStatusService.create({
           ticketId: this.ticketId,
-          crewId: this.crewId,
-          taskStatusId: firstCheckedPhase.id,
-          startingDate: new Date().toISOString(),
+          crewId: crewIdToUse,
+          taskStatusId: phase.id,
+          startingDate: !alreadyStarted && !startingDateToUse
+            ? (startingDateToUse = new Date().toISOString()) // primera vez
+            : startingDateToUse,
           createdBy: this.userId,
           updatedBy: this.userId
-        }).subscribe(() => {
-          console.log(`✅ TicketStatus creado con startingDate para fase ${firstCheckedPhase.name}`);
         });
-      } else {
-        console.warn('⚠️ No hay fases seleccionadas para crear TicketStatus');
-      }
-    }
-  },
-  error: (err) => {
-    console.error('❌ Error al obtener TicketStatus:', err);
-  }
-});
 
+        savePhase$.subscribe(() => {
+          console.log(`✅ TicketStatus creado para fase ${phase.name}`);
+          this.loadLinkedPhases();
+
+          // ✅ SUBIR FOTO SOLO SI HAY ARCHIVO SELECCIONADO
+          if (this.selectedFile) {
+            this.uploadPhotoEvidence(phase.id); // Mandamos el taskStatusId (es tu ticketStatusId)
+          }
+        });
+
+        alreadyStarted = true;
+      });
+
+      // ✅ endingDate solo para CLEAN
+      const cleanPhase = selectedPhases.find(p => p.name.toLowerCase() === 'clean');
+      if (cleanPhase) {
+        this.ticketStatusService.update(cleanPhase.id, this.ticketId, {
+          startingDate: startingDateToUse,
+          endingDate: new Date().toISOString(),
+          updatedBy: this.userId
+        }).subscribe(() => {
+          console.log(`✅ endingDate actualizado (CLEAN)`);
+        });
+      }
+    },
+    error: (err) => {
+      console.error('❌ Error al obtener ticketStatus para verificar startingDate:', err);
+    }
+  });
 }
+
+
+
+get isSaveDisabled(): boolean {
+  return (
+    this.activities?.every((a: any) => !a.checked) && !this.selectedFile
+  );
+}
+
+
 
 
 isPreviousPhaseIncomplete(currentActivity: any): boolean {
@@ -457,30 +489,30 @@ onFileSelected(event: Event) {
   }
 }
 
-uploadPhotoEvidence(): void {
-  console.log('📄 Archivo seleccionado:', this.selectedFile);
-console.log('🧾 ticketid:', this.ticketId);
+uploadPhotoEvidence(taskStatusId: number): void {
+  console.log('📸 Subiendo evidencia para fase:', taskStatusId);
 
   if (!this.selectedFile || !this.ticketId) {
-    console.warn('⚠️ Archivo o ticketId no disponible');
+    console.warn('⚠️ No hay archivo o ticketId');
     return;
   }
 
   const formData = new FormData();
   formData.append('file', this.selectedFile);
-  formData.append('ticketStatusId', this.ticketStatusId.toString()); // o '1'
-formData.append('ticketid', this.ticketId.toString());
+  formData.append('ticketStatusId', taskStatusId.toString()); // ✅ taskStatusId = ticketStatusId
+  formData.append('ticketId', this.ticketId.toString());
   formData.append('name', this.name);
   formData.append('latitude', this.latitude.toString());
   formData.append('longitude', this.longitude.toString());
   formData.append('date', new Date().toISOString());
   formData.append('comment', this.comment);
-  formData.append('createdBy', '1'); // puedes usar el userId del login
-  formData.append('updatedBy', '1');
+  formData.append('createdBy', this.userId.toString());
+  formData.append('updatedBy', this.userId.toString());
 
   this.photoEvidenceService.uploadPhotoEvidence(formData).subscribe({
-    next: (res) => console.log('✅ Evidencia subida:', res),
-    error: (err) => console.error('❌ Error al subir evidencia:', err)
+    next: (res) => console.log('✅ Evidencia subida correctamente:', res),
+    error: (err) => console.error('❌ Error subiendo evidencia:', err)
   });
 }
+
 }
