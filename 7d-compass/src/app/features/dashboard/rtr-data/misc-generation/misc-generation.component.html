@@ -68,19 +68,21 @@
 
 
         <mat-form-field appearance="fill">
-          <mat-label>Skills</mat-label>
-          <mat-select formControlName="selectedSkills" multiple>
-            <mat-option *ngFor="let skill of skillList" [value]="skill">
-              <mat-icon class="mr-2" aria-hidden="false" [attr.aria-label]="skill + ' icon'">
-                {{ skillIcons[skill] }}
-              </mat-icon>
-              {{ skill }}
-            </mat-option>
-          </mat-select>
-          <mat-error *ngIf="form.get('selectedSkills')?.hasError('required')">
-            Please select at least one skill
-          </mat-error>
-        </mat-form-field>
+  <mat-label>Skills</mat-label>
+  <mat-select formControlName="selectedSkills" multiple>
+    <mat-option *ngFor="let skill of skillList" [value]="skill">
+      <mat-icon class="mr-2" aria-hidden="false" [attr.aria-label]="skill + ' icon'">
+        {{ skillIcons[skill] }}
+      </mat-icon>
+      {{ skill }}
+    </mat-option>
+  </mat-select>
+
+  <mat-error *ngIf="form.get('selectedSkills')?.hasError('required')">
+    Please select at least one skill
+  </mat-error>
+</mat-form-field>
+
 
         <mat-slide-toggle color="accent" formControlName="isLeader">Mark as Leader</mat-slide-toggle>
 

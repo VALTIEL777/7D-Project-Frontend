@@ -23,6 +23,7 @@ import { SkillsService } from '../../../../core/services/human-resources/skills.
 import { RoutesService } from '../../../../core/services/route/route.service';
 import { RouteStateService } from '../../../../core/services/shared/route-state.service';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { EmployeeSkillsService } from '../../../../core/services/human-resources/employeeskills.service';
 
 interface ColumnDefinition {
   name: string;
@@ -118,7 +119,8 @@ routes: any[] = [];
     private skillsService: SkillsService,
     private routeService: RoutesService,
     private routeState: RouteStateService,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    private employeeSkillsService: EmployeeSkillsService
   ) {
     this.form = this.fb.group({
       type: [null, ],
@@ -390,84 +392,85 @@ private _filterEmployees(value: string | any): any[] {
 }
 
 
-onEmployeeSelected(selectedEmployee: any) {
-  this.form.patchValue({ selectedEmployee: selectedEmployee });
+onEmployeeSelected(employee: any) {
+  if (!employee) {
+    this.form.get('selectedEmployee')!.setValue(null);
+    this.form.get('selectedSkills')!.setValue([]);
+    return;
+  }
+
+  this.form.get('selectedEmployee')!.setValue(employee);
+
+  this.employeeSkillsService.getEmployeeSkillsByEmployee(employee.employeeid).subscribe({
+    next: (employeeSkills: any[]) => {
+      const skillNames = employeeSkills.map(es => es.skillname);
+      const filteredSkillNames = skillNames.filter(name =>
+        this.skillList.includes(name)
+      );
+      console.log('✅ Skills cargadas:', filteredSkillNames);
+
+      // ✅ Rellena el <mat-select>
+      this.form.get('selectedSkills')!.setValue(filteredSkillNames);
+    },
+    error: (err) => {
+      console.error('❌ Error loading employee skills', err);
+      this.form.get('selectedSkills')!.setValue([]);
+    }
+  });
 }
 
 
- addEmployee() {
+
+
+addEmployee() {
   const selected = this.form.get('selectedEmployee')?.value;
   const selectedSkills = this.form.get('selectedSkills')?.value;
-  let isLeader = this.form.get('isLeader')?.value;
+  const isLeader = this.form.get('isLeader')?.value;
   const workedhours = parseFloat(this.form.get('workedhours')?.value);
   const type = this.form.get('type')?.value;
 
-  console.log('🧪 Empleado seleccionado:', selected);
-  console.log('🧪 Skills seleccionadas:', selectedSkills);
-  console.log('🧪 isLeader:', isLeader, 'workedhours:', workedhours, 'type:', type);
+  if (!selected || !selected.employeeid) {
+    console.warn('⚠️ No se puede agregar el empleado. Falta información.');
+    return;
+  }
 
-  if (selected && selectedSkills?.length) {
-    let fullName = '';
-    let employeeid: number | null = null;
-let userid: number | null = null; // 👈 nuevo
+  const [firstname, ...lastnameParts] = selected.name.trim().split(' ');
+  const lastname = lastnameParts.join(' ');
 
-let found: any = null; // 👈 definido fuera del bloque
-    if (typeof selected === 'string') {
-      fullName = selected.trim();
-      const found = this.employeeList.find(e => e.name === fullName);
-      console.log('🔍 Buscando empleado por nombre:', fullName, 'Resultado:', found);
-      if (found) {
-        employeeid = found.employeeid;
-      } else {
-        console.warn('⚠️ Empleado no encontrado:', fullName);
-        return;
-      }
-    } else if (typeof selected === 'object' && selected.name && selected.employeeid) {
-      fullName = selected.name;
-      employeeid = selected.employeeid;
-      console.log('📌 Empleado encontrado (objeto):', selected);
-    }
+  const employeeGroup = this.fb.group({
+    num: this.employees.length + 1,
+    employeeid: selected.employeeid,
+    userid: selected.userid ?? null,
+    firstname,
+    lastname,
+    skills: [Array.isArray(selectedSkills) ? [...selectedSkills] : [selectedSkills]],
+    leader: isLeader,
+    type,
+    workedhours
+  });
 
-    if (!employeeid) {
-      console.warn('⚠️ employeeid es null. No se puede agregar el empleado.');
-      return;
-    }
+  this.employees.push(employeeGroup);
 
-    const [firstname, ...lastnameParts] = fullName.trim().split(' ');
-    const lastname = lastnameParts.join(' ');
+  this.form.patchValue({
+    selectedEmployee: null,
+    selectedSkills: [],
+    isLeader: false
+  });
 
-    const employeeGroup = this.fb.group({
-  num: this.employees.length + 1,
-  employeeid,
-  userid: found?.userid ?? selected.userid ?? null, // ✅ esto asegura que tienes ambos
-  firstname,
-  lastname,
-  skills: [Array.isArray(selectedSkills) ? [...selectedSkills] : [selectedSkills]],
-  leader: isLeader,
-  type,
-  workedhours
-});
+ // ✅ Limpia el input del autocompletado
+  this.employeeControl.setValue('');
+  this.employeeControl.markAsPristine();
+  this.employeeControl.markAsUntouched();
 
+  this.updateEmployeeData();
 
-    console.log('🆕 Empleado agregado al formulario:', employeeGroup.value);
-
-    this.employees.push(employeeGroup);
-
-    this.form.patchValue({
-      selectedEmployee: null,
-      selectedSkills: [],
-      isLeader: false
-    });
-
-    this.updateEmployeeData();
-
-    if (this.hasLeaderAlready) {
-      this.form.get('isLeader')?.disable();
-    } else {
-      this.form.get('isLeader')?.enable();
-    }
+  if (this.hasLeaderAlready) {
+    this.form.get('isLeader')?.disable();
+  } else {
+    this.form.get('isLeader')?.enable();
   }
 }
+
 
 
 get hasLeaderAlready(): boolean {

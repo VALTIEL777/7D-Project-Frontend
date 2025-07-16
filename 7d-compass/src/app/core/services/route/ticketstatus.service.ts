@@ -25,6 +25,11 @@ export class TicketStatusService {
     return this.http.get<any>(`${this.baseUrl}/${taskStatusId}/${ticketId}`);
   }
 
+  getByTicket(ticketId: number): Observable<any[]> {
+  return this.http.get<any[]>(`${this.baseUrl}/ticket/${ticketId}`);
+}
+
+
   getAll(): Observable<any[]> {
     return this.http.get<any[]>(`${this.baseUrl}`);
   }

@@ -1,6 +1,25 @@
 <app-sitejob-sidenavbar [teamLeader]="teamLeader" [teamMembers]="teamMembers">
   
-  <app-sitejob-layout></app-sitejob-layout>
+  <div class="map-container">
+  <div *ngIf="staticMapUrl" class="static-map">
+    <img
+      [src]="staticMapUrl"
+      alt="Route Map"
+      [width]="staticMapWidth"
+      [height]="staticMapHeight"
+      class="map-image"
+    />
+
+    <div *ngIf="showNoRoutesOverlay" class="no-routes-overlay">
+      <div class="no-routes-message">
+        <mat-icon>route</mat-icon>
+        <h3>No Active Routes</h3>
+        <p>Routes will appear here once they are generated</p>
+      </div>
+    </div>
+  </div>
+</div>
+
 
   <!-- 🔄 Spinner de carga -->
   <div *ngIf="isLoading" class="loader-container">
