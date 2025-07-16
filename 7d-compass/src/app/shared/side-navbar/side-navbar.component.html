@@ -44,13 +44,13 @@
       </mat-expansion-panel>
 
       <!-- RTR Data -->
-      <mat-expansion-panel [expanded]="isExpanded(['/rtr-processing', '/misc-generation'])">
+      <mat-expansion-panel [expanded]="isExpanded(['/rtr-processing', '/crew-generation'])">
         <mat-expansion-panel-header>
           <mat-icon>storage</mat-icon>
           <span>RTR Data</span>
         </mat-expansion-panel-header>
         <a mat-button routerLink="/rtr-processing" routerLinkActive="active-link" (click)="closeSidenav()">RTR Processing</a>
-        <a mat-button routerLink="/misc-generation" routerLinkActive="active-link" (click)="closeSidenav()">Misc Generation</a>
+        <a mat-button routerLink="/crew-generation" routerLinkActive="active-link" (click)="closeSidenav()">Crew Generation</a>
       </mat-expansion-panel>
 
       <!-- Files & Reports -->

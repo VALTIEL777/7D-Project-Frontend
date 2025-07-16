@@ -168,7 +168,7 @@ export class TitleBarComponent {
     const routeMap: Record<string, string> = {
       '/overview': 'Overview',
       '/rtr-processing': 'RTR Processing',
-      '/misc-generation': 'Misc Generation',
+      '/crew-generation': 'Crew Generation',
       '/report-center': 'Report Center',
       '/files-permits': 'Files & Permits',
       '/route-generator': 'Route Generator',

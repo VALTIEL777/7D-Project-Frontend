@@ -32,11 +32,11 @@ export const routes: Routes = [
       ).then((m) => m.RtrProcessingComponent),
   },
   {
-    path: 'misc-generation',
+    path: 'crew-generation',
     loadComponent: () =>
       import(
-        './features/dashboard/rtr-data/misc-generation/misc-generation.component'
-      ).then((m) => m.MiscGenerationComponent),
+        './features/dashboard/rtr-data/crew-generation/crew-generation.component'
+      ).then((m) => m.CrewGenerationComponent),
   },
   {
     path: 'report-center',

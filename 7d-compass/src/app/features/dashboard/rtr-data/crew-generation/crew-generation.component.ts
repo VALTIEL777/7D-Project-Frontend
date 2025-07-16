@@ -32,7 +32,7 @@ interface ColumnDefinition {
 }
 
 @Component({
-  selector: 'app-misc-generation',
+  selector: 'app-crew-generation',
   standalone: true,
   imports: [
     CommonModule,
@@ -44,10 +44,10 @@ interface ColumnDefinition {
     CardWithButtonComponent,
     DataTableComponent,
   ],
-  templateUrl: './misc-generation.component.html',
-  styleUrls: ['./misc-generation.component.scss']
+  templateUrl: './crew-generation.component.html',
+  styleUrls: ['./crew-generation.component.scss']
 })
-export class MiscGenerationComponent implements OnInit {
+export class CrewGenerationComponent implements OnInit {
   form: FormGroup;
 
   // Listas cargadas desde backend
@@ -56,8 +56,8 @@ employeeList: {
   name: string;
   crewid: number;
   type: string;
-  workedhours: number; 
-  skills?: string[];   
+  workedhours: number;
+  skills?: string[];
   crewLeader: boolean;
 }[] = [];
 isLoading = false;
@@ -84,7 +84,7 @@ typeList = [
     Measure: 'square_foot'
   };
 
-materialOptions: { 
+materialOptions: {
   value: number;         // El `inventoryId` u otro identificador
   viewValue: string;     // El nombre del material
   unit: string;          // Unidad del material (e.g. 'Kg', 'Bags')
@@ -340,15 +340,15 @@ this.routes = Array.isArray(res.routes) ? res.routes : [];
   { name: 'num', header: 'No.', cell: e => e.num?.toString() ?? '' },
       { name: 'fullName', header: 'Full Name', cell: e => `${e.firstname} ${e.lastname}` },
 
-  { 
-    name: 'skills', 
-    header: 'Skills', 
-    cell: (e: any) => Array.isArray(e.skills) ? e.skills.join(', ') : '' 
+  {
+    name: 'skills',
+    header: 'Skills',
+    cell: (e: any) => Array.isArray(e.skills) ? e.skills.join(', ') : ''
   },
-  { 
-    name: 'leader', 
-    header: 'Leader', 
-    cell: e => e.leader ? 'Yes' : 'No' 
+  {
+    name: 'leader',
+    header: 'Leader',
+    cell: e => e.leader ? 'Yes' : 'No'
   },
   { name: 'actions', header: 'Actions', cell: () => '', isActionColumn: true }
 ];
@@ -755,7 +755,7 @@ save() {
       type: tipo,
       photo: 'eqA.jpg',
       workedHours: horas,
-      routeId: selectedRouteId, 
+      routeId: selectedRouteId,
       createdBy: 1,
       updatedBy: 1
     };
@@ -815,7 +815,7 @@ save() {
               this.materials.clear();
               this.equipment.clear();
               this.isLoading = false; // detener loader
-              
+
               this.snackBar.open('Crew saved successfully!', 'Close', {
   duration: 3000, // milisegundos
   horizontalPosition: 'center',

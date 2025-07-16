@@ -1,18 +1,18 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { MiscGenerationComponent } from './misc-generation.component';
+import { CrewGenerationComponent } from './crew-generation.component';
 
-describe('MiscGenerationComponent', () => {
-  let component: MiscGenerationComponent;
-  let fixture: ComponentFixture<MiscGenerationComponent>;
+describe('CrewGenerationComponent', () => {
+  let component: CrewGenerationComponent;
+  let fixture: ComponentFixture<CrewGenerationComponent>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [MiscGenerationComponent]
+      imports: [CrewGenerationComponent]
     })
     .compileComponents();
 
-    fixture = TestBed.createComponent(MiscGenerationComponent);
+    fixture = TestBed.createComponent(CrewGenerationComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
   });
