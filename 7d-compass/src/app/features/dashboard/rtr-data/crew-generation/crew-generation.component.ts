@@ -288,7 +288,7 @@ loadMaterials() {
           viewValue: inv.name,
           unit: inv.unit,
           quantity: used?.quantity || 0,  // si no hay usado, pone 0
-          costperunit: Number(inv.costperunit) 
+          costperunit: Number(inv.costperunit)
         };
       });
     },
@@ -769,7 +769,7 @@ save() {
     console.warn('Formulario inválido');
     return;
   }
-  
+
 
   this.isLoading = true; // <-- iniciar loader
 
@@ -854,7 +854,7 @@ save() {
   });
 
 
-          
+
         const equipment$ = this._equipmentDataa
   .filter(eq => !!eq.equipmentid)
   .map(eq => this.usedEquipmentService.createUsedEquipment({

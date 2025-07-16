@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { DashboardLayoutComponent } from '../../../../shared/dashboard-layout/dashboard-layout.component';
 import { DataTableComponent } from '../../../../shared/data-table/data-table.component';
 import { CardWithButtonComponent } from '../../../../shared/card-with-button/card-with-button.component';
@@ -12,6 +12,8 @@ import { InvoiceStepperCardComponent, InvoiceStepperData } from '../../../../sha
 import { TicketService, PaymentInvoiceInfo } from '../../../../core/services/ticket.service';
 import { FilterService } from '../../../../core/services/filter.service';
 import { Subscription } from 'rxjs';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'app-income',
@@ -20,11 +22,13 @@ import { Subscription } from 'rxjs';
     DataTableComponent,
     CardWithButtonComponent,
     InvoiceStepperCardComponent,
+    MatProgressSpinnerModule,
+    CommonModule,
   ],
   templateUrl: './income.component.html',
   styleUrl: './income.component.scss',
 })
-export class IncomeComponent {
+export class IncomeComponent implements OnInit, OnDestroy {
   filterSubscription: Subscription = new Subscription();
   filteredInvoiceData: any[] = [];
 
@@ -41,6 +45,7 @@ export class IncomeComponent {
   totalIncome: number = 0;
   stepperData: InvoiceStepperData = {};
   invoiceData: any[] = [];
+  isLoading: boolean = true;
 
   ngOnInit(): void {
     this.fetchInvoiceData();

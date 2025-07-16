@@ -1,7 +1,7 @@
 <app-dashboard-layout>
   <app-card-with-button title="Crew" [showEyeButton]="false">
     <form [formGroup]="form" (ngSubmit)="save()">
-      
+
       <!-- CREW SECTION -->
       <h2>Crew Details</h2>
       <div class="form-row">
@@ -20,10 +20,10 @@
 
         <mat-form-field appearance="fill" style="width: 150px;">
   <mat-label>Worked Hours</mat-label>
-  <input matInput type="number" formControlName="workedhours" min="1" max="12" required 
+  <input matInput type="number" formControlName="workedhours" min="1" max="12" required
       (input)="limitWorkedHours($event)"
 />
-  
+
   <mat-error *ngIf="form.get('workedhours')?.hasError('required')">
     Worked hours is required
   </mat-error>
@@ -124,11 +124,11 @@
   <!-- QUANTITY -->
  <mat-form-field>
   <mat-label>Quantity</mat-label>
-  <input matInput type="number" formControlName="newMaterialQuantity" max="12"  
+  <input matInput type="number" formControlName="newMaterialQuantity" max="12"
   (input)="limitMaterialQuantity($event)"
 />
 
- 
+
   <mat-error *ngIf="form.get('newMaterialQuantity')?.hasError('min')">
     Quantity must be greater than 0
   </mat-error>
@@ -183,7 +183,7 @@
     max="12"
       (input)="limitEquipmentQuantity($event)"
   />
- 
+
   <mat-error *ngIf="form.get('newEquipmentQuantity')?.hasError('min')">
     Quantity must be greater than 0
   </mat-error>
