@@ -1,5 +1,3 @@
-import { QuadrantsService } from "../app/core/services/location/quadrants.service";
-
 export const environment = {
   production: false,
   apiUrl: 'http://localhost:3000/api',
@@ -22,7 +20,7 @@ export const environment = {
   photoEvidenceServiceUrl: 'http://localhost:3000/api/photoevidence',
   necessaryPhasesServiceUrl:'http://localhost:3000/api/necessaryphases',
   contractUnitPhasesServiceUrl: 'http://localhost:3000/api/contractunitsphases',
-  ticketStatusServiceUrl:'http://localhost:3000/api/ticketstatus',  
+  ticketStatusServiceUrl:'http://localhost:3000/api/ticketstatus',
   taskStatusServiceUrl:'http://localhost:3000/api/taskstatus',
   wayfindingServiceUrl: 'http://localhost:3000/api/wayfinding',
   quadrantsServiceUrl: 'http://localhost:3000/api/quadrants',

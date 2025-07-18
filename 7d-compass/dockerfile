@@ -1,29 +1,38 @@
-# Build Angular app
+
+# Build Stage
 FROM node:18 AS build
 
 WORKDIR /app
+
 COPY package*.json ./
 RUN npm install --legacy-peer-deps
-COPY . .
-RUN npm run build --prod
 
-# Production stage with lightweight HTTP server
+COPY . .
+RUN npm run build -- --configuration=production
+
+# Runtime Stage
 FROM node:18-alpine
 
 WORKDIR /app
 
-# Install http-server globally
-RUN npm install -g http-server
+# Copy both server and browser files from the build
+COPY --from=build /app/dist/7d-compass/server ./server
+COPY --from=build /app/dist/7d-compass/browser ./browser
 
-# Copy built Angular app
-COPY --from=build /app/dist/7d-compass/browser ./dist
-
-# Expose port 3005
 EXPOSE 3005
 
-# Start http-server with specific configuration to prevent redirects
-CMD ["http-server", "dist", "-p", "3005", "-a", "0.0.0.0", "--cors", "-P", "http://localhost:3005?"]
+# Set the port environment variable for the SSR server
+ENV PORT=3005
 
+# Run the SSR server instead of http-server
+CMD ["node", "server/server.mjs"]
 
-# docker build -t christba/7d-compass latest .
-# docker push christba/7d-compass
+# =============================================================================
+# PREVIOUS STATIC FILE SERVING CONFIGURATION (COMMENTED OUT)
+# =============================================================================
+# If you need to revert to static file serving, uncomment these lines and comment out the SSR lines above:
+
+# RUN npm install -g http-server
+# COPY --from=build /app/dist/7d-compass/browser ./dist
+# CMD ["http-server", "dist", "-p", "3005", "-a", "0.0.0.0", "--cors"]
+# dockerhub christba/7d-compass
