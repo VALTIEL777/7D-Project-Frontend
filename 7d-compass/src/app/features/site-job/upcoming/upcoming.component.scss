@@ -1,5 +1,260 @@
+// Header section
+.header-section {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding: 0 16px;
+
+  @media (min-width: 768px) {
+    padding: 0 32px;
+  }
+
+  @media (min-width: 1200px) {
+    padding: 0 64px;
+  }
+
+  .section-title {
+    font-size: 1.4rem;
+    font-weight: bold;
+    margin: 0;
+  }
+
+  .map-controls {
+    display: flex;
+    gap: 8px;
+  }
+
+  .refresh-btn {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+}
+
+// Map section
+.map-section {
+  margin-bottom: 24px;
+  padding: 0 16px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+
+  @media (min-width: 768px) {
+    padding: 0 32px;
+  }
+
+  @media (min-width: 1200px) {
+    padding: 0 64px;
+  }
+}
+
+.map-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  background: linear-gradient(135deg, #005cbb 0%, #1976d2 100%);
+  color: white;
+
+  .map-title-section {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+
+    .map-title {
+      margin: 0;
+      font-size: 1.2rem;
+      font-weight: 600;
+    }
+
+    .filter-indicator {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.8rem;
+      color: rgba(255, 255, 255, 0.9);
+      background-color: rgba(255, 255, 255, 0.1);
+      padding: 2px 8px;
+      border-radius: 12px;
+
+      mat-icon {
+        font-size: 14px;
+        width: 14px;
+        height: 14px;
+      }
+    }
+
+    .route-info {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.8rem;
+      color: rgba(255, 255, 255, 0.9);
+      background-color: rgba(76, 175, 80, 0.2);
+      padding: 2px 8px;
+      border-radius: 12px;
+
+      mat-icon {
+        font-size: 14px;
+        width: 14px;
+        height: 14px;
+      }
+
+      .route-details {
+        font-size: 0.7rem;
+        color: rgba(255, 255, 255, 0.7);
+        font-style: italic;
+      }
+    }
+  }
+
+  .map-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    .location-info {
+      font-size: 0.9rem;
+      font-weight: 500;
+      min-width: 80px;
+      text-align: center;
+      color: white;
+    }
+
+    .refresh-btn {
+      color: white;
+      border-color: rgba(255, 255, 255, 0.3);
+      
+      &:hover {
+        background-color: rgba(255, 255, 255, 0.1);
+      }
+    }
+
+    .debug-btn {
+      color: white;
+      border-color: rgba(255, 255, 255, 0.3);
+      background-color: rgba(76, 175, 80, 0.2);
+      
+      &:hover {
+        background-color: rgba(76, 175, 80, 0.3);
+      }
+    }
+  }
+}
+
+.map-container {
+  width: 100%;
+  height: 400px;
+  border-radius: 12px;
+  overflow: hidden;
+  background-color: #f0f0f0;
+  position: relative;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+
+  .static-map {
+    width: 100%;
+    height: 100%;
+    position: relative;
+  }
+
+  .map-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 12px;
+  }
+
+  .no-routes-overlay {
+    position: absolute;
+    inset: 0;
+    background-color: rgba(255,255,255,0.9);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 5;
+    border-radius: 12px;
+
+    .no-routes-message {
+      text-align: center;
+      color: #555;
+
+      mat-icon {
+        font-size: 48px;
+        width: 48px;
+        height: 48px;
+        color: #ccc;
+        margin-bottom: 16px;
+      }
+
+      h3 {
+        margin: 0 0 8px 0;
+        font-size: 1.2rem;
+        font-weight: 600;
+      }
+
+      p {
+        margin: 0;
+        font-size: 0.9rem;
+        color: #777;
+      }
+    }
+  }
+
+  .directions-loading-overlay {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background-color: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 12px 16px;
+    border-radius: 8px;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    .directions-loading-message {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.9rem;
+      font-weight: 500;
+
+      p {
+        margin: 0;
+      }
+    }
+  }
+
+  .map-loading, .map-empty {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background-color: #f8f9fa;
+    color: #6c757d;
+
+    mat-icon {
+      font-size: 48px;
+      width: 48px;
+      height: 48px;
+      margin-bottom: 16px;
+      color: #ccc;
+    }
+
+    p {
+      margin: 0;
+      font-size: 0.9rem;
+    }
+  }
+}
+
 .content-wrapper {
-  padding-bottom: 90px; // proteger el contenido inferior
+  padding-bottom: 90px;
   padding-inline: 16px;
 
   @media (min-width: 768px) {
@@ -16,12 +271,6 @@
   justify-content: center;
   align-items: center;
   padding: 40px 0;
-}
-
-.section-title {
-  font-size: 1.4rem;
-  font-weight: bold;
-  margin-bottom: 12px;
 }
 
 .sub-title {
@@ -130,30 +379,88 @@
   margin-right: 6px;
 }
 
+// Locations list styling
+.locations-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.location-card {
+  background: white;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e0e0e0;
+  transition: box-shadow 0.3s ease;
+
+  &:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+}
+
+.location-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.location-number {
+  background: #005cbb;
+  color: white;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 0.9rem;
+  flex-shrink: 0;
+}
+
+.location-info {
+  flex: 1;
+
+  .address {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin: 0 0 4px 0;
+    color: #333;
+  }
+
+  .job-info {
+    font-size: 0.9rem;
+    color: #666;
+    margin: 0;
+  }
+}
+
+.location-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+
+  .show-on-map-btn {
+    color: #005cbb;
+    border-color: #005cbb;
+    
+    &:hover {
+      background-color: rgba(0, 92, 187, 0.1);
+    }
+  }
+}
+
 .address {
   font-size: 18px;
 }
-
-.address-container {
-  display: flex;
-  align-items: center;
-}
-
-.custom-select-button {
-  margin-left: auto; /* Esto empuja el botón hacia la derecha */
-}
-
-
-.address {
-  margin: 0; /* Quita margen por defecto si no lo necesitas */
-}
-
 
 .no-locations {
   display: flex;
   justify-content: center;
   align-items: center;
-  height: calc(100vh - 150px); /* Ajusta según el espacio de tu navbar/tabs */
+  height: calc(100vh - 400px);
   text-align: center;
   font-size: 18px;
   color: #555;
@@ -180,13 +487,13 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background-color: #0d47a1; /* Deep blue */
+  background-color: #0d47a1;
   color: white;
   padding: 12px 16px;
   border-radius: 8px;
   font-weight: bold;
   font-size: 1.25rem;
-  z-index: 2; /* para que esté encima del sidebar */
+  z-index: 2;
   position: relative;
 }
 
@@ -194,13 +501,13 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  margin: 40px 0; /* Margen arriba y abajo */
+  margin: 40px 0;
 }
 
 .photo-section .icon {
   font-size: 28px;
-  margin-bottom: 12px; /* Espacio entre el icono y el botón */
-  color: #fafafa; /* Opcional: color rojo como el botón */
+  margin-bottom: 12px;
+  color: #fafafa;
 }
 
 .icon-left,
@@ -210,10 +517,9 @@
   user-select: none;
 }
 
-/* sidebar fullscreen cuando esté abierto */
 .app-sidenav {
-  width: 280px; /* ancho fijo para el sidebar */
-  max-width: 80vw; /* para que no sea demasiado ancho en móviles */
+  width: 280px;
+  max-width: 80vw;
   height: 100vh;
   padding: 20px;
   background-color: #0d47a1;
@@ -222,7 +528,7 @@
   flex-direction: column;
   justify-content: space-between;
   box-sizing: border-box;
-  overflow-y: auto; /* para scroll si el contenido es muy largo */
+  overflow-y: auto;
 }
 
 .sidebar-content h3 {
@@ -248,8 +554,8 @@
   width: 100%;
   display: flex;
   align-items: center;
-  gap: 8px; /* espacio entre icono y texto */
-  justify-content: flex-start; /* para que queden a la izquierda */
+  gap: 8px;
+  justify-content: flex-start;
   font-weight: 600;
   background-color: #96bae3;
   color: #f0f0f0;
@@ -260,57 +566,20 @@
   color: #f0f0f0;
 }
 
-.map-container {
-  width: 100%;
-  height: 300px;
-  border-radius: 12px;
-  overflow: hidden;
-  background-color: #f0f0f0;
-  position: relative;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-
-  .map-placeholder {
-    text-align: center;
-    padding: 40px;
-    color: gray;
-  }
-
-  .no-routes-overlay {
-    position: absolute;
-    inset: 0;
-    background-color: rgba(255,255,255,0.85);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    font-size: 1.2rem;
-    font-weight: 600;
-    color: #555;
-    z-index: 5;
-    border-radius: 12px;
-  }
-
-  img.static-map-image {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    border-radius: 12px;
-  }
-}
-
 .tabs-container {
   display: flex;
   flex-direction: row;
   justify-content: center;
   gap: 12px;
-  flex-wrap: nowrap; // ✅ evita que se apilen
+  flex-wrap: nowrap;
   overflow-x: auto;
   padding-bottom: 4px;
 }
 
 .tab-button {
-  background-color: #e0e0e0; // Desactivado (gris claro)
+  background-color: #e0e0e0;
   color: #333;
-  flex: 1 1 auto; // ✅ distribuye el espacio entre botones
+  flex: 1 1 auto;
   border-radius: 20px;
   padding: 8px 16px;
   min-width: 100px;
@@ -323,7 +592,7 @@
   }
 
   &.active {
-    background-color: #0d47a1; // Azul profundo
+    background-color: #0d47a1;
     color: white;
   }
 
@@ -333,22 +602,60 @@
   }
 }
 
-.section-title {
-  font-size: 1.4rem;
-  font-weight: bold;
-  margin: 0;
-}
-
-.location-list {
+.zoom-selector {
   display: flex;
-  flex-direction: column;
-  gap: 16px;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  background-color: #f8f9fa;
+  border-top: 1px solid #e9ecef;
+
+  .zoom-label {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: #495057;
+  }
+
+  .zoom-buttons {
+    display: flex;
+    gap: 4px;
+
+    .zoom-btn {
+      min-width: 40px;
+      height: 32px;
+      font-size: 0.8rem;
+      font-weight: 500;
+      border-color: #dee2e6;
+      color: #6c757d;
+
+      &:hover {
+        background-color: #e9ecef;
+        border-color: #adb5bd;
+      }
+
+      &.active {
+        background-color: #005cbb;
+        border-color: #005cbb;
+        color: white;
+      }
+    }
+  }
 }
 
 // RESPONSIVE DESIGN
 @media screen and (max-width: 600px) {
   .map-container {
-    height: 200px;
+    height: 250px;
+  }
+
+  .header-section {
+    flex-direction: column;
+    gap: 12px;
+    align-items: stretch;
+
+    .map-controls {
+      justify-content: center;
+    }
   }
 
   .tabs-container {
@@ -361,5 +668,78 @@
 
   .section-title {
     font-size: 1.2rem;
+  }
+
+  .location-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .location-actions {
+    justify-content: stretch;
+    
+    .custom-select-button {
+      width: 100%;
+    }
+  }
+}
+
+// Responsive design for map
+@media screen and (max-width: 768px) {
+  .map-header {
+    flex-direction: column;
+    gap: 12px;
+    align-items: stretch;
+
+    .map-title-section {
+      align-items: center;
+      text-align: center;
+    }
+
+    .map-controls {
+      justify-content: center;
+    }
+  }
+
+  .map-container {
+    height: 300px;
+  }
+
+  .zoom-selector {
+    flex-direction: column;
+    gap: 8px;
+
+    .zoom-buttons {
+      justify-content: center;
+    }
+  }
+
+  .location-actions {
+    flex-direction: column;
+    gap: 8px;
+    
+    .show-on-map-btn,
+    .custom-select-button {
+      width: 100%;
+    }
+  }
+}
+
+@media screen and (max-width: 480px) {
+  .map-container {
+    height: 250px;
+  }
+
+  .map-header {
+    padding: 12px 16px;
+
+    .map-title {
+      font-size: 1.1rem;
+    }
+  }
+
+  .zoom-selector {
+    padding: 12px 16px;
   }
 }
