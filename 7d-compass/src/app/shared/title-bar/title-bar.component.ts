@@ -362,12 +362,16 @@ export class TitleBarComponent {
   isMobile: boolean = false;
 
   ngOnInit() {
-    this.checkScreenSize();
-    window.addEventListener('resize', () => this.checkScreenSize());
+    if (typeof window !== 'undefined') {
+      this.checkScreenSize();
+      window.addEventListener('resize', () => this.checkScreenSize());
+    }
   }
 
   checkScreenSize() {
-    this.isMobile = window.innerWidth < 768;
+    if (typeof window !== 'undefined') {
+      this.isMobile = window.innerWidth < 768;
+    }
   }
 
   toggleFilterBar() {

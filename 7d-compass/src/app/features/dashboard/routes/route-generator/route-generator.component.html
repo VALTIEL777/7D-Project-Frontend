@@ -319,36 +319,29 @@
             </div>
 
             <div class="map-container">
-              <!-- Static map display -->
-              <div *ngIf="staticMapUrl" class="static-map">
-                <img [src]="staticMapUrl"
-                     [alt]="'Route Map'"
-                     [width]="staticMapWidth"
-                     [height]="staticMapHeight"
-                     class="map-image">
-
-                <!-- No Routes Overlay -->
-                <div *ngIf="showNoRoutesOverlay" class="no-routes-overlay">
-                  <div class="no-routes-message">
-                    <mat-icon>route</mat-icon>
-                    <h3>No Active Routes</h3>
-                    <p>Routes will appear here once they are generated</p>
-                  </div>
-                </div>
-
-
-              </div>
+              <!-- Leaflet map display -->
+              <app-leaflet-map
+                [routes]="leafletRoutes"
+                [config]="mapConfig"
+                [showMarkers]="true"
+                [showPolylines]="true"
+                [height]="'85vh'"
+                [width]="'100%'"
+                [visibleRoutes]="visibleRoutes"
+                [routeTypeVisibility]="{
+                  'SPOTTER': showSpottingRoutes,
+                  'CONCRETE': showConcreteRoutes,
+                  'ASPHALT': showAsphaltRoutes
+                }"
+                (markerClick)="onMarkerClick($event)"
+                (routeClick)="onRouteClick($event)"
+                (mapClick)="onMapClick($event)">
+              </app-leaflet-map>
 
               <!-- Loading state -->
-              <div *ngIf="!staticMapUrl && (isLoadingSpottingRoutes || isLoadingConcreteRoutes || isLoadingAsphaltRoutes)" class="map-loading">
+              <div *ngIf="(isLoadingSpottingRoutes || isLoadingConcreteRoutes || isLoadingAsphaltRoutes)" class="map-loading">
                 <mat-spinner diameter="40"></mat-spinner>
                 <p>Loading route map...</p>
-              </div>
-
-              <!-- Empty state -->
-              <div *ngIf="!staticMapUrl && !isLoadingSpottingRoutes && !isLoadingConcreteRoutes && !isLoadingAsphaltRoutes" class="map-empty">
-                <mat-icon>map</mat-icon>
-                <p>Map loading failed</p>
               </div>
             </div>
           </app-card-with-button>

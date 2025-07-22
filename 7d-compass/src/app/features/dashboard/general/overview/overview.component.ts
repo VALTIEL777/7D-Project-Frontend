@@ -306,7 +306,9 @@ export class OverviewComponent extends BaseDashboardComponent implements OnInit 
   }
 
   checkMobile() {
-    this.isMobile = window.innerWidth <= 768;
+    if (typeof window !== 'undefined') {
+      this.isMobile = window.innerWidth <= 768;
+    }
   }
 
   updateDisplayedColumns() {

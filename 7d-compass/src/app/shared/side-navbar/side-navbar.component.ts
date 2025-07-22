@@ -61,8 +61,10 @@ export class SideNavbarComponent {
   }
 
   checkScreenSize() {
-    this.isMobile = window.innerWidth <= 768;
-    if (!this.isMobile) this.isSidenavOpen = false;
+    if (typeof window !== 'undefined') {
+      this.isMobile = window.innerWidth <= 768;
+      if (!this.isMobile) this.isSidenavOpen = false;
+    }
   }
 
   isExpanded(routes: string[]): boolean {

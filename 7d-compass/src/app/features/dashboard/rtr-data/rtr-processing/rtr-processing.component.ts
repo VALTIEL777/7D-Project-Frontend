@@ -401,14 +401,16 @@ export class RtrProcessingComponent extends BaseDashboardComponent implements On
       this.rtrService.downloadFileByKey(encodedObjectKey).subscribe({
         next: (blob: Blob) => {
           // Create blob URL and download
-          const url = window.URL.createObjectURL(blob);
-          const link = document.createElement('a');
-          link.href = url;
-          link.download = file.name;
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          window.URL.revokeObjectURL(url);
+          if (typeof window !== 'undefined') {
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = file.name;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
+          }
 
           this.snackBar.open('File download started', 'Close', { duration: 3000 });
         },
@@ -1204,14 +1206,16 @@ export class RtrProcessingComponent extends BaseDashboardComponent implements On
       this.rtrService.downloadFileByKey(encodedObjectKey).subscribe({
         next: (blob: Blob) => {
           // Create blob URL and download
-          const url = window.URL.createObjectURL(blob);
-          const link = document.createElement('a');
-          link.href = url;
-          link.download = this.generateRtrResult.generatedFileName;
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          window.URL.revokeObjectURL(url);
+          if (typeof window !== 'undefined') {
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = this.generateRtrResult.generatedFileName;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
+          }
 
           this.snackBar.open('Download started', 'Close', { duration: 3000 });
         },
