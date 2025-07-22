@@ -1,25 +1,108 @@
 <app-sitejob-sidenavbar [teamLeader]="teamLeader" [teamMembers]="teamMembers">
-  
-  <div class="map-container">
-  <div *ngIf="staticMapUrl" class="static-map">
-    <img
-      [src]="staticMapUrl"
-      alt="Route Map"
-      [width]="staticMapWidth"
-      [height]="staticMapHeight"
-      class="map-image"
-    />
 
-    <div *ngIf="showNoRoutesOverlay" class="no-routes-overlay">
-      <div class="no-routes-message">
-        <mat-icon>route</mat-icon>
-        <h3>No Active Routes</h3>
-        <p>Routes will appear here once they are generated</p>
+  <!-- Header con título y controles -->
+  <div class="header-section">
+    <h2 class="section-title">Upcoming Locations</h2>
+    <div class="map-controls">
+    </div>
+  </div>
+
+  <!-- Mapa estático -->
+  <div class="map-section">
+    <div class="map-header">
+      <div class="map-title-section">
+        <h3 class="map-title">Locations Map</h3>
+        <div *ngIf="filterText.trim()" class="filter-indicator">
+          <mat-icon>filter_list</mat-icon>
+          <span>Filtered: {{ filteredLocations.length }} of {{ remainingLocations.length }}</span>
+        </div>
+        <div *ngIf="!filterText.trim() && remainingLocations.length > 1" class="route-info">
+          <mat-icon>directions</mat-icon>
+          <span *ngIf="assignedRoute">
+            {{ isUsingStreetRoutes ? 'Assigned route follows streets' : 'Assigned route (straight lines)' }}
+            <span class="route-details">({{ assignedRoute.routecode }})</span>
+          </span>
+          <span *ngIf="!assignedRoute">
+            {{ isUsingStreetRoutes ? 'Routes follow streets' : 'Straight line routes' }}
+          </span>
+        </div>
+      </div>
+      <div class="map-controls">
+        <button mat-icon-button (click)="goToPreviousLocation()" [disabled]="remainingLocations.length === 0" title="Previous Location">
+          <mat-icon>chevron_left</mat-icon>
+        </button>
+        <span class="location-info">{{ getLocationNavigationInfo() }}</span>
+        <button mat-icon-button (click)="goToNextLocation()" [disabled]="remainingLocations.length === 0" title="Next Location">
+          <mat-icon>chevron_right</mat-icon>
+        </button>
+        <button mat-stroked-button (click)="updateStaticMap()" class="refresh-btn">
+          <mat-icon>refresh</mat-icon>
+          Refresh
+        </button>
+        <button mat-stroked-button (click)="debugMapState()" class="debug-btn" title="Show Route">
+          <mat-icon>map</mat-icon>
+          Show Route
+        </button>
+      </div>
+    </div>
+
+    <div class="map-container">
+      <div *ngIf="staticMapUrl" class="static-map">
+        <img
+          [src]="staticMapUrl"
+          alt="Locations Map"
+          [width]="staticMapWidth"
+          [height]="staticMapHeight"
+          class="map-image"
+        />
+
+        <!-- Loading directions overlay -->
+        <div *ngIf="isLoadingDirections" class="directions-loading-overlay">
+          <div class="directions-loading-message">
+            <mat-spinner diameter="30"></mat-spinner>
+            <p>Calculating route...</p>
+          </div>
+        </div>
+
+        <!-- Overlay cuando no hay ubicaciones -->
+        <div *ngIf="showNoRoutesOverlay" class="no-routes-overlay">
+          <div class="no-routes-message">
+            <mat-icon>location_on</mat-icon>
+            <h3>No Locations Available</h3>
+            <p>Locations will appear here once they are assigned</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Loading state -->
+      <div *ngIf="!staticMapUrl && isLoading" class="map-loading">
+        <mat-spinner diameter="40"></mat-spinner>
+        <p>Loading locations map...</p>
+      </div>
+
+      <!-- Empty state -->
+      <div *ngIf="!staticMapUrl && !isLoading" class="map-empty">
+        <mat-icon>map</mat-icon>
+        <p>Map loading failed</p>
+      </div>
+    </div>
+
+    <!-- Zoom level selector -->
+    <div class="zoom-selector">
+      <span class="zoom-label">Zoom Level:</span>
+      <div class="zoom-buttons">
+        <button
+          *ngFor="let zoom of availableZoomLevels"
+          mat-stroked-button
+          [class.active]="currentZoomLevel === zoom"
+          (click)="changeZoomLevel(zoom)"
+          class="zoom-btn"
+        >
+          {{ zoom }}
+        </button>
       </div>
     </div>
   </div>
-</div>
-
 
   <!-- 🔄 Spinner de carga -->
   <div *ngIf="isLoading" class="loader-container">
@@ -28,13 +111,11 @@
 
   <!-- ✅ Contenido visible solo cuando no hay carga -->
   <div *ngIf="!isLoading" class="content-wrapper">
-    <h2 class="section-title">Remaining Locations</h2>
-
     <!-- 🔍 Campo de búsqueda -->
     <mat-form-field appearance="outline" style="width: 100%; margin-bottom: 16px;">
       <mat-label>Search location</mat-label>
       <mat-icon matPrefix>search</mat-icon>
-      <input matInput [(ngModel)]="filterText" placeholder="Search by address or job type">
+      <input matInput [(ngModel)]="filterText" (ngModelChange)="onFilterChange()" placeholder="Search by address or job type">
     </mat-form-field>
 
     <!-- ❌ Mostrar mensaje si no hay resultados -->
@@ -46,14 +127,24 @@
     </div>
 
     <!-- 📍 Lista filtrada -->
-    <div *ngFor="let location of filteredLocations" class="location-card">
-      <div class="address-container">
-        <p class="address"><strong>{{ location.address }}</strong></p>
-        <button mat-raised-button class="custom-select-button" (click)="goToCurrent(location)">
-          <mat-icon class="icon">place</mat-icon>Go to location
-        </button>
+    <div class="locations-list">
+      <div *ngFor="let location of filteredLocations; let i = index" class="location-card">
+        <div class="location-header">
+          <div class="location-number">{{ i + 1 }}</div>
+          <div class="location-info">
+            <p class="address"><strong>{{ location.address }}</strong></p>
+            <p class="job-info" *ngIf="location.job">{{ location.job }}</p>
+          </div>
+        </div>
+        <div class="location-actions">
+          <button mat-stroked-button class="show-on-map-btn" (click)="showLocationOnMap(i)" title="Show on Map">
+            <mat-icon class="icon">map</mat-icon>Show on Map
+          </button>
+          <button mat-raised-button class="custom-select-button" (click)="goToCurrent(location)">
+            <mat-icon class="icon">place</mat-icon>Go to location
+          </button>
+        </div>
       </div>
-      <hr class="divider" />
     </div>
   </div>
 

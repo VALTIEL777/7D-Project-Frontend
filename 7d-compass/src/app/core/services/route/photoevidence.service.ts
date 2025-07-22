@@ -9,9 +9,25 @@ import { environment } from '../../../../environments/environment';
 export class PhotoEvidenceService {
   private readonly baseUrl = environment.photoEvidenceServiceUrl;
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient) {
+    console.log('🔧 PhotoEvidenceService inicializado con URL:', this.baseUrl);
+  }
 
   uploadPhotoEvidence(data: FormData): Observable<any> {
+    console.log('🚀 PhotoEvidenceService.uploadPhotoEvidence() llamado');
+    console.log('📡 URL de la API:', `${this.baseUrl}`);
+    console.log('📦 FormData recibido:', data);
+    
+    // Log del contenido del FormData
+    console.log('📋 Contenido del FormData:');
+    for (let [key, value] of data.entries()) {
+      if (value instanceof File) {
+        console.log(`  ${key}: File(${value.name}, ${value.type}, ${value.size} bytes)`);
+      } else {
+        console.log(`  ${key}:`, value);
+      }
+    }
+    
     return this.http.post(`${this.baseUrl}`, data);
   }
 
