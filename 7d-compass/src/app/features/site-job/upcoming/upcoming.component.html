@@ -35,10 +35,6 @@
         <button mat-icon-button (click)="goToNextLocation()" [disabled]="remainingLocations.length === 0" title="Next Location">
           <mat-icon>chevron_right</mat-icon>
         </button>
-        <button mat-stroked-button (click)="updateStaticMap()" class="refresh-btn">
-          <mat-icon>refresh</mat-icon>
-          Refresh
-        </button>
         <button mat-stroked-button (click)="debugMapState()" class="debug-btn" title="Show Route">
           <mat-icon>map</mat-icon>
           Show Route
@@ -47,48 +43,18 @@
     </div>
 
     <div class="map-container">
-      <div *ngIf="staticMapUrl" class="static-map">
-        <img
-          [src]="staticMapUrl"
-          alt="Locations Map"
-          [width]="staticMapWidth"
-          [height]="staticMapHeight"
-          class="map-image"
-        />
-
-        <!-- Loading directions overlay -->
-        <div *ngIf="isLoadingDirections" class="directions-loading-overlay">
-          <div class="directions-loading-message">
-            <mat-spinner diameter="30"></mat-spinner>
-            <p>Calculating route...</p>
-          </div>
-        </div>
-
-        <!-- Overlay cuando no hay ubicaciones -->
-        <div *ngIf="showNoRoutesOverlay" class="no-routes-overlay">
-          <div class="no-routes-message">
-            <mat-icon>location_on</mat-icon>
-            <h3>No Locations Available</h3>
-            <p>Locations will appear here once they are assigned</p>
-          </div>
-        </div>
-      </div>
-
-      <!-- Loading state -->
-      <div *ngIf="!staticMapUrl && isLoading" class="map-loading">
-        <mat-spinner diameter="40"></mat-spinner>
-        <p>Loading locations map...</p>
-      </div>
-
-      <!-- Empty state -->
-      <div *ngIf="!staticMapUrl && !isLoading" class="map-empty">
-        <mat-icon>map</mat-icon>
-        <p>Map loading failed</p>
-      </div>
+      <app-leaflet-map
+        [routes]="leafletRoutes"
+        [config]="mapConfig"
+        [showMarkers]="true"
+        [showPolylines]="true"
+        [height]="staticMapHeight + 'px'"
+        [width]="'100%'">
+      </app-leaflet-map>
     </div>
 
     <!-- Zoom level selector -->
-    <div class="zoom-selector">
+    <!-- <div class="zoom-selector">
       <span class="zoom-label">Zoom Level:</span>
       <div class="zoom-buttons">
         <button
@@ -101,7 +67,7 @@
           {{ zoom }}
         </button>
       </div>
-    </div>
+    </div> -->
   </div>
 
   <!-- 🔄 Spinner de carga -->

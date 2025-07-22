@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, ViewChild } from '@angular/core';
 import { SitejobLayoutComponent } from '../../../shared/sitejob-layout/sitejob-layout.component';
 import { MatTableModule } from '@angular/material/table';
 import { MatDividerModule } from '@angular/material/divider';
@@ -22,6 +22,7 @@ import { TaskstatusService } from '../../../core/services/route/taskstatus.servi
 import { RouteStateService } from '../../../core/services/shared/route-state.service';
 import { TicketService } from '../../../core/services/ticket.service';
 import { QuadrantsService } from '../../../core/services/location/quadrants.service';
+import { RouteData, MapConfig, LeafletMapComponent } from '../../../shared/leaflet-map/leaflet-map.component';
 
 @Component({
   selector: 'app-current',
@@ -32,7 +33,9 @@ import { QuadrantsService } from '../../../core/services/location/quadrants.serv
     CommonModule,
     MATERIAL_MODULES,
     SitejobSidenavbarComponent, 
-    FormsModule],
+    FormsModule,
+    LeafletMapComponent // <-- Agregado aquí
+  ],
   templateUrl: './current.component.html',
   styleUrl: './current.component.scss'
 })
@@ -55,7 +58,9 @@ location: {
   surface?: number;
   width?: number;
   description?: string;
-  length?: number;  
+  length?: number;
+  lat?: number;
+  lng?: number;
 } = {
   address: ''
 };
@@ -92,6 +97,16 @@ filterDateFrom: Date | null = null;
 filterDateTo: Date | null = null;
 filteredTicketImages: any[] = [];
 
+leafletRoutes: RouteData[] = [];
+mapConfig: MapConfig = {
+  center: [41.8781, -87.6298], // Chicago
+  zoom: 15,
+  minZoom: 8,
+  maxZoom: 18,
+  tileLayer: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+  attribution: '© OpenStreetMap contributors'
+};
+@ViewChild(LeafletMapComponent) leafletMap!: LeafletMapComponent;
 
   constructor(
      private crewsService: CrewsService,
@@ -130,7 +145,7 @@ ngOnInit() {
     
     // 🗺️ Actualizar mapa inmediatamente si la ubicación viene del localStorage
     setTimeout(() => {
-      this.updateStaticMap();
+      this.updateLeafletRoutes();
     }, 100);
   }
 
@@ -389,7 +404,7 @@ this.permits = details.reduce((acc: { id: number; number: string }[], d: any) =>
 
       // 🗺️ Actualizar mapa después de cargar la ubicación
       setTimeout(() => {
-        this.updateStaticMap();
+        this.updateLeafletRoutes();
       }, 500);
     },
     error: (err) => {
@@ -1113,78 +1128,28 @@ toggleGroup(group: string) {
 }
 
 // Map methods
-updateStaticMap(): void {
-  console.log('🗺️ Updating static map for current location...');
-  console.log('📍 Current location:', this.location);
-  console.log('📍 Location address:', this.location.address);
-  console.log('📍 Static map URL before update:', this.staticMapUrl);
-
-  if (!this.location.address || this.location.address.trim() === '') {
-    console.log('❌ No location address available, showing Chicago map');
-    this.staticMapUrl = this.generateChicagoMapWithLabel();
-    console.log('🗺️ Chicago map URL generated:', this.staticMapUrl);
-    return;
+private updateLeafletRoutes() {
+  if (this.location && this.location.address && this.location.lat && this.location.lng) {
+    this.leafletRoutes = [{
+      routeId: 1,
+      routeCode: this.routeCode || 'CURRENT',
+      type: 'CURRENT',
+      encodedPolyline: '', // No polyline, solo marcador
+      tickets: [{
+        ticketId: this.ticketId,
+        address: this.location.address,
+        queue: 0
+      }]
+    }];
+    // Centrar el mapa automáticamente en la ubicación actual
+    setTimeout(() => {
+      if (this.leafletMap && this.location.lat && this.location.lng) {
+        this.leafletMap.setCenter(this.location.lat, this.location.lng);
+      }
+    }, 0);
+  } else {
+    this.leafletRoutes = [];
   }
-
-  console.log('✅ Location address found, generating location map...');
-  this.generateLocationMap();
-}
-
-private generateLocationMap(): void {
-  console.log('🗺️ Generating location map...');
-  console.log('📍 Address to geocode:', this.location.address);
-  
-  const baseUrl = 'https://maps.googleapis.com/maps/api/staticmap';
-  const size = `size=${this.staticMapWidth}x${this.staticMapHeight}`;
-  const mapType = 'maptype=roadmap';
-  const scale = 'scale=2'; // High DPI for better quality
-  const zoom = `zoom=${this.currentZoomLevel}`;
-  const key = `key=${this.GOOGLE_MAPS_API_KEY}`;
-
-  // Create marker for the current location
-  const marker = `markers=color:0x005CBB|label:📍|${encodeURIComponent(this.location.address)}`;
-
-  // Build URL parts
-  const urlParts = [
-    baseUrl,
-    size,
-    mapType,
-    scale,
-    zoom,
-    marker,
-    `center=${encodeURIComponent(this.location.address)}`,
-    key
-  ];
-
-  const url = `${baseUrl}?${urlParts.join('&')}`;
-
-  console.log('🗺️ Generated location map URL length:', url.length);
-  console.log('🗺️ Map URL preview:', url.substring(0, 200) + '...');
-  console.log('🗺️ Full map URL:', url);
-
-  this.staticMapUrl = url;
-  console.log('✅ Static map URL set to:', this.staticMapUrl);
-  console.log('✅ Static map updated successfully');
-}
-
-generateChicagoMapWithLabel(): string {
-  console.log('🗺️ Generating Chicago map with label...');
-  
-  const baseUrl = 'https://maps.googleapis.com/maps/api/staticmap';
-  const size = `size=${this.staticMapWidth}x${this.staticMapHeight}`;
-  const mapType = 'maptype=roadmap';
-  const scale = 'scale=2'; // High DPI for better quality
-  const center = 'center=Chicago,IL';
-  const zoom = 'zoom=11';
-  const key = `key=${this.GOOGLE_MAPS_API_KEY}`;
-  
-  // Add a subtle marker in the center of Chicago
-  const marker = 'markers=color:0x005CBB|label:•|Chicago,IL';
-
-  const url = `${baseUrl}?${size}&${mapType}&${scale}&${center}&${zoom}&${marker}&${key}`;
-  
-  console.log('🗺️ Generated Chicago map URL:', url);
-  return url;
 }
 
 // Zoom control methods
@@ -1192,7 +1157,7 @@ changeZoomLevel(zoomLevel: number): void {
   if (this.availableZoomLevels.includes(zoomLevel)) {
     this.currentZoomLevel = zoomLevel;
     console.log(`🔍 Changing zoom level to: ${zoomLevel}`);
-    this.updateStaticMap();
+    // No hay lógica de Leaflet para cambiar el zoom aquí, ya que Leaflet maneja el zoom internamente
   }
 }
 
@@ -1238,10 +1203,7 @@ debugMapState(): void {
 // Force map refresh
 forceMapRefresh(): void {
   console.log('🔄 Forcing map refresh...');
-  this.staticMapUrl = ''; // Clear current URL
-  setTimeout(() => {
-    this.updateStaticMap();
-  }, 100);
+  // No hay lógica de Leaflet para forzar un refresh aquí, ya que Leaflet maneja el estado interno
 }
 
 // Test map generation
@@ -1252,21 +1214,7 @@ testMapGeneration(): void {
   const testAddress = '4840 W WRIGHTWOOD AVE, Chicago, IL';
   console.log('🧪 Using test address:', testAddress);
   
-  const baseUrl = 'https://maps.googleapis.com/maps/api/staticmap';
-  const size = `size=${this.staticMapWidth}x${this.staticMapHeight}`;
-  const mapType = 'maptype=roadmap';
-  const scale = 'scale=2';
-  const zoom = `zoom=15`;
-  const key = `key=${this.GOOGLE_MAPS_API_KEY}`;
-  const marker = `markers=color:0x005CBB|label:📍|${encodeURIComponent(testAddress)}`;
-  const center = `center=${encodeURIComponent(testAddress)}`;
-
-  const urlParts = [baseUrl, size, mapType, scale, zoom, marker, center, key];
-  const testUrl = `${baseUrl}?${urlParts.join('&')}`;
-
-  console.log('🧪 Test map URL:', testUrl);
-  this.staticMapUrl = testUrl;
-  console.log('🧪 Test map URL set successfully');
+  // No hay lógica de Leaflet para generar mapas aquí, ya que Leaflet maneja el estado interno
 }
 
 onActivityFilterChange() {

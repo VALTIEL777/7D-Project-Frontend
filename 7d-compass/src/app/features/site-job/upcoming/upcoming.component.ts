@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, ViewChild } from '@angular/core';
 import { SitejobLayoutComponent } from '../../../shared/sitejob-layout/sitejob-layout.component';
 import { CardWithButtonComponent } from '../../../shared/card-with-button/card-with-button.component';
 import { MatTableModule } from '@angular/material/table';
@@ -19,6 +19,7 @@ import { FormsModule } from '@angular/forms';
 import { SitejobTabsComponent } from '../../../shared/sitejob-tabs/sitejob-tabs.component';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
+import { RouteData, MapConfig, LeafletMapComponent } from '../../../shared/leaflet-map/leaflet-map.component';
 
 
 @Component({
@@ -26,6 +27,7 @@ import { firstValueFrom } from 'rxjs';
   imports: [
 
     SitejobSidenavbarComponent,
+    LeafletMapComponent,
     MatTableModule,
     MatDividerModule,
     CommonModule,
@@ -88,6 +90,18 @@ filterText: string = '';
 isLoading: boolean = false;
 crewDetails: any[] = [];
 
+  leafletRoutes: RouteData[] = [];
+  mapConfig: MapConfig = {
+    center: [41.8781, -87.6298], // Chicago
+    zoom: 13,
+    minZoom: 8,
+    maxZoom: 18,
+    tileLayer: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    attribution: '© OpenStreetMap contributors'
+  };
+
+  @ViewChild(LeafletMapComponent) leafletMap!: LeafletMapComponent;
+
   constructor(
      private crewsService: CrewsService,
         private crewEmployeesService: CrewEmployeesService,
@@ -129,7 +143,7 @@ crewDetails: any[] = [];
         
         // Update the map immediately
         console.log('🔧 Updating static map with forced route...');
-        this.updateStaticMap();
+        this.updateLeafletRoutes();
       } else {
         console.log('❌ Could not find route with ID:', routeId);
       }
@@ -207,7 +221,7 @@ crewDetails: any[] = [];
         
         // If still no route found, try to get route ID 3 directly (as a fallback)
         if (!assignedRoute) {
-          console.log('🛣️ No route found by type, trying to get route ID 3 directly...');
+          console.log('��️ No route found by type, trying to get route ID 3 directly...');
           try {
             const route3 = await firstValueFrom(this.routeService.getRouteById(3));
             if (route3) {
@@ -231,6 +245,7 @@ crewDetails: any[] = [];
         
         this.assignedRoute = assignedRoute;
         this.assignedRouteId = assignedRoute?.routeid;
+        this.updateLeafletRoutes();
         
         if (assignedRoute) {
           console.log('🛣️ Final assigned route:', {
@@ -378,7 +393,7 @@ this.geocodeRemainingLocations().then(async () => {
   // Get assigned route for the crew
   await this.getAssignedRoute();
   console.log('🚀 Assigned route process completed, updating static map...');
-  this.updateStaticMap();
+  this.updateLeafletRoutes();
 }).catch(error => {
   console.error('❌ Error in geocoding or route assignment:', error);
 });
@@ -577,236 +592,21 @@ get filteredLocations() {
   );
 }
 
-updateStaticMap(): void {
-  console.log('🗺️ Updating static map...');
-  console.log('📍 Remaining locations:', this.remainingLocations);
-  console.log('📍 Current location index:', this.currentLocationIndex);
-
-  if (!this.remainingLocations || this.remainingLocations.length === 0) {
-    console.log('❌ No locations available, showing Chicago map');
-    this.staticMapUrl = this.generateChicagoMapWithLabel();
-    this.showNoRoutesOverlay = true;
-    return;
-  }
-
-  this.showNoRoutesOverlay = false;
-
-  const baseUrl = 'https://maps.googleapis.com/maps/api/staticmap';
-  const size = `size=${this.staticMapWidth}x${this.staticMapHeight}`;
-  const mapType = 'maptype=roadmap';
-  const scale = 'scale=2'; // High DPI for better quality
-
-  const markers: string[] = [];
-  const paths: string[] = [];
-  const coordinates: string[] = [];
-
-  console.log('🔍 Processing locations for map...');
-
-  // Check if we should show all locations or just the current one
-  const showAllLocations = this.currentLocationIndex === 0 && this.remainingLocations.length > 1;
-  
-  if (showAllLocations) {
-    // Show all locations with paths
-    console.log('🗺️ Showing all locations with paths...');
-  this.remainingLocations.forEach((loc, index) => {
-    if (loc.lat && loc.lng) {
-        console.log(`📍 Location ${index + 1}: ${loc.address} at ${loc.lat}, ${loc.lng}`);
-        
-        // Create marker with different colors based on index
-        const markerColors = ['0x005CBB', '0x1976D2', '0x42A5F5', '0x64B5F6', '0x90CAF9', '0xBBDEFB'];
-        const colorIndex = index % markerColors.length;
-        const markerColor = markerColors[colorIndex];
-        
-        const label = this.getMarkerLabel(index + 1);
-        markers.push(`markers=color:${markerColor}|label:${label}|${loc.lat},${loc.lng}`);
-      coordinates.push(`${loc.lat},${loc.lng}`);
-      } else {
-        console.log(`⚠️ Location ${index + 1}: ${loc.address} - no coordinates available`);
-    }
-  });
-
-    // Create path connecting all locations if we have multiple coordinates
-    if (coordinates.length > 1) {
-      console.log('🛣️ Creating path connecting locations...');
-      console.log('📍 Number of coordinates:', coordinates.length);
-      console.log('🛣️ Assigned route check:', {
-        hasAssignedRoute: !!this.assignedRoute,
-        assignedRouteId: this.assignedRouteId,
-        hasPolyline: !!(this.assignedRoute?.encodedpolyline),
-        polylineLength: this.assignedRoute?.encodedpolyline?.length || 0
-      });
-      
-      // Check if we have an assigned route
-      if (this.assignedRoute && this.assignedRoute.encodedpolyline) {
-        console.log('✅ Using assigned route:', this.assignedRoute.routeid);
-        console.log('✅ Route type:', this.assignedRoute.type);
-        console.log('✅ Route code:', this.assignedRoute.routecode);
-        console.log('✅ Polyline length:', this.assignedRoute.encodedpolyline.length);
-        
-        // Use the assigned route's encoded polyline
-        paths.push(`path=color:0x005CBB|weight:4|enc:${this.assignedRoute.encodedpolyline}`);
-        console.log('✅ Using assigned route that follows streets');
-        this.isUsingStreetRoutes = true;
-        
-        this.buildMapUrl(baseUrl, size, mapType, scale, markers, paths, coordinates);
-      } else {
-        console.log('🔄 No assigned route available, trying to create new route...');
-        console.log('🔄 Assigned route details:', {
-          assignedRoute: this.assignedRoute,
-          hasPolyline: !!(this.assignedRoute?.encodedpolyline),
-          polylineLength: this.assignedRoute?.encodedpolyline?.length || 0
-        });
-        
-        // Before creating a new route, try to get route 3 as a last resort
-        if (!this.assignedRoute) {
-          console.log('🔄 No assigned route found, trying to get route 3 as fallback...');
-          this.tryGetRoute3Fallback().then((route3) => {
-            if (route3 && route3.encodedpolyline) {
-              this.assignedRoute = route3;
-              this.assignedRouteId = route3.routeid;
-              console.log('✅ Found route 3 as fallback:', route3.routeid);
-              
-              // Use the fallback route
-              paths.push(`path=color:0x005CBB|weight:4|enc:${route3.encodedpolyline}`);
-              console.log('✅ Using fallback route that follows streets');
-              this.isUsingStreetRoutes = true;
-              
-              this.buildMapUrl(baseUrl, size, mapType, scale, markers, paths, coordinates);
-              return;
-            } else {
-              // Continue with optimization if no fallback route found
-              this.tryOptimizedRoute(baseUrl, size, mapType, scale, markers, paths, coordinates);
-            }
-          });
-          return; // Exit early, will be handled in the promise
-        }
-        
-        // Try to get optimized route that follows streets (same as route-generator)
-        this.tryOptimizedRoute(baseUrl, size, mapType, scale, markers, paths, coordinates);
-        return; // Exit early, URL will be built in the callback
-      }
-    }
+private updateLeafletRoutes() {
+  if (this.assignedRoute && this.assignedRoute.encodedpolyline) {
+    this.leafletRoutes = [{
+      routeId: this.assignedRoute.routeid,
+      routeCode: this.assignedRoute.routecode,
+      type: this.assignedRoute.type,
+      encodedPolyline: this.assignedRoute.encodedpolyline,
+      tickets: (this.assignedRoute.tickets || []).map((t: any, idx: number) => ({
+        ticketId: t.ticketId || t.ticketid,
+        address: t.address,
+        queue: t.queue ?? idx
+      }))
+    }];
   } else {
-    // Show only the current location
-    const currentLocation = this.getCurrentLocation();
-    if (currentLocation && currentLocation.lat && currentLocation.lng) {
-      console.log(`📍 Showing current location: ${currentLocation.address} at ${currentLocation.lat}, ${currentLocation.lng}`);
-      
-      // Create a highlighted marker for the current location
-      markers.push(`markers=color:0x005CBB|label:📍|${currentLocation.lat},${currentLocation.lng}`);
-      coordinates.push(`${currentLocation.lat},${currentLocation.lng}`);
-    }
-  }
-
-  // Build URL for single location or when no directions needed
-  this.buildMapUrl(baseUrl, size, mapType, scale, markers, paths, coordinates);
-}
-
-private async tryGetRoute3Fallback(): Promise<any> {
-  console.log('🔄 Attempting to get route 3 as a fallback...');
-  try {
-    const route3 = await firstValueFrom(this.routeService.getRouteById(3));
-    if (route3) {
-      console.log('✅ Found route 3 as fallback:', route3.routeid);
-      return route3;
-    } else {
-      console.log('❌ Could not get route 3 directly, continuing without fallback.');
-      return null;
-    }
-  } catch (error) {
-    console.log('❌ Error getting route 3 directly:', error);
-    return null;
-  }
-}
-
-private async tryOptimizedRoute(baseUrl: string, size: string, mapType: string, scale: string, markers: string[], paths: string[], coordinates: string[]): Promise<void> {
-  this.isLoadingDirections = true;
-  console.log('🔄 Attempting to get optimized route...');
-  
-  this.routeService.getOptimizedRoute(this.remainingLocations).then((optimizedPath: string | null) => {
-    this.isLoadingDirections = false;
-    console.log('🔄 Route optimization attempt completed');
-    
-    if (optimizedPath) {
-      // Use the optimized route that follows streets (same as route-generator)
-      paths.push(`path=color:0x005CBB|weight:4|enc:${optimizedPath}`);
-      console.log('✅ Using optimized route that follows streets');
-      this.isUsingStreetRoutes = true;
-    } else {
-      console.log('🔄 No optimized route available, using straight lines...');
-      // Use straight line path (same fallback as route-generator)
-      paths.push(`path=color:0x005CBB|weight:4|${coordinates.join('|')}`);
-      console.log('⚠️ Using straight line path as fallback');
-      this.isUsingStreetRoutes = false;
-    }
-    
-    console.log('🔄 Building map URL with paths...');
-    this.buildMapUrl(baseUrl, size, mapType, scale, markers, paths, coordinates);
-  });
-}
-
-private buildMapUrl(baseUrl: string, size: string, mapType: string, scale: string, markers: string[], paths: string[], coordinates: string[]): void {
-  // Build URL parts
-  const urlParts = [
-    baseUrl,
-    size,
-    mapType,
-    scale,
-    ...markers.slice(0, 15), // Limit markers to avoid URL length issues
-    ...paths.slice(0, 3), // Limit paths to avoid URL length issues
-    `key=${this.GOOGLE_MAPS_API_KEY}`
-  ];
-
-  // Set center and zoom based on current zoom level
-  if (coordinates.length > 0) {
-    urlParts.push(`center=${coordinates[0]}`);
-    // Use the current zoom level instead of fixed zoom
-    urlParts.push(`zoom=${this.currentZoomLevel}`);
-  } else {
-    urlParts.push('center=Chicago,IL');
-    urlParts.push(`zoom=${this.currentZoomLevel}`);
-  }
-
-  const url = `${baseUrl}?${urlParts.join('&')}`;
-
-  console.log('🗺️ Generated URL length:', url.length);
-  console.log('🗺️ URL preview:', url.substring(0, 200) + '...');
-
-  if (url.length > 8000) {
-    console.warn('WARNING: URL is very long and may not work properly');
-  }
-
-  this.staticMapUrl = url;
-  console.log('✅ Static map updated successfully');
-}
-
-generateChicagoMapWithLabel(): string {
-  console.log('🗺️ Generating Chicago map with label...');
-  
-  const baseUrl = 'https://maps.googleapis.com/maps/api/staticmap';
-  const size = `size=${this.staticMapWidth}x${this.staticMapHeight}`;
-  const mapType = 'maptype=roadmap';
-  const scale = 'scale=2'; // High DPI for better quality
-  const center = 'center=Chicago,IL';
-  const zoom = 'zoom=11';
-  const key = `key=${this.GOOGLE_MAPS_API_KEY}`;
-  
-  // Add a subtle marker in the center of Chicago
-  const marker = 'markers=color:0x005CBB|label:•|Chicago,IL';
-
-  const url = `${baseUrl}?${size}&${mapType}&${scale}&${center}&${zoom}&${marker}&${key}`;
-  
-  console.log('🗺️ Generated Chicago map URL:', url);
-  return url;
-}
-
-private getMarkerLabel(index: number): string {
-  if (index <= 26) {
-    return String.fromCharCode(64 + index);
-  } else if (index <= 52) {
-    return String.fromCharCode(96 + (index - 26));
-  } else {
-    return (index % 9 + 1).toString();
+    this.leafletRoutes = [];
   }
 }
 
@@ -815,7 +615,7 @@ changeZoomLevel(zoomLevel: number): void {
   if (this.availableZoomLevels.includes(zoomLevel)) {
     this.currentZoomLevel = zoomLevel;
     console.log(`🔍 Changing zoom level to: ${zoomLevel}`);
-    this.updateStaticMap();
+    // this.updateStaticMap(); // Removed as per edit hint
   }
 }
 
@@ -840,7 +640,7 @@ goToPreviousLocation(): void {
   if (this.remainingLocations.length > 0) {
     this.currentLocationIndex = (this.currentLocationIndex - 1 + this.remainingLocations.length) % this.remainingLocations.length;
     console.log(`⬅️ Going to previous location: ${this.currentLocationIndex + 1}/${this.remainingLocations.length}`);
-    this.updateStaticMap();
+    // this.updateStaticMap(); // Removed as per edit hint
   }
 }
 
@@ -848,7 +648,7 @@ goToNextLocation(): void {
   if (this.remainingLocations.length > 0) {
     this.currentLocationIndex = (this.currentLocationIndex + 1) % this.remainingLocations.length;
     console.log(`➡️ Going to next location: ${this.currentLocationIndex + 1}/${this.remainingLocations.length}`);
-    this.updateStaticMap();
+    // this.updateStaticMap(); // Removed as per edit hint
   }
 }
 
@@ -869,15 +669,18 @@ getLocationNavigationInfo(): string {
 showLocationOnMap(locationIndex: number): void {
   if (locationIndex >= 0 && locationIndex < this.remainingLocations.length) {
     this.currentLocationIndex = locationIndex;
-    console.log(`🎯 Showing location ${locationIndex + 1} on map: ${this.remainingLocations[locationIndex].address}`);
-    this.updateStaticMap();
+    const loc = this.remainingLocations[locationIndex];
+    if (loc.lat && loc.lng && this.leafletMap) {
+      this.leafletMap.setCenter(loc.lat, loc.lng);
+    }
+    console.log(`🎯 Centrado en la ubicación ${locationIndex + 1}: ${loc.address}`);
   }
 }
 
 showAllLocations(): void {
   this.currentLocationIndex = 0; // Reset to first location to show all
   console.log('🗺️ Showing all locations on map');
-  this.updateStaticMap();
+  // this.updateStaticMap(); // Removed as per edit hint
 }
 
 onFilterChange(): void {
@@ -887,7 +690,7 @@ onFilterChange(): void {
     // Si se limpia el filtro, mostrar todas las ubicaciones
     this.currentLocationIndex = 0;
     console.log('🔍 Filter cleared: showing all locations');
-    this.updateStaticMap();
+    // this.updateStaticMap(); // Removed as per edit hint
     return;
   }
 
@@ -900,7 +703,7 @@ onFilterChange(): void {
   if (firstFilteredIndex !== -1) {
     this.currentLocationIndex = firstFilteredIndex;
     console.log(`🔍 Filter applied: showing location ${firstFilteredIndex + 1} (${this.remainingLocations[firstFilteredIndex].address})`);
-    this.updateStaticMap();
+    // this.updateStaticMap(); // Removed as per edit hint
   } else {
     console.log('🔍 No locations found matching filter');
     // Mantener el mapa actual pero mostrar mensaje
@@ -911,7 +714,7 @@ clearFilter(): void {
   this.filterText = '';
   this.currentLocationIndex = 0;
   console.log('🔍 Filter cleared: showing all locations');
-  this.updateStaticMap();
+  // this.updateStaticMap(); // Removed as per edit hint
 }
 
 getZoomDescription(): string {

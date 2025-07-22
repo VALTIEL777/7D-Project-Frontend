@@ -24,6 +24,7 @@ import { RoutesService } from '../../../../core/services/route/route.service';
 import { RouteStateService } from '../../../../core/services/shared/route-state.service';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { EmployeeSkillsService } from '../../../../core/services/human-resources/employeeskills.service';
+import { MatDividerModule } from '@angular/material/divider';
 
 interface ColumnDefinition {
   name: string;
@@ -44,6 +45,7 @@ interface ColumnDefinition {
     DashboardLayoutComponent,
     CardWithButtonComponent,
     DataTableComponent,
+    MatDividerModule
   ],
   templateUrl: './crew-generation.component.html',
   styleUrls: ['./crew-generation.component.scss']

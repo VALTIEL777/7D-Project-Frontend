@@ -8,42 +8,24 @@
   <div class="map-header">
     <h3 class="map-title">Location Map</h3>
     <div class="map-controls">
-      <button mat-icon-button (click)="zoomOut()" [disabled]="currentZoomLevel === availableZoomLevels[0]" title="Zoom Out">
-        <mat-icon>zoom_out</mat-icon>
-      </button>
-      <span class="zoom-level">{{ getZoomDescription() }}</span>
-      <button mat-icon-button (click)="zoomIn()" [disabled]="currentZoomLevel === availableZoomLevels[availableZoomLevels.length - 1]" title="Zoom In">
-        <mat-icon>zoom_in</mat-icon>
-      </button>
-      <button mat-stroked-button (click)="updateStaticMap()" class="refresh-btn">
-        <mat-icon>refresh</mat-icon>
-        Refresh
-      </button>
+      
       <!-- Botones de test y debug eliminados -->
     </div>
   </div>
 
   <div class="map-container">
-    <div *ngIf="staticMapUrl" class="static-map">
-      <img
-        [src]="staticMapUrl"
-        alt="Location Map"
-        [width]="staticMapWidth"
-        [height]="staticMapHeight"
-        class="map-image"
-      />
-    </div>
-
-    <!-- Loading state -->
-    <div *ngIf="!staticMapUrl" class="map-loading">
-      <mat-spinner diameter="40"></mat-spinner>
-      <p>Loading location map...</p>
-    </div>
-
+    <app-leaflet-map
+      [routes]="leafletRoutes"
+      [config]="mapConfig"
+      [showMarkers]="true"
+      [showPolylines]="false"
+      [height]="staticMapHeight + 'px'"
+      [width]="'100%'">
+    </app-leaflet-map>
   </div>
 
   <!-- Zoom level selector -->
-  <div class="zoom-selector">
+  <!-- <div class="zoom-selector">
     <span class="zoom-label">Zoom Level:</span>
     <div class="zoom-buttons">
       <button
@@ -56,7 +38,7 @@
         {{ zoom }}
       </button>
     </div>
-  </div>
+  </div> -->
 </div>
 
 <!-- General Info -->
