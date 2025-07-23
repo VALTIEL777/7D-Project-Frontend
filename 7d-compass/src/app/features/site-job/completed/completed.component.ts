@@ -38,7 +38,7 @@ export class CompletedComponent implements OnInit {
   crewType: string = '';
   userId: number = 0;
   openedGroups: { [key: string]: boolean } = {};
-  
+
   // ✅ NUEVAS PROPIEDADES PARA MANEJAR FASES
   allTaskStatuses: any[] = [];
   routeCode: string = '';
@@ -140,7 +140,7 @@ loadAllTaskStatuses(): void {
     next: (statuses) => {
       this.allTaskStatuses = statuses;
       console.log('📦 Todas las fases cargadas:', this.allTaskStatuses);
-      
+
       // ⏬ Ahora cargar tickets completados
       this.loadCompletedTickets(this.crewId);
     },
@@ -155,37 +155,37 @@ loadAllTaskStatuses(): void {
 loadCompletedTickets(crewId: number): void {
   console.log('🔄 Cargando tickets completados para crewId:', crewId);
   console.log('🔄 Tipo de crewId:', typeof crewId);
-  
+
   this.ticketStatusService.getCompletedTickets().subscribe({
     next: (tickets) => {
       console.log('📋 Tickets recibidos del backend:', tickets);
       console.log('📋 Total de tickets recibidos:', tickets.length);
-      
+
       // ✅ FILTRAR POR CREW ID (habilitado ahora que enviamos crewId)
       const crewTickets = tickets.filter(ticket => ticket.crewid === crewId);
       console.log('👷 Tickets del crew actual:', crewTickets);
       console.log('👷 Total de tickets del crew:', crewTickets.length);
-      
+
       if (crewTickets.length === 0) {
         console.log('⚠️ No hay tickets completados para este crew');
         this.previousLocations = [];
         return;
       }
-      
+
       this.photoEvidenceService.getAllPhotoEvidence().subscribe({
         next: (photos) => {
           console.log('📸 Fotos recibidas:', photos);
           console.log('📸 Total de fotos recibidas:', photos.length);
-          
+
           // ✅ SIMPLIFICADO: Procesar tickets directamente sin verificación adicional
           // El backend ya devuelve tickets "completados", solo necesitamos las fotos
           this.previousLocations = crewTickets.map(ticket => {
             console.log(`🔍 Procesando ticket ${ticket.ticketid}:`, ticket);
-            
-            
+
+
             const evidences = photos.filter(p => p.ticketid === ticket.ticketid);
             console.log(`📸 Fotos encontradas para ticket ${ticket.ticketid}:`, evidences.length);
-            
+
             const images = evidences.map(e => ({
               url: e.photourl,
               name: e.name,
@@ -202,7 +202,7 @@ loadCompletedTickets(crewId: number): void {
               routeCode: ticket.routecode || 'UNKNOWN',
               completedPhases: this.getCompletedPhasesFromPhotos(evidences)
             };
-            
+
             console.log(`✅ Ubicación procesada para ticket ${ticket.ticketid}:`, location);
             console.log(`🔍 Campos de dirección disponibles en ticket ${ticket.ticketid}:`, {
               // Campos de addresses
@@ -219,13 +219,13 @@ loadCompletedTickets(crewId: number): void {
               address: ticket.address,
               location: ticket.location,
               // Todos los campos del ticket
-              allFields: Object.keys(ticket).filter(key => 
-                key.toLowerCase().includes('address') || 
-                key.toLowerCase().includes('street') || 
+              allFields: Object.keys(ticket).filter(key =>
+                key.toLowerCase().includes('address') ||
+                key.toLowerCase().includes('street') ||
                 key.toLowerCase().includes('location')
               )
             });
-            
+
             // ✅ TEMPORAL: Mostrar todos los campos del ticket para debuggear
             console.log(`🔍 ALL FIELDS for ticket ${ticket.ticketid}:`, ticket);
             return location;
@@ -266,7 +266,7 @@ private getCompletedPhasesFromPhotos(evidences: any[]): any[] {
     console.log('  - No hay evidencia fotográfica para este ticket');
     return [];
   }
-  
+
   // Agrupar fotos por nombre de fase
   const phasesByName = evidences.reduce((groups, evidence) => {
     const phaseName = evidence.name || 'Unknown Phase';
@@ -276,7 +276,7 @@ private getCompletedPhasesFromPhotos(evidences: any[]): any[] {
     groups[phaseName].push(evidence);
     return groups;
   }, {} as { [key: string]: any[] });
-  
+
   // Convertir a array de fases completadas
   const completedPhases = Object.keys(phasesByName).map(phaseName => ({
     id: null, // No tenemos taskStatusId en las fotos
@@ -285,7 +285,7 @@ private getCompletedPhasesFromPhotos(evidences: any[]): any[] {
     startingDate: null, // No disponible en las fotos
     endingDate: null // No disponible en las fotos
   }));
-  
+
   console.log(`  - Fases completadas extraídas de fotos:`, completedPhases);
   return completedPhases;
 }
@@ -293,7 +293,7 @@ private getCompletedPhasesFromPhotos(evidences: any[]): any[] {
 // ✅ NUEVO MÉTODO: Determinar si una fase es opcional
 private isPhaseOptional(phaseName: string, routeCode: string): boolean {
   const phaseNameLower = phaseName.toLowerCase();
-  
+
   if (routeCode.includes('ASPHALT')) {
     return ['stripping', 'install signs'].includes(phaseNameLower);
   } else if (routeCode.includes('CONCRETE')) {
@@ -301,7 +301,7 @@ private isPhaseOptional(phaseName: string, routeCode: string): boolean {
   } else if (routeCode.includes('SPOTTER')) {
     return ['install signs'].includes(phaseNameLower);
   }
-  
+
   return false;
 }
 
@@ -351,7 +351,7 @@ private formatAddress(data: any): string {
   // Priority 1: Use specific address from addresses table (preferred) - ALWAYS include suffix if available
   if (data.addressnumber && data.addresscardinal && data.addressstreet) {
     let formattedAddress = `${data.addressnumber} ${data.addresscardinal} ${data.addressstreet}`;
-    
+
     // Add suffix if available
     if (data.addresssuffix && data.addresssuffix.trim() !== '') {
       formattedAddress += ` ${data.addresssuffix}`;
@@ -359,11 +359,11 @@ private formatAddress(data: any): string {
     } else {
       console.log('✅ Formatted address (from addresses table WITHOUT suffix):', formattedAddress.trim());
     }
-    
+
     console.log('🔍 Priority 1 used - addresssuffix available?', !!data.addresssuffix, 'Value:', data.addresssuffix);
     return formattedAddress.trim();
   }
-  
+
   // Priority 2: Use specific address with suffix from addresses table (fallback for Priority 1)
   if (data.addressnumber && data.addresscardinal && data.addressstreet && data.addresssuffix) {
     const formattedAddress = `${data.addressnumber} ${data.addresscardinal} ${data.addressstreet} ${data.addresssuffix}`.trim();
@@ -374,7 +374,7 @@ private formatAddress(data: any): string {
   // Priority 3: Use wayfinding from address (range) - ALWAYS include suffix if available
   if (data.fromaddressstreet && data.fromaddresscardinal) {
     let formattedAddress = `${data.fromaddressstreet} ${data.fromaddresscardinal}`;
-    
+
     // Add suffix if available
     if (data.fromaddresssuffix && data.fromaddresssuffix.trim() !== '') {
       formattedAddress += ` ${data.fromaddresssuffix}`;
@@ -382,7 +382,7 @@ private formatAddress(data: any): string {
     } else {
       console.log('✅ Formatted address (from wayfinding from WITHOUT suffix):', formattedAddress.trim());
     }
-    
+
     console.log('🔍 Priority 3 used - fromaddresssuffix available?', !!data.fromaddresssuffix, 'Value:', data.fromaddresssuffix);
     return formattedAddress.trim();
   }
@@ -409,13 +409,13 @@ private formatAddress(data: any): string {
 
   // Priority 7: Try to build address from wayfinding range
   const wayfindingParts: string[] = [];
-  
+
   // Check for wayfinding fields
   if (data.fromaddressstreet) wayfindingParts.push(data.fromaddressstreet);
   if (data.toaddressstreet) wayfindingParts.push(data.toaddressstreet);
   if (data.fromaddresscardinal) wayfindingParts.push(data.fromaddresscardinal);
   if (data.fromaddresssuffix) wayfindingParts.push(data.fromaddresssuffix);
-  
+
   // If we found some wayfinding parts, combine them
   if (wayfindingParts.length > 0) {
     const combinedAddress = wayfindingParts.join(' ').trim();
@@ -428,7 +428,7 @@ private formatAddress(data: any): string {
     console.log('✅ Using location field:', data.location);
     return data.location.trim();
   }
-  
+
   // Priority 9: Fallback to any available address fields
   const fallbackAddress = `${data.addressstreet || data.fromaddressstreet || data.toaddressstreet || ''} ${data.addresscardinal || data.fromaddresscardinal || ''}`.trim();
   console.log('⚠️ Using fallback address format:', fallbackAddress);

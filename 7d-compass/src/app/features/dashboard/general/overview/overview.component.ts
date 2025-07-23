@@ -307,7 +307,7 @@ export class OverviewComponent extends BaseDashboardComponent implements OnInit 
 
   checkMobile() {
     if (typeof window !== 'undefined') {
-      this.isMobile = window.innerWidth <= 768;
+    this.isMobile = window.innerWidth <= 768;
     }
   }
 

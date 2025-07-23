@@ -62,8 +62,8 @@ export class SideNavbarComponent {
 
   checkScreenSize() {
     if (typeof window !== 'undefined') {
-      this.isMobile = window.innerWidth <= 768;
-      if (!this.isMobile) this.isSidenavOpen = false;
+    this.isMobile = window.innerWidth <= 768;
+    if (!this.isMobile) this.isSidenavOpen = false;
     }
   }
 

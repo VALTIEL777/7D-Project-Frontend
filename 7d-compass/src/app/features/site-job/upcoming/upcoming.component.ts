@@ -32,7 +32,7 @@ import { RouteData, MapConfig, LeafletMapComponent } from '../../../shared/leafl
     MatDividerModule,
     CommonModule,
     MATERIAL_MODULES,
-    FormsModule, 
+    FormsModule,
     SitejobTabsComponent],
   templateUrl: './upcoming.component.html',
   styleUrl: './upcoming.component.scss'
@@ -124,12 +124,12 @@ crewDetails: any[] = [];
   async forceSpecificRoute(routeId: number = 3): Promise<void> {
     console.log('🔧 ===== FORCE SPECIFIC ROUTE STARTED =====');
     console.log('🔧 FORCING specific route for debugging:', routeId);
-    
+
     try {
       console.log('🔧 Calling routeService.getRouteById...');
       const route = await firstValueFrom(this.routeService.getRouteById(routeId));
       console.log('🔧 Route response received:', route);
-      
+
       if (route) {
         this.assignedRoute = route;
         this.assignedRouteId = route.routeid;
@@ -140,7 +140,7 @@ crewDetails: any[] = [];
           hasPolyline: !!this.assignedRoute.encodedpolyline,
           polylineLength: this.assignedRoute.encodedpolyline?.length || 0
         });
-        
+
         // Update the map immediately
         console.log('🔧 Updating static map with forced route...');
         this.updateLeafletRoutes();
@@ -159,31 +159,31 @@ crewDetails: any[] = [];
     console.log('🛣️ Getting assigned route for crew...');
     console.log('🛣️ Current crew type:', this.crewType);
     console.log('🛣️ Remaining locations count:', this.remainingLocations.length);
-    
+
     try {
       // Get all routes to find the one assigned to this crew
       const allRoutes = await firstValueFrom(this.routeService.getAllRoutes());
       console.log('🛣️ All routes received:', allRoutes);
       console.log('🛣️ Number of routes:', allRoutes?.length || 0);
-      
+
       if (allRoutes && allRoutes.length > 0) {
         // Look for routes that match the crew's work type or have tickets that match this crew's tickets
         let assignedRoute = null;
-        
+
         // First, try to find a route that has tickets matching this crew's tickets
         const crewTicketIds = this.remainingLocations.map(loc => (loc as any).ticketid).filter((id: any) => id);
         console.log('🛣️ Crew ticket IDs:', crewTicketIds);
-        
+
         // For debugging, let's also log the first few routes to see their structure
         console.log('🛣️ First route structure:', allRoutes[0]);
         console.log('🛣️ First route tickets:', allRoutes[0]?.tickets);
-        
+
         for (const route of allRoutes) {
           console.log(`🛣️ Checking route ${route.routeid} (${route.type}):`, route.routecode);
           if (route.tickets && Array.isArray(route.tickets)) {
             const routeTicketIds = route.tickets.map((ticket: any) => ticket.ticketId || ticket.ticketid).filter((id: any) => id);
             console.log(`🛣️ Route ${route.routeid} ticket IDs:`, routeTicketIds);
-            
+
             // Check if any tickets match
             const matchingTickets = crewTicketIds.filter((id: any) => routeTicketIds.includes(id));
             if (matchingTickets.length > 0) {
@@ -195,17 +195,17 @@ crewDetails: any[] = [];
             console.log(`🛣️ Route ${route.routeid} has no tickets array`);
           }
         }
-        
+
         // If no matching route found, try to find by type
         if (!assignedRoute) {
           console.log('🛣️ No matching tickets found, trying to find by type...');
           // Look for UPCOMING routes first, then SPOTTER routes
           const upcomingRoute = allRoutes.find((route: any) => route.type === 'UPCOMING');
           const spotterRoute = allRoutes.find((route: any) => route.type === 'SPOTTER');
-          
+
           console.log('🛣️ UPCOMING route found:', !!upcomingRoute);
           console.log('🛣️ SPOTTER route found:', !!spotterRoute);
-          
+
           if (upcomingRoute) {
             assignedRoute = upcomingRoute;
             console.log('✅ Found UPCOMING route:', upcomingRoute.routeid);
@@ -218,7 +218,7 @@ crewDetails: any[] = [];
             console.log('✅ Using first available route:', allRoutes[0].routeid);
           }
         }
-        
+
         // If still no route found, try to get route ID 3 directly (as a fallback)
         if (!assignedRoute) {
           console.log('��️ No route found by type, trying to get route ID 3 directly...');
@@ -232,7 +232,7 @@ crewDetails: any[] = [];
             console.log('❌ Could not get route 3 directly:', error);
           }
         }
-        
+
         // If still no route, try to find any route with encoded polyline
         if (!assignedRoute) {
           console.log('🛣️ No route found, trying to find any route with polyline...');
@@ -242,11 +242,11 @@ crewDetails: any[] = [];
             console.log('✅ Found route with polyline:', routeWithPolyline.routeid);
           }
         }
-        
+
         this.assignedRoute = assignedRoute;
         this.assignedRouteId = assignedRoute?.routeid;
         this.updateLeafletRoutes();
-        
+
         if (assignedRoute) {
           console.log('🛣️ Final assigned route:', {
             routeid: this.assignedRoute.routeid,
@@ -255,7 +255,7 @@ crewDetails: any[] = [];
             hasPolyline: !!this.assignedRoute.encodedpolyline,
             polylineLength: this.assignedRoute.encodedpolyline?.length || 0
           });
-          
+
           // For debugging, let's also check if we can force a specific route
           if (!this.assignedRoute.encodedpolyline) {
             console.log('⚠️ Assigned route has no encoded polyline, trying to find one with polyline...');
@@ -352,7 +352,7 @@ getCrewDetails(crewId: number) {
     next: async (details) => {
       console.log('🚀 getCrewDetails response received, details count:', details?.length || 0);
       this.crewDetails = details;
-      
+
       // 🔍 Debug: Log the first few details to see the data structure
       console.log('🔍 Raw crew details (first 3 items):', details.slice(0, 3));
       if (details.length > 0) {
@@ -444,7 +444,7 @@ formatAddress(data: any): string {
   // Priority 1: Use specific address from addresses table (preferred) - ALWAYS include suffix if available
   if (data.addressnumber && data.addresscardinal && data.addressstreet) {
     let formattedAddress = `${data.addressnumber} ${data.addresscardinal} ${data.addressstreet}`;
-    
+
     // Add suffix if available
     if (data.addresssuffix && data.addresssuffix.trim() !== '') {
       formattedAddress += ` ${data.addresssuffix}`;
@@ -452,11 +452,11 @@ formatAddress(data: any): string {
     } else {
       console.log('✅ Formatted address (from addresses table WITHOUT suffix):', formattedAddress.trim());
     }
-    
+
     console.log('🔍 Priority 1 used - addresssuffix available?', !!data.addresssuffix, 'Value:', data.addresssuffix);
     return formattedAddress.trim();
   }
-  
+
   // Priority 2: Use specific address with suffix from addresses table (fallback for Priority 1)
   if (data.addressnumber && data.addresscardinal && data.addressstreet && data.addresssuffix) {
     const formattedAddress = `${data.addressnumber} ${data.addresscardinal} ${data.addressstreet} ${data.addresssuffix}`.trim();
@@ -467,7 +467,7 @@ formatAddress(data: any): string {
   // Priority 3: Use wayfinding from address (range) - ALWAYS include suffix if available
   if (data.fromaddressstreet && data.fromaddresscardinal) {
     let formattedAddress = `${data.fromaddressstreet} ${data.fromaddresscardinal}`;
-    
+
     // Add suffix if available
     if (data.fromaddresssuffix && data.fromaddresssuffix.trim() !== '') {
       formattedAddress += ` ${data.fromaddresssuffix}`;
@@ -475,7 +475,7 @@ formatAddress(data: any): string {
     } else {
       console.log('✅ Formatted address (from wayfinding from WITHOUT suffix):', formattedAddress.trim());
     }
-    
+
     console.log('🔍 Priority 3 used - fromaddresssuffix available?', !!data.fromaddresssuffix, 'Value:', data.fromaddresssuffix);
     return formattedAddress.trim();
   }
@@ -502,13 +502,13 @@ formatAddress(data: any): string {
 
   // Priority 7: Try to build address from wayfinding range
   const wayfindingParts: string[] = [];
-  
+
   // Check for wayfinding fields
   if (data.fromaddressstreet) wayfindingParts.push(data.fromaddressstreet);
   if (data.toaddressstreet) wayfindingParts.push(data.toaddressstreet);
   if (data.fromaddresscardinal) wayfindingParts.push(data.fromaddresscardinal);
   if (data.fromaddresssuffix) wayfindingParts.push(data.fromaddresssuffix);
-  
+
   // If we found some wayfinding parts, combine them
   if (wayfindingParts.length > 0) {
     const combinedAddress = wayfindingParts.join(' ').trim();
@@ -521,7 +521,7 @@ formatAddress(data: any): string {
     console.log('✅ Using location field:', data.location);
     return data.location.trim();
   }
-  
+
   // Priority 9: Fallback to any available address fields
   const fallbackAddress = `${data.addressstreet || data.fromaddressstreet || data.toaddressstreet || ''} ${data.addresscardinal || data.fromaddresscardinal || ''}`.trim();
   console.log('⚠️ Using fallback address format:', fallbackAddress);
@@ -535,7 +535,7 @@ private async geocodeRemainingLocations(): Promise<void> {
   for (const loc of this.remainingLocations) {
     if (!loc.lat || !loc.lng) {
       console.log(`🌍 Geocoding: ${loc.address}`);
-      
+
       try {
         const encodedAddress = encodeURIComponent(loc.address);
         const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodedAddress}&key=${this.GOOGLE_MAPS_API_KEY}`;
@@ -543,7 +543,7 @@ private async geocodeRemainingLocations(): Promise<void> {
         console.log(`🌍 Geocoding URL: ${url.substring(0, 100)}...`);
 
         const response: any = await firstValueFrom(this.http.get(url));
-        
+
         if (response.status === 'OK' && response.results.length > 0) {
           loc.lat = response.results[0].geometry.location.lat;
           loc.lng = response.results[0].geometry.location.lng;
@@ -685,7 +685,7 @@ showAllLocations(): void {
 
 onFilterChange(): void {
   const filter = this.filterText.trim().toLowerCase();
-  
+
   if (!filter) {
     // Si se limpia el filtro, mostrar todas las ubicaciones
     this.currentLocationIndex = 0;
@@ -695,7 +695,7 @@ onFilterChange(): void {
   }
 
   // Buscar la primera ubicación que coincida con el filtro
-  const firstFilteredIndex = this.remainingLocations.findIndex(loc => 
+  const firstFilteredIndex = this.remainingLocations.findIndex(loc =>
     loc.address.toLowerCase().includes(filter) ||
     loc.job?.toLowerCase().includes(filter)
   );
@@ -740,7 +740,7 @@ debugMapState(): void {
   console.log('📍 Available zoom levels:', this.availableZoomLevels);
   console.log('📍 Map dimensions:', `${this.staticMapWidth}x${this.staticMapHeight}`);
   console.log('🔍 === END UPCOMING MAP DEBUG ===');
-  
+
   // Show all locations on map
   this.showAllLocations();
 }

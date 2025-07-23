@@ -28,16 +28,16 @@ export class AuthService {
 
 handleLoginResponse(response: any): void {
   if (typeof window !== 'undefined' && window.localStorage) {
-    localStorage.setItem('token', response.token);
+  localStorage.setItem('token', response.token);
 
-    if (response.user?.userid) {
-      localStorage.setItem('userId', response.user.userid.toString());
-      console.log('🧑‍💻 userId guardado:', response.user.userid);
-    } else {
-      console.warn('⚠️ userId no presente en la respuesta de login.');
-    }
+  if (response.user?.userid) {
+    localStorage.setItem('userId', response.user.userid.toString());
+    console.log('🧑‍💻 userId guardado:', response.user.userid);
+  } else {
+    console.warn('⚠️ userId no presente en la respuesta de login.');
+  }
 
-    console.log('📦 Verificación localStorage userId:', localStorage.getItem('userId'));
+  console.log('📦 Verificación localStorage userId:', localStorage.getItem('userId'));
   }
 }
 
@@ -45,21 +45,21 @@ handleLoginResponse(response: any): void {
 
   isLoggedIn(): boolean {
     if (typeof window !== 'undefined' && window.localStorage) {
-      return !!localStorage.getItem('token');
+    return !!localStorage.getItem('token');
     }
     return false;
   }
 
   getToken(): string | null {
     if (typeof window !== 'undefined' && window.localStorage) {
-      return localStorage.getItem('token');
+    return localStorage.getItem('token');
     }
     return null;
   }
 
   logout(): void {
     if (typeof window !== 'undefined' && window.localStorage) {
-      localStorage.removeItem('token');
+    localStorage.removeItem('token');
     }
     // Puedes redirigir o limpiar más cosas si necesitas
   }

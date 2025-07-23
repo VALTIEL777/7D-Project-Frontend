@@ -431,7 +431,7 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
 
   checkMobile() {
     if (typeof window !== 'undefined') {
-      this.isMobile = window.innerWidth <= 768;
+    this.isMobile = window.innerWidth <= 768;
     }
   }
 
