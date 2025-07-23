@@ -59,11 +59,6 @@ export class ContractUnitsComponent extends BaseDashboardComponent implements On
       }
     },
     {
-      name: 'zone',
-      header: 'Zone',
-      cell: (unit: any) => unit.zone || 'N/A'
-    },
-    {
       name: 'actions',
       header: 'Actions',
       cell: () => '',

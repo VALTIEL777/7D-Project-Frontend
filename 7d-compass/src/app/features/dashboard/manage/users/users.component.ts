@@ -179,11 +179,15 @@ onDelete(user: any) {
 
   dialogRef.afterClosed().subscribe(confirmed => {
     if (confirmed) {
+      if (!user.employeeid) {
+        console.error('Cannot delete user: employeeid is undefined', user);
+        return;
+      }
       this.peopleService.deletePeople(user.employeeid).subscribe({
         next: () => {
           this.tableData = this.tableData.filter(u => u.employeeid !== user.employeeid);
-            this.allData = [...this.tableData];
-            this.applyFilters();
+          this.allData = [...this.tableData];
+          this.applyFilters();
           console.log('User deleted:', user);
         },
         error: err => console.error('Error deleting user:', err)

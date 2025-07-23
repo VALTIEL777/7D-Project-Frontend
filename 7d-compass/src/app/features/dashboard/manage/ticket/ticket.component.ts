@@ -52,26 +52,6 @@ export class TicketComponent extends BaseDashboardComponent implements OnInit {
       cell: (ticket: any) => ticket.contractUnitName || 'N/A'
     },
     {
-      name: 'quadrantId',
-      header: 'Quadrant',
-      cell: (ticket: any) => {
-        if (ticket.quadrantId && ticket.quadrantId !== null && ticket.quadrantId !== '') {
-          return ticket.quadrantId.toString();
-        }
-        return 'N/A';
-      }
-    },
-    {
-      name: 'quantity',
-      header: 'Quantity',
-      cell: (ticket: any) => {
-        if (ticket.quantity !== null && ticket.quantity !== undefined && ticket.quantity !== '') {
-          return ticket.quantity.toString();
-        }
-        return '0';
-      }
-    },
-    {
       name: 'amountToPay',
       header: 'Amount',
       cell: (ticket: any) => {

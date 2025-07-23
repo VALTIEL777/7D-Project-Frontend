@@ -359,4 +359,9 @@ export class RTRService {
       })
     );
   }
+
+  // Add a method to send the full validation payload to the backend
+  validateRTRData(payload: any): Observable<any> {
+    return this.http.post<any>(`${this.baseUrl}/validate`, payload);
+  }
 }

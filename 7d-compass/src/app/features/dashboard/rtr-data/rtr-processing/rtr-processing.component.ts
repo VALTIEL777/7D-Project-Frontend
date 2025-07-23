@@ -66,6 +66,12 @@ export class RtrProcessingComponent extends BaseDashboardComponent implements On
   // User decisions for inconsistencies
   userDecisions: { [ticketId: string]: { [field: string]: 'excel' | 'database' } } = {};
 
+  // Track filled missing info for save
+  missingInfoFilled: any[] = [];
+
+  // Track skipped rows for validation/save
+  skippedRows: any[] = [];
+
   // Pasted data functionality
   pastedDataSource: any[] = [];
   pastedDisplayedColumns: string[] = [];
@@ -565,6 +571,9 @@ export class RtrProcessingComponent extends BaseDashboardComponent implements On
       return;
     }
 
+    // Debug log for missingInfoFilled
+    console.log('DEBUG: missingInfoFilled being sent to backend:', JSON.stringify(this.missingInfoFilled, null, 2));
+
     const dialogRef = this.dialog.open(ConfirmationDialogComponent, {
       width: '450px',
       data: {
@@ -578,6 +587,30 @@ export class RtrProcessingComponent extends BaseDashboardComponent implements On
     dialogRef.afterClosed().subscribe(confirmed => {
       if (confirmed) {
         this.isProcessing = true;
+
+        // Build the full validation payload
+        const validationData = {
+          newTickets: this.newTickets,
+          inconsistentTickets: this.inconsistentTickets,
+          decisions: this.userDecisions,
+          missingInfoFilled: this.missingInfoFilled,
+          skippedRows: this.skippedRows
+        };
+        // Print the entire JSON request as a single object
+        console.log('DEBUG: Validation request body being sent:', JSON.stringify(validationData, null, 2));
+
+        // Call validation endpoint with full payload
+        this.rtrService.validateRTRData(validationData).subscribe({
+          next: (result: any) => {
+            // Handle validation result (show messages, update state, etc.)
+            console.log('Validation result:', result);
+            this.isProcessing = false;
+          },
+          error: (error: any) => {
+            console.error('Validation error:', error);
+            this.isProcessing = false;
+          }
+        });
 
         const request: SaveDecisionsRequest = {
           newTickets: this.newTickets,
