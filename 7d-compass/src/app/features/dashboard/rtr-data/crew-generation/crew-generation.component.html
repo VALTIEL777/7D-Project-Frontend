@@ -9,16 +9,23 @@
           <div class="form-row">
             <mat-form-field appearance="outline" style="width: 200px; margin-right: 16px;">
               <mat-label>Type</mat-label>
-              <mat-select formControlName="type" required>
-                <mat-option *ngFor="let type of typeList" [value]="type">
+              <input
+                type="text"
+                matInput
+                [formControl]="typeControl"
+                [matAutocomplete]="autoType"
+                placeholder="Select or type type"
+              />
+              <mat-autocomplete #autoType="matAutocomplete" (optionSelected)="onTypeSelected($event.option.value)">
+                <mat-option *ngFor="let type of filteredTypes | async" [value]="type">
                   {{ type }}
                 </mat-option>
-              </mat-select>
+              </mat-autocomplete>
               <mat-error *ngIf="form.get('type')?.hasError('required')">
                 Type is required
               </mat-error>
             </mat-form-field>
-            <mat-form-field appearance="outline" style="width: 150px;">
+            <!-- <mat-form-field appearance="outline" style="width: 150px;">
               <mat-label>Worked Hours</mat-label>
               <input matInput type="number" formControlName="workedhours" min="1" max="12" required (input)="limitWorkedHours($event)" />
               <mat-error *ngIf="form.get('workedhours')?.hasError('required')">
@@ -30,7 +37,7 @@
               <mat-error *ngIf="form.get('workedhours')?.hasError('max')">
                 Cannot exceed 12 hours
               </mat-error>
-            </mat-form-field>
+            </mat-form-field> -->
           </div>
 
           <h2>Team Members</h2>
@@ -85,11 +92,18 @@
           <div class="form-row">
             <mat-form-field appearance="outline">
               <mat-label>Material</mat-label>
-              <mat-select formControlName="newMaterialName" (selectionChange)="onMaterialSelected($event.value)">
-                <mat-option *ngFor="let option of materialOptions" [value]="option.value">
+              <input
+                type="text"
+                matInput
+                [formControl]="materialControl"
+                [matAutocomplete]="autoMaterial"
+                placeholder="Select or type material"
+              />
+              <mat-autocomplete #autoMaterial="matAutocomplete" [displayWith]="displayMaterial" (optionSelected)="onMaterialAutoSelected($event.option.value)">
+                <mat-option *ngFor="let option of filteredMaterials | async" [value]="option">
                   {{ option.viewValue }}
                 </mat-option>
-              </mat-select>
+              </mat-autocomplete>
               <mat-error *ngIf="form.get('newMaterialName')?.hasError('required')">
                 Material is required
               </mat-error>
@@ -131,11 +145,18 @@
           <div class="form-row">
             <mat-form-field appearance="outline">
               <mat-label>Equipment</mat-label>
-              <mat-select formControlName="newEquipmentName" (selectionChange)="onEquipmentSelected($event.value)">
-                <mat-option *ngFor="let eq of equipmentOptions" [value]="eq.value">
+              <input
+                type="text"
+                matInput
+                [formControl]="equipmentControl"
+                [matAutocomplete]="autoEquipment"
+                placeholder="Select or type equipment"
+              />
+              <mat-autocomplete #autoEquipment="matAutocomplete" [displayWith]="displayEquipment" (optionSelected)="onEquipmentAutoSelected($event.option.value)">
+                <mat-option *ngFor="let eq of filteredEquipments | async" [value]="eq">
                   {{ eq.viewValue }}
                 </mat-option>
-              </mat-select>
+              </mat-autocomplete>
               <mat-error *ngIf="form.get('newEquipmentName')?.hasError('required')">
                 Equipment is required
               </mat-error>

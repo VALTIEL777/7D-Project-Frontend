@@ -54,31 +54,42 @@ export class CrewGenerationComponent implements OnInit {
   form: FormGroup;
 
   // Listas cargadas desde backend
-employeeList: {
-  employeeid: number;
-  name: string;
-  crewid: number;
-  type: string;
-  workedhours: number;
-  skills?: string[];
-  crewLeader: boolean;
-}[] = [];
-isLoading = false;
+  employeeList: {
+    employeeid: number;
+    name: string;
+    crewid: number;
+    type: string;
+    workedhours: number;
+    skills?: string[];
+    crewLeader: boolean;
+  }[] = [];
+  isLoading = false;
 
-typeList = [
-  'Crack Seal',
-  'Asphalt',
-  'Sawcut',
-  'Framing',
-  'Pour',
-  'Clean',
-  'Dirt',
-  'Grind',
-  'Stripping',
-  'Spotting',
-  'Install Signs',
-  'Steel Plate Pick Up'
-];
+  typeList = [
+    // Asphalt phases
+    'Spotting',
+    'Grind',
+    'Asphalt',
+    'Crack Seal',
+    'Stripping',
+    'Install Signs',
+    // Concrete phases
+    'Sawcut',
+    'Removal',
+    'Framing',
+    'Concrete',
+    'Pour',
+    'Clean',
+    // Otros tipos adicionales
+    'Dirt',
+    'Steel Plate Pick Up'
+  ];
+  typeControl = new FormControl('');
+  filteredTypes!: Observable<string[]>;
+  materialControl = new FormControl('');
+  filteredMaterials!: Observable<any[]>;
+  equipmentControl = new FormControl('');
+  filteredEquipments!: Observable<any[]>;
   skillList = ['Driver', 'Tool', 'Machine', 'Measure'];
   skillIcons: { [key: string]: string } = {
     Driver: 'directions_car',
@@ -202,23 +213,52 @@ limitMaterialQuantity(event: any) {
     this.loadMaterials();
     this.loadEquipment();
     this.updateEmployeeData();
-  this.updateMaterialData();
-  this.updateEquipmentData();
+    this.updateMaterialData();
+    this.updateEquipmentData();
     this.loadRoutes();
 
+    this.filteredEmployees = this.employeeControl.valueChanges.pipe(
+      startWith(''),
+      map(value => this._filterEmployees(value)),
+      startWith([])
+    );
 
-   this.filteredEmployees = this.employeeControl.valueChanges.pipe(
-    startWith(''),
-    map(value => this._filterEmployees(value)),
-      startWith([]) // <-- Esto asegura que siempre se emite un array al principio
-  );
+    // Autocomplete para type
+    this.filteredTypes = this.typeControl.valueChanges.pipe(
+      startWith(''),
+      map(value => this._filterTypes(typeof value === 'string' ? value : ''))
+    );
+    this.typeControl.valueChanges.subscribe((type: string | null) => {
+      if (type && this.typeList.includes(type)) {
+        this.form.get('type')?.setValue(type);
+      }
+    });
 
-   // 🔧 Manejo del estado del slide-toggle
-  if (this.hasLeaderAlready) {
-    this.form.get('isLeader')?.disable();
-  } else {
-    this.form.get('isLeader')?.enable();
+    // Autocomplete para material
+    this.filteredMaterials = this.materialControl.valueChanges.pipe(
+      startWith(''),
+      map(value => this._filterMaterials(typeof value === 'string' ? value : ''))
+    );
+
+    // Autocomplete para equipment
+    this.filteredEquipments = this.equipmentControl.valueChanges.pipe(
+      startWith(''),
+      map(value => this._filterEquipments(typeof value === 'string' ? value : ''))
+    );
   }
+
+  private _filterTypes(value: string): string[] {
+    const filterValue = value.toLowerCase();
+    return this.typeList.filter(type => type.toLowerCase().includes(filterValue));
+  }
+
+  private _filterMaterials(value: string): any[] {
+    const filterValue = value.toLowerCase();
+    return this.materialOptions.filter(option => option.viewValue.toLowerCase().includes(filterValue));
+  }
+
+  onTypeSelected(type: string) {
+    this.form.get('type')?.setValue(type);
   }
 
   get employees(): FormArray {
@@ -505,6 +545,7 @@ onEditEmployee(employee: any) {
           lastname,
           ...result
         });
+        this.updateEmployeeData();
       }
     }
   });
@@ -530,6 +571,7 @@ onDeleteEmployee(employee: any) {
       const index = this.employees.controls.findIndex(ctrl => ctrl.value.num === employee.num);
       if (index !== -1) {
         this.employees.removeAt(index);
+        this.updateEmployeeData();
       }
     }
   });
@@ -552,6 +594,11 @@ selectedMaterialUnit: string = '';
 onMaterialSelected(inventoryid: number) {
   const selected = this.materialOptions.find(m => m.value === inventoryid);
   this.selectedMaterialUnit = selected?.unit || '';
+}
+
+onMaterialAutoSelected(option: any) {
+  this.form.get('newMaterialName')?.setValue(option.value);
+  this.onMaterialSelected(option.value);
 }
 private _materialDataa: any[] = [];
 
@@ -617,6 +664,7 @@ onEditMaterial(material: any) {
       const index = this.materials.controls.findIndex(ctrl => ctrl.value.num === material.num);
       if (index !== -1) {
         this.materials.at(index).patchValue(result);
+        this.updateMaterialData();
       }
     }
   });
@@ -641,6 +689,7 @@ onDeleteMaterial(material: any) {
       const index = this.materials.controls.findIndex(ctrl => ctrl.value.num === material.num);
       if (index !== -1) {
         this.materials.removeAt(index);
+        this.updateMaterialData();
       }
     }
   });
@@ -735,6 +784,7 @@ onEditEquipment(equipment: any) {
       const index = this.equipment.controls.findIndex(ctrl => ctrl.value.num === equipment.num);
       if (index !== -1) {
         this.equipment.at(index).patchValue(result);
+        this.updateEquipmentData();
       }
     }
   });
@@ -759,6 +809,7 @@ onDeleteEquipment(equipment: any) {
       const index = this.equipment.controls.findIndex(ctrl => ctrl.value.num === equipment.num);
       if (index !== -1) {
         this.equipment.removeAt(index);
+        this.updateEquipmentData();
       }
     }
   });
@@ -905,4 +956,22 @@ save() {
     });
   });
 }
+displayMaterial(material: any): string {
+  return material && material.viewValue ? material.viewValue : '';
 }
+
+private _filterEquipments(value: string): any[] {
+  const filterValue = value.toLowerCase();
+  return this.equipmentOptions.filter(option => option.viewValue.toLowerCase().includes(filterValue));
+}
+
+onEquipmentAutoSelected(option: any) {
+  this.form.get('newEquipmentName')?.setValue(option.value);
+  this.onEquipmentSelected(option.value);
+}
+
+displayEquipment(equipment: any): string {
+  return equipment && equipment.viewValue ? equipment.viewValue : '';
+}
+}
+
