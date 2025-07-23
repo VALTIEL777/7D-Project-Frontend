@@ -46,8 +46,12 @@
 <ul class="info-list">
   <li><strong>Job:</strong> {{ location.job }}</li>
   <!-- <li><strong>Description:</strong>  {{ location.description || 'No description available' }} </li> -->
-  <li><strong>Size:</strong> {{ location.width }} x {{ location.length }} m</li>
-  <li><strong>Crew type:</strong> {{ crewType }}</li>
+  <li><strong>Size:</strong> {{ location.width }} x {{ location.length }} ft</li>
+  <li><strong>Task:</strong> {{ crewType }}</li>
+  <li>
+    <strong>Street From:</strong> {{ location.streetFrom || 'No disponible' }}<br>
+    <strong>Street To:</strong> {{ location.streetTo || 'No disponible' }}
+  </li>
 </ul>
 
 <h3 class="sub-title">Gallery</h3>
@@ -167,19 +171,19 @@
       <!-- Botón para iniciar fase asignada -->
       <!-- Botón para iniciar fase asignada o fase opcional no asignada -->
 <button 
-*ngIf="isPhaseAssigned(activity) || (activity.optional && !activity.assigned)" 
-mat-stroked-button 
-color="primary" 
-(click)="startPhase(activity)"
-class="action-btn start-btn"
+  *ngIf="(isPhaseAssigned(activity) || (activity.optional && !activity.assigned)) && !isPreviousPhaseIncomplete(activity)" 
+  mat-stroked-button 
+  color="primary" 
+  (click)="startPhase(activity)"
+  class="action-btn start-btn"
 >
-<mat-icon>play_arrow</mat-icon>
-Start Phase
+  <mat-icon>play_arrow</mat-icon>
+  Start Phase
 </button>
       
       <!-- Botón para completar fase iniciada -->
       <button 
-        *ngIf="isPhaseStarted(activity)" 
+        *ngIf="isPhaseStarted(activity) && !isPreviousPhaseIncomplete(activity)" 
         mat-stroked-button 
         color="accent" 
         (click)="completePhase(activity)"
@@ -196,7 +200,7 @@ Start Phase
       </span>
       
       <!-- Indicador de fase bloqueada por fase anterior -->
-      <span *ngIf="!activity.assigned && isPreviousPhaseIncomplete(activity)" class="blocked-indicator">
+      <span *ngIf="isPreviousPhaseIncomplete(activity)" class="blocked-indicator" style="color: #bdbdbd; display: flex; align-items: center; gap: 4px;">
         <mat-icon>lock</mat-icon>
         Previous phase required
       </span>

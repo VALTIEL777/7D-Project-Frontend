@@ -61,6 +61,9 @@ location: {
   length?: number;
   lat?: number;
   lng?: number;
+  fullAddress?: string;
+  streetFrom?: string;
+  streetTo?: string;
 } = {
   address: ''
 };
@@ -380,13 +383,22 @@ this.permits = details.reduce((acc: { id: number; number: string }[], d: any) =>
       if (details.length > 0 && !this.isLocationFromStorage) {
         const data = details[0];
 
-        console.log('🔍 DEBUG - Datos del backend:', {
-          contractunit_description: data.contractunit_description,
-          contractunit_name: data.contractunit_name,
-          surfacetotal: data.surfacetotal,
-          width: data.width,
-          length: data.length
-        });
+        // Concatenar dirección completa y partes
+        const from = [
+          data.fromaddressnumber,
+          data.fromaddresscardinal,
+          data.fromaddressstreet,
+          data.fromaddresssuffix
+        ].filter(Boolean).join(' ');
+        const to = [
+          data.toaddressnumber,
+          data.toaddresscardinal,
+          data.toaddressstreet,
+          data.toaddresssuffix
+        ].filter(Boolean).join(' ');
+        this.location.fullAddress = `${from} → ${to}`;
+        this.location.streetFrom = from;
+        this.location.streetTo = to;
 
         this.location.address = `${data.fromaddressstreet} ${data.toaddressstreet} ${data.fromaddresscardinal}`;  // ${data.fromaddresssuffix}
         this.location.job = data.contractunit_name;
@@ -397,6 +409,7 @@ this.permits = details.reduce((acc: { id: number; number: string }[], d: any) =>
 
         console.log('📍 Dirección por defecto del backend:', this.location.address);
         console.log('📝 Descripción asignada:', this.location.description);
+        console.log('📍 Dirección completa:', this.location.fullAddress);
       } else if (this.isLocationFromStorage) {
         console.log('📍 Dirección seleccionada manualmente:', this.location.address);
         console.log('📝 Descripción desde localStorage:', this.location.description);
