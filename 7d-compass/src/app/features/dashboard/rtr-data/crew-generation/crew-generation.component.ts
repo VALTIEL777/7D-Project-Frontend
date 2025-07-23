@@ -90,12 +90,14 @@ export class CrewGenerationComponent implements OnInit {
   filteredMaterials!: Observable<any[]>;
   equipmentControl = new FormControl('');
   filteredEquipments!: Observable<any[]>;
-  skillList = ['Driver', 'Tool', 'Machine', 'Measure'];
+  skillList = ['Labor', 'Finisher', 'Driver', 'Machine', 'Measure', 'Spotter'];
   skillIcons: { [key: string]: string } = {
+    Labor: 'engineering',
+    Finisher: 'construction',
     Driver: 'directions_car',
-    Tool: 'build',
     Machine: 'precision_manufacturing',
-    Measure: 'square_foot'
+    Measure: 'square_foot',
+    Spotter: 'visibility'
   };
 
 materialOptions: {
