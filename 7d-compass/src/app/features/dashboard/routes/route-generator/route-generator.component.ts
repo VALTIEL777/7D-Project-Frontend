@@ -1487,6 +1487,15 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     console.log('Leaflet routes:', this.leafletRoutes.map(r => ({ id: r.routeId, code: r.routeCode, type: r.type })));
     console.log('Visible routes before initialization:', Array.from(this.visibleRoutes));
 
+    // Initialize visible routes if empty - add all routes by default
+    if (this.visibleRoutes.size === 0) {
+      console.log('Visible routes set is empty, initializing with all routes');
+      allRoutes.forEach(route => {
+        this.visibleRoutes.add(route.routeId);
+      });
+      console.log('Initialized visible routes with:', Array.from(this.visibleRoutes));
+    }
+
     // Update visible routes based on current settings
     this.updateVisibleRoutes();
 
@@ -1577,21 +1586,27 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     // Toggle route visibility methods
   toggleSpottingRoutes() {
     this.showSpottingRoutes = !this.showSpottingRoutes;
-    console.log('Toggled spotting routes visibility:', this.showSpottingRoutes);
+    console.log('=== TOGGLE SPOTTING ROUTES ===');
+    console.log('New spotting routes visibility:', this.showSpottingRoutes);
+    console.log('Route type visibility object:', this.routeTypeVisibility);
     this.updateTypeVisibility();
     this.forceMapUpdate();
   }
 
   toggleConcreteRoutes() {
     this.showConcreteRoutes = !this.showConcreteRoutes;
-    console.log('Toggled concrete routes visibility:', this.showConcreteRoutes);
+    console.log('=== TOGGLE CONCRETE ROUTES ===');
+    console.log('New concrete routes visibility:', this.showConcreteRoutes);
+    console.log('Route type visibility object:', this.routeTypeVisibility);
     this.updateTypeVisibility();
     this.forceMapUpdate();
   }
 
   toggleAsphaltRoutes() {
     this.showAsphaltRoutes = !this.showAsphaltRoutes;
-    console.log('Toggled asphalt routes visibility:', this.showAsphaltRoutes);
+    console.log('=== TOGGLE ASPHALT ROUTES ===');
+    console.log('New asphalt routes visibility:', this.showAsphaltRoutes);
+    console.log('Route type visibility object:', this.routeTypeVisibility);
     this.updateTypeVisibility();
     this.forceMapUpdate();
   }

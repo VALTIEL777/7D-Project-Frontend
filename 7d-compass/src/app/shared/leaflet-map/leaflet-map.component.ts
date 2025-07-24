@@ -63,6 +63,7 @@ export class LeafletMapComponent implements OnInit, OnDestroy, AfterViewInit, On
   private markers: L.Marker[] = [];
   private polylines: L.Polyline[] = [];
   private routeLayers: Map<number, { markers: L.Marker[], polyline: L.Polyline | null }> = new Map();
+  private isInitialLoad: boolean = true;
 
   // Default colors for different route types
   private readonly routeColors = {
@@ -89,6 +90,28 @@ export class LeafletMapComponent implements OnInit, OnDestroy, AfterViewInit, On
   ngOnChanges(changes: SimpleChanges) {
     console.log('=== NG ON CHANGES ===');
     console.log('Changes detected:', changes);
+
+    // Handle height/width changes
+    if ((changes['height'] || changes['width']) && this.mapContainer) {
+      console.log('Height/width changed, updating container dimensions');
+      const container = this.mapContainer.nativeElement;
+      if (changes['height']) {
+        container.style.height = this.height;
+        console.log('Updated container height to:', this.height);
+      }
+      if (changes['width']) {
+        container.style.width = this.width;
+        console.log('Updated container width to:', this.width);
+      }
+
+      // Force map resize if map exists
+      if (this.map) {
+        setTimeout(() => {
+          this.map.invalidateSize();
+          console.log('Map size invalidated after dimension change');
+        }, 100);
+      }
+    }
 
     // Check if any relevant inputs have changed
     const relevantChanges = ['routes', 'visibleRoutes', 'routeTypeVisibility', 'showMarkers', 'showPolylines'];
@@ -127,15 +150,24 @@ export class LeafletMapComponent implements OnInit, OnDestroy, AfterViewInit, On
 
   private initMap() {
     console.log('=== INIT MAP ===');
-    console.log('Map container available:', !!this.mapContainer);
-    console.log('Map container element:', this.mapContainer?.nativeElement);
+    console.log('Map container element:', this.mapContainer);
+    console.log('Height input:', this.height);
+    console.log('Width input:', this.width);
 
-    // Wait for CSS to load
-    setTimeout(() => {
-      console.log('Initializing map after timeout');
-      this.createMap();
-      this.updateMap();
-    }, 100);
+    if (!this.mapContainer) {
+      console.error('Map container not found');
+      return;
+    }
+
+    // Set the container dimensions
+    const container = this.mapContainer.nativeElement;
+    container.style.height = this.height;
+    container.style.width = this.width;
+    container.style.position = 'relative';
+
+    console.log('Container dimensions set - Height:', container.style.height, 'Width:', container.style.width);
+
+    this.createMap();
   }
 
   private createMap() {
@@ -192,6 +224,7 @@ export class LeafletMapComponent implements OnInit, OnDestroy, AfterViewInit, On
     console.log('Route type visibility:', this.routeTypeVisibility);
     console.log('Show markers:', this.showMarkers);
     console.log('Show polylines:', this.showPolylines);
+    console.log('Map container height:', this.mapContainer?.nativeElement?.style.height);
 
     // Clear all existing layers
     this.clearMapLayers();
@@ -207,7 +240,9 @@ export class LeafletMapComponent implements OnInit, OnDestroy, AfterViewInit, On
     console.log(`Total routes: ${this.routes.length}, Visible routes: ${visibleRoutes.length}`);
 
     this.addRoutesToMap();
-    this.fitMapToBounds();
+    if (this.isInitialLoad) {
+      this.fitMapToBounds();
+    }
 
     // Force map resize after routes are added
     setTimeout(() => {
@@ -215,8 +250,16 @@ export class LeafletMapComponent implements OnInit, OnDestroy, AfterViewInit, On
         console.log('Triggering map resize after routes added...');
         this.map.invalidateSize();
         console.log('Map resize after routes triggered');
+
+        // Ensure container height is properly set
+        if (this.mapContainer) {
+          const container = this.mapContainer.nativeElement;
+          container.style.height = this.height;
+          console.log('Ensured container height is set to:', this.height);
+        }
       }
     }, 200);
+    this.isInitialLoad = false;
   }
 
   private clearMapLayers() {
@@ -336,7 +379,8 @@ export class LeafletMapComponent implements OnInit, OnDestroy, AfterViewInit, On
     }
 
     // Check if individual route is visible
-    // Only check individual visibility if visibleRoutes set is not empty
+    // If visibleRoutes set has any entries, use individual route visibility
+    // If visibleRoutes set is empty, show all routes of visible types
     if (this.visibleRoutes.size > 0) {
       const isIndividuallyVisible = this.visibleRoutes.has(route.routeId);
       console.log(`Individual route ${route.routeId} visible:`, isIndividuallyVisible);
@@ -565,9 +609,11 @@ export class LeafletMapComponent implements OnInit, OnDestroy, AfterViewInit, On
 
   private fitMapToBounds() {
     if (this.markers.length === 0 && this.polylines.length === 0) {
+      console.log('No markers or polylines to fit bounds');
       return;
     }
 
+    console.log('Fitting map to bounds for initial load');
     const bounds = L.latLngBounds([]);
 
     // Add marker bounds
@@ -581,7 +627,11 @@ export class LeafletMapComponent implements OnInit, OnDestroy, AfterViewInit, On
     });
 
     if (bounds.getNorthEast() && bounds.getSouthWest()) {
-      this.map.fitBounds(bounds, { padding: [20, 20] });
+      console.log('Setting map bounds with padding');
+      this.map.fitBounds(bounds, {
+        padding: [50, 50],
+        maxZoom: 16 // Prevent zooming in too much on initial fit
+      });
     }
   }
 
