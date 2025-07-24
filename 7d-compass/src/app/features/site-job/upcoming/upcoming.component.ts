@@ -54,7 +54,7 @@ currentLocationIndex: number = 0; // Índice de la ubicación actual
   isUsingStreetRoutes: boolean = false; // Para indicar si se están usando rutas que siguen calles
   assignedRoute: any = null; // Para almacenar la ruta asignada al equipo
   assignedRouteId: number | null = null; // ID de la ruta asignada
-  employeeList: any[] = [];  // Lista completa de empleados
+employeeList: any[] = [];  // Lista completa de empleados
 teamLeader: string = '';   // Nombre del líder del equipo
 teamMembers: string[] = []; // Nombres de los demás miembros
 

@@ -44,13 +44,13 @@
 <!-- General Info -->
 <h3 class="sub-title">General Info</h3>
 <ul class="info-list">
-  <li><strong>Job:</strong> {{ location.job }}</li>
+  <li><strong>Job:</strong> {{ location.job || 'Not available' }}</li>
   <!-- <li><strong>Description:</strong>  {{ location.description || 'No description available' }} </li> -->
-  <li><strong>Size:</strong> {{ location.width }} x {{ location.length }} ft</li>
-  <li><strong>Task:</strong> {{ crewType }}</li>
+  <li><strong>Size:</strong> {{ location.width || 'Not available'}} x {{ location.length || 'Not available' }} ft</li>
+  <li><strong>Task:</strong> {{ crewType || 'Not available' }}</li>
   <li>
-    <strong>Street From:</strong> {{ location.streetFrom || 'No disponible' }}<br>
-    <strong>Street To:</strong> {{ location.streetTo || 'No disponible' }}
+    <strong>Street From:</strong> {{ location.streetFrom || 'Not available' }}<br>
+    <strong>Street To:</strong> {{ location.streetTo || 'Not available' }}
   </li>
 </ul>
 

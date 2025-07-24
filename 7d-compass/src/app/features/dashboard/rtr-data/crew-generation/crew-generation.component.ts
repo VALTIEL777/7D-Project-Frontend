@@ -139,7 +139,7 @@ routes: any[] = [];
   ) {
     this.form = this.fb.group({
       type: [null, ],
-      workedhours: [null, [ Validators.max(12)]],
+      // workedhours: [null, [ Validators.max(12)]],
 
       selectedEmployee: [null],
       selectedSkills: [[], ],
@@ -148,7 +148,7 @@ routes: any[] = [];
 
       newMaterialName: [null, ],
       newMaterialUnit: [null, ],
-      newMaterialQuantity: [null, [ Validators.max(12)]],
+      newMaterialQuantity: [null, [ Validators.max(100)]],
       materials: this.fb.array([]),
 
       newEquipmentName: [null],
@@ -186,8 +186,8 @@ limitEquipmentQuantity(event: any) {
 
   if (value > 12) {
     value = 12;
-  } else if (value < 1) {
-    value = 1;
+  } else if (value < 0) {
+    value = 0;
   }
 
   input.value = value.toString();
@@ -198,10 +198,10 @@ limitMaterialQuantity(event: any) {
   const input = event.target as HTMLInputElement;
   let value = Number(input.value);
 
-  if (value > 12) {
-    value = 12;
-  } else if (value < 1) {
-    value = 1;
+  if (value > 100) {
+    value = 100;
+  } else if (value < 0) {
+    value = 0;
   }
 
   input.value = value.toString();
