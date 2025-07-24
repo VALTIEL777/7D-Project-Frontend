@@ -32,12 +32,10 @@ handleLoginResponse(response: any): void {
 
   if (response.user?.userid) {
     localStorage.setItem('userId', response.user.userid.toString());
-    console.log('🧑‍💻 userId guardado:', response.user.userid);
   } else {
     console.warn('⚠️ userId no presente en la respuesta de login.');
   }
 
-  console.log('📦 Verificación localStorage userId:', localStorage.getItem('userId'));
   }
 }
 

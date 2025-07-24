@@ -73,43 +73,40 @@ export class LeafletMapComponent implements OnInit, OnDestroy, AfterViewInit, On
   };
 
   ngOnInit() {
-    console.log('=== NG ON INIT ===');
-    console.log('Routes input:', this.routes);
-    console.log('Config input:', this.config);
-
-    // Import Leaflet CSS dynamically
     this.loadLeafletCSS();
   }
 
   ngAfterViewInit() {
-    console.log('=== NG AFTER VIEW INIT ===');
-    console.log('ViewChild mapContainer:', this.mapContainer);
     this.initMap();
   }
 
   ngOnChanges(changes: SimpleChanges) {
-    console.log('=== NG ON CHANGES ===');
-    console.log('Changes detected:', changes);
-
     // Handle height/width changes
     if ((changes['height'] || changes['width']) && this.mapContainer) {
-      console.log('Height/width changed, updating container dimensions');
       const container = this.mapContainer.nativeElement;
       if (changes['height']) {
         container.style.height = this.height;
-        console.log('Updated container height to:', this.height);
       }
       if (changes['width']) {
         container.style.width = this.width;
-        console.log('Updated container width to:', this.width);
       }
 
       // Force map resize if map exists
       if (this.map) {
         setTimeout(() => {
           this.map.invalidateSize();
-          console.log('Map size invalidated after dimension change');
         }, 100);
+      }
+    }
+
+    // Check if routes have completely changed (new route set)
+    if (changes['routes'] && !changes['routes'].firstChange) {
+      const previousRoutes = changes['routes'].previousValue || [];
+      const currentRoutes = changes['routes'].currentValue || [];
+
+      // If the number of routes changed significantly, treat as new route set
+      if (Math.abs(currentRoutes.length - previousRoutes.length) > 2) {
+        this.isInitialLoad = true;
       }
     }
 
@@ -118,7 +115,6 @@ export class LeafletMapComponent implements OnInit, OnDestroy, AfterViewInit, On
     const hasRelevantChanges = relevantChanges.some(key => changes[key]);
 
     if (hasRelevantChanges && this.map) {
-      console.log('Relevant changes detected, updating map...');
       this.updateMap();
     }
   }
@@ -130,32 +126,20 @@ export class LeafletMapComponent implements OnInit, OnDestroy, AfterViewInit, On
   }
 
   private loadLeafletCSS() {
-    console.log('=== LOAD LEAFLET CSS ===');
     const existingLink = document.querySelector('link[href*="leaflet.css"]');
-    console.log('Existing Leaflet CSS link:', existingLink);
 
     if (!existingLink) {
-      console.log('Loading Leaflet CSS...');
       const link = document.createElement('link');
       link.rel = 'stylesheet';
       link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
       link.integrity = 'sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=';
       link.crossOrigin = '';
       document.head.appendChild(link);
-      console.log('Leaflet CSS link added to document head');
-    } else {
-      console.log('Leaflet CSS already loaded');
     }
   }
 
   private initMap() {
-    console.log('=== INIT MAP ===');
-    console.log('Map container element:', this.mapContainer);
-    console.log('Height input:', this.height);
-    console.log('Width input:', this.width);
-
     if (!this.mapContainer) {
-      console.error('Map container not found');
       return;
     }
 
@@ -165,20 +149,10 @@ export class LeafletMapComponent implements OnInit, OnDestroy, AfterViewInit, On
     container.style.width = this.width;
     container.style.position = 'relative';
 
-    console.log('Container dimensions set - Height:', container.style.height, 'Width:', container.style.width);
-
     this.createMap();
   }
 
   private createMap() {
-    console.log('=== CREATE MAP ===');
-    console.log('Map container element:', this.mapContainer.nativeElement);
-    console.log('Map container dimensions:', {
-      width: this.mapContainer.nativeElement.offsetWidth,
-      height: this.mapContainer.nativeElement.offsetHeight
-    });
-
-    // Remove existing map if any
     if (this.map) {
       this.map.remove();
     }
@@ -193,14 +167,10 @@ export class LeafletMapComponent implements OnInit, OnDestroy, AfterViewInit, On
       attributionControl: true
     });
 
-    console.log('Map created successfully');
-
     // Add tile layer
     L.tileLayer(this.config.tileLayer!, {
       attribution: this.config.attribution
     }).addTo(this.map);
-
-    console.log('Tile layer added');
 
     // Add click event
     this.map.on('click', (e: L.LeafletMouseEvent) => {
@@ -210,34 +180,21 @@ export class LeafletMapComponent implements OnInit, OnDestroy, AfterViewInit, On
     // Force map resize after a short delay to ensure proper rendering
     setTimeout(() => {
       if (this.map) {
-        console.log('Triggering map resize...');
         this.map.invalidateSize();
-        console.log('Map resize triggered');
       }
     }, 100);
   }
 
   private updateMap() {
-    console.log('=== LEAFLET MAP UPDATE ===');
-    console.log('Routes received:', this.routes);
-    console.log('Visible routes:', Array.from(this.visibleRoutes));
-    console.log('Route type visibility:', this.routeTypeVisibility);
-    console.log('Show markers:', this.showMarkers);
-    console.log('Show polylines:', this.showPolylines);
-    console.log('Map container height:', this.mapContainer?.nativeElement?.style.height);
-
     // Clear all existing layers
     this.clearMapLayers();
 
     if (this.routes.length === 0) {
-      console.log('No routes to display');
-      this.showNoRoutesMessage();
       return;
     }
 
     // Count visible routes for debugging
     const visibleRoutes = this.routes.filter(route => this.shouldShowRoute(route));
-    console.log(`Total routes: ${this.routes.length}, Visible routes: ${visibleRoutes.length}`);
 
     this.addRoutesToMap();
     if (this.isInitialLoad) {
@@ -247,15 +204,12 @@ export class LeafletMapComponent implements OnInit, OnDestroy, AfterViewInit, On
     // Force map resize after routes are added
     setTimeout(() => {
       if (this.map) {
-        console.log('Triggering map resize after routes added...');
         this.map.invalidateSize();
-        console.log('Map resize after routes triggered');
 
         // Ensure container height is properly set
         if (this.mapContainer) {
           const container = this.mapContainer.nativeElement;
           container.style.height = this.height;
-          console.log('Ensured container height is set to:', this.height);
         }
       }
     }, 200);
@@ -272,20 +226,12 @@ export class LeafletMapComponent implements OnInit, OnDestroy, AfterViewInit, On
   }
 
   private addRoutesToMap() {
-    console.log(`=== ADDING ROUTES TO MAP ===`);
-    console.log(`Processing ${this.routes.length} routes`);
-
     this.routes.forEach((route, index) => {
-      console.log(`\n--- Processing Route ${index + 1}/${this.routes.length} ---`);
-      console.log(`Route: ${route.routeCode} (ID: ${route.routeId}, Type: ${route.type})`);
-
       // Check if route should be visible
       if (!this.shouldShowRoute(route)) {
-        console.log(`❌ Skipping route ${route.routeCode} - not visible`);
         return;
       }
 
-      console.log(`✅ Adding route ${route.routeCode} to map`);
       const routeColor = this.getRouteColor(route.type);
       const routeLayer = {
         markers: [] as L.Marker[],
@@ -294,28 +240,20 @@ export class LeafletMapComponent implements OnInit, OnDestroy, AfterViewInit, On
 
       // Add polyline if enabled and available
       if (this.showPolylines && route.encodedPolyline) {
-        console.log(`Creating polyline for route ${route.routeCode} with polyline length: ${route.encodedPolyline.length}`);
         try {
           const polyline = this.createPolyline(route.encodedPolyline, routeColor, route);
           if (polyline) {
-            console.log(`✅ Successfully created polyline for route ${route.routeCode}`);
             polyline.addTo(this.map);
             this.polylines.push(polyline);
             routeLayer.polyline = polyline;
-          } else {
-            console.log(`❌ Failed to create polyline for route ${route.routeCode}`);
           }
         } catch (error) {
-          console.error(`❌ Error creating polyline for route ${route.routeCode}:`, error);
+          console.error(`Error creating polyline for route ${route.routeCode}:`, error);
         }
-      } else {
-        console.log(`Skipping polyline for route ${route.routeCode} - showPolylines: ${this.showPolylines}, has polyline: ${!!route.encodedPolyline}`);
       }
 
       // Add markers if enabled
       if (this.showMarkers && route.tickets) {
-        console.log(`Adding ${route.tickets.length} markers for route ${route.routeCode}`);
-
         // Add start and end markers
         if (route.encodedPolyline) {
           const coordinates = this.decodePolyline(route.encodedPolyline);
@@ -326,7 +264,6 @@ export class LeafletMapComponent implements OnInit, OnDestroy, AfterViewInit, On
               startMarker.addTo(this.map);
               this.markers.push(startMarker);
               routeLayer.markers.push(startMarker);
-              console.log(`✅ Added start marker for route ${route.routeCode}`);
             }
 
             // End marker
@@ -335,7 +272,6 @@ export class LeafletMapComponent implements OnInit, OnDestroy, AfterViewInit, On
               endMarker.addTo(this.map);
               this.markers.push(endMarker);
               routeLayer.markers.push(endMarker);
-              console.log(`✅ Added end marker for route ${route.routeCode}`);
             }
           }
         }
@@ -347,34 +283,17 @@ export class LeafletMapComponent implements OnInit, OnDestroy, AfterViewInit, On
             marker.addTo(this.map);
             this.markers.push(marker);
             routeLayer.markers.push(marker);
-            console.log(`✅ Added marker ${ticketIndex + 1} for ticket ${ticket.ticketId} in route ${route.routeCode}`);
-          } else {
-            console.log(`❌ Failed to create marker for ticket ${ticket.ticketId} in route ${route.routeCode}`);
           }
         });
-      } else {
-        console.log(`Skipping markers for route ${route.routeCode} - showMarkers: ${this.showMarkers}, tickets count: ${route.tickets?.length || 0}`);
       }
 
       this.routeLayers.set(route.routeId, routeLayer);
-      console.log(`✅ Completed processing route ${route.routeCode}`);
     });
-
-    console.log(`=== MAP UPDATE COMPLETE ===`);
-    console.log(`Total markers added: ${this.markers.length}`);
-    console.log(`Total polylines added: ${this.polylines.length}`);
   }
 
   private shouldShowRoute(route: RouteData): boolean {
-    console.log(`=== CHECKING ROUTE VISIBILITY ===`);
-    console.log(`Route: ${route.routeCode} (ID: ${route.routeId}, Type: ${route.type})`);
-    console.log(`Route type visibility:`, this.routeTypeVisibility);
-    console.log(`Visible routes set:`, Array.from(this.visibleRoutes));
-    console.log(`Route type ${route.type} visible:`, this.routeTypeVisibility[route.type]);
-
     // Check if route type is visible
     if (!this.routeTypeVisibility[route.type]) {
-      console.log(`❌ Route type ${route.type} is not visible - hiding route ${route.routeCode}`);
       return false;
     }
 
@@ -383,17 +302,12 @@ export class LeafletMapComponent implements OnInit, OnDestroy, AfterViewInit, On
     // If visibleRoutes set is empty, show all routes of visible types
     if (this.visibleRoutes.size > 0) {
       const isIndividuallyVisible = this.visibleRoutes.has(route.routeId);
-      console.log(`Individual route ${route.routeId} visible:`, isIndividuallyVisible);
 
       if (!isIndividuallyVisible) {
-        console.log(`❌ Route ${route.routeId} is not in visible routes set - hiding route ${route.routeCode}`);
         return false;
       }
-    } else {
-      console.log(`Visible routes set is empty, showing all routes of visible types`);
     }
 
-    console.log(`✅ Route ${route.routeCode} is visible`);
     return true;
   }
 
@@ -472,9 +386,7 @@ export class LeafletMapComponent implements OnInit, OnDestroy, AfterViewInit, On
     // Fallback to default location if no coordinates found
     if (!markerLocation) {
       markerLocation = this.config.center;
-      console.log(`Using default location for ticket ${ticket.ticketId} (${ticket.address})`);
     } else {
-      console.log(`Using coordinates [${markerLocation[0]}, ${markerLocation[1]}] for ticket ${ticket.ticketId} (${ticket.address})`);
     }
 
     // Generate marker label using letters (A-Z) for better visibility
@@ -512,7 +424,6 @@ export class LeafletMapComponent implements OnInit, OnDestroy, AfterViewInit, On
 
     // Add click event
     marker.on('click', () => {
-      console.log(`Marker clicked: Ticket ${ticket.ticketId}, Route ${route.routeCode}, Stop ${markerLabel}`);
       this.markerClick.emit({ ticket, route, index, label: markerLabel });
     });
 
@@ -569,7 +480,6 @@ export class LeafletMapComponent implements OnInit, OnDestroy, AfterViewInit, On
 
     // Add click event
     marker.on('click', () => {
-      console.log(`${type.charAt(0).toUpperCase() + type.slice(1)} marker clicked for route ${route.routeCode}`);
       this.markerClick.emit({ type, route, location });
     });
 
@@ -587,17 +497,11 @@ export class LeafletMapComponent implements OnInit, OnDestroy, AfterViewInit, On
   }
 
     private decodePolyline(encoded: string): [number, number][] {
-    console.log(`Decoding polyline with length: ${encoded.length}`);
-    console.log(`Polyline preview: ${encoded.substring(0, 50)}...`);
-
     try {
       // Use @mapbox/polyline library for reliable decoding
       const coordinates = polyline.decode(encoded);
 
-      console.log(`Successfully decoded polyline with ${coordinates.length} coordinates`);
       if (coordinates.length > 0) {
-        console.log(`First coordinate: [${coordinates[0][0]}, ${coordinates[0][1]}]`);
-        console.log(`Last coordinate: [${coordinates[coordinates.length - 1][0]}, ${coordinates[coordinates.length - 1][1]}]`);
       }
 
       return coordinates;
@@ -609,11 +513,9 @@ export class LeafletMapComponent implements OnInit, OnDestroy, AfterViewInit, On
 
   private fitMapToBounds() {
     if (this.markers.length === 0 && this.polylines.length === 0) {
-      console.log('No markers or polylines to fit bounds');
       return;
     }
 
-    console.log('Fitting map to bounds for initial load');
     const bounds = L.latLngBounds([]);
 
     // Add marker bounds
@@ -627,31 +529,11 @@ export class LeafletMapComponent implements OnInit, OnDestroy, AfterViewInit, On
     });
 
     if (bounds.getNorthEast() && bounds.getSouthWest()) {
-      console.log('Setting map bounds with padding');
       this.map.fitBounds(bounds, {
         padding: [50, 50],
         maxZoom: 16 // Prevent zooming in too much on initial fit
       });
     }
-  }
-
-  private showNoRoutesMessage() {
-    // Add a message overlay when no routes are available
-    const overlay = L.Control.extend({
-      onAdd: () => {
-        const div = L.DomUtil.create('div', 'no-routes-overlay');
-        div.innerHTML = `
-          <div class="no-routes-message">
-            <div class="no-routes-icon">🗺️</div>
-            <h3>No Active Routes</h3>
-            <p>Routes will appear here once they are generated</p>
-          </div>
-        `;
-        return div;
-      }
-    });
-
-    new overlay({ position: 'topleft' }).addTo(this.map);
   }
 
   // Public methods for external control

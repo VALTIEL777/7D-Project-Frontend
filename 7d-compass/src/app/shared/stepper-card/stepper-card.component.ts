@@ -361,25 +361,16 @@ export class StepperCardComponent {
       parsedData: this.parsedData
     };
 
-    console.log('🔍 ANALYSIS REQUEST JSON:');
-    console.log('URL:', `${environment.apiUrl}/rtr/stepper/analyze`);
-    console.log('Request Body:', JSON.stringify(analysisRequest, null, 2));
-
     this.http.post<StepperAnalyzeResponse>(`${environment.apiUrl}/rtr/stepper/analyze`, analysisRequest)
       .subscribe({
         next: (response) => {
-          console.log('✅ ANALYSIS RESPONSE:', response);
           if (response.success) {
             this.analyzedData = response.analysis;
 
             // Convert inconsistencies to our format - one row per ticket with the first inconsistency
             this.inconsistencies = [];
-            console.log('Processing inconsistent tickets:', response.analysis.inconsistentTickets?.length || 0);
 
             response.analysis.inconsistentTickets.forEach((ticket, index) => {
-              // Debug: Log the full ticket object to see what fields are available
-              console.log(`🔍 Processing inconsistent ticket ${index}:`, JSON.stringify(ticket, null, 2));
-
               // Use the actual ticketId from the backend
               const ticketId = ticket.databaseData.ticketid;
 
@@ -391,7 +382,6 @@ export class StepperCardComponent {
               // Take the first inconsistency for this ticket to display in UI
               if (ticket.inconsistencies && ticket.inconsistencies.length > 0) {
                 const firstInconsistency = ticket.inconsistencies[0];
-                console.log('Adding inconsistency for ticket:', ticket.databaseData.ticketcode, 'field:', firstInconsistency.field, 'ticketId:', ticketId);
 
                 this.inconsistencies.push({
                   ticketId: ticketId,
@@ -457,8 +447,6 @@ export class StepperCardComponent {
             // Reset pagination to first page when new data is loaded
             this.currentPage = 0;
 
-            console.log('Final inconsistencies array length:', this.inconsistencies.length);
-
             this.snackBar.open(response.message, 'Close', { duration: 3000 });
             this.stepCompleted.emit({ step: 2, data: { analyzedData: this.analyzedData } });
 
@@ -513,23 +501,11 @@ export class StepperCardComponent {
     setTimeout(() => {
       this.isStep3Loading = false;
 
-      console.log('Review inconsistencies - analyzedData:', this.analyzedData);
-      console.log('Review inconsistencies - inconsistencies array:', this.inconsistencies);
-      console.log('Review inconsistencies - userDecisions:', this.userDecisions);
-
       // Check if we have inconsistencies from the analysis step
       if (this.analyzedData?.inconsistentTickets && this.analyzedData.inconsistentTickets.length > 0) {
-        console.log('Found inconsistencies from analysis:', this.analyzedData.inconsistentTickets.length);
-        console.log('Inconsistencies array length:', this.inconsistencies.length);
-
-        if (this.inconsistencies.length > 0) {
-          this.snackBar.open(`Found ${this.inconsistencies.length} inconsistencies to review. Please make your selections.`, 'Close', { duration: 3000 });
-        } else {
-          this.snackBar.open(`Found ${this.analyzedData.inconsistentTickets.length} tickets with inconsistencies, but none were processed.`, 'Close', { duration: 3000 });
-        }
+        this.snackBar.open(`Found ${this.inconsistencies.length} inconsistencies to review. Please make your selections.`, 'Close', { duration: 3000 });
       } else if (this.inconsistencies.length === 0) {
-        console.log('No inconsistencies found during analysis');
-        this.snackBar.open('No inconsistencies found. You can proceed to the next step.', 'Close', { duration: 3000 });
+        this.snackBar.open('No inconsistencies found during analysis', 'Close', { duration: 3000 });
       }
 
       this.stepCompleted.emit({ step: 3, data: { inconsistencies: this.inconsistencies } });

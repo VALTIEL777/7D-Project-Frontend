@@ -1,4 +1,4 @@
-import { Component, HostListener, OnInit, ViewChild, TemplateRef, ElementRef } from '@angular/core';
+import { Component, HostListener, OnInit, ViewChild, TemplateRef, ElementRef, ChangeDetectorRef } from '@angular/core';
 import { DashboardLayoutComponent } from "../../../../shared/dashboard-layout/dashboard-layout.component";
 import { CardWithButtonComponent } from "../../../../shared/card-with-button/card-with-button.component";
 import { MatTableModule } from "@angular/material/table";
@@ -252,7 +252,8 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     filterService: FilterService,
     private http: HttpClient,
     private dialog: MatDialog,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    private cdr: ChangeDetectorRef
   ) {
     super(filterService);
     this.checkMobile();
@@ -277,18 +278,18 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     setTimeout(() => {
       this.updateLeafletMap();
     }, 1000);
+
+    // Subscribe to filter changes to trigger change detection
+    this.filterService.textSearch$.subscribe(() => {
+      // Force change detection when filter changes
+      this.cdr.detectChanges();
+    });
   }
 
   // Initialize visible routes when data is loaded
   private initializeVisibleRoutes() {
-    console.log('=== INITIALIZE VISIBLE ROUTES ===');
-    console.log('Show spotting routes:', this.showSpottingRoutes);
-    console.log('Show concrete routes:', this.showConcreteRoutes);
-    console.log('Show asphalt routes:', this.showAsphaltRoutes);
-
     this.visibleRoutes.clear();
     const allRoutes = [...this.spottingRoutes, ...this.concreteRoutes, ...this.asphaltRoutes];
-    console.log('Total routes to check:', allRoutes.length);
 
     allRoutes.forEach(route => {
       // Only add routes that match the current type visibility settings
@@ -296,79 +297,47 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
                          (route.type === 'CONCRETE' && this.showConcreteRoutes) ||
                          (route.type === 'ASPHALT' && this.showAsphaltRoutes);
 
-      console.log(`Route ${route.routeCode} (${route.type}): typeVisible = ${typeVisible}`);
-
       if (typeVisible) {
         this.visibleRoutes.add(route.routeId);
-        console.log(`Added route ${route.routeId} to visible routes`);
       }
     });
-
-    console.log('Final visible routes:', Array.from(this.visibleRoutes));
   }
 
-    private updateVisibleRoutes() {
-    console.log('=== UPDATE VISIBLE ROUTES ===');
-    console.log('Show spotting routes:', this.showSpottingRoutes);
-    console.log('Show concrete routes:', this.showConcreteRoutes);
-    console.log('Show asphalt routes:', this.showAsphaltRoutes);
-
+  private updateVisibleRoutes() {
     const allRoutes = [...this.spottingRoutes, ...this.concreteRoutes, ...this.asphaltRoutes];
-    console.log('Total routes to check:', allRoutes.length);
-
     // Only update visible routes if this is the initial load (visibleRoutes is empty)
     // or if we're toggling type visibility (not individual route visibility)
     if (this.visibleRoutes.size === 0) {
-      console.log('Initial load - setting up visible routes based on type visibility');
-
-      allRoutes.forEach(route => {
+      allRoutes.forEach((route: any) => {
         // Check if route type is visible
         const typeVisible = (route.type === 'SPOTTER' && this.showSpottingRoutes) ||
                            (route.type === 'CONCRETE' && this.showConcreteRoutes) ||
                            (route.type === 'ASPHALT' && this.showAsphaltRoutes);
 
-        console.log(`Route ${route.routeCode} (${route.type}): typeVisible = ${typeVisible}`);
-
         if (typeVisible) {
           this.visibleRoutes.add(route.routeId);
-          console.log(`Added route ${route.routeId} to visible routes`);
         }
       });
     } else {
-      console.log('Individual route visibility mode - preserving existing visible routes');
-      console.log('Current visible routes:', Array.from(this.visibleRoutes));
+      // Individual route visibility mode - preserving existing visible routes
     }
-
-    console.log('Final visible routes:', Array.from(this.visibleRoutes));
   }
 
   private updateTypeVisibility() {
-    console.log('=== UPDATE TYPE VISIBILITY ===');
-    console.log('Show spotting routes:', this.showSpottingRoutes);
-    console.log('Show concrete routes:', this.showConcreteRoutes);
-    console.log('Show asphalt routes:', this.showAsphaltRoutes);
-
     const allRoutes = [...this.spottingRoutes, ...this.concreteRoutes, ...this.asphaltRoutes];
-    console.log('Total routes to check:', allRoutes.length);
-
     // Clear and rebuild visible routes based on type visibility
     this.visibleRoutes.clear();
 
-    allRoutes.forEach(route => {
+    allRoutes.forEach((route: any) => {
       // Check if route type is visible
       const typeVisible = (route.type === 'SPOTTER' && this.showSpottingRoutes) ||
                          (route.type === 'CONCRETE' && this.showConcreteRoutes) ||
                          (route.type === 'ASPHALT' && this.showAsphaltRoutes);
 
-      console.log(`Route ${route.routeCode} (${route.type}): typeVisible = ${typeVisible}`);
-
       if (typeVisible) {
         this.visibleRoutes.add(route.routeId);
-        console.log(`Added route ${route.routeId} to visible routes`);
       }
     });
-
-    console.log('Final visible routes after type visibility update:', Array.from(this.visibleRoutes));
     this.updateLeafletMap();
   }
 
@@ -556,21 +525,6 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     this.isLoadingSpottingRoutes = true;
     this.http.get<RoutesResponse>(`${environment.apiUrl}/routes/spotting`).subscribe({
       next: (response) => {
-        console.log('Spotting routes API response:', response);
-        console.log('Number of routes received:', response.routes?.length || 0);
-
-        // Debug each route's polyline
-        if (response.routes && response.routes.length > 0) {
-          response.routes.forEach((route, index) => {
-            console.log(`Route ${index + 1} (${route.routeCode}):`);
-            console.log(`  - Route ID: ${route.routeId}`);
-            console.log(`  - Type: ${route.type}`);
-            console.log(`  - Polyline length: ${route.encodedPolyline?.length || 0}`);
-            console.log(`  - Polyline preview: ${route.encodedPolyline?.substring(0, 50) || 'N/A'}...`);
-            console.log(`  - Tickets count: ${route.tickets?.length || 0}`);
-          });
-        }
-
         this.spottingRoutes = response.routes || [];
         this.initialSpottingRoutes = [...this.spottingRoutes];
         this.isLoadingSpottingRoutes = false;
@@ -596,21 +550,6 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     this.isLoadingConcreteRoutes = true;
     this.http.get<RoutesResponse>(`${environment.apiUrl}/routes/concrete`).subscribe({
       next: (response) => {
-        console.log('Concrete routes API response:', response);
-        console.log('Number of concrete routes received:', response.routes?.length || 0);
-
-        // Debug each route's polyline
-        if (response.routes && response.routes.length > 0) {
-          response.routes.forEach((route, index) => {
-            console.log(`Concrete Route ${index + 1} (${route.routeCode}):`);
-            console.log(`  - Route ID: ${route.routeId}`);
-            console.log(`  - Type: ${route.type}`);
-            console.log(`  - Polyline length: ${route.encodedPolyline?.length || 0}`);
-            console.log(`  - Polyline preview: ${route.encodedPolyline?.substring(0, 50) || 'N/A'}...`);
-            console.log(`  - Tickets count: ${route.tickets?.length || 0}`);
-          });
-        }
-
         this.concreteRoutes = response.routes || [];
         this.initialConcreteRoutes = [...this.concreteRoutes];
         this.isLoadingConcreteRoutes = false;
@@ -636,21 +575,6 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     this.isLoadingAsphaltRoutes = true;
     this.http.get<RoutesResponse>(`${environment.apiUrl}/routes/asphalt`).subscribe({
       next: (response) => {
-        console.log('Asphalt routes API response:', response);
-        console.log('Number of asphalt routes received:', response.routes?.length || 0);
-
-        // Debug each route's polyline
-        if (response.routes && response.routes.length > 0) {
-          response.routes.forEach((route, index) => {
-            console.log(`Asphalt Route ${index + 1} (${route.routeCode}):`);
-            console.log(`  - Route ID: ${route.routeId}`);
-            console.log(`  - Type: ${route.type}`);
-            console.log(`  - Polyline length: ${route.encodedPolyline?.length || 0}`);
-            console.log(`  - Polyline preview: ${route.encodedPolyline?.substring(0, 50) || 'N/A'}...`);
-            console.log(`  - Tickets count: ${route.tickets?.length || 0}`);
-          });
-        }
-
         this.asphaltRoutes = response.routes || [];
         this.initialAsphaltRoutes = [...this.asphaltRoutes];
         this.isLoadingAsphaltRoutes = false;
@@ -676,9 +600,7 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     this.isLoadingSpotReady = true;
     this.http.get<ReadyTicketsResponse>(`${environment.apiUrl}/routes/tickets-ready/spotting`).subscribe({
       next: (response) => {
-        console.log('Spot ready tickets response:', response);
         this.spotReadyTickets = response.tickets;
-        console.log('Spot ready tickets array:', this.spotReadyTickets);
         this.isLoadingSpotReady = false;
         this.loadData(); // Refresh filtered data
       },
@@ -731,40 +653,21 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
   }
 
   async drop(event: CdkDragDrop<any[]>) {
-    console.log('=== DROP EVENT TRIGGERED ===');
-    console.log('Event:', event);
-    console.log('Previous container:', event.previousContainer);
-    console.log('Current container:', event.container);
-    console.log('Previous index:', event.previousIndex);
-    console.log('Current index:', event.currentIndex);
-    console.log('Previous container data:', event.previousContainer.data);
-    console.log('Current container data:', event.container.data);
-
     const draggedTicket = event.previousContainer.data[event.previousIndex];
-    console.log('Dragged ticket:', draggedTicket);
 
     // Check if we're moving between ready sections
     const isFromReadySection = this.isReadySection(event.previousContainer.data);
     const isToReadySection = this.isReadySection(event.container.data);
     const isToRoute = this.isRouteSection(event.container);
 
-    console.log('Is from ready section:', isFromReadySection);
-    console.log('Is to ready section:', isToReadySection);
-    console.log('Is to route:', isToRoute);
-    console.log('Previous container data type:', typeof event.previousContainer.data);
-    console.log('Current container element:', event.container.element);
-
     if (isFromReadySection && isToReadySection) {
-      console.log('Scenario 2: Moving between ready sections');
       // Scenario 2: Moving between ready sections
       await this.handleMoveBetweenReadySections(event, draggedTicket);
     } else if (isFromReadySection && isToRoute) {
-      console.log('Scenario 3: Moving from ready section to route');
       // Scenario 3: Moving from ready section to route
       await this.handleMoveFromReadyToRoute(event, draggedTicket);
     } else if (event.previousContainer === event.container) {
-      console.log('Scenario 1: Reordering within the same container');
-      // Scenario 1: Reordering within the same route
+      // Scenario 1: Reordering within the same container
       moveItemInArray(event.container.data, event.previousIndex, event.currentIndex);
 
       // Update queue numbers for the reordered tickets
@@ -781,7 +684,6 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
         }
       }
     } else {
-      console.log('Scenario 4: Moving between routes');
       // Scenario 4: Moving between routes
       const isSourceRoute = this.isRouteSection(event.previousContainer);
 
@@ -819,58 +721,28 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
 
     // Force map update after drag and drop operations
     this.forceMapUpdate();
-
-    console.log('=== DROP EVENT COMPLETED ===');
   }
 
   private getRouteIdFromDropEvent(event: CdkDragDrop<any[]>): number | null {
     // Get route ID from the container element's data attribute
     const containerElement = event.container.element.nativeElement;
     const routeId = containerElement.getAttribute('data-route-id');
-    console.log('=== GET ROUTE ID FROM DROP EVENT ===');
-    console.log('Container element:', containerElement);
-    console.log('Route ID attribute:', routeId);
-    console.log('Parsed route ID:', routeId ? parseInt(routeId, 10) : null);
-    console.log('====================================');
     return routeId ? parseInt(routeId, 10) : null;
   }
 
   private isReadySection(data: any[]): boolean {
-    console.log('=== IS READY SECTION CHECK ===');
-    console.log('Data to check:', data);
-    console.log('Filtered spot ready tickets:', this.filteredSpotReadyTickets);
-    console.log('Filtered concrete ready tickets:', this.filteredConcreteReadyTickets);
-    console.log('Filtered asphalt ready tickets:', this.filteredAsphaltReadyTickets);
-    console.log('Is filtered spot ready:', data === this.filteredSpotReadyTickets);
-    console.log('Is filtered concrete ready:', data === this.filteredConcreteReadyTickets);
-    console.log('Is filtered asphalt ready:', data === this.filteredAsphaltReadyTickets);
-    const result = data === this.filteredSpotReadyTickets ||
+    return data === this.filteredSpotReadyTickets ||
            data === this.filteredConcreteReadyTickets ||
            data === this.filteredAsphaltReadyTickets;
-    console.log('Final result:', result);
-    console.log('==============================');
-    return result;
   }
 
   private isRouteSection(container: any): boolean {
     // Check if the container element has the route section attribute
     const containerElement = container.element?.nativeElement;
-    console.log('=== IS ROUTE SECTION CHECK ===');
-    console.log('Container:', container);
-    console.log('Container element:', containerElement);
-    console.log('Has data-route-section attribute:', containerElement && containerElement.hasAttribute('data-route-section'));
-    const result = containerElement && containerElement.hasAttribute('data-route-section');
-    console.log('Final result:', result);
-    console.log('=============================');
-    return result;
+    return containerElement && containerElement.hasAttribute('data-route-section');
   }
 
   private async handleMoveFromReadyToRoute(event: CdkDragDrop<any[]>, draggedTicket: any) {
-    console.log('=== HANDLE MOVE FROM READY TO ROUTE ===');
-    console.log('Dragged ticket:', draggedTicket);
-    console.log('Previous container data:', event.previousContainer.data);
-    console.log('Current container data:', event.container.data);
-
     try {
       const routeId = this.getRouteIdFromDropEvent(event);
       if (!routeId) {
@@ -890,19 +762,11 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
       // Extract ticket ID from the ready ticket
       const ticketId = draggedTicket.ticketid || draggedTicket.ticketId;
 
-      console.log('=== MOVE FROM READY TO ROUTE DEBUG ===');
-      console.log('Dragged ticket object:', draggedTicket);
-      console.log('Ticket ID extracted:', ticketId);
-      console.log('Destination route:', destinationRoute);
-      console.log('======================================');
-
       if (!ticketId) {
         console.error('Could not find ticket ID in dragged ticket:', draggedTicket);
         alert('Could not find ticket ID. Please try again.');
         return;
       }
-
-      console.log(`Adding ticket ${ticketId} to route ${destinationRoute.routeCode}`);
 
       // Show loading message
       this.snackBar.open(`Adding ticket to route ${destinationRoute.routeCode}...`, 'Close', { duration: 2000 });
@@ -941,7 +805,6 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
       // Force immediate map update
       this.forceMapUpdate();
 
-      console.log(`Successfully added ticket ${ticketId} to route ${destinationRoute.routeCode}`);
       this.snackBar.open(`Successfully added ticket to route ${destinationRoute.routeCode}!`, 'Close', { duration: 3000 });
     } catch (error: any) {
       console.error('Error moving ticket from ready section to route:', error);
@@ -964,25 +827,14 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
   }
 
   private async handleMoveBetweenReadySections(event: CdkDragDrop<any[]>, draggedTicket: any) {
-    console.log('=== HANDLE MOVE BETWEEN READY SECTIONS ===');
-    console.log('Dragged ticket:', draggedTicket);
-    console.log('Previous container data:', event.previousContainer.data);
-    console.log('Current container data:', event.container.data);
-
     // Determine the source and destination ready sections
     const sourceSection = this.getReadySectionType(event.previousContainer.data);
     const destSection = this.getReadySectionType(event.container.data);
 
-    console.log('Source section:', sourceSection);
-    console.log('Destination section:', destSection);
-
     // Check restrictions
     if (sourceSection === 'spot' && (destSection === 'asphalt' || destSection === 'concrete')) {
-      console.log('✅ Allowed: Spot Ready → Asphalt Ready or Concrete Ready');
     } else if (sourceSection === 'concrete' && destSection === 'asphalt') {
-      console.log('✅ Allowed: Concrete Ready → Asphalt Ready');
     } else {
-      console.log('❌ Restricted move detected');
       this.snackBar.open('This move is not allowed. Please check the restrictions.', 'Close', {
         duration: 3000,
         panelClass: ['error-snackbar']
@@ -1020,43 +872,32 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
         this.concreteReadyTickets.push(ticketToMove);
       }
     }
-
-    console.log('=== MOVE BETWEEN READY SECTIONS COMPLETED ===');
   }
 
   private getReadySectionType(data: any[]): string {
-    console.log('=== GET READY SECTION TYPE ===');
-    console.log('Data:', data);
-
     // Check if this is a ready section by comparing with filtered arrays
     if (data === this.filteredSpotReadyTickets) {
-      console.log('Section type: spot');
       return 'spot';
     }
 
     if (data === this.filteredAsphaltReadyTickets) {
-      console.log('Section type: asphalt');
       return 'asphalt';
     }
 
     if (data === this.filteredConcreteReadyTickets) {
-      console.log('Section type: concrete');
       return 'concrete';
     }
 
     // Fallback: Check if this is a ready section by looking at the first item's properties
     if (data.length > 0) {
       const firstItem = data[0];
-      console.log('First item:', firstItem);
 
       // Check if it's a ready ticket with category
       if (firstItem.type === 'ready-ticket') {
-        console.log('Section type:', firstItem.category);
         return firstItem.category;
       }
     }
 
-    console.log('Section type: unknown');
     return 'unknown';
   }
 
@@ -1068,7 +909,6 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
   private async handleReorderWithinRoute(route: Route, tickets: any[]): Promise<void> {
     try {
       // Update queue numbers locally without reoptimizing
-      console.log(`Reordered tickets within route ${route.routeCode} - reoptimization will be done manually`);
     } catch (error) {
       console.error('Error reordering tickets within route:', error);
       alert('Error reordering tickets. Please try again.');
@@ -1106,7 +946,6 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
 
         // Note: Reoptimization will be done manually via the route buttons
 
-        console.log(`Moved ticket ${ticketId} from route ${sourceRoute.routeCode} to ${destinationRoute.routeCode}`);
       }
     } catch (error) {
       console.error('Error moving ticket between routes:', error);
@@ -1123,16 +962,8 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     const endpoint = `${environment.apiUrl}/route-optimization/route/${routeId}/add-tickets`;
     const requestBody = { ticketIds };
 
-    console.log('=== ADD TICKETS TO ROUTE DEBUG ===');
-    console.log('Endpoint:', endpoint);
-    console.log('Route ID:', routeId);
-    console.log('Ticket IDs:', ticketIds);
-    console.log('Request body:', JSON.stringify(requestBody, null, 2));
-    console.log('==================================');
-
     try {
       const response = await this.http.post(endpoint, requestBody).toPromise();
-      console.log('Add tickets response:', response);
     } catch (error: any) {
       console.error('=== ADD TICKETS ERROR DEBUG ===');
       console.error('Error object:', error);
@@ -1358,14 +1189,6 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
       return;
     }
 
-    console.log('=== ROUTE GENERATION DEBUG ===');
-    console.log('Route type:', this.newRouteType);
-    console.log('Ready tickets:', readyTickets);
-    console.log('Ticket IDs:', ticketIds);
-    console.log('Ready tickets count:', readyTickets.length);
-    console.log('Valid ticket IDs count:', ticketIds.length);
-    console.log('==============================');
-
     // Use the optimize-single endpoint from your backend
     const endpoint = `${environment.apiUrl}/route-optimization/optimize-single`;
 
@@ -1395,16 +1218,9 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
       }
     };
 
-    console.log('=== API REQUEST DEBUG ===');
-    console.log('Endpoint:', endpoint);
-    console.log('Request body:', JSON.stringify(requestBody, null, 2));
-    console.log('========================');
-
     // Test if endpoint is reachable first
-    console.log('Testing endpoint reachability...');
     this.http.get(`${environment.apiUrl}/route-optimization/status`).subscribe({
       next: (statusResponse) => {
-        console.log('API status check successful:', statusResponse);
         this.makeOptimizationRequest(endpoint, requestBody);
       },
       error: (statusError) => {
@@ -1416,10 +1232,8 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
   }
 
   private makeOptimizationRequest(endpoint: string, requestBody: any) {
-    console.log('Making optimization request...');
     this.http.post(endpoint, requestBody).subscribe({
       next: (response) => {
-        console.log('Route generation successful:', response);
         this.isGeneratingRoute = false;
         this.closeGenerateRouteDialog();
         this.snackBar.open('Route generation completed successfully!', 'Close', { duration: 5000 });
@@ -1465,11 +1279,8 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
 
   // Generate Leaflet map data for route visualization
   updateLeafletMap(): void {
-    console.log('=== UPDATE LEAFLET MAP ===');
-
     // Combine all routes to create comprehensive map data
     const allRoutes = [...this.spottingRoutes, ...this.concreteRoutes, ...this.asphaltRoutes];
-    console.log('All routes:', allRoutes.map(r => ({ id: r.routeId, code: r.routeCode, type: r.type })));
 
     // Convert routes to Leaflet map format
     this.leafletRoutes = allRoutes.map(route => ({
@@ -1484,38 +1295,27 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
       }))
     }));
 
-    console.log('Leaflet routes:', this.leafletRoutes.map(r => ({ id: r.routeId, code: r.routeCode, type: r.type })));
-    console.log('Visible routes before initialization:', Array.from(this.visibleRoutes));
-
     // Initialize visible routes if empty - add all routes by default
     if (this.visibleRoutes.size === 0) {
-      console.log('Visible routes set is empty, initializing with all routes');
       allRoutes.forEach(route => {
         this.visibleRoutes.add(route.routeId);
       });
-      console.log('Initialized visible routes with:', Array.from(this.visibleRoutes));
     }
 
     // Update visible routes based on current settings
     this.updateVisibleRoutes();
-
-    console.log('Visible routes after initialization:', Array.from(this.visibleRoutes));
-    console.log('Updated Leaflet map with', this.leafletRoutes.length, 'routes');
   }
 
   // Leaflet map event handlers
   onMarkerClick(event: any) {
-    console.log('Marker clicked:', event);
     // Handle marker click events
   }
 
   onRouteClick(route: RouteData) {
-    console.log('Route clicked:', route);
     // Handle route click events
   }
 
   onMapClick(latlng: any) {
-    console.log('Map clicked at:', latlng);
     // Handle map click events
   }
 
@@ -1549,10 +1349,6 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
       return null; // Need at least 2 points to create a path
     }
 
-    console.log(`Creating simple path for ${tickets.length} waypoints`);
-
-    // Create a simple polyline by connecting waypoints in order
-    // This is a fallback when the backend doesn't provide proper polylines
     try {
       const coordinates: [number, number][] = [];
 
@@ -1569,8 +1365,6 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
       // Encode the polyline
       const encodedPolyline = polyline.encode(coordinates);
 
-      console.log(`Created simple polyline with ${coordinates.length} points`);
-
       return {
         polyline: encodedPolyline,
         color: color,
@@ -1586,45 +1380,30 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     // Toggle route visibility methods
   toggleSpottingRoutes() {
     this.showSpottingRoutes = !this.showSpottingRoutes;
-    console.log('=== TOGGLE SPOTTING ROUTES ===');
-    console.log('New spotting routes visibility:', this.showSpottingRoutes);
-    console.log('Route type visibility object:', this.routeTypeVisibility);
     this.updateTypeVisibility();
     this.forceMapUpdate();
   }
 
   toggleConcreteRoutes() {
     this.showConcreteRoutes = !this.showConcreteRoutes;
-    console.log('=== TOGGLE CONCRETE ROUTES ===');
-    console.log('New concrete routes visibility:', this.showConcreteRoutes);
-    console.log('Route type visibility object:', this.routeTypeVisibility);
     this.updateTypeVisibility();
     this.forceMapUpdate();
   }
 
   toggleAsphaltRoutes() {
     this.showAsphaltRoutes = !this.showAsphaltRoutes;
-    console.log('=== TOGGLE ASPHALT ROUTES ===');
-    console.log('New asphalt routes visibility:', this.showAsphaltRoutes);
-    console.log('Route type visibility object:', this.routeTypeVisibility);
     this.updateTypeVisibility();
     this.forceMapUpdate();
   }
 
   // Toggle individual route visibility
   toggleRoute(routeId: number) {
-    console.log('Toggling individual route visibility for route ID:', routeId);
-    console.log('Current visible routes before toggle:', Array.from(this.visibleRoutes));
-
     if (this.visibleRoutes.has(routeId)) {
       this.visibleRoutes.delete(routeId);
-      console.log('Removed route', routeId, 'from visible routes');
     } else {
       this.visibleRoutes.add(routeId);
-      console.log('Added route', routeId, 'to visible routes');
     }
 
-    console.log('Visible routes after toggle:', Array.from(this.visibleRoutes));
     this.updateLeafletMap();
     this.forceMapUpdate();
   }

@@ -348,15 +348,15 @@ export class TitleBarComponent {
   }
 
   changeProfilePicture() {
-    console.log('Change Profile Picture clicked');
+    // Removed debug log
   }
 
   editUserInfo() {
-    console.log('Edit User Info clicked');
+    // Removed debug log
   }
 
   logout() {
-    console.log('Log Out clicked');
+    // Removed debug log
   }
 
   isMobile: boolean = false;
