@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, OnInit, OnDestroy, ElementRef, ViewChild, AfterViewInit } from '@angular/core';
+import { Component, Input, Output, EventEmitter, OnInit, OnDestroy, ElementRef, ViewChild, AfterViewInit, OnChanges, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import * as L from 'leaflet';
 import * as polyline from '@mapbox/polyline';
@@ -32,7 +32,7 @@ export interface MapConfig {
   templateUrl: './leaflet-map.component.html',
   styleUrls: ['./leaflet-map.component.scss']
 })
-export class LeafletMapComponent implements OnInit, OnDestroy, AfterViewInit {
+export class LeafletMapComponent implements OnInit, OnDestroy, AfterViewInit, OnChanges {
   @ViewChild('mapContainer', { static: true }) mapContainer!: ElementRef;
 
   @Input() routes: RouteData[] = [];
@@ -84,6 +84,20 @@ export class LeafletMapComponent implements OnInit, OnDestroy, AfterViewInit {
     console.log('=== NG AFTER VIEW INIT ===');
     console.log('ViewChild mapContainer:', this.mapContainer);
     this.initMap();
+  }
+
+  ngOnChanges(changes: SimpleChanges) {
+    console.log('=== NG ON CHANGES ===');
+    console.log('Changes detected:', changes);
+
+    // Check if any relevant inputs have changed
+    const relevantChanges = ['routes', 'visibleRoutes', 'routeTypeVisibility', 'showMarkers', 'showPolylines'];
+    const hasRelevantChanges = relevantChanges.some(key => changes[key]);
+
+    if (hasRelevantChanges && this.map) {
+      console.log('Relevant changes detected, updating map...');
+      this.updateMap();
+    }
   }
 
   ngOnDestroy() {
@@ -174,9 +188,12 @@ export class LeafletMapComponent implements OnInit, OnDestroy, AfterViewInit {
   private updateMap() {
     console.log('=== LEAFLET MAP UPDATE ===');
     console.log('Routes received:', this.routes);
-    console.log('Visible routes:', this.visibleRoutes);
+    console.log('Visible routes:', Array.from(this.visibleRoutes));
     console.log('Route type visibility:', this.routeTypeVisibility);
+    console.log('Show markers:', this.showMarkers);
+    console.log('Show polylines:', this.showPolylines);
 
+    // Clear all existing layers
     this.clearMapLayers();
 
     if (this.routes.length === 0) {
@@ -184,6 +201,10 @@ export class LeafletMapComponent implements OnInit, OnDestroy, AfterViewInit {
       this.showNoRoutesMessage();
       return;
     }
+
+    // Count visible routes for debugging
+    const visibleRoutes = this.routes.filter(route => this.shouldShowRoute(route));
+    console.log(`Total routes: ${this.routes.length}, Visible routes: ${visibleRoutes.length}`);
 
     this.addRoutesToMap();
     this.fitMapToBounds();
@@ -208,15 +229,20 @@ export class LeafletMapComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   private addRoutesToMap() {
-    console.log(`Adding ${this.routes.length} routes to map`);
-    this.routes.forEach(route => {
-      console.log(`Processing route: ${route.routeCode}`);
+    console.log(`=== ADDING ROUTES TO MAP ===`);
+    console.log(`Processing ${this.routes.length} routes`);
+
+    this.routes.forEach((route, index) => {
+      console.log(`\n--- Processing Route ${index + 1}/${this.routes.length} ---`);
+      console.log(`Route: ${route.routeCode} (ID: ${route.routeId}, Type: ${route.type})`);
+
       // Check if route should be visible
       if (!this.shouldShowRoute(route)) {
-        console.log(`Skipping route ${route.routeCode} - not visible`);
+        console.log(`❌ Skipping route ${route.routeCode} - not visible`);
         return;
       }
 
+      console.log(`✅ Adding route ${route.routeCode} to map`);
       const routeColor = this.getRouteColor(route.type);
       const routeLayer = {
         markers: [] as L.Marker[],
@@ -229,20 +255,24 @@ export class LeafletMapComponent implements OnInit, OnDestroy, AfterViewInit {
         try {
           const polyline = this.createPolyline(route.encodedPolyline, routeColor, route);
           if (polyline) {
-            console.log(`Successfully created polyline for route ${route.routeCode}`);
+            console.log(`✅ Successfully created polyline for route ${route.routeCode}`);
             polyline.addTo(this.map);
             this.polylines.push(polyline);
             routeLayer.polyline = polyline;
           } else {
-            console.log(`Failed to create polyline for route ${route.routeCode}`);
+            console.log(`❌ Failed to create polyline for route ${route.routeCode}`);
           }
         } catch (error) {
-          console.error(`Error creating polyline for route ${route.routeCode}:`, error);
+          console.error(`❌ Error creating polyline for route ${route.routeCode}:`, error);
         }
+      } else {
+        console.log(`Skipping polyline for route ${route.routeCode} - showPolylines: ${this.showPolylines}, has polyline: ${!!route.encodedPolyline}`);
       }
 
       // Add markers if enabled
       if (this.showMarkers && route.tickets) {
+        console.log(`Adding ${route.tickets.length} markers for route ${route.routeCode}`);
+
         // Add start and end markers
         if (route.encodedPolyline) {
           const coordinates = this.decodePolyline(route.encodedPolyline);
@@ -253,6 +283,7 @@ export class LeafletMapComponent implements OnInit, OnDestroy, AfterViewInit {
               startMarker.addTo(this.map);
               this.markers.push(startMarker);
               routeLayer.markers.push(startMarker);
+              console.log(`✅ Added start marker for route ${route.routeCode}`);
             }
 
             // End marker
@@ -261,41 +292,64 @@ export class LeafletMapComponent implements OnInit, OnDestroy, AfterViewInit {
               endMarker.addTo(this.map);
               this.markers.push(endMarker);
               routeLayer.markers.push(endMarker);
+              console.log(`✅ Added end marker for route ${route.routeCode}`);
             }
           }
         }
 
         // Add ticket markers
-        route.tickets.forEach((ticket, index) => {
-          const marker = this.createMarker(ticket, route, index, routeColor);
+        route.tickets.forEach((ticket, ticketIndex) => {
+          const marker = this.createMarker(ticket, route, ticketIndex, routeColor);
           if (marker) {
             marker.addTo(this.map);
             this.markers.push(marker);
             routeLayer.markers.push(marker);
+            console.log(`✅ Added marker ${ticketIndex + 1} for ticket ${ticket.ticketId} in route ${route.routeCode}`);
+          } else {
+            console.log(`❌ Failed to create marker for ticket ${ticket.ticketId} in route ${route.routeCode}`);
           }
         });
+      } else {
+        console.log(`Skipping markers for route ${route.routeCode} - showMarkers: ${this.showMarkers}, tickets count: ${route.tickets?.length || 0}`);
       }
 
       this.routeLayers.set(route.routeId, routeLayer);
+      console.log(`✅ Completed processing route ${route.routeCode}`);
     });
+
+    console.log(`=== MAP UPDATE COMPLETE ===`);
+    console.log(`Total markers added: ${this.markers.length}`);
+    console.log(`Total polylines added: ${this.polylines.length}`);
   }
 
   private shouldShowRoute(route: RouteData): boolean {
-    console.log(`Checking visibility for route ${route.routeCode} (ID: ${route.routeId}, Type: ${route.type})`);
+    console.log(`=== CHECKING ROUTE VISIBILITY ===`);
+    console.log(`Route: ${route.routeCode} (ID: ${route.routeId}, Type: ${route.type})`);
+    console.log(`Route type visibility:`, this.routeTypeVisibility);
+    console.log(`Visible routes set:`, Array.from(this.visibleRoutes));
+    console.log(`Route type ${route.type} visible:`, this.routeTypeVisibility[route.type]);
 
     // Check if route type is visible
     if (!this.routeTypeVisibility[route.type]) {
-      console.log(`Route type ${route.type} is not visible`);
+      console.log(`❌ Route type ${route.type} is not visible - hiding route ${route.routeCode}`);
       return false;
     }
 
     // Check if individual route is visible
-    if (this.visibleRoutes.size > 0 && !this.visibleRoutes.has(route.routeId)) {
-      console.log(`Route ${route.routeId} is not in visible routes set`);
-      return false;
+    // Only check individual visibility if visibleRoutes set is not empty
+    if (this.visibleRoutes.size > 0) {
+      const isIndividuallyVisible = this.visibleRoutes.has(route.routeId);
+      console.log(`Individual route ${route.routeId} visible:`, isIndividuallyVisible);
+
+      if (!isIndividuallyVisible) {
+        console.log(`❌ Route ${route.routeId} is not in visible routes set - hiding route ${route.routeCode}`);
+        return false;
+      }
+    } else {
+      console.log(`Visible routes set is empty, showing all routes of visible types`);
     }
 
-    console.log(`Route ${route.routeCode} is visible`);
+    console.log(`✅ Route ${route.routeCode} is visible`);
     return true;
   }
 
@@ -379,8 +433,11 @@ export class LeafletMapComponent implements OnInit, OnDestroy, AfterViewInit {
       console.log(`Using coordinates [${markerLocation[0]}, ${markerLocation[1]}] for ticket ${ticket.ticketId} (${ticket.address})`);
     }
 
+    // Generate marker label using letters (A-Z) for better visibility
+    const markerLabel = this.getMarkerLabel(index);
+
     // Create custom icon with different styles based on route type
-    const iconSize = 24;
+    const iconSize = 32; // Larger for better number visibility
     const icon = L.divIcon({
       className: 'custom-marker',
       html: `
@@ -394,12 +451,13 @@ export class LeafletMapComponent implements OnInit, OnDestroy, AfterViewInit {
           align-items: center;
           justify-content: center;
           font-weight: bold;
-          font-size: 10px;
+          font-size: 14px;
           border: 2px solid white;
-          box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+          box-shadow: 0 2px 6px rgba(0,0,0,0.4);
           cursor: pointer;
+          text-shadow: 1px 1px 1px rgba(0,0,0,0.5);
         ">
-          ${index + 1}
+          ${markerLabel}
         </div>
       `,
       iconSize: [iconSize, iconSize],
@@ -410,14 +468,14 @@ export class LeafletMapComponent implements OnInit, OnDestroy, AfterViewInit {
 
     // Add click event
     marker.on('click', () => {
-      console.log(`Marker clicked: Ticket ${ticket.ticketId}, Route ${route.routeCode}, Stop ${index + 1}`);
-      this.markerClick.emit({ ticket, route, index });
+      console.log(`Marker clicked: Ticket ${ticket.ticketId}, Route ${route.routeCode}, Stop ${markerLabel}`);
+      this.markerClick.emit({ ticket, route, index, label: markerLabel });
     });
 
     // Add popup with more detailed information
     marker.bindPopup(`
       <div class="ticket-popup">
-        <h4>Stop ${index + 1}</h4>
+        <h4>Stop ${markerLabel}</h4>
         <p><strong>Address:</strong> ${ticket.address}</p>
         <p><strong>Route:</strong> ${route.routeCode}</p>
         <p><strong>Type:</strong> ${route.type}</p>
@@ -428,6 +486,12 @@ export class LeafletMapComponent implements OnInit, OnDestroy, AfterViewInit {
     `);
 
     return marker;
+  }
+
+  // Helper method to generate marker labels using numbers only
+  private getMarkerLabel(index: number): string {
+    // Use simple numbers for better clarity and intuitive ordering
+    return (index + 1).toString();
   }
 
   private createStartEndMarker(location: [number, number], route: RouteData, type: 'start' | 'end', color: string): L.Marker | null {

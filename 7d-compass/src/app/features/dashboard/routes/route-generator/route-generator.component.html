@@ -321,6 +321,7 @@
             <div class="map-container">
               <!-- Leaflet map display -->
               <app-leaflet-map
+                #leafletMap
                 [routes]="leafletRoutes"
                 [config]="mapConfig"
                 [showMarkers]="true"
@@ -328,11 +329,7 @@
                 [height]="'85vh'"
                 [width]="'100%'"
                 [visibleRoutes]="visibleRoutes"
-                [routeTypeVisibility]="{
-                  'SPOTTER': showSpottingRoutes,
-                  'CONCRETE': showConcreteRoutes,
-                  'ASPHALT': showAsphaltRoutes
-                }"
+                [routeTypeVisibility]="routeTypeVisibility"
                 (markerClick)="onMarkerClick($event)"
                 (routeClick)="onRouteClick($event)"
                 (mapClick)="onMapClick($event)">

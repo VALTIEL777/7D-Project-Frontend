@@ -223,6 +223,14 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
   // Individual route visibility controls
   visibleRoutes: Set<number> = new Set();
 
+  // Computed property for route type visibility to ensure proper change detection
+  get routeTypeVisibility() {
+    return {
+      'SPOTTER': this.showSpottingRoutes,
+      'CONCRETE': this.showConcreteRoutes,
+      'ASPHALT': this.showAsphaltRoutes
+    };
+  }
 
 
   displayedColumns: string[] = [
@@ -238,6 +246,7 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
   private initialAsphaltRoutes: Route[] = [];
 
   @ViewChild('generateRouteDialog') generateRouteDialog!: TemplateRef<any>;
+  @ViewChild('leafletMap') leafletMapComponent!: LeafletMapComponent;
 
   constructor(
     filterService: FilterService,
@@ -807,6 +816,10 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     this.spottingRoutes = [...this.spottingRoutes];
     this.concreteRoutes = [...this.concreteRoutes];
     this.asphaltRoutes = [...this.asphaltRoutes];
+
+    // Force map update after drag and drop operations
+    this.forceMapUpdate();
+
     console.log('=== DROP EVENT COMPLETED ===');
   }
 
@@ -924,6 +937,9 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
 
       // Refresh the data to get the updated route with the new ticket
       this.refreshAllDataAndCache();
+
+      // Force immediate map update
+      this.forceMapUpdate();
 
       console.log(`Successfully added ticket ${ticketId} to route ${destinationRoute.routeCode}`);
       this.snackBar.open(`Successfully added ticket to route ${destinationRoute.routeCode}!`, 'Close', { duration: 3000 });
@@ -1192,6 +1208,15 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
 
       await this.http.post(endpoint, {}).toPromise();
 
+      // Immediately remove the route from visible routes and update map
+      this.visibleRoutes.delete(route.routeId);
+
+      // Remove the route from the local arrays
+      this.removeRouteFromLocalArrays(route.routeId);
+
+      // Force immediate map update
+      this.forceMapUpdate();
+
       // Refresh the specific route data
       this.refreshAllDataAndCache();
 
@@ -1215,6 +1240,15 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
 
       const endpoint = `${environment.apiUrl}/route-optimization/route/${route.routeId}/complete`;
       await this.http.post(endpoint, {}).toPromise();
+
+      // Immediately remove the route from visible routes and update map
+      this.visibleRoutes.delete(route.routeId);
+
+      // Remove the route from the local arrays
+      this.removeRouteFromLocalArrays(route.routeId);
+
+      // Force immediate map update
+      this.forceMapUpdate();
 
       // Refresh the specific route data
       this.refreshAllDataAndCache();
@@ -1251,6 +1285,9 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
       this.snackBar.open(`Reoptimizing route ${route.routeCode}...`, 'Close', { duration: 3000 });
 
       await this.reoptimizeRoute(route.routeId);
+
+      // Force immediate map update
+      this.forceMapUpdate();
 
       // Refresh the specific route data
       this.refreshAllDataAndCache();
@@ -1386,6 +1423,9 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
         this.isGeneratingRoute = false;
         this.closeGenerateRouteDialog();
         this.snackBar.open('Route generation completed successfully!', 'Close', { duration: 5000 });
+
+        // Force immediate map update
+        this.forceMapUpdate();
 
         // Refresh the routes data
         this.refreshAllDataAndCache();
@@ -1539,18 +1579,21 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     this.showSpottingRoutes = !this.showSpottingRoutes;
     console.log('Toggled spotting routes visibility:', this.showSpottingRoutes);
     this.updateTypeVisibility();
+    this.forceMapUpdate();
   }
 
   toggleConcreteRoutes() {
     this.showConcreteRoutes = !this.showConcreteRoutes;
     console.log('Toggled concrete routes visibility:', this.showConcreteRoutes);
     this.updateTypeVisibility();
+    this.forceMapUpdate();
   }
 
   toggleAsphaltRoutes() {
     this.showAsphaltRoutes = !this.showAsphaltRoutes;
     console.log('Toggled asphalt routes visibility:', this.showAsphaltRoutes);
     this.updateTypeVisibility();
+    this.forceMapUpdate();
   }
 
   // Toggle individual route visibility
@@ -1568,6 +1611,7 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
 
     console.log('Visible routes after toggle:', Array.from(this.visibleRoutes));
     this.updateLeafletMap();
+    this.forceMapUpdate();
   }
 
   // Check if a specific route is visible on the map (for polylines)
@@ -1609,19 +1653,6 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
         return '#228B22'; // Dark green
       default:
         return '#666666'; // Gray
-    }
-  }
-
-  // Get marker label that works with Google Static Maps API
-  private getMarkerLabel(index: number): string {
-    // Use letters for better visibility with Google Static Maps API
-    if (index <= 26) {
-      return String.fromCharCode(64 + index); // A-Z (65-90 in ASCII)
-    } else if (index <= 52) {
-      return String.fromCharCode(96 + (index - 26)); // a-z (97-122 in ASCII)
-    } else {
-      // For more than 52 markers, use numbers but limit to single digit
-      return (index % 9 + 1).toString(); // 1-9, then repeat
     }
   }
 
@@ -1671,5 +1702,28 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     this.loadConcreteReadyTickets();
     this.loadTicketsWithIssues();
     this.updateLeafletMap(); // Update Leaflet map after refresh
+  }
+
+  // Remove route from local arrays immediately
+  private removeRouteFromLocalArrays(routeId: number) {
+    this.spottingRoutes = this.spottingRoutes.filter(route => route.routeId !== routeId);
+    this.concreteRoutes = this.concreteRoutes.filter(route => route.routeId !== routeId);
+    this.asphaltRoutes = this.asphaltRoutes.filter(route => route.routeId !== routeId);
+
+    // Update the leaflet routes array
+    this.leafletRoutes = this.leafletRoutes.filter(route => route.routeId !== routeId);
+  }
+
+  // Force immediate map update
+  private forceMapUpdate() {
+    // Update the leaflet routes data
+    this.updateLeafletMap();
+
+    // Force the map component to refresh if available
+    if (this.leafletMapComponent) {
+      setTimeout(() => {
+        this.leafletMapComponent.refreshMap();
+      }, 100);
+    }
   }
 }
