@@ -56,6 +56,11 @@ location: {
   width?: number;
   description?: string;
   length?: number;  
+  fullAddress?: string;
+  streetFrom?: string;
+  streetTo?: string;
+  fromAddressFull?: string;
+  toAddressFull?: string;
 } = {
   address: ''
 };
@@ -127,7 +132,22 @@ ngOnInit() {
     this.ticketId = parsedLocation.ticketid || 0;
     this.contractUnitId = Number(parsedLocation.contractunitid) || 0;
     this.isLocationFromStorage = true;
-    
+
+    // Recalcular streetFrom y streetTo si existen los datos
+    this.location.streetFrom = `${parsedLocation.fromaddressnumber || ''} ${parsedLocation.fromaddressstreet || ''} ${parsedLocation.fromaddresscardinal || ''}`.trim();
+    this.location.streetTo = `${parsedLocation.toaddressnumber || ''} ${parsedLocation.toaddressstreet || ''} ${parsedLocation.toaddresscardinal || ''}`.trim();
+    if (!this.location.streetFrom) this.location.streetFrom = 'Not available';
+    if (!this.location.streetTo) this.location.streetTo = 'Not available';
+
+    // Agregar propiedades al tipo de location
+    type LocationType = typeof this.location & {
+      fromAddressFull?: string;
+      toAddressFull?: string;
+    };
+
+    this.location.fromAddressFull = `${parsedLocation['fromaddressnumber'] || ''} ${parsedLocation['fromaddresscardinal'] || ''} ${parsedLocation['fromaddressstreet'] || ''} ${parsedLocation['fromaddresssuffix'] || ''}`.replace(/ +/g, ' ').trim();
+    this.location.toAddressFull = `${parsedLocation['toaddressnumber'] || ''} ${parsedLocation['toaddresscardinal'] || ''} ${parsedLocation['toaddressstreet'] || ''} ${parsedLocation['toaddresssuffix'] || ''}`.replace(/ +/g, ' ').trim();
+
     // 🗺️ Actualizar mapa inmediatamente si la ubicación viene del localStorage
     setTimeout(() => {
       this.updateStaticMap();
@@ -361,17 +381,18 @@ this.permits = details.reduce((acc: { id: number; number: string }[], d: any) =>
 }, []);
 
 
-      // 🗺️ Solo cargar ubicación por defecto si no viene del localStorage
-      if (details.length > 0 && !this.isLocationFromStorage) {
+       // 🗺️ Solo cargar ubicación por defecto si no viene del localStorage
+       if (details.length > 0 && !this.isLocationFromStorage) {
         const data = details[0];
 
-        console.log('🔍 DEBUG - Datos del backend:', {
-          contractunit_description: data.contractunit_description,
-          contractunit_name: data.contractunit_name,
-          surfacetotal: data.surfacetotal,
-          width: data.width,
-          length: data.length
-        });
+        // Concatenar dirección completa y partes
+        this.location.streetFrom = `${data.fromaddressnumber} ${data.fromaddressstreet} ${data.fromaddresscardinal}`.trim();
+        this.location.streetTo = `${data.toaddressnumber} ${data.toaddressstreet} ${data.toaddresscardinal}`.trim();
+        this.location.fullAddress = `${this.location.streetFrom} → ${this.location.streetTo}`;
+
+        // Agrega este log para verificar
+console.log('streetFrom:', this.location.streetFrom);
+console.log('streetTo:', this.location.streetTo);
 
         this.location.address = `${data.fromaddressstreet} ${data.toaddressstreet} ${data.fromaddresscardinal}`;  // ${data.fromaddresssuffix}
         this.location.job = data.contractunit_name;
@@ -382,6 +403,7 @@ this.permits = details.reduce((acc: { id: number; number: string }[], d: any) =>
 
         console.log('📍 Dirección por defecto del backend:', this.location.address);
         console.log('📝 Descripción asignada:', this.location.description);
+        console.log('📍 Dirección completa:', this.location.fullAddress);
       } else if (this.isLocationFromStorage) {
         console.log('📍 Dirección seleccionada manualmente:', this.location.address);
         console.log('📝 Descripción desde localStorage:', this.location.description);
