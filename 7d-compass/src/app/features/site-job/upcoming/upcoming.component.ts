@@ -418,6 +418,25 @@ this.geocodeRemainingLocations().then(async () => {
         console.log('📍 Primera location activa:', this.location);
       }
       this.isLoading = false;
+
+      // === INTEGRACIÓN PARA LEAFLET ROUTES ===
+      if (this.assignedRoute && this.assignedRoute.encodedpolyline) {
+        this.leafletRoutes = [{
+          routeId: this.assignedRoute.routeid,
+          routeCode: this.assignedRoute.routecode,
+          type: this.assignedRoute.type,
+          encodedPolyline: this.assignedRoute.encodedpolyline,
+          tickets: (this.assignedRoute.tickets || []).map((t: any, idx: number) => ({
+            ticketId: t.ticketId || t.ticketid,
+            address: t.address,
+            queue: t.queue ?? idx
+          }))
+        }];
+        console.log('Leaflet Routes:', this.leafletRoutes);
+      } else {
+        this.leafletRoutes = [];
+      }
+      // === FIN INTEGRACIÓN ===
     },
     error: (err) => {
       console.error('❌ Error obteniendo detalles del crew:', err);
@@ -541,18 +560,15 @@ formatAddress(data: any): string {
 }
 
 private async geocodeRemainingLocations(): Promise<void> {
-  console.log('🌍 Starting geocoding process...');
-  console.log('📍 Locations to geocode:', this.remainingLocations.length);
+ 
 
   for (const loc of this.remainingLocations) {
     if (!loc.lat || !loc.lng) {
-      console.log(`🌍 Geocoding: ${loc.address}`);
 
       try {
         const encodedAddress = encodeURIComponent(loc.address);
         const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodedAddress}&key=${this.GOOGLE_MAPS_API_KEY}`;
 
-        console.log(`🌍 Geocoding URL: ${url.substring(0, 100)}...`);
 
         const response: any = await firstValueFrom(this.http.get(url));
 

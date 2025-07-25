@@ -91,6 +91,10 @@ activities: any[] = [];
 permits: { id: number; number: string }[] = [];
 diggers: { id: number; number: string }[] = [];
 
+ selectedPermitFile: File | null = null;
+ permitFilesByTicket: any[] = [];
+ pdfFileError: string | null = null;
+
 // Propiedades para mostrar fotos del ticket actual
 currentTicketImages: any[] = [];
 openedGroups: { [key: string]: boolean } = {};
@@ -147,6 +151,12 @@ ngOnInit() {
     this.ticketId = parsedLocation.ticketid || 0;
     this.contractUnitId = Number(parsedLocation.contractunitid) || 0;
     this.isLocationFromStorage = true;
+
+    // RECONSTRUIR streetFrom y streetTo
+    this.location.streetFrom = `${parsedLocation.fromaddressnumber || ''} ${parsedLocation.fromaddressstreet || ''} ${parsedLocation.fromaddresscardinal || ''}`.trim();
+    this.location.streetTo = `${parsedLocation.toaddressnumber || ''} ${parsedLocation.toaddressstreet || ''} ${parsedLocation.toaddresscardinal || ''}`.trim();
+    if (!this.location.streetFrom) this.location.streetFrom = 'Not available';
+    if (!this.location.streetTo) this.location.streetTo = 'Not available';
     
     // 🗺️ Actualizar mapa inmediatamente si la ubicación viene del localStorage
     setTimeout(() => {
@@ -177,6 +187,11 @@ ngOnInit() {
   sixMonthsAgo.setMonth(today.getMonth() - 6);
   this.filterDateFrom = sixMonthsAgo;
   this.filterDateTo = today;
+
+  // Cargar archivos asociados al ticket para la galería de permits
+  if (this.ticketId) {
+    this.loadPermitFilesByTicket();
+  }
 }
 
 
@@ -405,7 +420,7 @@ this.permits = details.reduce((acc: { id: number; number: string }[], d: any) =>
         console.log('📝 Descripción asignada:', this.location.description);
         console.log('📍 Dirección completa:', this.location.fullAddress);
       } else if (this.isLocationFromStorage) {
-        console.log('📍 Dirección seleccionada manualmente:', this.location.address);
+        console.log('📍 Dirección seleccionada manualmente:', this.location);
         console.log('📝 Descripción desde localStorage:', this.location.description);
       }
 
@@ -1233,6 +1248,53 @@ onActivityFilterChange() {
       a.name.toLowerCase().includes(filter)
     );
   }
+}
+
+onPermitFileSelected(event: Event) {
+  const input = event.target as HTMLInputElement;
+  this.pdfFileError = null;
+  if (input.files && input.files.length > 0) {
+    const file = input.files[0];
+    if (file.type !== 'application/pdf') {
+      this.selectedPermitFile = null;
+      this.pdfFileError = 'Solo se permite subir archivos PDF.';
+      return;
+    }
+    this.selectedPermitFile = file;
+  } else {
+    this.selectedPermitFile = null;
+  }
+}
+
+uploadPermitFile(permit: any) {
+  if (!this.selectedPermitFile || !this.ticketId) return;
+  const formData = new FormData();
+  formData.append('file', this.selectedPermitFile);
+  formData.append('ticketId', this.ticketId.toString());
+  formData.append('name', this.selectedPermitFile.name);
+  // Puedes agregar más campos si lo deseas (ej: permit.number como comentario)
+  formData.append('comment', `Archivo subido para el permit: ${permit.number}`);
+
+  this.photoEvidenceService.uploadPhotoEvidence(formData).subscribe({
+    next: (res) => {
+      this.selectedPermitFile = null;
+      this.loadPermitFilesByTicket();
+    },
+    error: (err) => {
+      console.error('❌ Error subiendo archivo para permit:', err);
+    }
+  });
+}
+
+loadPermitFilesByTicket() {
+  this.photoEvidenceService.getPhotoEvidenceByTicketId(this.ticketId).subscribe({
+    next: (files) => {
+      this.permitFilesByTicket = files;
+    },
+    error: (err) => {
+      console.error('❌ Error cargando archivos del ticket:', err);
+    }
+  });
 }
 
 }

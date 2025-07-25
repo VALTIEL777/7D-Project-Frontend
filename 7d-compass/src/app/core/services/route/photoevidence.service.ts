@@ -39,6 +39,10 @@ export class PhotoEvidenceService {
     return this.http.get<any[]>(`${this.baseUrl}`);
   }
 
+  getPhotoEvidenceByTicketId(ticketId: number): Observable<any[]> {
+    return this.http.get<any[]>(`${this.baseUrl}/ticket/${ticketId}`);
+  }
+
   updatePhotoEvidence(photoId: number, data: FormData): Observable<any> {
     return this.http.put(`${this.baseUrl}/${photoId}`, data);
   }

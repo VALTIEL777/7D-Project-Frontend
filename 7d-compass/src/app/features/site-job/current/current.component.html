@@ -46,7 +46,7 @@
 <ul class="info-list">
   <li><strong>Job:</strong> {{ location.job || 'Not available' }}</li>
   <!-- <li><strong>Description:</strong>  {{ location.description || 'No description available' }} </li> -->
-  <li><strong>Size:</strong> {{ location.width || 'Not available'}} x {{ location.length || 'Not available' }} ft</li>
+  <li><strong>Size:</strong> {{ location.length || 'Not available'}} x {{ location.width || 'Not available' }} ft</li>
   <li><strong>Task:</strong> {{ crewType || 'Not available' }}</li>
   <li><strong>Street From:</strong> {{ location.streetFrom || 'Not available' }}</li>
   <li> <strong>Street To:</strong> {{ location.streetTo || 'Not available' }}</li>
@@ -56,18 +56,18 @@
 <!-- Filtro de fecha ahora dentro de la sección Gallery -->
 <div class="date-filter" style="display: flex; gap: 16px; align-items: center; margin-bottom: 16px;">
   <mat-form-field appearance="outline">
-    <mat-label>Desde</mat-label>
+    <mat-label>From</mat-label>
     <input matInput [matDatepicker]="pickerFrom" [(ngModel)]="filterDateFrom">
     <mat-datepicker-toggle matSuffix [for]="pickerFrom"></mat-datepicker-toggle>
     <mat-datepicker #pickerFrom></mat-datepicker>
   </mat-form-field>
   <mat-form-field appearance="outline">
-    <mat-label>Hasta</mat-label>
+    <mat-label>Until</mat-label>
     <input matInput [matDatepicker]="pickerTo" [(ngModel)]="filterDateTo">
     <mat-datepicker-toggle matSuffix [for]="pickerTo"></mat-datepicker-toggle>
     <mat-datepicker #pickerTo></mat-datepicker>
   </mat-form-field>
-  <button mat-raised-button color="primary" (click)="applyDateFilter()">Filtrar</button>
+  <button mat-raised-button color="primary" (click)="applyDateFilter()">Filter</button>
 </div>
 <!-- 📸 MOSTRAR FOTOS DEL TICKET ACTUAL -->
 <div class="gallery">
@@ -247,7 +247,7 @@
             <input matInput [(ngModel)]="activity.name" placeholder="Ej. Foto de zona de trabajo" />
             <mat-hint *ngIf="activity.name">
               <mat-icon>auto_fix_high</mat-icon>
-              Se autocompleta con la fase seleccionada
+              Auto complete with the phase selected
             </mat-hint>
           </mat-form-field>
           <mat-form-field appearance="fill" class="evidence-field">
@@ -275,6 +275,50 @@
 <div class="permits">
   <div *ngFor="let permit of permits" class="permit">
     <span>Permit Ticket: {{ permit.number }}</span>
+    <mat-card class="permit-card">
+      <div class="permit-file-upload">
+        <input
+          type="file"
+          accept="application/pdf"
+          (change)="onPermitFileSelected($event)"
+          #permitFileInput
+          style="display: none;"
+        />
+        <button mat-stroked-button color="primary" (click)="permitFileInput.click()">
+          <mat-icon>attach_file</mat-icon>
+          Select PDF
+        </button>
+        <span *ngIf="selectedPermitFile" class="selected-file-name">
+          <mat-icon>description</mat-icon>
+          {{ selectedPermitFile.name }}
+        </span>
+        <button
+          mat-raised-button
+          color="accent"
+          (click)="uploadPermitFile(permit)"
+          [disabled]="!selectedPermitFile || pdfFileError"
+          class="upload-btn"
+        >
+          <mat-icon>cloud_upload</mat-icon>
+          Upload PDF
+        </button>
+      </div>
+      <div *ngIf="pdfFileError" class="pdf-error">
+        {{ pdfFileError }}
+      </div>
+      <!-- Galería de archivos subidos para el ticket (solo PDFs) -->
+      <div class="permit-gallery" *ngIf="permitFilesByTicket && permitFilesByTicket.length > 0">
+        <div *ngFor="let file of permitFilesByTicket" class="permit-file-item">
+          <ng-container *ngIf="file.photoURL.endsWith('.pdf')">
+            <mat-icon class="pdf-icon">picture_as_pdf</mat-icon>
+            <a [href]="file.photoURL" target="_blank" download class="pdf-link">
+              Download PDF
+            </a>
+            <span class="pdf-filename">{{ file.name }}</span>
+          </ng-container>
+        </div>
+      </div>
+    </mat-card>
   </div>
 </div>
 
