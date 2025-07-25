@@ -48,10 +48,8 @@
   <!-- <li><strong>Description:</strong>  {{ location.description || 'No description available' }} </li> -->
   <li><strong>Size:</strong> {{ location.width || 'Not available'}} x {{ location.length || 'Not available' }} ft</li>
   <li><strong>Task:</strong> {{ crewType || 'Not available' }}</li>
-  <li>
-    <strong>Street From:</strong> {{ location.streetFrom || 'Not available' }}<br>
-    <strong>Street To:</strong> {{ location.streetTo || 'Not available' }}
-  </li>
+  <li><strong>Street From:</strong> {{ location.streetFrom || 'Not available' }}</li>
+  <li> <strong>Street To:</strong> {{ location.streetTo || 'Not available' }}</li>
 </ul>
 
 <h3 class="sub-title">Gallery</h3>
@@ -276,7 +274,7 @@
 <h3 class="sub-title">Permits</h3>
 <div class="permits">
   <div *ngFor="let permit of permits" class="permit">
-    <span>Permit Ticket: DOT-{{ permit.id }}</span>
+    <span>Permit Ticket: {{ permit.number }}</span>
   </div>
 </div>
 

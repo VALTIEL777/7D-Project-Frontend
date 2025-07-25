@@ -377,7 +377,15 @@ details.forEach((data: any) => {
   contractunitid: data.contractunitid,
   routeCode: data.routecode || '', // ✅ AGREGADO: Incluir routeCode
   lat: data.latitude,   // ✅ añade estas dos líneas
-  lng: data.longitude
+  lng: data.longitude,
+  fromaddressnumber: data.fromaddressnumber || '',
+  fromaddresscardinal: data.fromaddresscardinal || '',
+  fromaddressstreet: data.fromaddressstreet || '',
+  fromaddresssuffix: data.fromaddresssuffix || '',
+  toaddressnumber: data.toaddressnumber || '',
+  toaddresscardinal: data.toaddresscardinal || '',
+  toaddressstreet: data.toaddressstreet || '',
+  toaddresssuffix: data.toaddresssuffix || ''
 });
 
   }
@@ -428,10 +436,14 @@ formatAddress(data: any): string {
     addresssuffix: data.addresssuffix,
     // Campos de wayfinding (tabla wayfinding)
     location: data.location,
+    fromaddressnumber: data.fromaddressnumber,
+    toaddressnumber: data.toaddressnumber,
     fromaddressstreet: data.fromaddressstreet,
     toaddressstreet: data.toaddressstreet,
     fromaddresscardinal: data.fromaddresscardinal,
     fromaddresssuffix: data.fromaddresssuffix,
+    toaddresscardinal: data.toaddresscardinal,
+    toaddresssuffix: data.toaddresssuffix,
     // Otros campos
     address: data.address,
     // Check for any other address-related fields
@@ -573,7 +585,20 @@ goToCurrent(location: any) {
   console.log('📍 Guardando ubicación con descripción:', location.description);
   console.log('🛣️ Guardando routeCode:', location.routeCode);
 
-  localStorage.setItem('selectedLocation', JSON.stringify(location));
+  // Guardar también los campos de wayfinding si existen
+  const locationToSave = {
+    ...location,
+    fromaddressnumber: location.fromaddressnumber || '',
+    fromaddresscardinal: location.fromaddresscardinal || '',
+    fromaddressstreet: location.fromaddressstreet || '',
+    fromaddresssuffix: location.fromaddresssuffix || '',
+    toaddressnumber: location.toaddressnumber || '',
+    toaddresscardinal: location.toaddresscardinal || '',
+    toaddressstreet: location.toaddressstreet || '',
+    toaddresssuffix: location.toaddresssuffix || ''
+  };
+
+  localStorage.setItem('selectedLocation', JSON.stringify(locationToSave));
   localStorage.setItem('crewId', String(crewId));
   localStorage.setItem('selectedRouteCode', location.routeCode || ''); // ✅ AGREGADO: Guardar routeCode
   this.router.navigate(['/current']);

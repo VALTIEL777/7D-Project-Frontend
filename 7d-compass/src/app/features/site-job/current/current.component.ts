@@ -64,6 +64,8 @@ location: {
   fullAddress?: string;
   streetFrom?: string;
   streetTo?: string;
+  fromAddressFull?: string;
+  toAddressFull?: string;
 } = {
   address: ''
 };
@@ -384,21 +386,13 @@ this.permits = details.reduce((acc: { id: number; number: string }[], d: any) =>
         const data = details[0];
 
         // Concatenar dirección completa y partes
-        const from = [
-          data.fromaddressnumber,
-          data.fromaddresscardinal,
-          data.fromaddressstreet,
-          data.fromaddresssuffix
-        ].filter(Boolean).join(' ');
-        const to = [
-          data.toaddressnumber,
-          data.toaddresscardinal,
-          data.toaddressstreet,
-          data.toaddresssuffix
-        ].filter(Boolean).join(' ');
-        this.location.fullAddress = `${from} → ${to}`;
-        this.location.streetFrom = from;
-        this.location.streetTo = to;
+       this.location.streetFrom = `${data.fromaddressnumber} ${data.fromaddressstreet} ${data.fromaddresscardinal}`.trim();
+       this.location.streetTo = `${data.toaddressnumber} ${data.toaddressstreet} ${data.toaddresscardinal}`.trim();
+       this.location.fullAddress = `${this.location.streetFrom} → ${this.location.streetTo}`;
+
+       // Agrega este log para verificar
+        console.log('streetFrom:', this.location.streetFrom);
+        console.log('streetTo:', this.location.streetTo);
 
         this.location.address = `${data.fromaddressstreet} ${data.toaddressstreet} ${data.fromaddresscardinal}`;  // ${data.fromaddresssuffix}
         this.location.job = data.contractunit_name;
