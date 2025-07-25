@@ -565,44 +565,88 @@ mat-dialog-actions {
   gap: 20px;
   margin-bottom: 30px;
   width: 100%;
+  height: 100vh; // Set explicit height for top row
   box-sizing: border-box;
 
   @media (max-width: 768px) {
     flex-direction: column;
     gap: 16px;
+    height: auto; // Auto height on mobile
   }
 }
 
 .routes-section {
   flex: 1;
   width: 50%;
+  height: 100%; // Take full height
+  overflow-y: auto; // Allow scrolling if content overflows
 
   @media (max-width: 768px) {
     width: 100%;
     flex: 1 1 100%;
+    height: auto;
   }
 }
 
 .todays-routes-card {
   flex: 1;
   width: 50%;
-  height: auto; // Auto height to match map content
+  height: 100vh; // Set explicit height for the card
+  display: flex !important;
+  flex-direction: column !important;
 
   @media (max-width: 768px) {
     width: 100%;
     flex: 1 1 100%;
-    height: auto; // Auto height on mobile too
+    height: 70vh; // Reduced height on mobile
   }
 
+  // Ensure the card content takes full height
+  ::ng-deep .card-content {
+    flex-grow: 1 !important;
+    height: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    padding: 16px !important;
+    box-sizing: border-box !important;
+  }
+
+  // Route controls should be compact
+  .route-controls {
+    flex-shrink: 0; // Don't shrink
+    margin-bottom: 12px;
+  }
+
+  .individual-route-controls {
+    flex-shrink: 0; // Don't shrink
+    margin-bottom: 12px;
+  }
+
+  // Map container should take remaining space
   .map-container {
+    flex: 1 !important; // Take all remaining space
     width: 100% !important;
-    max-width: 100% !important;
+    height: auto !important; // Let flex handle height
+    min-height: 400px !important; // Minimum height
+    border-radius: 8px;
+    overflow: hidden;
+    display: flex;
+    align-items: stretch; // Stretch to fill
+    justify-content: stretch;
     box-sizing: border-box;
+    position: relative;
+
+    @media (max-width: 768px) {
+      min-height: 300px !important;
+    }
   }
 
+  // Ensure Leaflet map fills container
   app-leaflet-map {
     width: 100% !important;
-    display: block;
+    height: 100% !important;
+    display: block !important;
+    flex: 1 !important;
   }
 }
 
@@ -783,4 +827,19 @@ mat-dialog-actions {
 app-leaflet-map {
   width: 100% !important;
   display: block !important;
+}
+
+// Increase the height of the ready card tables
+.route-list-container[data-ready-section="true"] {
+  min-height: 220px; // Show at least 5 locations
+  max-height: 350px;
+  padding: 12px 8px;
+  overflow-y: auto;
+}
+
+.route-list-container[data-route-section="true"] {
+  min-height: 220px;
+  max-height: 350px;
+  padding: 12px 8px;
+  overflow-y: auto;
 }

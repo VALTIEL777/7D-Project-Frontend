@@ -248,6 +248,17 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
   @ViewChild('generateRouteDialog') generateRouteDialog!: TemplateRef<any>;
   @ViewChild('leafletMap') leafletMapComponent!: LeafletMapComponent;
 
+  // Add per-route and spot ready filters
+  routeTicketFilters: { [routeId: number]: string } = {};
+  spotReadyFilter: string = '';
+
+  // Add filters for Asphalt Ready and Concrete Ready cards
+  asphaltReadyFilter: string = '';
+  concreteReadyFilter: string = '';
+
+  // Add a loading state for batch add (optional)
+  isBatchAddingTickets: boolean = false;
+
   constructor(
     filterService: FilterService,
     private http: HttpClient,
@@ -304,23 +315,16 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
   }
 
   private updateVisibleRoutes() {
-    const allRoutes = [...this.spottingRoutes, ...this.concreteRoutes, ...this.asphaltRoutes];
     // Only update visible routes if this is the initial load (visibleRoutes is empty)
     // or if we're toggling type visibility (not individual route visibility)
+    // FIX: Do not auto-populate visibleRoutes when empty; let empty mean 'show nothing'.
+    // This prevents the reset when all are untapped.
+    // No action needed if visibleRoutes is empty.
     if (this.visibleRoutes.size === 0) {
-      allRoutes.forEach((route: any) => {
-        // Check if route type is visible
-        const typeVisible = (route.type === 'SPOTTER' && this.showSpottingRoutes) ||
-                           (route.type === 'CONCRETE' && this.showConcreteRoutes) ||
-                           (route.type === 'ASPHALT' && this.showAsphaltRoutes);
-
-        if (typeVisible) {
-          this.visibleRoutes.add(route.routeId);
-        }
-      });
-    } else {
-      // Individual route visibility mode - preserving existing visible routes
+      // Do nothing: show nothing if all are untapped
+      return;
     }
+    // Otherwise, preserve existing visible routes (no-op)
   }
 
   private updateTypeVisibility() {
@@ -516,8 +520,33 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     });
   }
 
+  // Filter tickets in a route by the filter for that route
+  getFilteredRouteTickets(route: Route): RouteTicket[] {
+    const filter = (this.routeTicketFilters[route.routeId] || '').toLowerCase().trim();
+    if (!filter) return route.tickets;
+    return route.tickets.filter(ticket => ticket.address && ticket.address.toLowerCase().includes(filter));
+  }
 
+  // Filter spot ready tickets by the spotReadyFilter
+  getFilteredSpotReadyTickets(): ReadyTicket[] {
+    const filter = this.spotReadyFilter.toLowerCase().trim();
+    if (!filter) return this.spotReadyTickets;
+    return this.spotReadyTickets.filter(ticket => ticket.address && ticket.address.toLowerCase().includes(filter));
+  }
 
+  // Filter asphalt ready tickets by the asphaltReadyFilter
+  getFilteredAsphaltReadyTickets(): ReadyTicket[] {
+    const filter = this.asphaltReadyFilter.toLowerCase().trim();
+    if (!filter) return this.asphaltReadyTickets;
+    return this.asphaltReadyTickets.filter(ticket => ticket.address && ticket.address.toLowerCase().includes(filter));
+  }
+
+  // Filter concrete ready tickets by the concreteReadyFilter
+  getFilteredConcreteReadyTickets(): ReadyTicket[] {
+    const filter = this.concreteReadyFilter.toLowerCase().trim();
+    if (!filter) return this.concreteReadyTickets;
+    return this.concreteReadyTickets.filter(ticket => ticket.address && ticket.address.toLowerCase().includes(filter));
+  }
 
 
   // Load spotting routes from API
@@ -652,74 +681,159 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     });
   }
 
+  // Update the drop method to handle batch moves from ready cards to route cards with type checking
   async drop(event: CdkDragDrop<any[]>) {
     const draggedTicket = event.previousContainer.data[event.previousIndex];
 
-    // Check if we're moving between ready sections
-    const isFromReadySection = this.isReadySection(event.previousContainer.data);
-    const isToReadySection = this.isReadySection(event.container.data);
-    const isToRoute = this.isRouteSection(event.container);
+    // Batch: find all tickets in the source list with the same address
+    const addressKey = (draggedTicket.address || '').toLowerCase().trim();
+    const sourceList = event.previousContainer.data;
+    const batchTickets = sourceList.filter(
+      t => (t.address || '').toLowerCase().trim() === addressKey
+    );
 
-    if (isFromReadySection && isToReadySection) {
-      // Scenario 2: Moving between ready sections
-      await this.handleMoveBetweenReadySections(event, draggedTicket);
-    } else if (isFromReadySection && isToRoute) {
-      // Scenario 3: Moving from ready section to route
-      await this.handleMoveFromReadyToRoute(event, draggedTicket);
-    } else if (event.previousContainer === event.container) {
-      // Scenario 1: Reordering within the same container
-      moveItemInArray(event.container.data, event.previousIndex, event.currentIndex);
+    // If only one ticket matches, fallback to normal logic
+    if (batchTickets.length === 1) {
+      // Check if we're moving between ready sections
+      const isFromReadySection = this.isReadySection(event.previousContainer.data);
+      const isToReadySection = this.isReadySection(event.container.data);
+      const isToRoute = this.isRouteSection(event.container);
 
-      // Update queue numbers for the reordered tickets
-      event.container.data.forEach((ticket, index) => {
-        ticket.queue = index;
-      });
-
-      // Find the route that contains this container
-      const routeId = this.getRouteIdFromDropEvent(event);
-      if (routeId) {
-        const route = this.findRouteByTickets(routeId);
-        if (route) {
-          await this.handleReorderWithinRoute(route, event.container.data);
-        }
-      }
-    } else {
-      // Scenario 4: Moving between routes
-      const isSourceRoute = this.isRouteSection(event.previousContainer);
-
-      if (isSourceRoute && event.previousContainer.data.length === 1) {
-        alert('Routes cannot be empty. At least one location must remain.');
-        return;
-      }
-
-      transferArrayItem(
-        event.previousContainer.data,
-        event.container.data,
-        event.previousIndex,
-        event.currentIndex,
-      );
-
-      // Update queue numbers for both source and destination containers
-      if (event.previousContainer.data.length > 0) {
-        event.previousContainer.data.forEach((ticket, index) => {
+      if (isFromReadySection && isToReadySection) {
+        await this.handleMoveBetweenReadySections(event, draggedTicket);
+      } else if (isFromReadySection && isToRoute) {
+        await this.handleMoveFromReadyToRoute(event, draggedTicket);
+      } else if (event.previousContainer === event.container) {
+        moveItemInArray(event.container.data, event.previousIndex, event.currentIndex);
+        event.container.data.forEach((ticket, index) => {
           ticket.queue = index;
         });
+        const routeId = this.getRouteIdFromDropEvent(event);
+        if (routeId) {
+          const route = this.findRouteByTickets(routeId);
+          if (route) {
+            await this.handleReorderWithinRoute(route, event.container.data);
+          }
+        }
+      } else {
+        const isSourceRoute = this.isRouteSection(event.previousContainer);
+        if (isSourceRoute && event.previousContainer.data.length === 1) {
+          alert('Routes cannot be empty. At least one location must remain.');
+          return;
+        }
+        transferArrayItem(
+          event.previousContainer.data,
+          event.container.data,
+          event.previousIndex,
+          event.currentIndex,
+        );
+        if (event.previousContainer.data.length > 0) {
+          event.previousContainer.data.forEach((ticket, index) => {
+            ticket.queue = index;
+          });
+        }
+        event.container.data.forEach((ticket, index) => {
+          ticket.queue = index;
+        });
+        await this.handleMoveBetweenRoutes(event, draggedTicket);
       }
-
-      event.container.data.forEach((ticket, index) => {
-        ticket.queue = index;
-      });
-
-      // Handle the API calls for moving between routes
-      await this.handleMoveBetweenRoutes(event, draggedTicket);
+      this.spottingRoutes = [...this.spottingRoutes];
+      this.concreteRoutes = [...this.concreteRoutes];
+      this.asphaltRoutes = [...this.asphaltRoutes];
+      this.forceMapUpdate();
+      return;
     }
 
-    // Force Angular to detect changes by reassigning the arrays
+    // Batch move logic
+    const isFromReadySection = this.isReadySection(event.previousContainer.data);
+    const isToRoute = this.isRouteSection(event.container);
+    if (isFromReadySection && isToRoute) {
+      // Type compatibility check
+      const routeId = this.getRouteIdFromDropEvent(event);
+      if (routeId == null) {
+        this.snackBar.open('Could not find destination route. Please try again.', 'Close', { duration: 3000, panelClass: ['error-snackbar'] });
+        return;
+      }
+      const route = this.findRouteByTickets(routeId);
+      if (!route) {
+        this.snackBar.open('Could not find destination route. Please try again.', 'Close', { duration: 3000, panelClass: ['error-snackbar'] });
+        return;
+      }
+      // Determine ready section type
+      let readyType = '';
+      if (sourceList === this.spotReadyTickets) readyType = 'SPOTTER';
+      else if (sourceList === this.asphaltReadyTickets) readyType = 'ASPHALT';
+      else if (sourceList === this.concreteReadyTickets) readyType = 'CONCRETE';
+      else if (batchTickets[0]?.tickettype) readyType = (batchTickets[0].tickettype || '').toUpperCase();
+      // Route type must match ready type
+      if (route.type !== readyType) {
+        this.snackBar.open('Invalid move: You can only drag from a ready card to a matching route type.', 'Close', { duration: 4000, panelClass: ['error-snackbar'] });
+        return;
+      }
+      // Sequentially move all batch tickets
+      this.isBatchAddingTickets = true;
+      for (const t of batchTickets) {
+        try {
+          await this.handleMoveFromReadyToRoute(event, t);
+        } catch (err) {
+          console.error('Error adding ticket to route:', t, err);
+          this.snackBar.open(`Failed to add ticket ${t.ticketcode || t.ticketCode || t.ticketId}`, 'Close', { duration: 3000, panelClass: ['error-snackbar'] });
+        }
+      }
+      this.isBatchAddingTickets = false;
+      this.spottingRoutes = [...this.spottingRoutes];
+      this.concreteRoutes = [...this.concreteRoutes];
+      this.asphaltRoutes = [...this.asphaltRoutes];
+      this.forceMapUpdate();
+      return;
+    }
+
+    // Remove all batchTickets from the source list
+    for (const t of batchTickets) {
+      const idx = sourceList.indexOf(t);
+      if (idx !== -1) {
+        sourceList.splice(idx, 1);
+      }
+    }
+
+    // Insert all batchTickets into the destination list at the drop index
+    const destList = event.container.data;
+    let insertIndex = event.currentIndex;
+    for (const t of batchTickets) {
+      destList.splice(insertIndex, 0, t);
+      insertIndex++;
+    }
+
+    // Update queue numbers for both lists
+    if (sourceList.length > 0) {
+      sourceList.forEach((ticket, index) => {
+        ticket.queue = index;
+      });
+    }
+    destList.forEach((ticket, index) => {
+      ticket.queue = index;
+    });
+
+    // If moving between routes, call handleMoveBetweenRoutes for each ticket
+    const isSourceRoute = this.isRouteSection(event.previousContainer);
+    const isDestRoute = this.isRouteSection(event.container);
+    if (isSourceRoute && isDestRoute && event.previousContainer !== event.container) {
+      for (const t of batchTickets) {
+        await this.handleMoveBetweenRoutes(event, t);
+      }
+    } else if (isSourceRoute && !isDestRoute) {
+      // Moving from route to ready section (if supported)
+      // (implement if needed)
+    } else if (!isSourceRoute && isDestRoute) {
+      // Moving from ready section to route
+      for (const t of batchTickets) {
+        await this.handleMoveFromReadyToRoute(event, t);
+      }
+    }
+
     this.spottingRoutes = [...this.spottingRoutes];
     this.concreteRoutes = [...this.concreteRoutes];
     this.asphaltRoutes = [...this.asphaltRoutes];
-
-    // Force map update after drag and drop operations
     this.forceMapUpdate();
   }
 
@@ -908,10 +1022,20 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
 
   private async handleReorderWithinRoute(route: Route, tickets: any[]): Promise<void> {
     try {
-      // Update queue numbers locally without reoptimizing
+      // Build the updates array
+      const updates = tickets.map((ticket, index) => ({
+        ticketId: ticket.ticketId,
+        queue: index
+      }));
+      // Use a placeholder for updatedBy (replace with real user ID if available)
+      const updatedBy = 1;
+      const endpoint = `${environment.apiUrl}/routetickets/${route.routeId}/batch-queue`;
+      const body = { updates, updatedBy };
+      await this.http.put(endpoint, body).toPromise();
+      this.snackBar.open('Ticket order saved!', 'Close', { duration: 2000 });
     } catch (error) {
-      console.error('Error reordering tickets within route:', error);
-      alert('Error reordering tickets. Please try again.');
+      console.error('Error saving ticket order:', error);
+      this.snackBar.open('Failed to save ticket order', 'Close', { duration: 4000, panelClass: ['error-snackbar'] });
     }
   }
 
@@ -1007,7 +1131,7 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
 
   // Helper method to check if route has too many locations for reoptimization
   isRouteTooLargeForReoptimization(route: Route): boolean {
-    return this.getUniqueLocationCount(route) > 25;
+    return this.getUniqueLocationCount(route) > 99;
   }
 
     // Cancel route
@@ -1295,14 +1419,8 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
       }))
     }));
 
-    // Initialize visible routes if empty - add all routes by default
-    if (this.visibleRoutes.size === 0) {
-      allRoutes.forEach(route => {
-        this.visibleRoutes.add(route.routeId);
-      });
-    }
-
-    // Update visible routes based on current settings
+    // Remove: if (this.visibleRoutes.size === 0) { ... add all ... }
+    // Instead, just update visible routes based on current settings
     this.updateVisibleRoutes();
   }
 
@@ -1506,6 +1624,9 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
 
     // Update the leaflet routes array
     this.leafletRoutes = this.leafletRoutes.filter(route => route.routeId !== routeId);
+
+    // Force immediate map update to remove the cancelled route
+    this.forceMapUpdate();
   }
 
   // Force immediate map update
