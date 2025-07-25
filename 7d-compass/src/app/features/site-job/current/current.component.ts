@@ -1297,4 +1297,23 @@ loadPermitFilesByTicket() {
   });
 }
 
+deletePermitFile(file: any) {
+  const photoId = file.photoId || file.photoid;
+  if (!photoId) {
+    alert('No se pudo identificar el archivo a eliminar.');
+    return;
+  }
+  const confirmed = confirm('¿Estás seguro de que deseas eliminar este archivo?');
+  if (!confirmed) return;
+  this.photoEvidenceService.deletePhotoEvidence(photoId).subscribe({
+    next: () => {
+      this.loadPermitFilesByTicket();
+    },
+    error: (err) => {
+      alert('Error eliminando el archivo.');
+      console.error('❌ Error eliminando archivo:', err);
+    }
+  });
+}
+
 }

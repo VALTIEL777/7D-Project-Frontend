@@ -309,12 +309,15 @@
       <!-- Galería de archivos subidos para el ticket (solo PDFs) -->
       <div class="permit-gallery" *ngIf="permitFilesByTicket && permitFilesByTicket.length > 0">
         <div *ngFor="let file of permitFilesByTicket" class="permit-file-item">
-          <ng-container *ngIf="file.photoURL.endsWith('.pdf')">
+          <ng-container *ngIf="(file.photoURL && file.photoURL.endsWith('.pdf')) || (file.photourl && file.photourl.endsWith('.pdf'))">
             <mat-icon class="pdf-icon">picture_as_pdf</mat-icon>
-            <a [href]="file.photoURL" target="_blank" download class="pdf-link">
+            <a [href]="file.photoURL || file.photourl" target="_blank" download class="pdf-link">
               Download PDF
             </a>
             <span class="pdf-filename">{{ file.name }}</span>
+            <button mat-icon-button color="warn" (click)="deletePermitFile(file)" aria-label="Eliminar archivo" class="delete-file-btn">
+              <mat-icon>close</mat-icon>
+            </button>
           </ng-container>
         </div>
       </div>
