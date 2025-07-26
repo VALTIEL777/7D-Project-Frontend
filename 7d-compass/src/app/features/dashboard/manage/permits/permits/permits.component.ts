@@ -483,25 +483,37 @@ export class PermitsComponent extends BaseDashboardComponent implements OnInit {
   onPermitFileSelected(event: any, permit?: any): void {
     const file = event.target.files[0];
     if (file) {
-      
       // Validar que sea un PDF
       if (file.type !== 'application/pdf') {
         this.pdfFileError = 'Solo se permiten archivos PDF';
         this.selectedPermitFile = null;
         return;
       }
-      
+
       // Validar tamaño (máximo 10MB)
       if (file.size > 10 * 1024 * 1024) {
         this.pdfFileError = 'El archivo es demasiado grande. Máximo 10MB';
         this.selectedPermitFile = null;
         return;
       }
-      
-      this.selectedPermitFile = file;
+
+      // Detectar caracteres raros en el nombre
+      const unsafePattern = /[^a-zA-Z0-9_.-]/;
+      const fileExtension = file.name.split('.').pop() || 'pdf';
+      let finalFile: File;
+
+      if (unsafePattern.test(file.name)) {
+        // Si hay caracteres raros, renombrar
+        const safeName = `${Date.now()}_${permit?.PermitId || 'permit'}.${fileExtension}`;
+        finalFile = new File([file], safeName, { type: file.type });
+      } else {
+        // Si el nombre es seguro, usar el original
+        finalFile = file;
+      }
+
+      this.selectedPermitFile = finalFile;
       this.pdfFileError = null;
-      
-      
+
       // Si se pasó un permiso específico, subir automáticamente
       if (permit) {
         this.uploadPermitFile(permit);
@@ -638,6 +650,8 @@ export class PermitsComponent extends BaseDashboardComponent implements OnInit {
         
         // Limpiar inmediatamente el array de archivos del permiso
         this.permitFiles[permitId] = [];
+        this.selectedPermitFile = null; // Limpiar archivo seleccionado
+        this.pdfFileError = null;       // Limpiar error
         
         // Recargar archivos del permiso para asegurar sincronización
         setTimeout(() => {

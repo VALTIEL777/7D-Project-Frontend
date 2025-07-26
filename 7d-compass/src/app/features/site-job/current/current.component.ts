@@ -1090,12 +1090,17 @@ onFileSelected(event: Event, activity: any) {
     const file = input.files[0];
     if (validImageTypes.includes(file.type)) {
       if (activity.selectedFiles.length < 5) {
-        activity.selectedFiles.push(file);
+        // Renombrar el archivo para evitar caracteres especiales
+        const fileExtension = file.name.split('.').pop() || 'jpg';
+        const safeName = `${Date.now()}_${this.ticketId}_${activity.id}.${fileExtension}`;
+        const renamedFile = new File([file], safeName, { type: file.type });
+        
+        activity.selectedFiles.push(renamedFile);
         const reader = new FileReader();
         reader.onload = () => {
           activity.imagePreviews.push(reader.result);
         };
-        reader.readAsDataURL(file);
+        reader.readAsDataURL(renamedFile);
       }
     }
     input.value = '';
@@ -1512,7 +1517,10 @@ onPermitFileSelected(event: Event) {
       this.pdfFileError = 'Solo se permite subir archivos PDF.';
       return;
     }
-    this.selectedPermitFile = file;
+    // Renombrar el archivo para evitar caracteres especiales
+    const safeName = `${Date.now()}_${this.ticketId}.pdf`;
+    const renamedFile = new File([file], safeName, { type: file.type });
+    this.selectedPermitFile = renamedFile;
   } else {
     this.selectedPermitFile = null;
   }
@@ -1721,131 +1729,131 @@ private getCurrentDateString(): string {
   return isoString;
 }
 
-  // Método para descargar archivo (imagen o PDF)
-  downloadFile(photoId: number, fileName: string = 'file') {
-    this.photoEvidenceService.downloadPhotoEvidenceFile(photoId, fileName).subscribe({
-      next: (blob) => {
-        // Crear URL temporal para descarga
-        const url = window.URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = fileName;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+// Método para descargar archivo (imagen o PDF)
+downloadFile(photoId: number, fileName: string = 'file') {
+  this.photoEvidenceService.downloadPhotoEvidenceFile(photoId, fileName).subscribe({
+    next: (blob) => {
+      // Crear URL temporal para descarga
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      console.log('✅ Archivo descargado:', fileName);
+    },
+    error: (err) => {
+      console.error('❌ Error descargando archivo:', err);
+    }
+  });
+}
+
+// Método para determinar si un archivo es PDF basado en su URL
+isPdfFile(fileUrl: string): boolean {
+  if (!fileUrl) return false;
+  
+  // Si es una data URL, verificar el tipo MIME
+  if (fileUrl.startsWith('data:')) {
+    return fileUrl.includes('application/pdf');
+  }
+  
+  // Si es una blob URL, no podemos determinar el tipo desde la URL
+  if (fileUrl.startsWith('blob:')) {
+    return false; // Asumimos que no es PDF si es blob URL
+  }
+  
+  // Para URLs normales, verificar la extensión
+  const extension = fileUrl.split('.').pop()?.toLowerCase();
+  return extension === 'pdf';
+}
+
+// Método para obtener el nombre del archivo desde la URL
+getFileNameFromUrl(fileUrl: string): string {
+  if (!fileUrl) return 'archivo';
+  const parts = fileUrl.split('/');
+  return parts[parts.length - 1] || 'archivo';
+}
+
+// Método para mostrar PDF en nueva ventana
+openPdfInNewWindow(photoId: number, fileName: string) {
+  this.photoEvidenceService.getPhotoEvidenceFile(photoId).subscribe({
+    next: (blob) => {
+      const url = window.URL.createObjectURL(blob);
+      const newWindow = window.open(url, '_blank');
+      if (newWindow) {
+        newWindow.document.title = fileName;
+      }
+      // Limpiar URL después de un tiempo
+      setTimeout(() => {
         window.URL.revokeObjectURL(url);
-        
-        console.log('✅ Archivo descargado:', fileName);
-      },
-      error: (err) => {
-        console.error('❌ Error descargando archivo:', err);
-      }
-    });
-  }
-
-  // Método para determinar si un archivo es PDF basado en su URL
-  isPdfFile(fileUrl: string): boolean {
-    if (!fileUrl) return false;
-    
-    // Si es una data URL, verificar el tipo MIME
-    if (fileUrl.startsWith('data:')) {
-      return fileUrl.includes('application/pdf');
+      }, 60000); // 1 minuto
+    },
+    error: (err) => {
+      console.error('❌ Error abriendo PDF:', err);
     }
-    
-    // Si es una blob URL, no podemos determinar el tipo desde la URL
-    if (fileUrl.startsWith('blob:')) {
-      return false; // Asumimos que no es PDF si es blob URL
-    }
-    
-    // Para URLs normales, verificar la extensión
-    const extension = fileUrl.split('.').pop()?.toLowerCase();
-    return extension === 'pdf';
-  }
+  });
+}
 
-  // Método para obtener el nombre del archivo desde la URL
-  getFileNameFromUrl(fileUrl: string): string {
-    if (!fileUrl) return 'archivo';
-    const parts = fileUrl.split('/');
-    return parts[parts.length - 1] || 'archivo';
-  }
+// Método para manejar errores de carga de imágenes
+onImageError(event: Event, img: any) {
+  console.error(`❌ Error cargando imagen: ${img.name}`, event);
+  
+  // Marcar la imagen como con error
+  img.error = true;
+  img.loaded = false;
+  
+  // Reemplazar con una imagen placeholder
+  const target = event.target as HTMLImageElement;
+  target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjRmNGY0Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkltYWdlbiBubyBkaXNwb25pYmxlPC90ZXh0Pjwvc3ZnPg==';
+  target.alt = 'Error al cargar imagen';
+}
 
-  // Método para mostrar PDF en nueva ventana
-  openPdfInNewWindow(photoId: number, fileName: string) {
-    this.photoEvidenceService.getPhotoEvidenceFile(photoId).subscribe({
+// Método para manejar carga exitosa de imágenes
+onImageLoad(img: any) {
+  console.log(`✅ Imagen cargada exitosamente: ${img.name}`);
+  this.loadedImageIds.add(img.photoId || img.photoid);
+}
+
+// Método para reintentar la carga de una imagen
+retryImageLoad(img: any) {
+  console.log(`🔄 Reintentando carga de imagen: ${img.name}`);
+  
+  // Resetear estados
+  img.loaded = false;
+  img.error = false;
+  
+  // Si la imagen tiene un photoId, intentar descargarla nuevamente
+  if (img.photoId) {
+    this.photoEvidenceService.getPhotoEvidenceFile(img.photoId).subscribe({
       next: (blob) => {
-        const url = window.URL.createObjectURL(blob);
-        const newWindow = window.open(url, '_blank');
-        if (newWindow) {
-          newWindow.document.title = fileName;
-        }
-        // Limpiar URL después de un tiempo
-        setTimeout(() => {
-          window.URL.revokeObjectURL(url);
-        }, 60000); // 1 minuto
+        console.log(`✅ Imagen descargada exitosamente en reintento: ${img.name}`);
+        const url = URL.createObjectURL(blob);
+        img.url = url;
+        img.loaded = true;
+        img.error = false;
       },
       error: (err) => {
-        console.error('❌ Error abriendo PDF:', err);
+        console.error(`❌ Error en reintento de imagen ${img.name}:`, err);
+        img.error = true;
+        img.loaded = false;
       }
     });
-  }
-
-  // Método para manejar errores de carga de imágenes
-  onImageError(event: Event, img: any) {
-    console.error(`❌ Error cargando imagen: ${img.name}`, event);
-    
-    // Marcar la imagen como con error
+  } else {
+    // Si no tiene photoId, simplemente resetear el estado
     img.error = true;
     img.loaded = false;
-    
-    // Reemplazar con una imagen placeholder
-    const target = event.target as HTMLImageElement;
-    target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjRmNGY0Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkltYWdlbiBubyBkaXNwb25pYmxlPC90ZXh0Pjwvc3ZnPg==';
-    target.alt = 'Error al cargar imagen';
   }
+}
 
-  // Método para manejar carga exitosa de imágenes
-  onImageLoad(img: any) {
-    console.log(`✅ Imagen cargada exitosamente: ${img.name}`);
-    this.loadedImageIds.add(img.photoId || img.photoid);
-  }
-
-  // Método para reintentar la carga de una imagen
-  retryImageLoad(img: any) {
-    console.log(`🔄 Reintentando carga de imagen: ${img.name}`);
-    
-    // Resetear estados
-    img.loaded = false;
-    img.error = false;
-    
-    // Si la imagen tiene un photoId, intentar descargarla nuevamente
-    if (img.photoId) {
-      this.photoEvidenceService.getPhotoEvidenceFile(img.photoId).subscribe({
-        next: (blob) => {
-          console.log(`✅ Imagen descargada exitosamente en reintento: ${img.name}`);
-          const url = URL.createObjectURL(blob);
-          img.url = url;
-          img.loaded = true;
-          img.error = false;
-        },
-        error: (err) => {
-          console.error(`❌ Error en reintento de imagen ${img.name}:`, err);
-          img.error = true;
-          img.loaded = false;
-        }
-      });
-    } else {
-      // Si no tiene photoId, simplemente resetear el estado
-      img.error = true;
-      img.loaded = false;
-    }
-  }
-
-  // Método para limpiar filtros de fecha
-  clearDateFilters() {
-    console.log('🧹 Limpiando filtros de fecha');
-    this.filterDateFrom = null;
-    this.filterDateTo = null;
-    this.applyDateFilter();
-  }
+// Método para limpiar filtros de fecha
+clearDateFilters() {
+  console.log('🧹 Limpiando filtros de fecha');
+  this.filterDateFrom = null;
+  this.filterDateTo = null;
+  this.applyDateFilter();
+}
 
 }

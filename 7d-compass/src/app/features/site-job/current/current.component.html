@@ -161,14 +161,6 @@
       No images match the applied date filters.
     </span>
   </p>
-  <button *ngIf="currentTicketImages.length > 0" 
-          mat-stroked-button 
-          color="primary" 
-          (click)="clearDateFilters()"
-          style="margin-top: 8px;">
-    <mat-icon>clear</mat-icon>
-    Clear filters
-  </button>
 </div>
 
 <!-- ✅ ACTIVITIES + PHOTO EVIDENCE UNIDOS -->
@@ -340,6 +332,10 @@
             <a [href]="file.photoURL || file.photourl" target="_blank" download class="pdf-link">
               Download PDF
             </a>
+            <button mat-stroked-button color="accent" (click)="downloadFile(file.photoId || file.photoid, file.name)">
+              <mat-icon>download</mat-icon>
+              Download PDF
+            </button>
             <span class="pdf-filename">{{ file.name }}</span>
             <button mat-icon-button color="warn" (click)="deletePermitFile(file)" aria-label="Eliminar archivo" class="delete-file-btn">
               <mat-icon>close</mat-icon>
