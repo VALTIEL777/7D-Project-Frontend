@@ -720,6 +720,7 @@
     gap: 8px;
     
     .show-on-map-btn,
+    .zoom-btn,
     .custom-select-button {
       width: 100%;
     }
@@ -741,5 +742,40 @@
 
   .zoom-selector {
     padding: 12px 16px;
+  }
+}
+
+// Estilos para los nuevos botones
+.view-all-btn {
+  background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
+  color: white;
+  border: none;
+  transition: all 0.3s ease;
+  
+  &:hover {
+    background: linear-gradient(135deg, #45a049 0%, #3d8b40 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  }
+  
+  mat-icon {
+    margin-right: 4px;
+  }
+}
+
+.zoom-btn {
+  background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
+  color: white;
+  border: none;
+  transition: all 0.3s ease;
+  
+  &:hover {
+    background: linear-gradient(135deg, #f57c00 0%, #ef6c00 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  }
+  
+  mat-icon {
+    margin-right: 4px;
   }
 }

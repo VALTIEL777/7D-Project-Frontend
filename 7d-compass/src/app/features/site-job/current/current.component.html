@@ -8,8 +8,14 @@
   <div class="map-header">
     <h3 class="map-title">Location Map</h3>
     <div class="map-controls">
-      
-      <!-- Botones de test y debug eliminados -->
+      <button mat-stroked-button (click)="zoomToCurrentLocation()" class="zoom-location-btn" title="Zoom to Current Location">
+        <mat-icon>my_location</mat-icon>
+        Zoom to Location
+      </button>
+      <button mat-stroked-button (click)="debugMapState()" class="debug-btn" title="Debug Map State">
+        <mat-icon>bug_report</mat-icon>
+        Debug
+      </button>
     </div>
   </div>
 

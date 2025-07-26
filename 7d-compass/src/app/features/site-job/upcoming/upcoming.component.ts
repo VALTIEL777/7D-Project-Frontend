@@ -20,6 +20,8 @@ import { SitejobTabsComponent } from '../../../shared/sitejob-tabs/sitejob-tabs.
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { RouteData, MapConfig, LeafletMapComponent } from '../../../shared/leaflet-map/leaflet-map.component';
+import { environment } from '../../../../environments/environment';
+import * as L from 'leaflet';
 
 
 @Component({
@@ -99,6 +101,15 @@ crewDetails: any[] = [];
     tileLayer: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
     attribution: '© OpenStreetMap contributors'
   };
+  
+  // Propiedades necesarias para mostrar rutas en el mapa
+  visibleRoutes: Set<number> = new Set();
+  routeTypeVisibility: { [key: string]: boolean } = {
+    'SPOTTER': true,
+    'CONCRETE': true,
+    'ASPHALT': true,
+    'UPCOMING': true
+  };
 
   @ViewChild(LeafletMapComponent) leafletMap!: LeafletMapComponent;
 
@@ -161,10 +172,36 @@ crewDetails: any[] = [];
     console.log('🛣️ Remaining locations count:', this.remainingLocations.length);
 
     try {
-      // Get all routes to find the one assigned to this crew
-      const allRoutes = await firstValueFrom(this.routeService.getAllRoutes());
-      console.log('🛣️ All routes received:', allRoutes);
+      // Get routes by type (like route-generator does)
+      console.log('🛣️ Getting routes by type...');
+      
+      // Get spotting routes first (since crew type is "Spotting")
+      const spottingRoutesResponse = await firstValueFrom(this.http.get<any>(`${environment.apiUrl}/routes/spotting`));
+      console.log('🛣️ Spotting routes response:', spottingRoutesResponse);
+      
+      // Get concrete routes
+      const concreteRoutesResponse = await firstValueFrom(this.http.get<any>(`${environment.apiUrl}/routes/concrete`));
+      console.log('🛣️ Concrete routes response:', concreteRoutesResponse);
+      
+      // Get asphalt routes
+      const asphaltRoutesResponse = await firstValueFrom(this.http.get<any>(`${environment.apiUrl}/routes/asphalt`));
+      console.log('🛣️ Asphalt routes response:', asphaltRoutesResponse);
+      
+      // Combine all routes
+      const allRoutes = [
+        ...(spottingRoutesResponse?.routes || []),
+        ...(concreteRoutesResponse?.routes || []),
+        ...(asphaltRoutesResponse?.routes || [])
+      ];
+      
+      console.log('🛣️ All routes combined:', allRoutes);
       console.log('🛣️ Number of routes:', allRoutes?.length || 0);
+      
+      // Verificar si alguna ruta tiene polyline
+      allRoutes.forEach((route, index) => {
+        const hasPolyline = route.encodedpolyline || route.encodedPolyline;
+        console.log(`🛣️ Route ${index + 1} (${route.routeid || route.routeId}): hasPolyline=${!!hasPolyline}, polylineLength=${hasPolyline?.length || 0}`);
+      });
 
       if (allRoutes && allRoutes.length > 0) {
         // Look for routes that match the crew's work type or have tickets that match this crew's tickets
@@ -244,26 +281,59 @@ crewDetails: any[] = [];
         }
 
         this.assignedRoute = assignedRoute;
-        this.assignedRouteId = assignedRoute?.routeid;
+        this.assignedRouteId = assignedRoute?.routeid || assignedRoute?.routeId;
+        
+        console.log('🛣️ Debugging route properties:');
+        console.log('🛣️ assignedRoute.routeid:', assignedRoute?.routeid);
+        console.log('🛣️ assignedRoute.routeId:', assignedRoute?.routeId);
+        console.log('🛣️ assignedRoute.routecode:', assignedRoute?.routecode);
+        console.log('🛣️ assignedRoute.routeCode:', assignedRoute?.routeCode);
+        console.log('🛣️ assignedRoute.encodedpolyline:', assignedRoute?.encodedpolyline);
+        console.log('🛣️ assignedRoute.encodedPolyline:', assignedRoute?.encodedPolyline);
+        
+        console.log('🛣️ Antes de updateLeafletRoutes:');
+        console.log('🛣️ assignedRoute:', this.assignedRoute);
+        console.log('🛣️ assignedRoute estructura completa:', JSON.stringify(this.assignedRoute, null, 2));
+        console.log('🛣️ assignedRouteId:', this.assignedRouteId);
+        
         this.updateLeafletRoutes();
+        
+        console.log('🛣️ Después de updateLeafletRoutes:');
+        console.log('🛣️ leafletRoutes:', this.leafletRoutes);
+        console.log('🛣️ visibleRoutes:', Array.from(this.visibleRoutes));
+        
+        // Forzar actualización del mapa después de un pequeño delay
+        setTimeout(() => {
+          console.log('🛣️ Forzando actualización del mapa después de delay...');
+          this.updateLeafletRoutes();
+          if (this.leafletMap) {
+            console.log('🛣️ Llamando refreshMap en LeafletMap...');
+            this.leafletMap.refreshMap();
+          }
+        }, 1000);
 
         if (assignedRoute) {
           console.log('🛣️ Final assigned route:', {
-            routeid: this.assignedRoute.routeid,
-            routecode: this.assignedRoute.routecode,
+            routeid: this.assignedRoute.routeid || this.assignedRoute.routeId,
+            routecode: this.assignedRoute.routecode || this.assignedRoute.routeCode,
             type: this.assignedRoute.type,
-            hasPolyline: !!this.assignedRoute.encodedpolyline,
-            polylineLength: this.assignedRoute.encodedpolyline?.length || 0
+            hasPolyline: !!(this.assignedRoute.encodedpolyline || this.assignedRoute.encodedPolyline),
+            polylineLength: (this.assignedRoute.encodedpolyline || this.assignedRoute.encodedPolyline)?.length || 0
           });
 
           // For debugging, let's also check if we can force a specific route
-          if (!this.assignedRoute.encodedpolyline) {
+          const hasPolyline = this.assignedRoute.encodedpolyline || this.assignedRoute.encodedPolyline;
+          if (!hasPolyline) {
             console.log('⚠️ Assigned route has no encoded polyline, trying to find one with polyline...');
-            const routeWithPolyline = allRoutes.find((route: any) => route.encodedpolyline && route.encodedpolyline.length > 0);
+            const routeWithPolyline = allRoutes.find((route: any) => {
+              const routePolyline = route.encodedpolyline || route.encodedPolyline;
+              return routePolyline && routePolyline.length > 0;
+            });
             if (routeWithPolyline) {
-              console.log('✅ Found route with polyline:', routeWithPolyline.routeid);
+              const routeId = routeWithPolyline.routeid || routeWithPolyline.routeId;
+              console.log('✅ Found route with polyline:', routeId);
               this.assignedRoute = routeWithPolyline;
-              this.assignedRouteId = routeWithPolyline.routeid;
+              this.assignedRouteId = routeId;
             }
           }
         } else {
@@ -420,22 +490,7 @@ this.geocodeRemainingLocations().then(async () => {
       this.isLoading = false;
 
       // === INTEGRACIÓN PARA LEAFLET ROUTES ===
-      if (this.assignedRoute && this.assignedRoute.encodedpolyline) {
-        this.leafletRoutes = [{
-          routeId: this.assignedRoute.routeid,
-          routeCode: this.assignedRoute.routecode,
-          type: this.assignedRoute.type,
-          encodedPolyline: this.assignedRoute.encodedpolyline,
-          tickets: (this.assignedRoute.tickets || []).map((t: any, idx: number) => ({
-            ticketId: t.ticketId || t.ticketid,
-            address: t.address,
-            queue: t.queue ?? idx
-          }))
-        }];
-        console.log('Leaflet Routes:', this.leafletRoutes);
-      } else {
-        this.leafletRoutes = [];
-      }
+      // Esta lógica se maneja ahora en updateLeafletRoutes() que se llama después de getAssignedRoute()
       // === FIN INTEGRACIÓN ===
     },
     error: (err) => {
@@ -634,21 +689,46 @@ get filteredLocations() {
 }
 
 private updateLeafletRoutes() {
-  if (this.assignedRoute && this.assignedRoute.encodedpolyline) {
+  console.log('🗺️ ===== updateLeafletRoutes STARTED =====');
+  console.log('🗺️ assignedRoute:', this.assignedRoute);
+  console.log('🗺️ assignedRoute?.encodedpolyline:', this.assignedRoute?.encodedpolyline);
+  console.log('🗺️ assignedRoute?.encodedpolyline length:', this.assignedRoute?.encodedpolyline?.length);
+  
+  // Verificar si la ruta tiene polyline (probar ambos formatos de nombres)
+  const hasPolyline = this.assignedRoute.encodedpolyline || this.assignedRoute.encodedPolyline;
+  
+  if (this.assignedRoute && hasPolyline) {
+    console.log('✅ Condición cumplida: assignedRoute y polyline existen');
+    
     this.leafletRoutes = [{
-      routeId: this.assignedRoute.routeid,
-      routeCode: this.assignedRoute.routecode,
+      routeId: this.assignedRoute.routeid || this.assignedRoute.routeId,
+      routeCode: this.assignedRoute.routecode || this.assignedRoute.routeCode,
       type: this.assignedRoute.type,
-      encodedPolyline: this.assignedRoute.encodedpolyline,
+      encodedPolyline: this.assignedRoute.encodedpolyline || this.assignedRoute.encodedPolyline,
       tickets: (this.assignedRoute.tickets || []).map((t: any, idx: number) => ({
         ticketId: t.ticketId || t.ticketid,
         address: t.address,
         queue: t.queue ?? idx
       }))
     }];
+    
+    // Agregar la ruta asignada al conjunto de rutas visibles
+    this.visibleRoutes.clear();
+    const routeId = this.assignedRoute.routeid || this.assignedRoute.routeId;
+    this.visibleRoutes.add(routeId);
+    
+    console.log('🗺️ Ruta agregada a visibleRoutes:', routeId);
+    console.log('🗺️ visibleRoutes actual:', Array.from(this.visibleRoutes));
+    console.log('🗺️ leafletRoutes creado:', this.leafletRoutes);
   } else {
+    console.log('❌ Condición NO cumplida:');
+    console.log('❌ assignedRoute existe:', !!this.assignedRoute);
+    console.log('❌ encodedpolyline existe:', !!this.assignedRoute?.encodedpolyline);
+    
     this.leafletRoutes = [];
+    this.visibleRoutes.clear();
   }
+  console.log('🗺️ ===== updateLeafletRoutes COMPLETED =====');
 }
 
 // Zoom control methods
@@ -711,17 +791,65 @@ showLocationOnMap(locationIndex: number): void {
   if (locationIndex >= 0 && locationIndex < this.remainingLocations.length) {
     this.currentLocationIndex = locationIndex;
     const loc = this.remainingLocations[locationIndex];
+    
     if (loc.lat && loc.lng && this.leafletMap) {
+      console.log(`🎯 Centrando y haciendo zoom a la ubicación ${locationIndex + 1}: ${loc.address}`);
+      console.log(`🎯 Coordenadas: [${loc.lat}, ${loc.lng}]`);
+      
+      // Hacer zoom y centrar con animación suave
       this.leafletMap.setCenter(loc.lat, loc.lng);
+      
+      // Hacer zoom a un nivel más cercano para ver mejor la ubicación
+      setTimeout(() => {
+        this.leafletMap.setZoom(17); // Zoom más cercano para ver la ubicación
+      }, 100);
+      
+      // Mostrar un mensaje de confirmación
+      console.log(`✅ Ubicación centrada y con zoom aplicado`);
+    } else {
+      console.warn(`⚠️ No se pudo centrar la ubicación ${locationIndex + 1}: coordenadas no disponibles`);
+      console.warn(`⚠️ lat: ${loc.lat}, lng: ${loc.lng}, leafletMap: ${!!this.leafletMap}`);
     }
-    console.log(`🎯 Centrado en la ubicación ${locationIndex + 1}: ${loc.address}`);
+  } else {
+    console.warn(`⚠️ Índice de ubicación inválido: ${locationIndex}`);
   }
 }
 
 showAllLocations(): void {
   this.currentLocationIndex = 0; // Reset to first location to show all
   console.log('🗺️ Showing all locations on map');
-  // this.updateStaticMap(); // Removed as per edit hint
+  
+  if (this.leafletMap) {
+    // Volver a la vista general con zoom más amplio
+    this.leafletMap.setZoom(13); // Zoom más amplio para ver todas las ubicaciones
+    console.log('✅ Vista general restaurada');
+  }
+}
+
+// Método adicional para hacer zoom suave a una ubicación específica
+showLocationWithSmoothZoom(locationIndex: number): void {
+  if (locationIndex >= 0 && locationIndex < this.remainingLocations.length) {
+    this.currentLocationIndex = locationIndex;
+    const loc = this.remainingLocations[locationIndex];
+    
+    if (loc.lat && loc.lng && this.leafletMap) {
+      console.log(`🎯 Zoom suave a la ubicación ${locationIndex + 1}: ${loc.address}`);
+      
+      // Crear un bounds pequeño alrededor de la ubicación para zoom suave
+      const latLng = [loc.lat, loc.lng] as [number, number];
+      const bounds = L.latLngBounds([latLng, latLng]);
+      
+      // Hacer zoom suave usando fitBounds
+      this.leafletMap.fitBounds(bounds);
+      
+      // Después de un delay, hacer zoom más cercano
+      setTimeout(() => {
+        this.leafletMap.setZoom(17);
+      }, 500);
+      
+      console.log(`✅ Zoom suave aplicado`);
+    }
+  }
 }
 
 onFilterChange(): void {
@@ -731,7 +859,12 @@ onFilterChange(): void {
     // Si se limpia el filtro, mostrar todas las ubicaciones
     this.currentLocationIndex = 0;
     console.log('🔍 Filter cleared: showing all locations');
-    // this.updateStaticMap(); // Removed as per edit hint
+    
+    // Volver a la vista general cuando se limpia el filtro
+    if (this.leafletMap) {
+      this.leafletMap.setZoom(13);
+      console.log('✅ Vista general restaurada al limpiar filtro');
+    }
     return;
   }
 
@@ -743,8 +876,20 @@ onFilterChange(): void {
 
   if (firstFilteredIndex !== -1) {
     this.currentLocationIndex = firstFilteredIndex;
-    console.log(`🔍 Filter applied: showing location ${firstFilteredIndex + 1} (${this.remainingLocations[firstFilteredIndex].address})`);
-    // this.updateStaticMap(); // Removed as per edit hint
+    const foundLocation = this.remainingLocations[firstFilteredIndex];
+    console.log(`🔍 Filter applied: showing location ${firstFilteredIndex + 1} (${foundLocation.address})`);
+    
+    // Hacer zoom automático a la ubicación encontrada
+    if (foundLocation.lat && foundLocation.lng && this.leafletMap) {
+      console.log(`🎯 Haciendo zoom automático a ubicación filtrada: ${foundLocation.address}`);
+      console.log(`🎯 Coordenadas: [${foundLocation.lat}, ${foundLocation.lng}]`);
+      
+      // Usar zoom suave para mejor experiencia visual
+      this.zoomToFilteredLocation(firstFilteredIndex);
+    } else {
+      console.warn(`⚠️ No se pudo hacer zoom a la ubicación filtrada: coordenadas no disponibles`);
+      console.warn(`⚠️ lat: ${foundLocation.lat}, lng: ${foundLocation.lng}`);
+    }
   } else {
     console.log('🔍 No locations found matching filter');
     // Mantener el mapa actual pero mostrar mensaje
@@ -755,7 +900,36 @@ clearFilter(): void {
   this.filterText = '';
   this.currentLocationIndex = 0;
   console.log('🔍 Filter cleared: showing all locations');
-  // this.updateStaticMap(); // Removed as per edit hint
+  
+  // Restaurar vista general cuando se limpia el filtro
+  if (this.leafletMap) {
+    this.leafletMap.setZoom(13);
+    console.log('✅ Vista general restaurada al limpiar filtro manualmente');
+  }
+}
+
+// Método para hacer zoom suave a ubicación filtrada
+private zoomToFilteredLocation(locationIndex: number): void {
+  if (locationIndex >= 0 && locationIndex < this.remainingLocations.length) {
+    const loc = this.remainingLocations[locationIndex];
+    
+    if (loc.lat && loc.lng && this.leafletMap) {
+      console.log(`🎯 Zoom suave a ubicación filtrada ${locationIndex + 1}: ${loc.address}`);
+      
+      // Crear un bounds pequeño alrededor de la ubicación para zoom suave
+      const latLng = [loc.lat, loc.lng] as [number, number];
+      const bounds = L.latLngBounds([latLng, latLng]);
+      
+      // Hacer zoom suave usando fitBounds
+      this.leafletMap.fitBounds(bounds);
+      
+      // Después de un delay, hacer zoom más cercano
+      setTimeout(() => {
+        this.leafletMap.setZoom(17);
+        console.log(`✅ Zoom suave aplicado a ubicación filtrada`);
+      }, 500);
+    }
+  }
 }
 
 getZoomDescription(): string {
@@ -780,6 +954,23 @@ debugMapState(): void {
   console.log('📍 Current zoom level:', this.currentZoomLevel);
   console.log('📍 Available zoom levels:', this.availableZoomLevels);
   console.log('📍 Map dimensions:', `${this.staticMapWidth}x${this.staticMapHeight}`);
+  
+  // Debug LeafletMap properties
+  console.log('🗺️ === LEAFLET MAP DEBUG ===');
+  console.log('🗺️ leafletRoutes:', this.leafletRoutes);
+  console.log('🗺️ visibleRoutes:', Array.from(this.visibleRoutes));
+  console.log('🗺️ routeTypeVisibility:', this.routeTypeVisibility);
+  console.log('🗺️ assignedRoute:', this.assignedRoute);
+  console.log('🗺️ assignedRouteId:', this.assignedRouteId);
+  
+  // Debug LeafletMap component if available
+  if (this.leafletMap) {
+    console.log('🗺️ LeafletMap component exists');
+    console.log('🗺️ LeafletMap routes input:', (this.leafletMap as any).routes);
+    console.log('🗺️ LeafletMap visibleRoutes input:', (this.leafletMap as any).visibleRoutes);
+  } else {
+    console.log('🗺️ LeafletMap component not available');
+  }
   console.log('🔍 === END UPCOMING MAP DEBUG ===');
 
   // Show all locations on map

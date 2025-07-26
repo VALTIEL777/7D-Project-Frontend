@@ -23,6 +23,7 @@ import { RouteStateService } from '../../../core/services/shared/route-state.ser
 import { TicketService } from '../../../core/services/ticket.service';
 import { QuadrantsService } from '../../../core/services/location/quadrants.service';
 import { RouteData, MapConfig, LeafletMapComponent } from '../../../shared/leaflet-map/leaflet-map.component';
+import { HttpClient } from '@angular/common/http';
 
 @Component({
   selector: 'app-current',
@@ -130,7 +131,8 @@ mapConfig: MapConfig = {
         private dialog: MatDialog,
         private ticketService: TicketService,
         private peopleService: PeopleService,
-        private quadrantService: QuadrantsService
+        private quadrantService: QuadrantsService,
+        private http: HttpClient
   ){}
 
   private isLocationFromStorage = false;
@@ -433,9 +435,20 @@ this.permits = details.reduce((acc: { id: number; number: string }[], d: any) =>
         console.log('📍 Dirección por defecto del backend:', this.location.address);
         console.log('📝 Descripción asignada:', this.location.description);
         console.log('📍 Dirección completa:', this.location.fullAddress);
+        
+        // 🗺️ Geocodificar la dirección para obtener coordenadas
+        this.geocodeAddress(this.location.address);
       } else if (this.isLocationFromStorage) {
         console.log('📍 Dirección seleccionada manualmente:', this.location);
         console.log('📝 Descripción desde localStorage:', this.location.description);
+        
+        // 🗺️ Geocodificar la dirección del localStorage si no tiene coordenadas
+        if (!this.location.lat || !this.location.lng) {
+          this.geocodeAddress(this.location.address);
+        } else {
+          // Si ya tiene coordenadas, actualizar el mapa
+          this.updateLeafletRoutes();
+        }
       }
 
       // 🗺️ Actualizar mapa después de cargar la ubicación
@@ -1301,27 +1314,53 @@ toggleGroup(group: string) {
 
 // Map methods
 private updateLeafletRoutes() {
+  console.log(`🗺️ === updateLeafletRoutes STARTED ===`);
+  console.log(`🗺️ Location object:`, this.location);
+  console.log(`🗺️ Address: ${this.location?.address}`);
+  console.log(`🗺️ Lat: ${this.location?.lat}`);
+  console.log(`🗺️ Lng: ${this.location?.lng}`);
+  console.log(`🗺️ TicketId: ${this.ticketId}`);
+  
   if (this.location && this.location.address && this.location.lat && this.location.lng) {
+    console.log(`✅ Todas las condiciones cumplidas, creando ruta`);
+    
     this.leafletRoutes = [{
-      routeId: 1,
+      routeId: this.ticketId, // Usar ticketId como routeId para identificación única
       routeCode: this.routeCode || 'CURRENT',
       type: 'CURRENT',
       encodedPolyline: '', // No polyline, solo marcador
       tickets: [{
         ticketId: this.ticketId,
         address: this.location.address,
-        queue: 0
+        queue: 0 // Siempre será 0 ya que es la única ubicación
       }]
     }];
-    // Centrar el mapa automáticamente en la ubicación actual
+    
+    console.log(`🗺️ LeafletRoutes creado:`, this.leafletRoutes);
+    
+    // Centrar y hacer zoom automático a la ubicación actual
     setTimeout(() => {
       if (this.leafletMap && this.location.lat && this.location.lng) {
+        console.log(`🎯 Centrando mapa en ubicación actual`);
         this.leafletMap.setCenter(this.location.lat, this.location.lng);
+        
+        // Hacer zoom más cercano para ver mejor la ubicación
+        setTimeout(() => {
+          this.leafletMap.setZoom(17); // Zoom cercano para vista detallada
+          console.log(`✅ Zoom aplicado a ubicación actual`);
+        }, 100);
+      } else {
+        console.warn(`⚠️ LeafletMap no disponible o coordenadas faltantes`);
+        console.warn(`⚠️ leafletMap: ${!!this.leafletMap}, lat: ${this.location?.lat}, lng: ${this.location?.lng}`);
       }
     }, 0);
   } else {
+    console.warn(`⚠️ No se pudo actualizar mapa: coordenadas no disponibles`);
+    console.warn(`⚠️ address: ${this.location?.address}, lat: ${this.location?.lat}, lng: ${this.location?.lng}`);
     this.leafletRoutes = [];
   }
+  
+  console.log(`🗺️ === updateLeafletRoutes COMPLETED ===`);
 }
 
 // Zoom control methods
@@ -1362,14 +1401,23 @@ getZoomDescription(): string {
 
 // Debug method to check map state
 debugMapState(): void {
-  console.log('🔍 === MAP DEBUG INFO ===');
+  console.log('🔍 === CURRENT MAP DEBUG INFO ===');
   console.log('📍 Location object:', this.location);
   console.log('📍 Location address:', this.location.address);
+  console.log('📍 Location lat/lng:', `${this.location.lat}, ${this.location.lng}`);
+  console.log('📍 TicketId:', this.ticketId);
+  console.log('📍 LeafletRoutes:', this.leafletRoutes);
+  console.log('📍 LeafletMap available:', !!this.leafletMap);
   console.log('📍 Static map URL:', this.staticMapUrl);
   console.log('📍 Current zoom level:', this.currentZoomLevel);
   console.log('📍 Available zoom levels:', this.availableZoomLevels);
   console.log('📍 Map dimensions:', `${this.staticMapWidth}x${this.staticMapHeight}`);
-  console.log('🔍 === END MAP DEBUG ===');
+  console.log('🔍 === END CURRENT MAP DEBUG ===');
+  
+  // También llamar al debug del LeafletMap
+  if (this.leafletMap) {
+    this.leafletMap.debugMapState();
+  }
 }
 
 // Force map refresh
@@ -1534,6 +1582,76 @@ isLastRequiredPhaseCompleted(): boolean {
   
   const lastActivity = this.activities.find(activity => activity.name === lastRequiredPhase);
   return lastActivity ? this.isPhaseCompleted(lastActivity) : false;
+}
+
+// Método para hacer zoom suave a la ubicación actual
+zoomToCurrentLocation(): void {
+  if (this.location && this.location.lat && this.location.lng && this.leafletMap) {
+    console.log(`🎯 Haciendo zoom suave a ubicación actual: ${this.location.address}`);
+    console.log(`🎯 Coordenadas: [${this.location.lat}, ${this.location.lng}]`);
+    
+    // Forzar actualización del mapa
+    this.updateLeafletRoutes();
+    
+    // Centrar el mapa
+    this.leafletMap.setCenter(this.location.lat, this.location.lng);
+    
+    // Hacer zoom suave después de un pequeño delay
+    setTimeout(() => {
+      this.leafletMap.setZoom(17);
+      console.log(`✅ Zoom suave aplicado a ubicación actual`);
+      
+      // Forzar refresh del mapa después del zoom
+      setTimeout(() => {
+        this.leafletMap.refreshMap();
+        console.log(`🔄 Mapa refrescado después del zoom`);
+      }, 500);
+    }, 200);
+  } else {
+    console.warn(`⚠️ No se pudo hacer zoom a la ubicación actual: coordenadas no disponibles`);
+  }
+}
+
+// Método para geocodificar una dirección y obtener coordenadas
+private geocodeAddress(address: string): void {
+  if (!address || address.trim() === '') {
+    console.warn('⚠️ No hay dirección para geocodificar');
+    return;
+  }
+
+  console.log(`🗺️ Geocodificando dirección: ${address}`);
+  
+  // Usar Google Maps Geocoding API
+  const encodedAddress = encodeURIComponent(address + ', Chicago, IL');
+  const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodedAddress}&key=${this.GOOGLE_MAPS_API_KEY}`;
+  
+  this.http.get(url).subscribe({
+    next: (response: any) => {
+      if (response.results && response.results.length > 0) {
+        const location = response.results[0].geometry.location;
+        this.location.lat = location.lat;
+        this.location.lng = location.lng;
+        
+        console.log(`✅ Coordenadas obtenidas: [${this.location.lat}, ${this.location.lng}]`);
+        
+        // Actualizar el mapa con las nuevas coordenadas
+        this.updateLeafletRoutes();
+      } else {
+        console.warn(`⚠️ No se encontraron coordenadas para: ${address}`);
+        // Usar coordenadas por defecto de Chicago
+        this.location.lat = 41.8781;
+        this.location.lng = -87.6298;
+        this.updateLeafletRoutes();
+      }
+    },
+    error: (error) => {
+      console.error('❌ Error geocodificando dirección:', error);
+      // Usar coordenadas por defecto de Chicago
+      this.location.lat = 41.8781;
+      this.location.lng = -87.6298;
+      this.updateLeafletRoutes();
+    }
+  });
 }
 
 // Helper method to get current date in local timezone

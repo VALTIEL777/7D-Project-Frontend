@@ -772,3 +772,39 @@
   flex-direction: column;
   align-items: center;
 }
+
+// Estilos para el botón de zoom a ubicación
+.zoom-location-btn {
+  background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%);
+  color: white;
+  border: none;
+  transition: all 0.3s ease;
+  
+  &:hover {
+    background: linear-gradient(135deg, #F57C00 0%, #EF6C00 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  }
+  
+  mat-icon {
+    margin-right: 4px;
+  }
+}
+
+// Estilos para el botón de debug
+.debug-btn {
+  background: linear-gradient(135deg, #9C27B0 0%, #7B1FA2 100%);
+  color: white;
+  border: none;
+  transition: all 0.3s ease;
+  
+  &:hover {
+    background: linear-gradient(135deg, #7B1FA2 0%, #6A1B9A 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  }
+  
+  mat-icon {
+    margin-right: 4px;
+  }
+}
