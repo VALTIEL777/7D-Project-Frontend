@@ -50,6 +50,9 @@ export class CurrentComponent {
   currentZoomLevel: number = 15; // Zoom inicial
   availableZoomLevels: number[] = [10, 12, 15, 17, 19]; // Diferentes niveles de zoom
 
+  // Set para rastrear imágenes que ya han cargado
+  loadedImageIds = new Set<number>();
+
   employeeList: any[] = [];  // Lista completa de empleados
 teamLeader: string = '';   // Nombre del líder del equipo
 teamMembers: string[] = []; // Nombres de los demás miembros
@@ -1247,51 +1250,99 @@ loadCurrentTicketImages() {
     console.warn('⚠️ No hay ticketId para cargar imágenes');
     return;
   }
+  
+  console.log('🖼️ Cargando imágenes del ticket:', this.ticketId);
+  
   this.ticketStatusService.getByTicket(this.ticketId).subscribe({
     next: (ticketStatuses: any[]) => {
+      console.log('📋 TicketStatus recibidos:', ticketStatuses.length);
+      
       const ticketStatusMap = new Map<string, any>();
       ticketStatuses.forEach(ts => {
         ticketStatusMap.set(`${ts.taskstatusid}_${ts.ticketid}`, ts);
       });
+      
       this.photoEvidenceService.getAllPhotoEvidence().subscribe({
         next: (photos) => {
+          console.log('📸 Total de fotos recibidas:', photos.length);
+          
           const ticketPhotos = photos.filter(p => p.ticketid === this.ticketId);
-          this.currentTicketImages = [];
-          let pending = ticketPhotos.length;
-          if (pending === 0) {
+          console.log('📸 Fotos del ticket actual:', ticketPhotos.length);
+          
+          if (ticketPhotos.length === 0) {
+            this.currentTicketImages = [];
             this.filteredTicketImages = [];
             return;
           }
-          ticketPhotos.forEach(e => {
-            this.photoEvidenceService.getPhotoEvidenceFile(e.photoid || e.photoId).subscribe(blob => {
-              const url = URL.createObjectURL(blob);
-              const activity = this.activities.find(a => a.name.trim().toLowerCase() === (e.name || '').trim().toLowerCase());
-              const taskStatusId = activity ? activity.id : null;
-              const ts = taskStatusId ? ticketStatusMap.get(`${taskStatusId}_${e.ticketid}`) : null;
-              this.currentTicketImages.push({
-                url,
-                name: e.name,
-                comment: e.comment,
-                startingdate: ts?.startingdate,
-                endingdate: ts?.endingdate,
-                date: e.date
-              });
-              pending--;
-              if (pending === 0) {
-                this.filteredTicketImages = this.currentTicketImages;
-                this.applyDateFilter();
-              }
-            });
+
+          // Usar Promise.all para esperar todas las descargas
+          const imagePromises = ticketPhotos.map(e =>
+            this.photoEvidenceService.getPhotoEvidenceFile(e.photoid || e.photoId).toPromise()
+              .then(blob => {
+                if (!blob) throw new Error('No se recibió blob');
+                const url = URL.createObjectURL(blob);
+                const activity = this.activities.find(a => a.name.trim().toLowerCase() === (e.name || '').trim().toLowerCase());
+                const taskStatusId = activity ? activity.id : null;
+                const ts = taskStatusId ? ticketStatusMap.get(`${taskStatusId}_${e.ticketid}`) : null;
+                return {
+                  url,
+                  name: e.name || 'Not available',
+                  comment: e.comment || 'No issues reported',
+                  startingdate: ts?.startingdate,
+                  endingdate: ts?.endingdate,
+                  date: e.date,
+                  photoId: e.photoid || e.photoId,
+                  photoid: e.photoid || e.photoId,
+                  loaded: false,
+                  error: false
+                };
+              })
+              .catch(() => {
+                // Manejo de error: agrega una imagen placeholder
+                const activity = this.activities.find(a => a.name.trim().toLowerCase() === (e.name || '').trim().toLowerCase());
+                const taskStatusId = activity ? activity.id : null;
+                const ts = taskStatusId ? ticketStatusMap.get(`${taskStatusId}_${e.ticketid}`) : null;
+                return {
+                  url: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjRmNGY0Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkltYWdlbiBubyBkaXNwb25pYmxlPC90ZXh0Pjwvc3ZnPg==',
+                  name: e.name || 'Error al cargar',
+                  comment: 'Error al cargar la imagen',
+                  startingdate: ts?.startingdate,
+                  endingdate: ts?.endingdate,
+                  date: e.date,
+                  photoId: e.photoid || e.photoId,
+                  photoid: e.photoid || e.photoId,
+                  loaded: false,
+                  error: true
+                };
+              })
+          );
+
+          Promise.all(imagePromises).then(images => {
+            this.currentTicketImages = images;
+            this.filteredTicketImages = [...this.currentTicketImages];
+            this.applyDateFilter();
           });
         },
-        error: (err) => console.error('❌ Error loading current ticket images:', err)
+        error: (err) => {
+          console.error('❌ Error loading current ticket images:', err);
+          this.filteredTicketImages = [];
+        }
       });
     },
-    error: (err) => console.error('❌ Error loading ticket statuses for images:', err)
+    error: (err) => {
+      console.error('❌ Error loading ticket statuses for images:', err);
+      this.filteredTicketImages = [];
+    }
   });
 }
 
 applyDateFilter() {
+  // Si no hay filtros de fecha configurados, mostrar todas las imágenes
+  if (!this.filterDateFrom || !this.filterDateTo) {
+    this.filteredTicketImages = [...this.currentTicketImages];
+    return;
+  }
+
   this.filteredTicketImages = this.currentTicketImages.filter(img => {
     // Usa startingdate si existe, si no, usa date de la foto
     const dateStr = img.startingdate || img.date;
@@ -1669,5 +1720,132 @@ private getCurrentDateString(): string {
   
   return isoString;
 }
+
+  // Método para descargar archivo (imagen o PDF)
+  downloadFile(photoId: number, fileName: string = 'file') {
+    this.photoEvidenceService.downloadPhotoEvidenceFile(photoId, fileName).subscribe({
+      next: (blob) => {
+        // Crear URL temporal para descarga
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+        
+        console.log('✅ Archivo descargado:', fileName);
+      },
+      error: (err) => {
+        console.error('❌ Error descargando archivo:', err);
+      }
+    });
+  }
+
+  // Método para determinar si un archivo es PDF basado en su URL
+  isPdfFile(fileUrl: string): boolean {
+    if (!fileUrl) return false;
+    
+    // Si es una data URL, verificar el tipo MIME
+    if (fileUrl.startsWith('data:')) {
+      return fileUrl.includes('application/pdf');
+    }
+    
+    // Si es una blob URL, no podemos determinar el tipo desde la URL
+    if (fileUrl.startsWith('blob:')) {
+      return false; // Asumimos que no es PDF si es blob URL
+    }
+    
+    // Para URLs normales, verificar la extensión
+    const extension = fileUrl.split('.').pop()?.toLowerCase();
+    return extension === 'pdf';
+  }
+
+  // Método para obtener el nombre del archivo desde la URL
+  getFileNameFromUrl(fileUrl: string): string {
+    if (!fileUrl) return 'archivo';
+    const parts = fileUrl.split('/');
+    return parts[parts.length - 1] || 'archivo';
+  }
+
+  // Método para mostrar PDF en nueva ventana
+  openPdfInNewWindow(photoId: number, fileName: string) {
+    this.photoEvidenceService.getPhotoEvidenceFile(photoId).subscribe({
+      next: (blob) => {
+        const url = window.URL.createObjectURL(blob);
+        const newWindow = window.open(url, '_blank');
+        if (newWindow) {
+          newWindow.document.title = fileName;
+        }
+        // Limpiar URL después de un tiempo
+        setTimeout(() => {
+          window.URL.revokeObjectURL(url);
+        }, 60000); // 1 minuto
+      },
+      error: (err) => {
+        console.error('❌ Error abriendo PDF:', err);
+      }
+    });
+  }
+
+  // Método para manejar errores de carga de imágenes
+  onImageError(event: Event, img: any) {
+    console.error(`❌ Error cargando imagen: ${img.name}`, event);
+    
+    // Marcar la imagen como con error
+    img.error = true;
+    img.loaded = false;
+    
+    // Reemplazar con una imagen placeholder
+    const target = event.target as HTMLImageElement;
+    target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjRmNGY0Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkltYWdlbiBubyBkaXNwb25pYmxlPC90ZXh0Pjwvc3ZnPg==';
+    target.alt = 'Error al cargar imagen';
+  }
+
+  // Método para manejar carga exitosa de imágenes
+  onImageLoad(img: any) {
+    console.log(`✅ Imagen cargada exitosamente: ${img.name}`);
+    this.loadedImageIds.add(img.photoId || img.photoid);
+  }
+
+  // Método para reintentar la carga de una imagen
+  retryImageLoad(img: any) {
+    console.log(`🔄 Reintentando carga de imagen: ${img.name}`);
+    
+    // Resetear estados
+    img.loaded = false;
+    img.error = false;
+    
+    // Si la imagen tiene un photoId, intentar descargarla nuevamente
+    if (img.photoId) {
+      this.photoEvidenceService.getPhotoEvidenceFile(img.photoId).subscribe({
+        next: (blob) => {
+          console.log(`✅ Imagen descargada exitosamente en reintento: ${img.name}`);
+          const url = URL.createObjectURL(blob);
+          img.url = url;
+          img.loaded = true;
+          img.error = false;
+        },
+        error: (err) => {
+          console.error(`❌ Error en reintento de imagen ${img.name}:`, err);
+          img.error = true;
+          img.loaded = false;
+        }
+      });
+    } else {
+      // Si no tiene photoId, simplemente resetear el estado
+      img.error = true;
+      img.loaded = false;
+    }
+  }
+
+  // Método para limpiar filtros de fecha
+  clearDateFilters() {
+    console.log('🧹 Limpiando filtros de fecha');
+    this.filterDateFrom = null;
+    this.filterDateTo = null;
+    this.applyDateFilter();
+  }
 
 }

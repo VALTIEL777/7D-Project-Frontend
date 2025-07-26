@@ -60,7 +60,7 @@
 </ul>
 
 <h3 class="sub-title">Gallery</h3>
-<!-- Filtro de fecha ahora dentro de la sección Gallery -->
+<!-- Date filter now inside the Gallery section -->
 <div class="date-filter" style="display: flex; gap: 16px; align-items: center; margin-bottom: 16px;">
   <mat-form-field appearance="outline">
     <mat-label>From</mat-label>
@@ -76,7 +76,7 @@
   </mat-form-field>
   <button mat-raised-button color="primary" (click)="applyDateFilter()">Filter</button>
 </div>
-<!-- 📸 MOSTRAR FOTOS DEL TICKET ACTUAL -->
+<!-- 📸 SHOW CURRENT TICKET PHOTOS -->
 <div class="gallery">
 <div class="photo-comment" *ngIf="filteredTicketImages && filteredTicketImages.length > 0">
   <ng-container *ngIf="groupImagesByName(filteredTicketImages) as groupedImages">
@@ -96,7 +96,43 @@
           <div class="images-container" *ngIf="openedGroups[groupName.key]">
             <div *ngFor="let img of groupName.value" class="photo-item">
               <p class="photo-name">{{ img.name }}</p>
-              <img [src]="img.url" [alt]="img.name" class="location-image" />
+              
+              <!-- Image container with loading indicator -->
+              <div class="image-container">
+                <!-- Error indicator with retry button -->
+                <div *ngIf="img.error" class="image-error">
+                  <mat-icon color="warn">error</mat-icon>
+                  <p>Error loading image</p>
+                  <button mat-stroked-button color="primary" (click)="retryImageLoad(img)">
+                    <mat-icon>refresh</mat-icon>
+                    Retry
+                  </button>
+                </div>
+                
+                <!-- Show image if it's an image -->
+                <img *ngIf="!isPdfFile(img.url)" 
+                     [src]="img.url" 
+                     [alt]="img.name" 
+                     class="location-image"
+                     (error)="onImageError($event, img)" />
+                
+                <!-- Show PDF if it's a PDF -->
+                <div *ngIf="isPdfFile(img.url)" class="pdf-container">
+                  <mat-icon class="pdf-icon">picture_as_pdf</mat-icon>
+                  <p class="pdf-name">{{ getFileNameFromUrl(img.url) }}</p>
+                  <div class="pdf-actions">
+                    <button mat-stroked-button color="primary" (click)="openPdfInNewWindow(img.photoId || img.photoid, getFileNameFromUrl(img.url))">
+                      <mat-icon>open_in_new</mat-icon>
+                      View PDF
+                    </button>
+                    <button mat-stroked-button color="accent" (click)="downloadFile(img.photoId || img.photoid, getFileNameFromUrl(img.url))">
+                      <mat-icon>download</mat-icon>
+                      Download
+                    </button>
+                  </div>
+                </div>
+              </div>
+              
               <p class="photo-date" *ngIf="img.startingdate">
                 <mat-icon class="calendar-icon">calendar_today</mat-icon>
                 <strong>Start:</strong> {{ img.startingdate | date:'medium' }}
@@ -114,12 +150,25 @@
   </ng-container>
 </div>
 </div>
-<!-- Mostrar mensaje si no hay fotos del ticket actual -->
+<!-- Show message if there are no current ticket photos -->
 <div *ngIf="filteredTicketImages.length === 0" class="no-images">
   <p class="no-images-text">
     <mat-icon color="warn">info</mat-icon>
-    No images uploaded for this ticket yet.
+    <span *ngIf="currentTicketImages.length === 0">
+      No images have been uploaded for this ticket yet.
+    </span>
+    <span *ngIf="currentTicketImages.length > 0">
+      No images match the applied date filters.
+    </span>
   </p>
+  <button *ngIf="currentTicketImages.length > 0" 
+          mat-stroked-button 
+          color="primary" 
+          (click)="clearDateFilters()"
+          style="margin-top: 8px;">
+    <mat-icon>clear</mat-icon>
+    Clear filters
+  </button>
 </div>
 
 <!-- ✅ ACTIVITIES + PHOTO EVIDENCE UNIDOS -->

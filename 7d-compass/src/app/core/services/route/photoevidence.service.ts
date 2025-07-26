@@ -52,6 +52,27 @@ export class PhotoEvidenceService {
   }
 
   getPhotoEvidenceFile(photoId: number): Observable<Blob> {
-    return this.http.get(`${this.baseUrl}/${photoId}/download`, { responseType: 'blob' });
+    return this.http.get(`${this.baseUrl}/${photoId}/file`, { responseType: 'blob' });
+  }
+
+  // Método para obtener información del archivo (tipo, nombre, etc.)
+  getPhotoEvidenceInfo(photoId: number): Observable<any> {
+    return this.http.get(`${this.baseUrl}/${photoId}`);
+  }
+
+  // Método para descargar archivo con nombre específico
+  downloadPhotoEvidenceFile(photoId: number, fileName?: string): Observable<Blob> {
+    return this.http.get(`${this.baseUrl}/${photoId}/file`, { 
+      responseType: 'blob',
+      headers: {
+        'Accept': 'application/octet-stream'
+      }
+    });
+  }
+
+  // Método alternativo para probar diferentes endpoints
+  getPhotoEvidenceFileAlternative(photoId: number): Observable<Blob> {
+    // Probar con diferentes endpoints comunes
+    return this.http.get(`${this.baseUrl}/${photoId}/file`, { responseType: 'blob' });
   }
 }

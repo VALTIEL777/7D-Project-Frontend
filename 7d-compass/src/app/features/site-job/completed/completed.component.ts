@@ -173,63 +173,49 @@ loadCompletedTickets(crewId: number): void {
       }
 
       this.photoEvidenceService.getAllPhotoEvidence().subscribe({
-        next: (photos) => {
+        next: async (photos) => {
           console.log('📸 Fotos recibidas:', photos);
           console.log('📸 Total de fotos recibidas:', photos.length);
 
-          // ✅ SIMPLIFICADO: Procesar tickets directamente sin verificación adicional
-          // El backend ya devuelve tickets "completados", solo necesitamos las fotos
-          this.previousLocations = crewTickets.map(ticket => {
-            console.log(`🔍 Procesando ticket ${ticket.ticketid}:`, ticket);
+          // Procesar imágenes como blobs usando Promise.all
+          const locations = await Promise.all(
+            crewTickets.map(async ticket => {
+              const evidences = photos.filter(p => p.ticketid === ticket.ticketid);
+              const images = await Promise.all(
+                evidences.map(async (e) => {
+                  try {
+                    const blob = await this.photoEvidenceService.getPhotoEvidenceFile(e.photoid || e.photoId).toPromise();
+                    if (!blob) throw new Error('No blob');
+                    const url = URL.createObjectURL(blob);
+                    return {
+                      url,
+                      name: e.name,
+                      comment: e.comment
+                    };
+                  } catch {
+                    return {
+                      url: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjRmNGY0Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkltYWdlbiBubyBkaXNwb25pYmxlPC90ZXh0Pjwvc3ZnPg==',
+                      name: e.name,
+                      comment: 'Error loading image'
+                    };
+                  }
+                })
+              );
 
+              return {
+                ticketId: ticket.ticketid,
+                address: this.formatAddress(ticket),
+                actions: ['Completed work'],
+                images: images,
+                startingDate: ticket.startingdate,
+                endingDate: ticket.endingdate,
+                routeCode: ticket.routecode || 'UNKNOWN',
+                completedPhases: this.getCompletedPhasesFromPhotos(evidences)
+              };
+            })
+          );
 
-            const evidences = photos.filter(p => p.ticketid === ticket.ticketid);
-            console.log(`📸 Fotos encontradas para ticket ${ticket.ticketid}:`, evidences.length);
-
-            const images = evidences.map(e => ({
-              url: e.photourl,
-              name: e.name,
-              comment: e.comment
-            }));
-
-            const location = {
-              ticketId: ticket.ticketid,
-              address: this.formatAddress(ticket), // <-- CAMBIADO: usar formatAddress
-              actions: ['Completed work'],
-              images: images,
-              startingDate: ticket.startingdate,
-              endingDate: ticket.endingdate,
-              routeCode: ticket.routecode || 'UNKNOWN',
-              completedPhases: this.getCompletedPhasesFromPhotos(evidences)
-            };
-
-            console.log(`✅ Ubicación procesada para ticket ${ticket.ticketid}:`, location);
-            console.log(`🔍 Campos de dirección disponibles en ticket ${ticket.ticketid}:`, {
-              // Campos de addresses
-              addressnumber: ticket.addressnumber,
-              addresscardinal: ticket.addresscardinal,
-              addressstreet: ticket.addressstreet,
-              addresssuffix: ticket.addresssuffix,
-              // Campos de wayfinding
-              fromaddressstreet: ticket.fromaddressstreet,
-              toaddressstreet: ticket.toaddressstreet,
-              fromaddresscardinal: ticket.fromaddresscardinal,
-              fromaddresssuffix: ticket.fromaddresssuffix,
-              // Otros campos
-              address: ticket.address,
-              location: ticket.location,
-              // Todos los campos del ticket
-              allFields: Object.keys(ticket).filter(key =>
-                key.toLowerCase().includes('address') ||
-                key.toLowerCase().includes('street') ||
-                key.toLowerCase().includes('location')
-              )
-            });
-
-            // ✅ TEMPORAL: Mostrar todos los campos del ticket para debuggear
-            console.log(`🔍 ALL FIELDS for ticket ${ticket.ticketid}:`, ticket);
-            return location;
-          });
+          this.previousLocations = locations;
 
           // Agrupar por ticketId y acumular fases completadas
           const ticketMap: { [ticketId: number]: any } = {};
