@@ -50,4 +50,8 @@ export class PhotoEvidenceService {
   deletePhotoEvidence(photoId: number): Observable<any> {
     return this.http.delete(`${this.baseUrl}/${photoId}`);
   }
+
+  getPhotoEvidenceFile(photoId: number): Observable<Blob> {
+    return this.http.get(`${this.baseUrl}/${photoId}/download`, { responseType: 'blob' });
+  }
 }

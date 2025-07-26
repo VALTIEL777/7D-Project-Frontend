@@ -1247,39 +1247,42 @@ loadCurrentTicketImages() {
     console.warn('⚠️ No hay ticketId para cargar imágenes');
     return;
   }
-  // Log de nombres de actividades
-  console.log('Nombres de actividades:', this.activities.map(a => a.name));
-  // Obtener los ticketStatuses para el ticket actual
   this.ticketStatusService.getByTicket(this.ticketId).subscribe({
     next: (ticketStatuses: any[]) => {
-      // Crear un mapa para acceso rápido
       const ticketStatusMap = new Map<string, any>();
       ticketStatuses.forEach(ts => {
         ticketStatusMap.set(`${ts.taskstatusid}_${ts.ticketid}`, ts);
       });
       this.photoEvidenceService.getAllPhotoEvidence().subscribe({
         next: (photos) => {
-          // Filtrar fotos del ticket actual y asociar fechas
-                      this.currentTicketImages = photos
-            .filter(p => p.ticketid === this.ticketId)
-            .map(e => {
-              // Buscar el taskStatusId por el nombre de la fase, ignorando mayúsculas y espacios
+          const ticketPhotos = photos.filter(p => p.ticketid === this.ticketId);
+          this.currentTicketImages = [];
+          let pending = ticketPhotos.length;
+          if (pending === 0) {
+            this.filteredTicketImages = [];
+            return;
+          }
+          ticketPhotos.forEach(e => {
+            this.photoEvidenceService.getPhotoEvidenceFile(e.photoid || e.photoId).subscribe(blob => {
+              const url = URL.createObjectURL(blob);
               const activity = this.activities.find(a => a.name.trim().toLowerCase() === (e.name || '').trim().toLowerCase());
               const taskStatusId = activity ? activity.id : null;
               const ts = taskStatusId ? ticketStatusMap.get(`${taskStatusId}_${e.ticketid}`) : null;
-              console.log('Foto:', e, 'Activity:', activity, 'taskStatusId:', taskStatusId, 'TicketStatus:', ts);
-              return {
-                url: e.photourl,
+              this.currentTicketImages.push({
+                url,
                 name: e.name,
                 comment: e.comment,
                 startingdate: ts?.startingdate,
                 endingdate: ts?.endingdate,
-                date: e.date // <-- para fallback
-              };
+                date: e.date
+              });
+              pending--;
+              if (pending === 0) {
+                this.filteredTicketImages = this.currentTicketImages;
+                this.applyDateFilter();
+              }
             });
-          this.filteredTicketImages = this.currentTicketImages;
-          this.applyDateFilter();
-          console.log('📸 Fotos del ticket actual:', this.currentTicketImages);
+          });
         },
         error: (err) => console.error('❌ Error loading current ticket images:', err)
       });
