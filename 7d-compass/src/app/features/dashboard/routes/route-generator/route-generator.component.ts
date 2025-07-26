@@ -256,6 +256,8 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
   asphaltReadyFilter: string = '';
   concreteReadyFilter: string = '';
 
+
+
   // Add a loading state for batch add (optional)
   isBatchAddingTickets: boolean = false;
 
@@ -529,23 +531,41 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
 
   // Filter spot ready tickets by the spotReadyFilter
   getFilteredSpotReadyTickets(): ReadyTicket[] {
-    const filter = this.spotReadyFilter.toLowerCase().trim();
-    if (!filter) return this.spotReadyTickets;
-    return this.spotReadyTickets.filter(ticket => ticket.address && ticket.address.toLowerCase().includes(filter));
+    let filteredTickets = this.spotReadyTickets;
+
+    // Apply text filter
+    const textFilter = this.spotReadyFilter.toLowerCase().trim();
+    if (textFilter) {
+      filteredTickets = filteredTickets.filter(ticket => ticket.address && ticket.address.toLowerCase().includes(textFilter));
+    }
+
+    return filteredTickets;
   }
 
   // Filter asphalt ready tickets by the asphaltReadyFilter
   getFilteredAsphaltReadyTickets(): ReadyTicket[] {
-    const filter = this.asphaltReadyFilter.toLowerCase().trim();
-    if (!filter) return this.asphaltReadyTickets;
-    return this.asphaltReadyTickets.filter(ticket => ticket.address && ticket.address.toLowerCase().includes(filter));
+    let filteredTickets = this.asphaltReadyTickets;
+
+    // Apply text filter
+    const textFilter = this.asphaltReadyFilter.toLowerCase().trim();
+    if (textFilter) {
+      filteredTickets = filteredTickets.filter(ticket => ticket.address && ticket.address.toLowerCase().includes(textFilter));
+    }
+
+    return filteredTickets;
   }
 
   // Filter concrete ready tickets by the concreteReadyFilter
   getFilteredConcreteReadyTickets(): ReadyTicket[] {
-    const filter = this.concreteReadyFilter.toLowerCase().trim();
-    if (!filter) return this.concreteReadyTickets;
-    return this.concreteReadyTickets.filter(ticket => ticket.address && ticket.address.toLowerCase().includes(filter));
+    let filteredTickets = this.concreteReadyTickets;
+
+    // Apply text filter
+    const textFilter = this.concreteReadyFilter.toLowerCase().trim();
+    if (textFilter) {
+      filteredTickets = filteredTickets.filter(ticket => ticket.address && ticket.address.toLowerCase().includes(textFilter));
+    }
+
+    return filteredTickets;
   }
 
 
@@ -702,6 +722,30 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
       if (isFromReadySection && isToReadySection) {
         await this.handleMoveBetweenReadySections(event, draggedTicket);
       } else if (isFromReadySection && isToRoute) {
+        // Check if adding this ticket would exceed the 95 location limit
+        const routeId = this.getRouteIdFromDropEvent(event);
+        if (routeId) {
+          const route = this.findRouteByTickets(routeId);
+          if (route && this.wouldExceedLocationLimit(route, [draggedTicket])) {
+            const currentCount = this.getUniqueLocationCount(route);
+            const newAddress = draggedTicket.address?.trim().toLowerCase();
+            const existingAddresses = new Set<string>();
+            route.tickets.forEach(ticket => {
+              if (ticket.address) {
+                existingAddresses.add(ticket.address.trim().toLowerCase());
+              }
+            });
+            const isNewAddress = newAddress && !existingAddresses.has(newAddress);
+            const totalAfterAdd = currentCount + (isNewAddress ? 1 : 0);
+
+            this.snackBar.open(
+              `Cannot add ticket to route ${route.routeCode}. Adding this location would exceed the 95 location limit (${currentCount} current + ${isNewAddress ? 1 : 0} new = ${totalAfterAdd} total).`,
+              'Close',
+              { duration: 6000, panelClass: ['error-snackbar'] }
+            );
+            return;
+          }
+        }
         await this.handleMoveFromReadyToRoute(event, draggedTicket);
       } else if (event.previousContainer === event.container) {
         moveItemInArray(event.container.data, event.previousIndex, event.currentIndex);
@@ -768,6 +812,37 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
       // Route type must match ready type
       if (route.type !== readyType) {
         this.snackBar.open('Invalid move: You can only drag from a ready card to a matching route type.', 'Close', { duration: 4000, panelClass: ['error-snackbar'] });
+        return;
+      }
+
+      // Check if adding these tickets would exceed the 95 location limit
+      if (this.wouldExceedLocationLimit(route, batchTickets)) {
+        const currentCount = this.getUniqueLocationCount(route);
+        const newUniqueAddresses = new Set<string>();
+        batchTickets.forEach(ticket => {
+          if (ticket.address) {
+            newUniqueAddresses.add(ticket.address.trim().toLowerCase());
+          }
+        });
+        const existingAddresses = new Set<string>();
+        route.tickets.forEach(ticket => {
+          if (ticket.address) {
+            existingAddresses.add(ticket.address.trim().toLowerCase());
+          }
+        });
+        let trulyNewAddresses = 0;
+        newUniqueAddresses.forEach(address => {
+          if (!existingAddresses.has(address)) {
+            trulyNewAddresses++;
+          }
+        });
+        const totalAfterAdd = currentCount + trulyNewAddresses;
+
+        this.snackBar.open(
+          `Cannot add tickets to route ${route.routeCode}. Adding ${trulyNewAddresses} new locations would exceed the 95 location limit (${currentCount} current + ${trulyNewAddresses} new = ${totalAfterAdd} total).`,
+          'Close',
+          { duration: 6000, panelClass: ['error-snackbar'] }
+        );
         return;
       }
       // Sequentially move all batch tickets
@@ -1131,7 +1206,57 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
 
   // Helper method to check if route has too many locations for reoptimization
   isRouteTooLargeForReoptimization(route: Route): boolean {
-    return this.getUniqueLocationCount(route) > 99;
+    return this.getUniqueLocationCount(route) > 95;
+  }
+
+    // Helper method to check if adding tickets would exceed the 95 location limit
+  private wouldExceedLocationLimit(route: Route, ticketsToAdd: any[]): boolean {
+    const currentUniqueLocations = this.getUniqueLocationCount(route);
+
+    // Get unique addresses from tickets to add
+    const newAddresses = new Set<string>();
+    ticketsToAdd.forEach(ticket => {
+      if (ticket.address) {
+        newAddresses.add(ticket.address.trim().toLowerCase());
+      }
+    });
+
+    // Check if any of the new addresses already exist in the route
+    const existingAddresses = new Set<string>();
+    route.tickets.forEach(ticket => {
+      if (ticket.address) {
+        existingAddresses.add(ticket.address.trim().toLowerCase());
+      }
+    });
+
+    // Count only truly new unique addresses
+    let newUniqueAddresses = 0;
+    newAddresses.forEach(address => {
+      if (!existingAddresses.has(address)) {
+        newUniqueAddresses++;
+      }
+    });
+
+    const totalUniqueLocations = currentUniqueLocations + newUniqueAddresses;
+    return totalUniqueLocations > 95;
+  }
+
+  // Helper method to check if a route is approaching the location limit (for UI warnings)
+  isRouteApproachingLimit(route: Route): boolean {
+    const currentCount = this.getUniqueLocationCount(route);
+    return currentCount >= 90; // Warning when 90 or more locations
+  }
+
+  // Helper method to get the location count display text with color coding
+  getLocationCountDisplay(route: Route): { text: string; color: string } {
+    const count = this.getUniqueLocationCount(route);
+    if (count > 95) {
+      return { text: `${count}/95`, color: '#f44336' }; // Red for over limit
+    } else if (count >= 90) {
+      return { text: `${count}/95`, color: '#ff9800' }; // Orange for approaching limit
+    } else {
+      return { text: `${count}/95`, color: '#4caf50' }; // Green for safe
+    }
   }
 
     // Cancel route
@@ -1221,7 +1346,7 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     if (this.isRouteTooLargeForReoptimization(route)) {
       const locationCount = this.getUniqueLocationCount(route);
       this.snackBar.open(
-        `Cannot reoptimize route ${route.routeCode}. It has ${locationCount} unique locations (maximum 25 allowed).`,
+        `Cannot reoptimize route ${route.routeCode}. It has ${locationCount} unique locations (maximum 95 allowed).`,
         'Close',
         { duration: 5000, panelClass: ['error-snackbar'] }
       );
@@ -1457,6 +1582,87 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     formattedAddress = formattedAddress.replace(/,\s*$/, '').trim();
 
     return formattedAddress || 'Address not available';
+  }
+
+  // Format expiration date for tickets
+  formatExpirationDate(ticket: any): string {
+    // Check if ticket has an explicit expiration date field
+    if (ticket.expirationDate) {
+      return this.formatDate(ticket.expirationDate);
+    }
+
+    // Check if ticket has an expiry date field
+    if (ticket.expiryDate) {
+      return this.formatDate(ticket.expiryDate);
+    }
+
+    // Check if ticket has a validUntil field
+    if (ticket.validUntil) {
+      return this.formatDate(ticket.validUntil);
+    }
+
+    // If no explicit expiration date, calculate based on creation date + standard period
+    // Assuming 30 days from creation as default expiration
+    if (ticket.createdat || ticket.createdAt) {
+      const createdDate = new Date(ticket.createdat || ticket.createdAt);
+      const expirationDate = new Date(createdDate);
+      expirationDate.setDate(expirationDate.getDate() + 30); // 30 days from creation
+      return this.formatDate(expirationDate.toISOString());
+    }
+
+    return 'No expiration date';
+  }
+
+  // Helper method to format dates consistently
+  private formatDate(dateString: string): string {
+    if (!dateString) return 'Invalid date';
+
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return 'Invalid date';
+
+      // Format as MM/DD/YYYY
+      return date.toLocaleDateString('en-US', {
+        month: '2-digit',
+        day: '2-digit',
+        year: 'numeric'
+      });
+    } catch (error) {
+      return 'Invalid date';
+    }
+  }
+
+  // Check if a ticket is expired or expiring soon
+  isTicketExpiredOrExpiringSoon(ticket: any): { isExpired: boolean; isExpiringSoon: boolean; daysLeft: number } {
+    let expirationDate: Date | null = null;
+
+    // Try to get expiration date from various possible fields
+    if (ticket.expirationDate) {
+      expirationDate = new Date(ticket.expirationDate);
+    } else if (ticket.expiryDate) {
+      expirationDate = new Date(ticket.expiryDate);
+    } else if (ticket.validUntil) {
+      expirationDate = new Date(ticket.validUntil);
+    } else if (ticket.createdat || ticket.createdAt) {
+      // Calculate expiration date (30 days from creation)
+      const createdDate = new Date(ticket.createdat || ticket.createdAt);
+      expirationDate = new Date(createdDate);
+      expirationDate.setDate(expirationDate.getDate() + 30);
+    }
+
+    if (!expirationDate || isNaN(expirationDate.getTime())) {
+      return { isExpired: false, isExpiringSoon: false, daysLeft: -1 };
+    }
+
+    const now = new Date();
+    const timeDiff = expirationDate.getTime() - now.getTime();
+    const daysLeft = Math.ceil(timeDiff / (1000 * 3600 * 24));
+
+    return {
+      isExpired: daysLeft < 0,
+      isExpiringSoon: daysLeft >= 0 && daysLeft <= 7, // Expiring within 7 days
+      daysLeft: daysLeft
+    };
   }
 
 

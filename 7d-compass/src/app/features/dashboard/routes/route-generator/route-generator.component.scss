@@ -843,3 +843,69 @@ app-leaflet-map {
   padding: 12px 8px;
   overflow-y: auto;
 }
+
+// Location count indicator styling
+.location-count {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background-color: rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  white-space: nowrap;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background-color: rgba(0, 0, 0, 0.1);
+  }
+}
+
+// Expiration date styling
+.expiration-date {
+  font-size: 11px;
+  margin: 2px 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+
+  .expiration-label {
+    font-weight: 600;
+    color: #666;
+  }
+
+  .days-left {
+    color: #4caf50;
+    font-weight: 500;
+  }
+
+  .expired-text {
+    color: #f44336;
+    font-weight: 600;
+    text-transform: uppercase;
+  }
+
+  // Expired state
+  &.expired {
+    color: #f44336;
+    font-weight: 600;
+
+    .expiration-label {
+      color: #f44336;
+    }
+  }
+
+  // Expiring soon state (within 7 days)
+  &.expiring-soon {
+    color: #ff9800;
+    font-weight: 600;
+
+    .expiration-label {
+      color: #ff9800;
+    }
+
+    .days-left {
+      color: #ff9800;
+    }
+  }
+}

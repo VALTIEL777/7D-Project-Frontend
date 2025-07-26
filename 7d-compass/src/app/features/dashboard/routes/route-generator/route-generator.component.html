@@ -27,13 +27,21 @@
                     placeholder="Filter address..."
                     style="max-width: 140px; font-size: 12px; padding: 2px 6px; margin-right: 8px;"
                   />
+                  <!-- Location count indicator -->
+                  <span
+                    class="location-count"
+                    [style.color]="getLocationCountDisplay(route).color"
+                    [style.font-weight]="isRouteApproachingLimit(route) ? 'bold' : 'normal'"
+                    [title]="isRouteApproachingLimit(route) ? 'Route is approaching the 95 location limit' : 'Current location count'">
+                    {{ getLocationCountDisplay(route).text }}
+                  </span>
                   <!-- Action buttons -->
                   <button
                     mat-icon-button
                     color="primary"
                     (click)="reoptimizeSpecificRoute(route)"
                     [disabled]="isRouteTooLargeForReoptimization(route) || reoptimizingRoutes.has(route.routeId)"
-                    [title]="isRouteTooLargeForReoptimization(route) ? 'Route has too many locations (max 25)' : 'Reoptimize Route'"
+                    [title]="isRouteTooLargeForReoptimization(route) ? 'Route has too many locations (max 95)' : 'Reoptimize Route'"
                     [class.disabled-button]="isRouteTooLargeForReoptimization(route)">
                     <mat-icon *ngIf="!reoptimizingRoutes.has(route.routeId)">route</mat-icon>
                     <mat-spinner *ngIf="reoptimizingRoutes.has(route.routeId)" diameter="20"></mat-spinner>
@@ -100,12 +108,20 @@
                     placeholder="Filter address..."
                     style="max-width: 140px; font-size: 12px; padding: 2px 6px; margin-right: 8px;"
                   />
+                  <!-- Location count indicator -->
+                  <span
+                    class="location-count"
+                    [style.color]="getLocationCountDisplay(route).color"
+                    [style.font-weight]="isRouteApproachingLimit(route) ? 'bold' : 'normal'"
+                    [title]="isRouteApproachingLimit(route) ? 'Route is approaching the 95 location limit' : 'Current location count'">
+                    {{ getLocationCountDisplay(route).text }}
+                  </span>
                   <button
                     mat-icon-button
                     color="primary"
                     (click)="reoptimizeSpecificRoute(route)"
                     [disabled]="isRouteTooLargeForReoptimization(route) || reoptimizingRoutes.has(route.routeId)"
-                    [title]="isRouteTooLargeForReoptimization(route) ? 'Route has too many locations (max 25)' : 'Reoptimize Route'"
+                    [title]="isRouteTooLargeForReoptimization(route) ? 'Route has too many locations (max 95)' : 'Reoptimize Route'"
                     [class.disabled-button]="isRouteTooLargeForReoptimization(route)">
                     <mat-icon *ngIf="!reoptimizingRoutes.has(route.routeId)">route</mat-icon>
                     <mat-spinner *ngIf="reoptimizingRoutes.has(route.routeId)" diameter="20"></mat-spinner>
@@ -171,12 +187,20 @@
                     placeholder="Filter address..."
                     style="max-width: 140px; font-size: 12px; padding: 2px 6px; margin-right: 8px;"
                   />
+                  <!-- Location count indicator -->
+                  <span
+                    class="location-count"
+                    [style.color]="getLocationCountDisplay(route).color"
+                    [style.font-weight]="isRouteApproachingLimit(route) ? 'bold' : 'normal'"
+                    [title]="isRouteApproachingLimit(route) ? 'Route is approaching the 95 location limit' : 'Current location count'">
+                    {{ getLocationCountDisplay(route).text }}
+                  </span>
                   <button
                     mat-icon-button
                     color="primary"
                     (click)="reoptimizeSpecificRoute(route)"
                     [disabled]="isRouteTooLargeForReoptimization(route) || reoptimizingRoutes.has(route.routeId)"
-                    [title]="isRouteTooLargeForReoptimization(route) ? 'Route has too many locations (max 25)' : 'Reoptimize Route'"
+                    [title]="isRouteTooLargeForReoptimization(route) ? 'Route has too many locations (max 95)' : 'Reoptimize Route'"
                     [class.disabled-button]="isRouteTooLargeForReoptimization(route)">
                     <mat-icon *ngIf="!reoptimizingRoutes.has(route.routeId)">route</mat-icon>
                     <mat-spinner *ngIf="reoptimizingRoutes.has(route.routeId)" diameter="20"></mat-spinner>
@@ -344,12 +368,12 @@
             title="Spot Ready"
             [showEyeButton]="true"
           >
-            <div style="margin-bottom: 8px;">
+            <div style="margin-bottom: 8px; display: flex; gap: 8px; align-items: center;">
               <input
                 type="text"
                 [(ngModel)]="spotReadyFilter"
                 placeholder="Filter address..."
-                style="max-width: 180px; font-size: 12px; padding: 2px 6px;"
+                style="max-width: 140px; font-size: 12px; padding: 2px 6px;"
               />
             </div>
             <div
@@ -368,6 +392,18 @@
                 <div class="ticket-info">
                   <p class="route-location">{{ formatAddress(ticket.address) }}</p>
                   <p class="incident-name">{{ ticket.incidentname || 'No incident name' }}</p>
+                  <p class="expiration-date"
+                     [class.expired]="isTicketExpiredOrExpiringSoon(ticket).isExpired"
+                     [class.expiring-soon]="isTicketExpiredOrExpiringSoon(ticket).isExpiringSoon">
+                    <span class="expiration-label">Expires:</span>
+                    {{ formatExpirationDate(ticket) }}
+                    <span *ngIf="isTicketExpiredOrExpiringSoon(ticket).daysLeft >= 0" class="days-left">
+                      ({{ isTicketExpiredOrExpiringSoon(ticket).daysLeft }} days left)
+                    </span>
+                    <span *ngIf="isTicketExpiredOrExpiringSoon(ticket).isExpired" class="expired-text">
+                      (EXPIRED)
+                    </span>
+                  </p>
                 </div>
                 <span class="ticket-code">{{ ticket.ticketcode || 'No ticket code' }}</span>
                 <mat-divider></mat-divider>
@@ -386,12 +422,12 @@
             title="Concrete Ready"
             [showEyeButton]="true"
           >
-            <div style="margin-bottom: 8px;">
+            <div style="margin-bottom: 8px; display: flex; gap: 8px; align-items: center;">
               <input
                 type="text"
                 [(ngModel)]="concreteReadyFilter"
                 placeholder="Filter address..."
-                style="max-width: 180px; font-size: 12px; padding: 2px 6px;"
+                style="max-width: 140px; font-size: 12px; padding: 2px 6px;"
               />
             </div>
             <div
@@ -410,6 +446,18 @@
                 <div class="ticket-info">
                   <p class="route-location">{{ formatAddress(ticket.address) }}</p>
                   <p class="incident-name">{{ ticket.incidentname || 'No incident name' }}</p>
+                  <p class="expiration-date"
+                     [class.expired]="isTicketExpiredOrExpiringSoon(ticket).isExpired"
+                     [class.expiring-soon]="isTicketExpiredOrExpiringSoon(ticket).isExpiringSoon">
+                    <span class="expiration-label">Expires:</span>
+                    {{ formatExpirationDate(ticket) }}
+                    <span *ngIf="isTicketExpiredOrExpiringSoon(ticket).daysLeft >= 0" class="days-left">
+                      ({{ isTicketExpiredOrExpiringSoon(ticket).daysLeft }} days left)
+                    </span>
+                    <span *ngIf="isTicketExpiredOrExpiringSoon(ticket).isExpired" class="expired-text">
+                      (EXPIRED)
+                    </span>
+                  </p>
                 </div>
                 <span class="ticket-code">{{ ticket.ticketcode || 'No ticket code' }}</span>
                 <mat-divider></mat-divider>
@@ -428,12 +476,12 @@
             title="Asphalt Ready"
             [showEyeButton]="true"
           >
-            <div style="margin-bottom: 8px;">
+            <div style="margin-bottom: 8px; display: flex; gap: 8px; align-items: center;">
               <input
                 type="text"
                 [(ngModel)]="asphaltReadyFilter"
                 placeholder="Filter address..."
-                style="max-width: 180px; font-size: 12px; padding: 2px 6px;"
+                style="max-width: 140px; font-size: 12px; padding: 2px 6px;"
               />
             </div>
             <div
@@ -452,6 +500,18 @@
                 <div class="ticket-info">
                   <p class="route-location">{{ formatAddress(ticket.address) }}</p>
                   <p class="incident-name">{{ ticket.incidentname || 'No incident name' }}</p>
+                  <p class="expiration-date"
+                     [class.expired]="isTicketExpiredOrExpiringSoon(ticket).isExpired"
+                     [class.expiring-soon]="isTicketExpiredOrExpiringSoon(ticket).isExpiringSoon">
+                    <span class="expiration-label">Expires:</span>
+                    {{ formatExpirationDate(ticket) }}
+                    <span *ngIf="isTicketExpiredOrExpiringSoon(ticket).daysLeft >= 0" class="days-left">
+                      ({{ isTicketExpiredOrExpiringSoon(ticket).daysLeft }} days left)
+                    </span>
+                    <span *ngIf="isTicketExpiredOrExpiringSoon(ticket).isExpired" class="expired-text">
+                      (EXPIRED)
+                    </span>
+                  </p>
                 </div>
                 <span class="ticket-code">{{ ticket.ticketcode || 'No ticket code' }}</span>
                 <mat-divider></mat-divider>
