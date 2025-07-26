@@ -11,6 +11,8 @@ export const environment = {
   fineServiceUrl: '/api/fines',
   invoiceServiceUrl: '/api/invoices',
   diggerServiceUrl: '/api/diggers',
+  permitServiceUrl: '/api/permits',
+  permitedTicketsServiceUrl: '/api/permitedtickets',
   rtrServiceUrl: '/api/rtr',
   ticketServiceUrl: '/api/tickets',
   usedequipmentServiceUrl: '/api/usedequipment',

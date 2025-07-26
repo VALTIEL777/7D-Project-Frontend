@@ -1,0 +1,52 @@
+// Estilos para asegurar que la tabla ocupe todo el ancho disponible
+:host {
+  display: block;
+  width: 100%;
+}
+
+app-card-with-button {
+  width: 100%;
+  display: block;
+}
+
+// Asegurar que el contenedor de la tabla ocupe todo el ancho
+::ng-deep app-data-table {
+  width: 100%;
+  display: block;
+}
+
+::ng-deep .table-container {
+  width: 100% !important;
+  min-width: 100% !important;
+}
+
+// Asegurar que la tabla Material ocupe todo el ancho
+::ng-deep table.mat-table {
+  width: 100% !important;
+  min-width: 100% !important;
+}
+
+// Asegurar que las celdas se distribuyan correctamente
+::ng-deep .mat-column-permitNumber {
+  width: 15%;
+}
+
+::ng-deep .mat-column-status {
+  width: 10%;
+}
+
+::ng-deep .mat-column-startDate {
+  width: 15%;
+}
+
+::ng-deep .mat-column-expireDate {
+  width: 15%;
+}
+
+::ng-deep .mat-column-tickets {
+  width: 25%;
+}
+
+::ng-deep .mat-column-actions {
+  width: 20%;
+}

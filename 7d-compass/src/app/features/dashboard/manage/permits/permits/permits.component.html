@@ -1,0 +1,18 @@
+<app-dashboard-layout>
+  <app-card-with-button title="Permits Management" [showEyeButton]="false">
+    <!-- Debug info minimizado -->
+
+
+    <app-data-table
+      [title]="'Permits Management'"
+      [data]="tableData"
+      [columns]="columns"
+      [pageSizeOptions]="[5, 10, 20]"
+      [hasFiles]="hasPermitFiles"
+      (edit)="onEdit($event)"
+      (delete)="onDelete($event)"
+      (uploadPdf)="onUploadPdf($event)"
+      (deleteFile)="onDeletePermitFile($event)">
+    </app-data-table>
+  </app-card-with-button>
+</app-dashboard-layout>

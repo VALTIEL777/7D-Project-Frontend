@@ -124,3 +124,36 @@ mat-paginator {
   }
 }
 
+.upload-button {
+  color: #9c27b0; // morado
+  border: none !important;
+  background-color: rgba(156, 39, 176, 0.1);
+
+  &:hover {
+    background-color: rgba(156, 39, 176, 0.2);
+    transform: scale(1.1);
+  }
+
+  &:disabled {
+    color: #ccc !important;
+    background-color: rgba(156, 39, 176, 0.05) !important;
+    cursor: not-allowed !important;
+    
+    &:hover {
+      background-color: rgba(156, 39, 176, 0.05) !important;
+      transform: none !important;
+    }
+  }
+}
+
+.delete-file-button {
+  color: #ff5722; // naranja rojizo
+  border: none !important;
+  background-color: rgba(255, 87, 34, 0.1);
+
+  &:hover {
+    background-color: rgba(255, 87, 34, 0.2);
+    transform: scale(1.1);
+  }
+}
+

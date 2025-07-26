@@ -44,6 +44,7 @@
 <!-- General Info -->
 <h3 class="sub-title">General Info</h3>
 <ul class="info-list">
+  <li><strong>Ticket Code:</strong> {{ ticketCode || 'Not available' }}</li>
   <li><strong>Job:</strong> {{ location.job || 'Not available' }}</li>
   <!-- <li><strong>Description:</strong>  {{ location.description || 'No description available' }} </li> -->
   <li><strong>Size:</strong> {{ location.length || 'Not available'}} x {{ location.width || 'Not available' }} ft</li>
@@ -276,36 +277,6 @@
   <div *ngFor="let permit of permits" class="permit">
     <span>Permit Ticket: {{ permit.number }}</span>
     <mat-card class="permit-card">
-      <div class="permit-file-upload">
-        <input
-          type="file"
-          accept="application/pdf"
-          (change)="onPermitFileSelected($event)"
-          #permitFileInput
-          style="display: none;"
-        />
-        <button mat-stroked-button color="primary" (click)="permitFileInput.click()">
-          <mat-icon>attach_file</mat-icon>
-          Select PDF
-        </button>
-        <span *ngIf="selectedPermitFile" class="selected-file-name">
-          <mat-icon>description</mat-icon>
-          {{ selectedPermitFile.name }}
-        </span>
-        <button
-          mat-raised-button
-          color="accent"
-          (click)="uploadPermitFile(permit)"
-          [disabled]="!selectedPermitFile || pdfFileError"
-          class="upload-btn"
-        >
-          <mat-icon>cloud_upload</mat-icon>
-          Upload PDF
-        </button>
-      </div>
-      <div *ngIf="pdfFileError" class="pdf-error">
-        {{ pdfFileError }}
-      </div>
       <!-- Galería de archivos subidos para el ticket (solo PDFs) -->
       <div class="permit-gallery" *ngIf="permitFilesByTicket && permitFilesByTicket.length > 0">
         <div *ngFor="let file of permitFilesByTicket" class="permit-file-item">
@@ -330,21 +301,6 @@
   <p class="no-permits-text">
     <mat-icon color="warn">info</mat-icon>
     There are no permits assigned yet.
-  </p>
-</div>
-
-<h3 class="sub-title">Diggers</h3>
-<div class="permits">
-  <div *ngFor="let digger of diggers" class="permit">
-    <span>Digger Ticket: DG-{{ digger.id }}</span>
-  </div>
-</div>
-
-<!-- Mostrar mensaje si no hay diggers -->
-<div *ngIf="diggers.length === 0" class="no-permits">
-  <p class="no-permits-text">
-    <mat-icon color="warn">info</mat-icon>
-    There are no digger tickets assigned yet.
   </p>
 </div>
 

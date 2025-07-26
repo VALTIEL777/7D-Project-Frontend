@@ -39,6 +39,22 @@
   matTooltip="Show Route">
     <mat-icon>visibility</mat-icon>
     </button>
+             <button
+      *ngIf="column.name === 'actions' && !hasFiles(element)"
+  mat-icon-button
+  class="upload-button"
+  matTooltip="Upload PDF"
+  (click)="uploadPdf.emit(element)">
+    <mat-icon>upload_file</mat-icon>
+    </button>
+             <button
+      *ngIf="column.name === 'actions' && hasFiles(element)"
+  mat-icon-button
+  class="delete-file-button"
+  matTooltip="Delete PDF"
+  (click)="deleteFile.emit(element)">
+    <mat-icon>delete_forever</mat-icon>
+    </button>
           </div>
         </ng-template>
       </td>

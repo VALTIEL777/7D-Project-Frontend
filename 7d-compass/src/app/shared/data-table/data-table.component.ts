@@ -36,9 +36,12 @@ export class DataTableComponent<T> implements AfterViewInit {
   @Input() columns: ColumnDefinition[] = [];
   @Input() showEyeButton: boolean = false;
   @Input() pageSizeOptions: number[] = [5, 10, 20];
+  @Input() hasFiles: (element: T) => boolean = () => false;
 
   @Output() edit = new EventEmitter<T>();
   @Output() delete = new EventEmitter<T>();
+  @Output() uploadPdf = new EventEmitter<T>();
+  @Output() deleteFile = new EventEmitter<T>();
 
   @ViewChild(MatPaginator) paginator!: MatPaginator;
 

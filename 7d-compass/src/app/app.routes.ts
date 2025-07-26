@@ -187,6 +187,15 @@ export const routes: Routes = [
     canActivate: [AuthGuard],
     data: { role: 'admin' },
   },
+  {
+    path: 'permits',
+    loadComponent: () =>
+      import('./features/dashboard/manage/permits/permits/permits.component').then(
+        (m) => m.PermitsComponent
+      ),
+    canActivate: [AuthGuard],
+    data: { role: 'admin' },
+  },
   // Site-job and other routes (leave as is)
   {
     path: 'current',

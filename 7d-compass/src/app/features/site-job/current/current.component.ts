@@ -78,6 +78,7 @@ userId: number = 0;
 selectedFiles: File[] = [];
 imagePreviews: (string | ArrayBuffer | null)[] = [];
 ticketId: number = 0; // Lo debes asignar al cargar detalles
+ticketCode: string = '';
 crewId: number = 0;
 ticketStatusId: number = 0; // Id del estado del ticket asociado (si aplica)
 comment: string = '';
@@ -180,6 +181,8 @@ ngOnInit() {
 
   if (this.ticketId) {
     this.loadSupervisor();
+    this.loadTicketCode(); //
+
   }
 
   const today = new Date();
@@ -332,6 +335,11 @@ private isPhaseOptional(phaseName: string, routeCode: string): boolean {
   return false;
 }
 
+loadTicketCode() {
+  this.ticketService.getTicketById(this.ticketId).subscribe(ticket => {
+    this.ticketCode = ticket.ticketcode || '';
+  });
+}
 
   loadSupervisor() {
  this.ticketService.getTicketById(this.ticketId).subscribe(ticket => {
@@ -550,6 +558,16 @@ startPhase(activity: any) {
               this.uploadPhotoEvidence(activity.id, activity);
             }
             
+            // 🎯 VERIFICAR SI HAY ISSUE REPORTADO AL INICIAR
+            const hasIssue = activity.comment && activity.comment.trim().length > 0;
+            if (hasIssue) {
+              console.log(`⚠️ Issue detectado al iniciar fase ${activity.name}: ${activity.comment}`);
+              this.updateTicketComment7d('TK - ON HOLD OFF');
+            } else {
+              // 🎯 ACTUALIZAR COMMENT7D DEL TICKET A "TK - ON PROGRESS"
+              this.updateTicketComment7d('TK - ON PROGRESS');
+            }
+            
             this.loadLinkedPhases(); // Recargar para actualizar estado
           },
           error: (err) => {
@@ -579,6 +597,17 @@ startPhase(activity: any) {
             if (activity.selectedFiles && activity.selectedFiles.length > 0) {
               this.uploadPhotoEvidence(activity.id, activity);
             }
+            
+            // 🎯 VERIFICAR SI HAY ISSUE REPORTADO AL INICIAR
+            const hasIssue = activity.comment && activity.comment.trim().length > 0;
+            if (hasIssue) {
+              console.log(`⚠️ Issue detectado al iniciar fase ${activity.name}: ${activity.comment}`);
+              this.updateTicketComment7d('TK - ON HOLD OFF');
+            } else {
+              // 🎯 ACTUALIZAR COMMENT7D DEL TICKET A "TK - ON PROGRESS"
+              this.updateTicketComment7d('TK - ON PROGRESS');
+            }
+            
             this.loadLinkedPhases();
           },
           error: (err) => {
@@ -635,6 +664,12 @@ completePhase(activity: any) {
               // ✅ CORREGIDO: Usar taskStatusId (activity.id) en lugar de ticketstatusid
               console.log(`📸 Subiendo foto para fase completada ${activity.name} con taskStatusId: ${activity.id}`);
               this.uploadPhotoEvidence(activity.id, activity);
+            }
+            
+            // 🎯 VERIFICAR SI SE COMPLETÓ LA ÚLTIMA FASE OBLIGATORIA
+            if (this.isLastRequiredPhaseCompleted()) {
+              console.log(`🎉 ¡Última fase obligatoria completada! Actualizando comment7d a TK - COMPLETED`);
+              this.updateTicketComment7d('TK - COMPLETED');
             }
             
             this.loadLinkedPhases(); // Recargar para actualizar estado
@@ -989,6 +1024,14 @@ uploadPhotoEvidence(taskStatusId: number, activity: any): void {
     next: (res) => {
       this.clearPhotoInputsActivity(activity);
       this.loadCurrentTicketImages();
+      
+      // 🎯 VERIFICAR SI HAY ISSUE REPORTADO
+      const hasIssue = activity.comment && activity.comment.trim().length > 0;
+      if (hasIssue) {
+        console.log(`⚠️ Issue detectado en fase ${activity.name}: ${activity.comment}`);
+        this.updateTicketComment7d('TK - ON HOLD OFF');
+      }
+      
       this.completePhase(activity);
     },
     error: (err) => {
@@ -1314,6 +1357,69 @@ deletePermitFile(file: any) {
       console.error('❌ Error eliminando archivo:', err);
     }
   });
+}
+
+// 🎯 MÉTODO PARA ACTUALIZAR EL COMMENT7D DEL TICKET
+updateTicketComment7d(comment: string) {
+  if (!this.ticketId) {
+    console.warn('⚠️ No hay ticketId para actualizar comment7d');
+    return;
+  }
+
+  console.log(`🔄 Actualizando comment7d del ticket ${this.ticketId} a: ${comment}`);
+  
+  this.ticketService.getTicketById(this.ticketId).subscribe({
+    next: (currentTicket) => {
+      const updatedTicket = {
+        ...currentTicket,
+        comment7d: comment,
+        updatedBy: this.userId
+      };
+      
+      this.ticketService.updateTicket(this.ticketId, updatedTicket).subscribe({
+        next: (updatedTicketResponse) => {
+          console.log(`✅ Comment7d actualizado exitosamente a: ${comment}`);
+        },
+        error: (err) => {
+          console.error('❌ Error actualizando comment7d del ticket:', err);
+        }
+      });
+    },
+    error: (err) => {
+      console.error('❌ Error obteniendo ticket para actualizar comment7d:', err);
+    }
+  });
+}
+
+// 🎯 MÉTODO PARA VERIFICAR SI TODAS LAS FASES OBLIGATORIAS ESTÁN COMPLETADAS
+checkAllRequiredPhasesCompleted(): boolean {
+  const requiredPhases = this.activities.filter(activity => !activity.optional);
+  const completedPhases = requiredPhases.filter(activity => this.isPhaseCompleted(activity));
+  
+  console.log(`📊 Verificando fases obligatorias: ${requiredPhases.length} total, ${completedPhases.length} completadas`);
+  
+  return requiredPhases.length > 0 && completedPhases.length === requiredPhases.length;
+}
+
+// 🎯 MÉTODO PARA OBTENER LA ÚLTIMA FASE OBLIGATORIA SEGÚN EL TIPO DE RUTA
+getLastRequiredPhase(): string | null {
+  if (this.routeCode.includes('ASPHALT')) {
+    return 'Crack Seal';
+  } else if (this.routeCode.includes('CONCRETE')) {
+    return 'Clean';
+  } else if (this.routeCode.includes('SPOTTER')) {
+    return 'Install Signs';
+  }
+  return null;
+}
+
+// 🎯 MÉTODO PARA VERIFICAR SI SE COMPLETÓ LA ÚLTIMA FASE OBLIGATORIA
+isLastRequiredPhaseCompleted(): boolean {
+  const lastRequiredPhase = this.getLastRequiredPhase();
+  if (!lastRequiredPhase) return false;
+  
+  const lastActivity = this.activities.find(activity => activity.name === lastRequiredPhase);
+  return lastActivity ? this.isPhaseCompleted(lastActivity) : false;
 }
 
 }
