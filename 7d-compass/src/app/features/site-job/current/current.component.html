@@ -329,16 +329,9 @@
         <div *ngFor="let file of permitFilesByTicket" class="permit-file-item">
           <ng-container *ngIf="(file.photoURL && file.photoURL.endsWith('.pdf')) || (file.photourl && file.photourl.endsWith('.pdf'))">
             <mat-icon class="pdf-icon">picture_as_pdf</mat-icon>
-            <a [href]="file.photoURL || file.photourl" target="_blank" download class="pdf-link">
-              Download PDF
-            </a>
             <button mat-stroked-button color="accent" (click)="downloadFile(file.photoId || file.photoid, file.name)">
               <mat-icon>download</mat-icon>
-              Download PDF
-            </button>
-            <span class="pdf-filename">{{ file.name }}</span>
-            <button mat-icon-button color="warn" (click)="deletePermitFile(file)" aria-label="Eliminar archivo" class="delete-file-btn">
-              <mat-icon>close</mat-icon>
+              Download <br> Permit
             </button>
           </ng-container>
         </div>
