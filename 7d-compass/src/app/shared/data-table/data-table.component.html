@@ -40,7 +40,7 @@
     <mat-icon>visibility</mat-icon>
     </button>
              <button
-      *ngIf="column.name === 'actions' && !hasFiles(element)"
+      *ngIf="column.name === 'actions' && showUploadButton && !hasFiles(element)"
   mat-icon-button
   class="upload-button"
   matTooltip="Upload PDF"

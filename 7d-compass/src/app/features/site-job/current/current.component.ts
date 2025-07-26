@@ -323,7 +323,7 @@ private isPhaseOptional(phaseName: string, routeCode: string): boolean {
   
   // Fases opcionales para rutas CONCRETE
   if (routeCode.includes('CONCRETE')) {
-    return ['steel plate pickup'].includes(phaseNameLower);
+    return ['steel plate pickup', 'install signs'].includes(phaseNameLower);
   }
   
   // Fases opcionales para rutas SPOTTER
@@ -336,8 +336,14 @@ private isPhaseOptional(phaseName: string, routeCode: string): boolean {
 }
 
 loadTicketCode() {
-  this.ticketService.getTicketById(this.ticketId).subscribe(ticket => {
-    this.ticketCode = ticket.ticketcode || '';
+  this.ticketService.getTicketById(this.ticketId).subscribe({
+    next: (ticket) => {
+      this.ticketCode = ticket.ticketCode || ticket.ticketcode || '';
+    },
+    error: (err) => {
+      console.error('❌ Error cargando ticket code:', err);
+      this.ticketCode = 'N/A';
+    }
   });
 }
 
@@ -448,6 +454,9 @@ loadLinkedPhases() {
   next: (ticketStatuses: any[] | null) => {
     const safeStatuses = Array.isArray(ticketStatuses) ? ticketStatuses : [];
     
+    console.log('🔍 === DEBUGGING FECHAS ===');
+    console.log('📋 TicketStatuses recibidos del backend:', safeStatuses);
+    
     this.activities.forEach(activity => {
       const activityId = Number(activity.id);
       const existingStatus = safeStatuses.find(ts => Number(ts.taskstatusid) === activityId);
@@ -471,6 +480,35 @@ loadLinkedPhases() {
           activity.startDate = existingStatus.startingdate;
           activity.endDate = null;
           console.log(`🔄 Fase ${activity.name} iniciada pero no completada`);
+          console.log(`🕐 startingdate del backend: ${existingStatus.startingdate}`);
+          console.log(`🕐 startDate asignado: ${activity.startDate}`);
+          console.log(`🕐 Tipo de dato: ${typeof existingStatus.startingdate}`);
+          
+          // Verificar si la fecha del backend tiene hora
+          if (existingStatus.startingdate) {
+            const backendDate = new Date(existingStatus.startingdate);
+            console.log(`🕐 Fecha del backend convertida: ${backendDate.toISOString()}`);
+            console.log(`🕐 Hora del backend: ${backendDate.getHours()}:${backendDate.getMinutes()}:${backendDate.getSeconds()}`);
+            console.log(`🕐 ¿Tiene hora? ${backendDate.getHours() !== 0 || backendDate.getMinutes() !== 0 || backendDate.getSeconds() !== 0}`);
+            
+            // SOLUCIÓN TEMPORAL: Si el backend no tiene hora, usar la hora actual
+            const hasTime = backendDate.getHours() !== 0 || backendDate.getMinutes() !== 0 || backendDate.getSeconds() !== 0;
+            if (!hasTime) {
+              console.log(`⚠️ Backend no tiene hora, aplicando hora actual como solución temporal`);
+              const now = new Date();
+              const dateOnly = new Date(existingStatus.startingdate);
+              const correctedDate = new Date(
+                dateOnly.getFullYear(),
+                dateOnly.getMonth(),
+                dateOnly.getDate(),
+                now.getHours(),
+                now.getMinutes(),
+                now.getSeconds()
+              );
+              activity.startDate = correctedDate.toISOString();
+              console.log(`🕐 Fecha corregida: ${activity.startDate}`);
+            }
+          }
         }
         // ✅ Si tiene endingDate, está completada
         else if (existingStatus.endingdate) {
@@ -481,6 +519,47 @@ loadLinkedPhases() {
           activity.startDate = existingStatus.startingdate;
           activity.endDate = existingStatus.endingdate;
           console.log(`✅ Fase ${activity.name} completada`);
+          console.log(`🕐 startingdate del backend: ${existingStatus.startingdate}`);
+          console.log(`🕐 endingdate del backend: ${existingStatus.endingdate}`);
+          console.log(`🕐 startDate asignado: ${activity.startDate}`);
+          console.log(`🕐 endDate asignado: ${activity.endDate}`);
+          
+          // SOLUCIÓN TEMPORAL: Corregir fechas sin hora para fases completadas
+          if (existingStatus.startingdate) {
+            const startDate = new Date(existingStatus.startingdate);
+            const hasStartTime = startDate.getHours() !== 0 || startDate.getMinutes() !== 0 || startDate.getSeconds() !== 0;
+            if (!hasStartTime) {
+              console.log(`⚠️ Corrigiendo startDate sin hora para fase completada`);
+              const now = new Date();
+              const correctedStartDate = new Date(
+                startDate.getFullYear(),
+                startDate.getMonth(),
+                startDate.getDate(),
+                now.getHours(),
+                now.getMinutes(),
+                now.getSeconds()
+              );
+              activity.startDate = correctedStartDate.toISOString();
+            }
+          }
+          
+          if (existingStatus.endingdate) {
+            const endDate = new Date(existingStatus.endingdate);
+            const hasEndTime = endDate.getHours() !== 0 || endDate.getMinutes() !== 0 || endDate.getSeconds() !== 0;
+            if (!hasEndTime) {
+              console.log(`⚠️ Corrigiendo endDate sin hora para fase completada`);
+              const now = new Date();
+              const correctedEndDate = new Date(
+                endDate.getFullYear(),
+                endDate.getMonth(),
+                endDate.getDate(),
+                now.getHours(),
+                now.getMinutes(),
+                now.getSeconds()
+              );
+              activity.endDate = correctedEndDate.toISOString();
+            }
+          }
         }
       } else {
         // ✅ Fase no asignada al ticket
@@ -492,6 +571,13 @@ loadLinkedPhases() {
         console.log(`📝 Fase ${activity.name} no asignada al ticket`);
       }
     });
+    
+    console.log('🔍 === ESTADO FINAL DE ACTIVIDADES ===');
+    this.activities.forEach(activity => {
+      console.log(`📋 ${activity.name}: startDate=${activity.startDate}, endDate=${activity.endDate}`);
+    });
+    console.log('🔍 === FIN DEBUGGING FECHAS ===');
+    
     // Llamar a loadCurrentTicketImages SOLO después de que las actividades estén listas
     this.loadCurrentTicketImages();
   },
@@ -537,13 +623,23 @@ startPhase(activity: any) {
 
       if (existingStatus) {
         // Actualizar con startingDate
+        // Crear fecha con hora completa para evitar conversión a medianoche
+        const now = new Date();
+        const newStartingDate = now.toISOString();
+        console.log(`🕐 Enviando nueva fecha al backend: ${newStartingDate}`);
+        console.log(`🕐 Hora local actual: ${now.toLocaleString()}`);
+        console.log(`🕐 Timestamp: ${now.getTime()}`);
+        
         this.ticketStatusService.update(activity.id, this.ticketId, {
-          startingDate: new Date().toISOString(),
+          startingDate: newStartingDate,
           updatedBy: this.userId,
           crewId: crewIdToUse // <-- AÑADIDO
         }).subscribe({
           next: (updatedStatus) => {
             console.log(`✅ Fase ${activity.name} iniciada:`, updatedStatus);
+            console.log(`🕐 Respuesta del backend - startingDate: ${updatedStatus?.startingdate || updatedStatus?.startingDate}`);
+            console.log(`🕐 Respuesta completa del backend:`, updatedStatus);
+            
             activity.started = true;
             activity.checked = true;
             
@@ -580,12 +676,14 @@ startPhase(activity: any) {
           ticketId: this.ticketId,
           crewId: crewIdToUse,
           taskStatusId: activity.id,
-          startingDate: new Date().toISOString(),
+          startingDate: this.getCurrentDateString(),
           createdBy: this.userId,
           updatedBy: this.userId
         }).subscribe({
           next: (newTicketStatus) => {
             console.log(`✅ TicketStatus creado para fase opcional ${activity.name}:`, newTicketStatus);
+            console.log(`🕐 Respuesta del backend - startingDate: ${newTicketStatus?.startingdate || newTicketStatus?.startingDate}`);
+            console.log(`🕐 Respuesta completa del backend:`, newTicketStatus);
             console.log(`🔍 Tipo de respuesta:`, typeof newTicketStatus);
             console.log(`🔍 Propiedades de newTicketStatus:`, Object.keys(newTicketStatus || {}));
             console.log(`🔍 taskstatusid:`, newTicketStatus?.taskstatusid);
@@ -644,9 +742,14 @@ completePhase(activity: any) {
       
       if (existingStatus && existingStatus.startingdate) {
         // Actualizar con endingDate
+        const now = new Date();
+        const newEndingDate = now.toISOString();
+        console.log(`🕐 Completando fase - enviando endingDate: ${newEndingDate}`);
+        console.log(`🕐 Hora local actual: ${now.toLocaleString()}`);
+        
         this.ticketStatusService.update(activity.id, this.ticketId, {
           startingDate: existingStatus.startingdate,
-          endingDate: new Date().toISOString(),
+          endingDate: newEndingDate,
           updatedBy: this.userId,
           crewId: crewIdToUse // <-- AÑADIDO
         }).subscribe({
@@ -771,7 +874,7 @@ private executeSaveAndPhoto(selectedPhases: any[]) {
           }
         } else {
           // Fase no asignada - crear nueva
-          const currentDate = new Date().toISOString();
+          const currentDate = this.getCurrentDateString();
           
           const savePhase$ = this.ticketStatusService.create({
             ticketId: this.ticketId,
@@ -1016,7 +1119,9 @@ uploadPhotoEvidence(taskStatusId: number, activity: any): void {
   formData.append('name', activity.name || 'Photo Evidence');
   formData.append('latitude', (this.latitude || 0).toString());
   formData.append('longitude', (this.longitude || 0).toString());
-  formData.append('date', new Date().toISOString());
+  const now = new Date();
+  formData.append('date', now.toISOString());
+  console.log(`🕐 Subiendo evidencia - fecha: ${now.toISOString()}`);
   formData.append('comment', activity.comment || '');
   formData.append('createdBy', this.userId.toString());
   formData.append('updatedBy', this.userId.toString());
@@ -1084,9 +1189,13 @@ private updateTicketStatusEndingDate(taskStatusId: number): void {
       
       if (existingStatus && existingStatus.startingdate && !existingStatus.endingdate) {
         // Actualizar con endingDate usando la clave compuesta
+        const now = new Date();
+        const newEndingDate = now.toISOString();
+        console.log(`🕐 Actualizando ending date: ${newEndingDate}`);
+        
         this.ticketStatusService.update(taskStatusId, this.ticketId, {
           startingDate: existingStatus.startingdate,
-          endingDate: new Date().toISOString(),
+          endingDate: newEndingDate,
           updatedBy: this.userId,
           crewId: this.crewId || this.currentCrewIdFromLoadEmployees
         }).subscribe({
@@ -1098,7 +1207,7 @@ private updateTicketStatusEndingDate(taskStatusId: number): void {
             if (activity) {
               activity.completed = true;
               activity.locked = true;
-              activity.endDate = new Date().toISOString();
+              activity.endDate = newEndingDate;
               console.log(`✅ Actividad ${activity.name} marcada como completada`);
             }
             
@@ -1138,11 +1247,9 @@ loadCurrentTicketImages() {
       this.photoEvidenceService.getAllPhotoEvidence().subscribe({
         next: (photos) => {
           // Filtrar fotos del ticket actual y asociar fechas
-          this.currentTicketImages = photos
+                      this.currentTicketImages = photos
             .filter(p => p.ticketid === this.ticketId)
             .map(e => {
-              // Log de comparación de nombres
-              console.log('Comparando:', (e.name || '').trim().toLowerCase(), 'con', this.activities.map(a => a.name.trim().toLowerCase()));
               // Buscar el taskStatusId por el nombre de la fase, ignorando mayúsculas y espacios
               const activity = this.activities.find(a => a.name.trim().toLowerCase() === (e.name || '').trim().toLowerCase());
               const taskStatusId = activity ? activity.id : null;
@@ -1408,18 +1515,38 @@ getLastRequiredPhase(): string | null {
   } else if (this.routeCode.includes('CONCRETE')) {
     return 'Clean';
   } else if (this.routeCode.includes('SPOTTER')) {
-    return 'Install Signs';
+    // Para SPOTTER, excluir "Install Signs" y usar "Spotting" como última fase obligatoria
+    return 'Spotting';
   }
   return null;
 }
 
 // 🎯 MÉTODO PARA VERIFICAR SI SE COMPLETÓ LA ÚLTIMA FASE OBLIGATORIA
 isLastRequiredPhaseCompleted(): boolean {
+  // No actualizar a completado si es una ruta SPOTTER
+  if (this.routeCode.includes('SPOTTER')) {
+    console.log('ℹ️ Ruta SPOTTER detectada - no se actualizará automáticamente a completado');
+    return false;
+  }
+  
   const lastRequiredPhase = this.getLastRequiredPhase();
   if (!lastRequiredPhase) return false;
   
   const lastActivity = this.activities.find(activity => activity.name === lastRequiredPhase);
   return lastActivity ? this.isPhaseCompleted(lastActivity) : false;
+}
+
+// Helper method to get current date in local timezone
+private getCurrentDateString(): string {
+  const now = new Date();
+  const isoString = now.toISOString();
+  
+  // Log para debugging de fechas
+  console.log(`🕐 Fecha actual generada: ${isoString}`);
+  console.log(`🕐 Hora local: ${now.toLocaleString()}`);
+  console.log(`🕐 Zona horaria: ${Intl.DateTimeFormat().resolvedOptions().timeZone}`);
+  
+  return isoString;
 }
 
 }

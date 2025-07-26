@@ -6,6 +6,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { DataTableComponent } from '../../../../../shared/data-table/data-table.component';
 import { ConfirmationDialogComponent } from '../../../../../shared/confirmation-dialog/confirmation-dialog.component';
 import { SearchDialogComponent } from '../../../../../shared/search-dialog/search-dialog.component';
+import { BaseDashboardComponent } from '../../../../../shared/base-dashboard.component';
 import { FilterService } from '../../../../../core/services/filter.service';
 import { TicketService, Ticket } from '../../../../../core/services/ticket.service';
 import { PermitedticketsService, PermitedTicket } from '../../../../../core/services/permissions/permitedtickets.service';
@@ -15,6 +16,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { FabButtonComponent } from '../../../../../shared/fab-button/fab-button.component';
 import { environment } from '../../../../../../environments/environment';
 import { MatIconModule } from '@angular/material/icon';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 
 interface ColumnDefinition {
   name: string;
@@ -34,12 +36,13 @@ interface ColumnDefinition {
     ConfirmationDialogComponent,
     SearchDialogComponent,
     FabButtonComponent,
-    MatIconModule
+    MatIconModule,
+    MatProgressSpinnerModule
   ],
   templateUrl: './permits.component.html',
   styleUrl: './permits.component.scss'
 })
-export class PermitsComponent implements OnInit {
+export class PermitsComponent extends BaseDashboardComponent implements OnInit {
   columns: ColumnDefinition[] = [
     {
       name: 'permitNumber',
@@ -99,8 +102,7 @@ export class PermitsComponent implements OnInit {
   ];
 
   tableData: any[] = [];
-  filteredData: any[] = [];
-  allData: any[] = [];
+  isLoading: boolean = false;
 
   // Propiedades para manejo de archivos PDF
   selectedPermitFile: File | null = null;
@@ -114,168 +116,135 @@ export class PermitsComponent implements OnInit {
     private permitedTicketsService: PermitedticketsService,
     private ticketService: TicketService,
     private photoEvidenceService: PhotoEvidenceService,
-    private filterService: FilterService,
+    filterService: FilterService,
     private snackBar: MatSnackBar
   ) {
-    console.log('🔧 PermitsComponent constructor llamado');
-    console.log('🔧 permitService:', this.permitService);
-    console.log('🔧 permitedTicketsService:', this.permitedTicketsService);
-    console.log('🔧 ticketService:', this.ticketService);
-    console.log('🔧 filterService:', this.filterService);
-    console.log('🔧 snackBar:', this.snackBar);
-    console.log('🔧 dialog:', this.dialog);
+    super(filterService);
   }
 
-  ngOnInit(): void {
-    console.log('🚀 PermitsComponent.ngOnInit() iniciado');
+  override ngOnInit(): void {
+    super.ngOnInit();
     this.loadPermits();
-    console.log('📞 loadPermits() llamado');
+  }
+
+  protected override loadData(): void {
+    // Initialize data for filtering
+    this.allData = [...this.tableData];
+    this.filteredData = [...this.allData];
+  }
+
+  // Override text search to include permit fields
+  protected override matchesTextSearch(item: any, searchTerm: string): boolean {
+    const searchableFields = ['permitNumber', 'status', 'startDate', 'expireDate'];
+
+    return searchableFields.some(field => {
+      const value = this.getNestedValue(item, field);
+      if (value) {
+        return String(value).toLowerCase().includes(searchTerm);
+      }
+      return false;
+    });
   }
 
   // Getter for filtered permit data
   get filteredPermitData() {
-    console.log('📊 filteredPermitData getter llamado');
-    console.log('📋 filteredData length:', this.filteredData.length);
-    console.log('📋 tableData length:', this.tableData.length);
-    console.log('📋 allData length:', this.allData.length);
     return this.filteredData;
   }
 
   loadPermits(): void {
-    console.log('🚀 PermitsComponent.loadPermits() iniciado');
-    console.log('📡 URL del servicio:', this.permitService.getApiInfo().baseUrl);
+    this.isLoading = true;
     
     // Limpiar datos existentes
     this.tableData = [];
-    this.allData = [];
-    this.filteredData = [];
     
     // Solo cargar datos reales de la API
     this.permitService.getAllPermits().subscribe({
       next: (permits) => {
-        console.log('✅ Permits API response:', permits);
-        console.log('📊 Número de permisos recibidos:', permits.length);
-        console.log('📋 Tipo de respuesta:', typeof permits);
-        console.log('📋 Es array?', Array.isArray(permits));
-        
         if (!permits || permits.length === 0) {
-          console.log('⚠️ No se encontraron permisos en la API');
+          this.isLoading = false;
           this.snackBar.open('No se encontraron permisos en la API', 'Close', { duration: 3000 });
         } else {
-          console.log('🔄 Cargando datos reales con tickets asociados');
-          console.log('📋 Primer permiso de la API:', permits[0]);
           this.loadAssociatedData(permits);
         }
       },
       error: (err) => {
+        this.isLoading = false;
         console.error('❌ Error loading permits:', err);
-        console.log('🔧 Detalles del error:', {
-          status: err.status,
-          statusText: err.statusText,
-          message: err.message,
-          url: err.url
-        });
         this.snackBar.open(`Error cargando permisos: ${err.status} - ${err.message}`, 'Close', { duration: 5000 });
       }
     });
   }
 
   private loadAssociatedData(permits: Permit[]): void {
-    console.log('🔄 loadAssociatedData iniciado con', permits.length, 'permisos');
-    console.log('📋 Permisos recibidos:', permits.map(p => ({ id: p.PermitId, number: p.permitNumber })));
+    // Mostrar loading state
+    this.snackBar.open('Cargando permisos y asociaciones...', 'Close', { duration: 2000 });
     
-    // Cargar permited tickets y tickets en paralelo
-    this.permitedTicketsService.getAllPermitedTickets().subscribe({
-      next: (permitedTickets) => {
-        console.log('✅ Permited tickets cargados:', permitedTickets);
-        console.log('📋 Número de asociaciones encontradas:', permitedTickets.length);
-        if (permitedTickets.length > 0) {
-          console.log('📋 Primera asociación:', permitedTickets[0]);
-        }
-        
-        this.ticketService.getAllTickets().subscribe({
-          next: (tickets) => {
-            console.log('✅ Tickets cargados:', tickets);
-            console.log('📋 Número de tickets encontrados:', tickets.length);
-            if (tickets.length > 0) {
-              console.log('📋 Primer ticket:', { id: tickets[0].ticketId, code: tickets[0].ticketCode });
+    // Cargar permited tickets y tickets en paralelo usando forkJoin
+    import('rxjs').then(({ forkJoin }) => {
+      forkJoin({
+        permitedTickets: this.permitedTicketsService.getAllPermitedTickets(),
+        tickets: this.ticketService.getAllTickets()
+      }).subscribe({
+        next: ({ permitedTickets, tickets }) => {
+          // Crear mapas para acceso rápido O(1) en lugar de O(n)
+          const permitedTicketsMap = new Map();
+          permitedTickets.forEach(pt => {
+            if (!permitedTicketsMap.has(pt.permitId)) {
+              permitedTicketsMap.set(pt.permitId, []);
             }
+            permitedTicketsMap.get(pt.permitId).push(pt.ticketId);
+          });
+          
+          const ticketsMap = new Map();
+          tickets.forEach(t => {
+            const ticketId = t.ticketId || t.ticketid;
+            ticketsMap.set(ticketId, t);
+          });
+          
+          // Asociar tickets con permisos de manera optimizada
+          this.tableData = permits.map(permit => {
+            const permitId = permit.PermitId || permit.permitId;
+            const associatedTicketIds = permitedTicketsMap.get(permitId) || [];
             
-            // Asociar tickets con permisos
-            this.tableData = permits.map(permit => {
-              const permitId = permit.PermitId || permit.permitId;
-              console.log(`🔍 Procesando permiso ${permit.permitNumber || permit.permitnumber} con ID:`, permitId);
-              
-              const associatedTicketIds = permitedTickets
-                .filter(pt => {
-                  console.log(`🔍 Comparando: permitId=${pt.permitId} vs permit.PermitId=${permitId}`);
-                  return pt.permitId === permitId && permitId !== undefined;
-                })
-          .map(pt => pt.ticketId);
-              
-              console.log(`🔗 Permiso ${permit.permitNumber || permit.permitnumber}: ID=${permitId}, IDs de tickets asociados:`, associatedTicketIds);
-              
-              const associatedTickets = tickets.filter(t => {
-                const ticketId = t.ticketId || t.ticketid;
-                const isAssociated = associatedTicketIds.includes(ticketId || 0);
-                if (isAssociated) {
-                  console.log(`✅ Ticket ${t.ticketCode} (ID: ${ticketId}) asociado al permiso ${permit.permitNumber}`);
-                }
-                return isAssociated;
-              });
-              
-              console.log(`🔗 Permiso ${permit.permitNumber || permit.permitnumber}: Tickets encontrados:`, associatedTickets.length);
-              
-        return { ...permit, tickets: associatedTickets };
-            });
+            const associatedTickets = associatedTicketIds
+              .map((ticketId: number) => ticketsMap.get(ticketId))
+              .filter(Boolean); // Eliminar undefined
             
-            this.allData = [...this.tableData];
-            this.filteredData = [...this.tableData];
-            
-            console.log('✅ Datos finales con tickets asociados:', this.tableData);
-            console.log('📊 Estado final - tableData:', this.tableData.length);
-            console.log('📊 Estado final - filteredData:', this.filteredData.length);
-            
-            // Mostrar resumen de asociaciones
-            this.tableData.forEach(permit => {
-              console.log(`📋 Permiso ${permit.permitNumber}: ${permit.tickets.length} tickets asociados`);
-            });
-
-            // Cargar archivos asociados a todos los permisos
+            return { ...permit, tickets: associatedTickets };
+          });
+          
+          this.loadData(); // Initialize filtering data
+          
+          this.isLoading = false;
+          this.snackBar.open(`${this.tableData.length} permisos cargados exitosamente`, 'Close', { duration: 2000 });
+          
+          // Cargar archivos de manera diferida para no bloquear la UI
+          setTimeout(() => {
             this.loadAllPermitFiles();
-          },
-          error: (err) => {
-            console.error('❌ Error loading tickets:', err);
-            // Continuar solo con permisos
-            this.tableData = permits.map(permit => ({ ...permit, tickets: [] }));
-            this.allData = [...this.tableData];
-            this.filteredData = [...this.tableData];
-          }
-        });
-      },
-      error: (err) => {
-        console.error('❌ Error loading permited tickets:', err);
-        // Continuar solo con permisos
-        this.tableData = permits.map(permit => ({ ...permit, tickets: [] }));
-        this.allData = [...this.tableData];
-        this.filteredData = [...this.tableData];
-      }
+          }, 100);
+        },
+        error: (err) => {
+          console.error('❌ Error loading associated data:', err);
+          // Continuar solo con permisos
+          this.tableData = permits.map(permit => ({ ...permit, tickets: [] }));
+          this.allData = [...this.tableData];
+          this.filteredData = [...this.tableData];
+          this.snackBar.open('Error cargando asociaciones, mostrando solo permisos', 'Close', { duration: 3000 });
+        }
+      });
     });
   }
 
 
 
   public createTestAssociations(): void {
-    console.log('🔗 Creando asociaciones de prueba...');
     
     // Obtener los primeros permisos y tickets disponibles
     this.permitService.getAllPermits().subscribe({
       next: (permits) => {
-        console.log('📋 Permisos disponibles para asociar:', permits.map(p => ({ id: p.PermitId, number: p.permitNumber })));
         
         this.ticketService.getAllTickets().subscribe({
           next: (tickets) => {
-            console.log('📋 Tickets disponibles para asociar:', tickets.map(t => ({ id: t.ticketId, code: t.ticketCode })));
             
             if (permits.length > 0 && tickets.length > 0) {
               // Crear algunas asociaciones de prueba
@@ -308,21 +277,17 @@ export class PermitsComponent implements OnInit {
                 });
               }
               
-              console.log('🔗 Asociaciones de prueba a crear:', testAssociations);
               
               // Crear las asociaciones
               let createdCount = 0;
               testAssociations.forEach((association, index) => {
-                console.log(`🔗 Creando asociación ${index + 1}:`, association);
                 
                 this.permitedTicketsService.createPermitedTickets(association).subscribe({
                   next: (response) => {
                     createdCount++;
-                    console.log(`✅ Asociación ${index + 1} creada:`, response);
                     
                     if (createdCount === testAssociations.length) {
                       this.snackBar.open(`${createdCount} asociaciones de prueba creadas exitosamente`, 'Close', { duration: 3000 });
-                      console.log('🔄 Recargando datos para mostrar las asociaciones...');
                       this.loadPermits(); // Recargar datos para mostrar las asociaciones
                     }
                   },
@@ -351,7 +316,6 @@ export class PermitsComponent implements OnInit {
   }
 
   onCreatePermit(newPermit: any): void {
-    console.log('➕ onCreatePermit llamado con:', newPermit);
     const permitToCreate = {
       ...newPermit,
       createdBy: this.getCurrentUserId(),
@@ -362,8 +326,7 @@ export class PermitsComponent implements OnInit {
       next: (createdPermit) => {
         const permitWithTickets = { ...createdPermit, tickets: [] };
         this.tableData = [...this.tableData, permitWithTickets];
-        this.allData = [...this.tableData];
-        this.filteredData = [...this.tableData];
+        this.loadData(); // Update filtering data
         this.snackBar.open('Permit created successfully', 'Close', { duration: 3000 });
         console.log('Permit created:', createdPermit);
       },
@@ -406,8 +369,7 @@ export class PermitsComponent implements OnInit {
           this.permitService.updatePermit(permit.PermitId, updatedPermit).subscribe({
             next: () => {
               this.tableData[index] = { ...updatedPermit, tickets: permit.tickets };
-              this.allData = [...this.tableData];
-              this.filteredData = [...this.tableData];
+              this.loadData(); // Update filtering data
               this.snackBar.open('Permit updated successfully', 'Close', { duration: 3000 });
             },
             error: err => {
@@ -421,7 +383,6 @@ export class PermitsComponent implements OnInit {
   }
 
   onDelete(permit: any) {
-    console.log('🗑️ onDelete llamado con:', permit);
     
     // Obtener el ID correcto del permiso
     const permitId = permit.PermitId || permit.permitId || permit.permitid;
@@ -432,7 +393,6 @@ export class PermitsComponent implements OnInit {
       return;
     }
     
-    console.log('🎯 ID del permiso a eliminar:', permitId);
     
     const dialogRef = this.dialog.open(ConfirmationDialogComponent, {
       width: '450px',
@@ -448,7 +408,6 @@ export class PermitsComponent implements OnInit {
 
     dialogRef.afterClosed().subscribe(confirmed => {
       if (confirmed) {
-        console.log('🚀 Intentando eliminar permiso con ID:', permitId);
         
         // Primero intentar DELETE
         this.permitService.deletePermit(permitId).subscribe({
@@ -465,7 +424,6 @@ export class PermitsComponent implements OnInit {
             
             // Si DELETE falla, intentar soft delete con PUT
             if (err.status === 404) {
-              console.log('🔄 Intentando soft delete con PUT...');
               
               const softDeleteData = {
                 deletedat: new Date().toISOString(),
@@ -525,7 +483,6 @@ export class PermitsComponent implements OnInit {
   onPermitFileSelected(event: any, permit?: any): void {
     const file = event.target.files[0];
     if (file) {
-      console.log('📄 Archivo seleccionado:', file);
       
       // Validar que sea un PDF
       if (file.type !== 'application/pdf') {
@@ -544,7 +501,6 @@ export class PermitsComponent implements OnInit {
       this.selectedPermitFile = file;
       this.pdfFileError = null;
       
-      console.log('✅ Archivo PDF válido seleccionado:', file.name);
       
       // Si se pasó un permiso específico, subir automáticamente
       if (permit) {
@@ -555,11 +511,9 @@ export class PermitsComponent implements OnInit {
 
   uploadPermitFile(permit: any): void {
     if (!this.selectedPermitFile) {
-      console.log('⚠️ No hay archivo seleccionado');
       return;
     }
 
-    console.log('🚀 Subiendo archivo PDF para permiso:', permit.permitNumber);
     this.uploadingFile = true;
     this.pdfFileError = null;
 
@@ -567,9 +521,6 @@ export class PermitsComponent implements OnInit {
     let ticketId = null;
     if (permit.tickets && permit.tickets.length > 0) {
       ticketId = permit.tickets[0].ticketId || permit.tickets[0].ticketid;
-      console.log('🎫 Usando ticketId del primer ticket asociado:', ticketId);
-    } else {
-      console.log('⚠️ No hay tickets asociados al permiso, ticketId será null');
     }
 
     // Crear FormData siguiendo el patrón de current.component
@@ -579,16 +530,8 @@ export class PermitsComponent implements OnInit {
     formData.append('name', this.selectedPermitFile.name);
     formData.append('comment', `Archivo subido para el permiso: ${permit.permitNumber}`);
 
-    console.log('📦 FormData preparado:', {
-      file: this.selectedPermitFile.name,
-      ticketId: ticketId,
-      name: this.selectedPermitFile.name,
-      comment: `Archivo subido para el permiso: ${permit.permitNumber}`
-    });
-
     this.photoEvidenceService.uploadPhotoEvidence(formData).subscribe({
       next: (response) => {
-        console.log('✅ Archivo subido exitosamente:', response);
         this.uploadingFile = false;
         this.selectedPermitFile = null;
         this.snackBar.open(`Archivo PDF subido exitosamente para ${permit.permitNumber}`, 'Close', { duration: 3000 });
@@ -606,31 +549,21 @@ export class PermitsComponent implements OnInit {
   }
 
   public checkApiStatus(): void {
-    console.log('🔍 Verificando estado de la API...');
-    console.log('📡 URL del servicio de permisos:', this.permitService.getApiInfo().baseUrl);
     
     // Hacer petición directa a la API de permisos
     fetch(this.permitService.getApiInfo().baseUrl)
       .then(response => {
-        console.log('🔍 Respuesta directa de permisos:', response.status, response.statusText);
-        console.log('📋 Headers de respuesta:', response.headers);
         return response.json();
       })
       .then(data => {
-        console.log('📋 Datos crudos de permisos:', data);
-        console.log('📊 Número de permisos:', data.permits?.length || 0);
         
         if (data.permits && data.permits.length > 0) {
-          console.log('📋 Primer permiso crudo:', data.permits[0]);
-          console.log('🎯 Campos disponibles:', Object.keys(data.permits[0]));
         }
         
         // Si hay datos, intentar cargarlos
         if (data.permits && data.permits.length > 0) {
-          console.log('🔄 Intentando cargar datos reales...');
           this.loadAssociatedData(data.permits);
         } else {
-          console.log('⚠️ No hay permisos en la respuesta de la API');
         }
       })
       .catch(error => {
@@ -639,8 +572,6 @@ export class PermitsComponent implements OnInit {
   }
 
   public forceLoadFromApi(): void {
-    console.log('🔄 Forzando carga de datos desde la API...');
-    console.log('📡 URL del servicio:', this.permitService.getApiInfo().baseUrl);
     
     // Limpiar datos existentes
     this.tableData = [];
@@ -650,12 +581,9 @@ export class PermitsComponent implements OnInit {
     // Hacer una petición directa para diagnosticar
     fetch(this.permitService.getApiInfo().baseUrl)
       .then(response => {
-        console.log('🔍 Respuesta directa de la API:', response.status, response.statusText);
         return response.json();
       })
       .then(data => {
-        console.log('📋 Datos crudos de la API:', data);
-        console.log('📊 Número de permisos en respuesta cruda:', data.permits?.length || 0);
       })
       .catch(error => {
         console.error('❌ Error en petición directa:', error);
@@ -665,89 +593,29 @@ export class PermitsComponent implements OnInit {
     this.loadPermits();
   }
 
-  public testDeleteEndpoint(): void {
-    console.log('🧪 Probando endpoint de eliminación...');
-    
-    if (this.tableData.length === 0) {
-      console.log('⚠️ No hay permisos para probar');
-      this.snackBar.open('No hay permisos para probar eliminación', 'Close', { duration: 3000 });
-      return;
-    }
-    
-    const firstPermit = this.tableData[0];
-    const permitId = firstPermit.PermitId || firstPermit.permitId || firstPermit.permitid;
-    
-    console.log('🎯 Probando endpoint DELETE para el permiso ID:', permitId);
-    console.log('📋 Permiso a eliminar:', firstPermit);
-    
-    // Probar el endpoint DELETE estándar
-    const deleteUrl = `${environment.permitServiceUrl}/${permitId}`;
-    console.log('🔍 URL de eliminación:', deleteUrl);
-    
-    // Probar OPTIONS primero
-    fetch(deleteUrl, { method: 'OPTIONS' })
-      .then(response => {
-        console.log('✅ OPTIONS response:', response.status, response.headers.get('allow'));
-        console.log('📋 Headers completos:', response.headers);
-      })
-      .catch(error => {
-        console.log('❌ OPTIONS error:', error);
-      });
-    
-    // Probar DELETE
-    fetch(deleteUrl, { method: 'DELETE' })
-      .then(response => {
-        console.log('✅ DELETE response:', response.status, response.statusText);
-        if (response.ok) {
-          console.log('🎉 ¡Endpoint DELETE funciona!');
-          this.snackBar.open('¡Endpoint DELETE funciona!', 'Close', { duration: 3000 });
-          return response.json();
-        } else {
-          console.log('❌ DELETE falló con status:', response.status);
-          this.snackBar.open(`DELETE falló: ${response.status}`, 'Close', { duration: 3000 });
-          return null;
-        }
-      })
-      .then(data => {
-        if (data) {
-          console.log('📋 Respuesta del servidor:', data);
-        }
-      })
-      .catch(error => {
-        console.log('❌ DELETE error:', error);
-        this.snackBar.open(`Error en DELETE: ${error.message}`, 'Close', { duration: 3000 });
-      });
-  }
+
 
   loadPermitFiles(permitId: number): void {
-    console.log('📁 Cargando archivos para el permiso:', permitId);
-    
     // Buscar el permiso para obtener sus tickets asociados
     const permit = this.tableData.find(p => p.PermitId === permitId);
     if (!permit) {
-      console.log('❌ Permiso no encontrado:', permitId);
       return;
     }
 
     // Obtener los ticketIds asociados al permiso
     const ticketIds = permit.tickets?.map((t: any) => t.ticketId || t.ticketid).filter((id: any) => id) || [];
-    console.log('🎫 TicketIds asociados al permiso:', ticketIds);
 
     if (ticketIds.length === 0) {
-      console.log('⚠️ No hay tickets asociados al permiso, no se pueden cargar archivos');
       this.permitFiles[permitId] = [];
       return;
     }
 
     this.photoEvidenceService.getAllPhotoEvidence().subscribe({
       next: (files) => {
-        console.log('✅ Archivos cargados:', files);
-        
         // Filtrar archivos que pertenezcan a los tickets del permiso y NO estén eliminados
         const permitFiles = files.filter((file: any) => {
           // Excluir archivos eliminados
           if (file.deletedat) {
-            console.log(`🗑️ Excluyendo archivo eliminado: ${file.name} (deletedat: ${file.deletedat})`);
             return false;
           }
           
@@ -756,8 +624,6 @@ export class PermitsComponent implements OnInit {
         });
         
         this.permitFiles[permitId] = permitFiles;
-        console.log(`📁 Archivos activos asociados al permiso ${permitId}:`, permitFiles);
-        console.log(`📊 Total de archivos encontrados: ${files.length}, Archivos activos: ${permitFiles.length}`);
       },
       error: (error) => {
         console.error('❌ Error cargando archivos del permiso:', error);
@@ -766,16 +632,12 @@ export class PermitsComponent implements OnInit {
   }
 
   deletePermitFile(photoId: number, permitId: number): void {
-    console.log('🗑️ Eliminando archivo:', photoId, 'del permiso:', permitId);
-    
     this.photoEvidenceService.deletePhotoEvidence(photoId).subscribe({
       next: () => {
-        console.log('✅ Archivo eliminado exitosamente');
         this.snackBar.open('Archivo eliminado exitosamente', 'Close', { duration: 3000 });
         
         // Limpiar inmediatamente el array de archivos del permiso
         this.permitFiles[permitId] = [];
-        console.log('🔄 Archivos del permiso limpiados inmediatamente');
         
         // Recargar archivos del permiso para asegurar sincronización
         setTimeout(() => {
@@ -840,33 +702,66 @@ export class PermitsComponent implements OnInit {
   }
 
   loadAllPermitFiles(): void {
-    console.log('📁 Cargando archivos para todos los permisos...');
+    // Solo cargar archivos si hay permisos
+    if (this.tableData.length === 0) {
+      return;
+    }
     
     this.photoEvidenceService.getAllPhotoEvidence().subscribe({
       next: (files) => {
-        console.log('✅ Todos los archivos cargados:', files);
-        
-        // Agrupar archivos por permitId usando ticketIds asociados
-        this.tableData.forEach(permit => {
-          const permitId = permit.PermitId;
-          
-          // Obtener los ticketIds asociados al permiso
-          const ticketIds = permit.tickets?.map((t: any) => t.ticketId || t.ticketid).filter((id: any) => id) || [];
-          
-          // Filtrar archivos que pertenezcan a los tickets del permiso y NO estén eliminados
-          const permitFiles = files.filter((file: any) => {
-            // Excluir archivos eliminados
-            if (file.deletedat) {
-              return false;
+        // Crear un mapa de archivos por ticketId para acceso rápido
+        const filesByTicketId = new Map();
+        files.forEach(file => {
+          if (!file.deletedat) { // Solo archivos no eliminados
+            const ticketId = file.ticketId;
+            if (!filesByTicketId.has(ticketId)) {
+              filesByTicketId.set(ticketId, []);
             }
-            
-            return ticketIds.includes(file.ticketId) || 
-                   file.comment?.includes(`permiso: ${permit.permitNumber}`);
-          });
-          
-          this.permitFiles[permitId] = permitFiles;
-          console.log(`📁 Permiso ${permit.permitNumber}: ${permitFiles.length} archivos activos (tickets: ${ticketIds.join(', ')})`);
+            filesByTicketId.get(ticketId).push(file);
+          }
         });
+        
+        // Procesar permisos en lotes para no bloquear la UI
+        const batchSize = 10;
+        let currentIndex = 0;
+        
+        const processBatch = () => {
+          const endIndex = Math.min(currentIndex + batchSize, this.tableData.length);
+          
+          for (let i = currentIndex; i < endIndex; i++) {
+            const permit = this.tableData[i];
+            const permitId = permit.PermitId;
+            
+            // Obtener los ticketIds asociados al permiso
+            const ticketIds = permit.tickets?.map((t: any) => t.ticketId || t.ticketid).filter((id: any) => id) || [];
+            
+            // Recolectar archivos de todos los tickets asociados
+            const permitFiles: any[] = [];
+            ticketIds.forEach((ticketId: number) => {
+              const ticketFiles = filesByTicketId.get(ticketId) || [];
+              permitFiles.push(...ticketFiles);
+            });
+            
+            // Agregar archivos que mencionen el permiso en el comentario
+            files.forEach(file => {
+              if (!file.deletedat && file.comment?.includes(`permiso: ${permit.permitNumber}`)) {
+                permitFiles.push(file);
+              }
+            });
+            
+            this.permitFiles[permitId] = permitFiles;
+          }
+          
+          currentIndex = endIndex;
+          
+          // Continuar con el siguiente lote si hay más permisos
+          if (currentIndex < this.tableData.length) {
+            setTimeout(processBatch, 10); // Pequeña pausa para no bloquear la UI
+          }
+        };
+        
+        // Iniciar el procesamiento por lotes
+        processBatch();
       },
       error: (error) => {
         console.error('❌ Error cargando todos los archivos:', error);

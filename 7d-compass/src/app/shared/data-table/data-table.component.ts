@@ -35,6 +35,7 @@ export class DataTableComponent<T> implements AfterViewInit {
   @Input() data: T[] = [];
   @Input() columns: ColumnDefinition[] = [];
   @Input() showEyeButton: boolean = false;
+  @Input() showUploadButton: boolean = false;
   @Input() pageSizeOptions: number[] = [5, 10, 20];
   @Input() hasFiles: (element: T) => boolean = () => false;
 
