@@ -349,10 +349,20 @@ getCrewDetails(crewId: number) {
 
       details.forEach((data: any) => {
         if (!uniqueLocationsMap.has(data.ticketid)) {
-          const formattedAddress = this.formatAddress(data);
+          // ✅ Usar directamente la dirección del backend si está disponible
+          const rawAddress = data.address || this.formatAddress(data);
+          const address = this.cleanAddress(rawAddress);
+          
+          // 🔍 DEBUG: Ver qué datos llegan del backend
+          console.log(`🔍 Ticket ${data.ticketid}:`, {
+            backendAddress: data.address,
+            formattedAddress: this.formatAddress(data),
+            rawAddress: rawAddress,
+            finalAddress: address
+          });
           
           uniqueLocationsMap.set(data.ticketid, {
-            address: formattedAddress, // ✅ USAR formattedAddress directamente
+            address: address, // ✅ USAR la dirección del backend directamente
             job: data.contractunit_name || '',
             surface: data.surfacetotal,
             width: data.width,
@@ -505,24 +515,32 @@ private normalizeAddress(address: string): string {
   return normalized;
 }
 
+// ✅ Format address to remove coordinates, city, and state
+private cleanAddress(address: string): string {
+  if (!address) return 'Address not available';
+
+  // Remove coordinates (numbers with decimal points in parentheses)
+  let formattedAddress = address.replace(/\([^)]*\)/g, '').trim();
+
+  // Remove common city/state patterns
+  // Remove ", Chicago, IL" or similar patterns
+  formattedAddress = formattedAddress.replace(/,\s*[^,]+,\s*[A-Z]{2}.*$/i, '');
+
+  // Remove ", Estados Unidos" or similar country names
+  formattedAddress = formattedAddress.replace(/,\s*[^,]+$/, '');
+
+  // Remove any remaining trailing commas and whitespace
+  formattedAddress = formattedAddress.replace(/,\s*$/, '').trim();
+
+  return formattedAddress || 'Address not available';
+}
+
 // Helper method to get display address with ticket count for same locations
 private getDisplayAddress(location: any, allLocations: any[]): string {
   const baseAddress = location.address;
   
-  // Count how many tickets have the same address (compare normalized versions)
-  const sameAddressCount = allLocations.filter(loc => 
-    this.normalizeAddress(loc.address) === this.normalizeAddress(baseAddress)
-  ).length;
-  
-  // If there's only one ticket for this address, return the address as is
-  if (sameAddressCount <= 1) {
-    return baseAddress; // ✅ Mantener el formato original: "3558 - 3655 W 84TH PL"
-  }
-  
-  // If there are multiple tickets for the same address, add ticket info
-  // Use ticketcode if available, otherwise fallback to ticketid
-  const ticketIdentifier = location.ticketcode || `ID ${location.ticketid}`;
-  return `${baseAddress} (${ticketIdentifier})`; // ✅ Mantener formato: "3558 - 3655 W 84TH PL (TICKET-001)"
+  // ✅ Siempre devolver solo la dirección sin ticket ID
+  return baseAddress; // ✅ Mantener el formato original: "3558 - 3655 W 84TH PL"
 }
 
 private async geocodeRemainingLocations(): Promise<void> {
