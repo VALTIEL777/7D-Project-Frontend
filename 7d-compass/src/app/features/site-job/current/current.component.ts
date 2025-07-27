@@ -52,6 +52,9 @@ export class CurrentComponent {
 
   // Set para rastrear imágenes que ya han cargado
   loadedImageIds = new Set<number>();
+  
+  // Set para rastrear actividades que están subiendo fotos
+  uploadingActivities = new Set<number>();
 
   employeeList: any[] = [];  // Lista completa de empleados
 teamLeader: string = '';   // Nombre del líder del equipo
@@ -1127,6 +1130,10 @@ uploadPhotoEvidence(taskStatusId: number, activity: any): void {
     console.error('❌ userId es undefined o null');
     return;
   }
+  
+  // ✅ Agregar actividad al set de carga
+  this.uploadingActivities.add(activity.id);
+  
   const formData = new FormData();
   activity.selectedFiles.forEach((file: File, index: number) => {
     formData.append('file', file);
@@ -1148,6 +1155,9 @@ uploadPhotoEvidence(taskStatusId: number, activity: any): void {
   formData.append('updatedBy', this.userId.toString());
   this.photoEvidenceService.uploadPhotoEvidence(formData).subscribe({
     next: (res) => {
+      // ✅ Remover actividad del set de carga
+      this.uploadingActivities.delete(activity.id);
+      
       this.clearPhotoInputsActivity(activity);
       this.loadCurrentTicketImages();
 
@@ -1161,6 +1171,8 @@ uploadPhotoEvidence(taskStatusId: number, activity: any): void {
       this.completePhase(activity);
     },
     error: (err) => {
+      // ✅ Remover actividad del set de carga en caso de error
+      this.uploadingActivities.delete(activity.id);
       console.error('❌ Error subiendo evidencia:', err);
     }
   });
@@ -1171,6 +1183,11 @@ clearPhotoInputsActivity(activity: any) {
   activity.selectedFiles = [];
   activity.imagePreviews = [];
   activity.comment = '';
+}
+
+// ✅ Helper method para verificar si una actividad está subiendo fotos
+isUploading(activity: any): boolean {
+  return this.uploadingActivities.has(activity.id);
 }
 
 // ✅ NUEVO MÉTODO: Preguntar si quiere marcar la fase como completada

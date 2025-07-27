@@ -998,3 +998,32 @@
   font-weight: 500;
   color: #3498db;
 }
+
+// ✅ Estilos para el spinner de upload
+.upload-spinner {
+  margin-right: 8px;
+  
+  ::ng-deep .mat-spinner-circle {
+    stroke: #ffffff !important;
+  }
+}
+
+.submit-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+  
+  mat-icon {
+    margin-right: 4px;
+  }
+  
+  span {
+    white-space: nowrap;
+  }
+}

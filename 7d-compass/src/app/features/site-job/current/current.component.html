@@ -12,10 +12,6 @@
         <mat-icon>my_location</mat-icon>
         Zoom to Location
       </button>
-      <button mat-stroked-button (click)="debugMapState()" class="debug-btn" title="Debug Map State">
-        <mat-icon>bug_report</mat-icon>
-        Debug
-      </button>
     </div>
   </div>
 
@@ -307,10 +303,11 @@
             color="accent"
             class="submit-btn"
             (click)="uploadPhotoEvidence(activity.id, activity)"
-            [disabled]="!activity.selectedFiles || activity.selectedFiles.length === 0"
+            [disabled]="!activity.selectedFiles || activity.selectedFiles.length === 0 || isUploading(activity)"
           >
-            <mat-icon>cloud_upload</mat-icon>
-            Upload evidence
+            <mat-icon *ngIf="!isUploading(activity)">cloud_upload</mat-icon>
+            <mat-spinner *ngIf="isUploading(activity)" diameter="20" class="upload-spinner"></mat-spinner>
+            <span>{{ isUploading(activity) ? 'Uploading...' : 'Upload evidence' }}</span>
           </button>
         </mat-card>
       </div>
