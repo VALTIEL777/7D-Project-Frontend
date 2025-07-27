@@ -232,15 +232,15 @@ crewDetails: any[] = [];
         this.assignedRoute = assignedRoute;
         this.assignedRouteId = assignedRoute?.routeid || assignedRoute?.routeId;
         
-        // 🔍 DEBUG: Log de datos de la ruta recibidos
-        console.log('🔍 Datos de la ruta recibidos:', this.assignedRoute);
-        console.log('🎫 Tickets de la ruta:', this.assignedRoute?.tickets);
-        if (this.assignedRoute?.tickets) {
-          console.log('📋 Detalle de tickets con queue:');
-          this.assignedRoute.tickets.forEach((ticket: any, index: number) => {
-            console.log(`  ${index + 1}. Ticket ${ticket.ticketId || ticket.ticketid} - Queue: ${ticket.queue} - Address: ${ticket.address}`);
-          });
-        }
+        // 🔍 DEBUG: Log de datos de la ruta recibidos (COMENTADO)
+        // console.log('🔍 Datos de la ruta recibidos:', this.assignedRoute);
+        // console.log('🎫 Tickets de la ruta:', this.assignedRoute?.tickets);
+        // if (this.assignedRoute?.tickets) {
+        //   console.log('📋 Detalle de tickets con queue:');
+        //   this.assignedRoute.tickets.forEach((ticket: any, index: number) => {
+        //     console.log(`  ${index + 1}. Ticket ${ticket.ticketId || ticket.ticketid} - Queue: ${ticket.queue} - Address: ${ticket.address}`);
+        //   });
+        // }
         
         this.updateLeafletRoutes();
         
@@ -350,10 +350,9 @@ getCrewDetails(crewId: number) {
       details.forEach((data: any) => {
         if (!uniqueLocationsMap.has(data.ticketid)) {
           const formattedAddress = this.formatAddress(data);
-          const normalizedAddress = this.normalizeAddress(formattedAddress);
           
           uniqueLocationsMap.set(data.ticketid, {
-            address: normalizedAddress,
+            address: formattedAddress, // ✅ USAR formattedAddress directamente
             job: data.contractunit_name || '',
             surface: data.surfacetotal,
             width: data.width,
@@ -384,10 +383,10 @@ getCrewDetails(crewId: number) {
         (location as any).displayAddress = this.getDisplayAddress(location, this.remainingLocations);
       });
 
-      // 🔍 DEBUG: Log de remainingLocations antes de ordenar
-      console.log('📍 remainingLocations ANTES de ordenar:', this.remainingLocations.map((loc, idx) => 
-        `${idx + 1}. Ticket ${(loc as any).ticketid} - Address: ${(loc as any).displayAddress}`
-      ));
+      // 🔍 DEBUG: Log de remainingLocations antes de ordenar (COMENTADO)
+      // console.log('📍 remainingLocations ANTES de ordenar:', this.remainingLocations.map((loc, idx) => 
+      //   `${idx + 1}. Ticket ${(loc as any).ticketid} - Address: ${(loc as any).displayAddress}`
+      // ));
 
       // ✅ Geocodificar direcciones antes de generar el mapa
       this.geocodeRemainingLocations().then(async () => {
@@ -397,10 +396,10 @@ getCrewDetails(crewId: number) {
         // ✅ Ordenar remainingLocations según el orden de la ruta asignada
         this.orderLocationsByRoute();
         
-        // 🔍 DEBUG: Log de remainingLocations DESPUÉS de ordenar
-        console.log('📍 remainingLocations DESPUÉS de ordenar:', this.remainingLocations.map((loc, idx) => 
-          `${idx + 1}. Ticket ${(loc as any).ticketid} - Address: ${(loc as any).displayAddress}`
-        ));
+        // 🔍 DEBUG: Log de remainingLocations DESPUÉS de ordenar (COMENTADO)
+        // console.log('📍 remainingLocations DESPUÉS de ordenar:', this.remainingLocations.map((loc, idx) => 
+        //   `${idx + 1}. Ticket ${(loc as any).ticketid} - Address: ${(loc as any).displayAddress}`
+        // ));
         
         this.updateLeafletRoutes();
       }).catch(error => {
@@ -510,20 +509,20 @@ private normalizeAddress(address: string): string {
 private getDisplayAddress(location: any, allLocations: any[]): string {
   const baseAddress = location.address;
   
-  // Count how many tickets have the same address
+  // Count how many tickets have the same address (compare normalized versions)
   const sameAddressCount = allLocations.filter(loc => 
     this.normalizeAddress(loc.address) === this.normalizeAddress(baseAddress)
   ).length;
   
   // If there's only one ticket for this address, return the address as is
   if (sameAddressCount <= 1) {
-    return baseAddress;
+    return baseAddress; // ✅ Mantener el formato original: "3558 - 3655 W 84TH PL"
   }
   
   // If there are multiple tickets for the same address, add ticket info
   // Use ticketcode if available, otherwise fallback to ticketid
   const ticketIdentifier = location.ticketcode || `ID ${location.ticketid}`;
-  return `${baseAddress} (${ticketIdentifier})`;
+  return `${baseAddress} (${ticketIdentifier})`; // ✅ Mantener formato: "3558 - 3655 W 84TH PL (TICKET-001)"
 }
 
 private async geocodeRemainingLocations(): Promise<void> {
@@ -803,10 +802,10 @@ private orderLocationsByRoute(): void {
     return aQueue - bQueue;
   });
   
-  console.log('✅ Ubicaciones ordenadas según queue de RouteTickets');
-  console.log('📍 Orden final:', this.remainingLocations.map((loc, idx) => 
-    `${idx + 1}. Queue ${routeOrderMap.get((loc as any).ticketid) ?? 'N/A'}: ${loc.address}`
-  ));
+  // console.log('✅ Ubicaciones ordenadas según queue de RouteTickets');
+  // console.log('📍 Orden final:', this.remainingLocations.map((loc, idx) => 
+  //   `${idx + 1}. Queue ${routeOrderMap.get((loc as any).ticketid) ?? 'N/A'}: ${loc.address}`
+  // ));
 }
 
 // Método para ordenar tickets según el orden correcto
@@ -875,25 +874,25 @@ debugMapState(): void {
   // Show all locations on map
   this.showAllLocations();
   
-  // ✅ Debug: Mostrar información del orden basado en RouteTickets
-  console.log('🔍 === DEBUG ORDEN DE UBICACIONES (RouteTickets) ===');
-  console.log('📍 Ruta asignada:', this.assignedRoute?.routecode);
-  console.log('📍 Tickets en la ruta (RouteTickets):');
-  if (this.assignedRoute?.tickets) {
-    this.assignedRoute.tickets.forEach((ticket: any) => {
-      console.log(`  Queue ${ticket.queue}: Ticket ${ticket.ticketId || ticket.ticketid} - Address: ${ticket.address}`);
-    });
-  }
+  // ✅ Debug: Mostrar información del orden basado en RouteTickets (COMENTADO)
+  // console.log('🔍 === DEBUG ORDEN DE UBICACIONES (RouteTickets) ===');
+  // console.log('📍 Ruta asignada:', this.assignedRoute?.routecode);
+  // console.log('📍 Tickets en la ruta (RouteTickets):');
+  // if (this.assignedRoute?.tickets) {
+  //   this.assignedRoute.tickets.forEach((ticket: any) => {
+  //     console.log(`  Queue ${ticket.queue}: Ticket ${ticket.ticketId || ticket.ticketid} - Address: ${ticket.address}`);
+  //   });
+  // }
   
-  console.log('📍 Ubicaciones en remainingLocations (ordenadas por queue):');
-  this.remainingLocations.forEach((location, index) => {
-    const ticketId = (location as any).ticketid;
-    const queue = this.assignedRoute?.tickets?.find((t: any) => 
-      (t.ticketId || t.ticketid) === ticketId
-    )?.queue ?? 'N/A';
-    console.log(`  ${index + 1}. Queue ${queue}: Ticket ${ticketId} - Address: ${location.address}`);
-  });
-  console.log('🔍 === FIN DEBUG ===');
+  // console.log('📍 Ubicaciones en remainingLocations (ordenadas por queue):');
+  // this.remainingLocations.forEach((location, index) => {
+  //   const ticketId = (location as any).ticketid;
+  //   const queue = this.assignedRoute?.tickets?.find((t: any) => 
+  //     (t.ticketId || t.ticketid) === ticketId
+  //   )?.queue ?? 'N/A';
+  //   console.log(`  ${index + 1}. Queue ${queue}: Ticket ${ticketId} - Address: ${location.address}`);
+  // });
+  // console.log('🔍 === FIN DEBUG ===');
 }
 
 }
