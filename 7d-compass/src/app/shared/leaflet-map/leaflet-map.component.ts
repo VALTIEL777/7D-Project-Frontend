@@ -83,7 +83,7 @@ export class LeafletMapComponent implements OnInit, OnDestroy, AfterViewInit, On
   private iconCache = new Map<string, L.DivIcon>(); // 6. Icon Cache
 
   // Debounce timer
-  private updateTimeout?: number; // 7. Debounced Updates
+  private updateTimeout?: any; // 7. Debounced Updates
 
   // Add missing previousRoutes and previousVisibleRoutes
   private previousRoutes: RouteData[] = [];
@@ -115,7 +115,7 @@ export class LeafletMapComponent implements OnInit, OnDestroy, AfterViewInit, On
     if (this.updateTimeout) {
       clearTimeout(this.updateTimeout);
     }
-    this.updateTimeout = window.setTimeout(() => {
+    this.updateTimeout = setTimeout(() => {
       this.ngZone.runOutsideAngular(() => {
         this.incrementalUpdateMap();
       });
@@ -352,11 +352,11 @@ export class LeafletMapComponent implements OnInit, OnDestroy, AfterViewInit, On
       if (!this.shouldShowRoute(route)) {
         return;
       }
-      
+
       // For CURRENT routes, always show them regardless of visibleRoutes
-      const visible = route.type === 'CURRENT' ? true : 
+      const visible = route.type === 'CURRENT' ? true :
         (this.visibleRoutes.size === 0 ? false : this.visibleRoutes.has(route.routeId));
-      
+
       if (!visible) {
         return;
       }
@@ -405,7 +405,7 @@ export class LeafletMapComponent implements OnInit, OnDestroy, AfterViewInit, On
               // Add ticket markers
       const processedAddresses = new Set<string>();
       console.log(`🗺️ Procesando ${route.tickets.length} tickets para ruta ${route.routeCode}`);
-      
+
       route.tickets.forEach((ticket, ticketIndex) => {
         console.log(`🗺️ Creando marcador para ticket ${ticketIndex + 1}/${route.tickets.length}:`, ticket);
         const marker = this.createMarker(ticket, route, ticketIndex, routeColor, processedAddresses);
@@ -501,7 +501,7 @@ export class LeafletMapComponent implements OnInit, OnDestroy, AfterViewInit, On
     console.log(`🗺️ Route:`, route);
     console.log(`🗺️ Index:`, index);
     console.log(`🗺️ Color:`, color);
-    
+
     if (!ticket.address) {
       console.warn(`⚠️ No address for ticket:`, ticket);
       return null;
@@ -537,11 +537,11 @@ export class LeafletMapComponent implements OnInit, OnDestroy, AfterViewInit, On
     }
     // Para rutas CURRENT, usar el ticketId como etiqueta, para otras usar queue + 1
     const markerLabel = route.type === 'CURRENT' ? ticket.ticketId.toString() : (ticket.queue + 1).toString();
-    
+
     // Para rutas CURRENT, usar icono más grande
     const iconSize = route.type === 'CURRENT' ? 40 : 32;
     const fontSize = route.type === 'CURRENT' ? '16px' : '14px';
-    
+
     const icon = L.divIcon({
       className: 'custom-marker',
       html: `<div class="marker-content" style="background-color: ${color}; color: white; border-radius: 50%; width: ${iconSize}px; height: ${iconSize}px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: ${fontSize}; border: 2px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.4); cursor: pointer; text-shadow: 1px 1px 1px rgba(0,0,0,0.5);">${markerLabel}</div>`,
@@ -572,15 +572,15 @@ export class LeafletMapComponent implements OnInit, OnDestroy, AfterViewInit, On
         <p><strong>Coordinates:</strong> [${markerLocation[0].toFixed(6)}, ${markerLocation[1].toFixed(6)}]</p>
       </div>
     `;
-    
+
     marker.bindPopup(popupContent);
-    
+
     console.log(`✅ Marcador creado exitosamente:`, marker);
     console.log(`✅ Ubicación del marcador:`, markerLocation);
     console.log(`✅ Etiqueta del marcador:`, markerLabel);
     console.log(`✅ Tamaño del icono:`, iconSize);
     console.log(`🗺️ === createMarker COMPLETED ===`);
-    
+
     return marker;
   }
 
@@ -661,7 +661,7 @@ export class LeafletMapComponent implements OnInit, OnDestroy, AfterViewInit, On
     console.log('📍 ShowPolylines:', this.showPolylines);
     console.log('📍 Map available:', !!this.map);
     console.log('📍 RouteLayers count:', this.routeLayers.size);
-    
+
     this.routeLayers.forEach((layer, routeId) => {
       console.log(`📍 Route ${routeId}:`, {
         markers: layer.markers.length,
@@ -669,7 +669,7 @@ export class LeafletMapComponent implements OnInit, OnDestroy, AfterViewInit, On
         group: !!layer.group
       });
     });
-    
+
     console.log('🔍 === END LEAFLET MAP DEBUG ===');
   }
 }
