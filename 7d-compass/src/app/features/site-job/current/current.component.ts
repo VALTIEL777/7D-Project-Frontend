@@ -33,7 +33,7 @@ import { HttpClient } from '@angular/common/http';
     MatDividerModule,
     CommonModule,
     MATERIAL_MODULES,
-    SitejobSidenavbarComponent, 
+    SitejobSidenavbarComponent,
     FormsModule,
     LeafletMapComponent // <-- Agregado aquí
   ],
@@ -163,7 +163,7 @@ ngOnInit() {
     this.location.streetTo = `${parsedLocation.toaddressnumber || ''} ${parsedLocation.toaddressstreet || ''} ${parsedLocation.toaddresscardinal || ''}`.trim();
     if (!this.location.streetFrom) this.location.streetFrom = 'Not available';
     if (!this.location.streetTo) this.location.streetTo = 'Not available';
-    
+
     // 🗺️ Actualizar mapa inmediatamente si la ubicación viene del localStorage
     setTimeout(() => {
       this.updateLeafletRoutes();
@@ -320,22 +320,22 @@ loadAllPhases() {
 // ✅ NUEVO MÉTODO: Determinar si una fase es opcional según el tipo de ruta
 private isPhaseOptional(phaseName: string, routeCode: string): boolean {
   const phaseNameLower = phaseName.toLowerCase();
-  
+
   // Fases opcionales para rutas ASPHALT
   if (routeCode.includes('ASPHALT')) {
     return ['stripping', 'install signs'].includes(phaseNameLower);
   }
-  
+
   // Fases opcionales para rutas CONCRETE
   if (routeCode.includes('CONCRETE')) {
     return ['steel plate pickup', 'install signs'].includes(phaseNameLower);
   }
-  
+
   // Fases opcionales para rutas SPOTTER
   if (routeCode.includes('SPOTTER')) {
     return ['install signs'].includes(phaseNameLower);
   }
-  
+
   // Por defecto, todas las fases son obligatorias
   return false;
 }
@@ -438,13 +438,13 @@ this.permits = details.reduce((acc: { id: number; number: string }[], d: any) =>
         console.log('📍 Dirección por defecto del backend:', this.location.address);
         console.log('📝 Descripción asignada:', this.location.description);
         console.log('📍 Dirección completa:', this.location.fullAddress);
-        
+
         // 🗺️ Geocodificar la dirección para obtener coordenadas
         this.geocodeAddress(this.location.address);
       } else if (this.isLocationFromStorage) {
         console.log('📍 Dirección seleccionada manualmente:', this.location);
         console.log('📝 Descripción desde localStorage:', this.location.description);
-        
+
         // 🗺️ Geocodificar la dirección del localStorage si no tiene coordenadas
         if (!this.location.lat || !this.location.lng) {
           this.geocodeAddress(this.location.address);
@@ -469,14 +469,14 @@ loadLinkedPhases() {
   this.ticketStatusService.getByTicket(this.ticketId).subscribe({
   next: (ticketStatuses: any[] | null) => {
     const safeStatuses = Array.isArray(ticketStatuses) ? ticketStatuses : [];
-    
+
     console.log('🔍 === DEBUGGING FECHAS ===');
     console.log('📋 TicketStatuses recibidos del backend:', safeStatuses);
-    
+
     this.activities.forEach(activity => {
       const activityId = Number(activity.id);
       const existingStatus = safeStatuses.find(ts => Number(ts.taskstatusid) === activityId);
-      
+
       if (existingStatus) {
         // ✅ Si existe TicketStatus pero ambas fechas son NULL, está "asignada" pero no iniciada
         if (!existingStatus.startingdate && !existingStatus.endingdate) {
@@ -499,14 +499,14 @@ loadLinkedPhases() {
           console.log(`🕐 startingdate del backend: ${existingStatus.startingdate}`);
           console.log(`🕐 startDate asignado: ${activity.startDate}`);
           console.log(`🕐 Tipo de dato: ${typeof existingStatus.startingdate}`);
-          
+
           // Verificar si la fecha del backend tiene hora
           if (existingStatus.startingdate) {
             const backendDate = new Date(existingStatus.startingdate);
             console.log(`🕐 Fecha del backend convertida: ${backendDate.toISOString()}`);
             console.log(`🕐 Hora del backend: ${backendDate.getHours()}:${backendDate.getMinutes()}:${backendDate.getSeconds()}`);
             console.log(`🕐 ¿Tiene hora? ${backendDate.getHours() !== 0 || backendDate.getMinutes() !== 0 || backendDate.getSeconds() !== 0}`);
-            
+
             // SOLUCIÓN TEMPORAL: Si el backend no tiene hora, usar la hora actual
             const hasTime = backendDate.getHours() !== 0 || backendDate.getMinutes() !== 0 || backendDate.getSeconds() !== 0;
             if (!hasTime) {
@@ -539,7 +539,7 @@ loadLinkedPhases() {
           console.log(`🕐 endingdate del backend: ${existingStatus.endingdate}`);
           console.log(`🕐 startDate asignado: ${activity.startDate}`);
           console.log(`🕐 endDate asignado: ${activity.endDate}`);
-          
+
           // SOLUCIÓN TEMPORAL: Corregir fechas sin hora para fases completadas
           if (existingStatus.startingdate) {
             const startDate = new Date(existingStatus.startingdate);
@@ -558,7 +558,7 @@ loadLinkedPhases() {
               activity.startDate = correctedStartDate.toISOString();
             }
           }
-          
+
           if (existingStatus.endingdate) {
             const endDate = new Date(existingStatus.endingdate);
             const hasEndTime = endDate.getHours() !== 0 || endDate.getMinutes() !== 0 || endDate.getSeconds() !== 0;
@@ -587,13 +587,13 @@ loadLinkedPhases() {
         console.log(`📝 Fase ${activity.name} no asignada al ticket`);
       }
     });
-    
+
     console.log('🔍 === ESTADO FINAL DE ACTIVIDADES ===');
     this.activities.forEach(activity => {
       console.log(`📋 ${activity.name}: startDate=${activity.startDate}, endDate=${activity.endDate}`);
     });
     console.log('🔍 === FIN DEBUGGING FECHAS ===');
-    
+
     // Llamar a loadCurrentTicketImages SOLO después de que las actividades estén listas
     this.loadCurrentTicketImages();
   },
@@ -645,7 +645,7 @@ startPhase(activity: any) {
         console.log(`🕐 Enviando nueva fecha al backend: ${newStartingDate}`);
         console.log(`🕐 Hora local actual: ${now.toLocaleString()}`);
         console.log(`🕐 Timestamp: ${now.getTime()}`);
-        
+
         this.ticketStatusService.update(activity.id, this.ticketId, {
           startingDate: newStartingDate,
           updatedBy: this.userId,
@@ -655,21 +655,21 @@ startPhase(activity: any) {
             console.log(`✅ Fase ${activity.name} iniciada:`, updatedStatus);
             console.log(`🕐 Respuesta del backend - startingDate: ${updatedStatus?.startingdate || updatedStatus?.startingDate}`);
             console.log(`🕐 Respuesta completa del backend:`, updatedStatus);
-            
+
             activity.started = true;
             activity.checked = true;
-            
+
             // 🎯 AUTOMÁTICAMENTE LLENAR EL CAMPO PHOTO NAME CON EL NOMBRE DE LA FASE
             this.name = activity.name;
             console.log(`📝 Photo name automáticamente establecido a: ${this.name}`);
-            
+
             // ✅ SUBIR FOTO SI HAY ARCHIVOS SELECCIONADOS
             if (this.selectedFiles && this.selectedFiles.length > 0) {
               // ✅ CORREGIDO: Usar taskStatusId (activity.id) en lugar de ticketstatusid
               console.log(`📸 Subiendo foto para fase iniciada ${activity.name} con taskStatusId: ${activity.id}`);
               this.uploadPhotoEvidence(activity.id, activity);
             }
-            
+
             // 🎯 VERIFICAR SI HAY ISSUE REPORTADO AL INICIAR
             const hasIssue = activity.comment && activity.comment.trim().length > 0;
             if (hasIssue) {
@@ -679,7 +679,7 @@ startPhase(activity: any) {
               // 🎯 ACTUALIZAR COMMENT7D DEL TICKET A "TK - ON PROGRESS"
               this.updateTicketComment7d('TK - ON PROGRESS');
             }
-            
+
             this.loadLinkedPhases(); // Recargar para actualizar estado
           },
           error: (err) => {
@@ -704,14 +704,14 @@ startPhase(activity: any) {
             console.log(`🔍 Propiedades de newTicketStatus:`, Object.keys(newTicketStatus || {}));
             console.log(`🔍 taskstatusid:`, newTicketStatus?.taskstatusid);
             console.log(`🔍 ticketid:`, newTicketStatus?.ticketid);
-            
+
             activity.started = true;
             activity.checked = true;
             this.name = activity.name;
             if (activity.selectedFiles && activity.selectedFiles.length > 0) {
               this.uploadPhotoEvidence(activity.id, activity);
             }
-            
+
             // 🎯 VERIFICAR SI HAY ISSUE REPORTADO AL INICIAR
             const hasIssue = activity.comment && activity.comment.trim().length > 0;
             if (hasIssue) {
@@ -721,7 +721,7 @@ startPhase(activity: any) {
               // 🎯 ACTUALIZAR COMMENT7D DEL TICKET A "TK - ON PROGRESS"
               this.updateTicketComment7d('TK - ON PROGRESS');
             }
-            
+
             this.loadLinkedPhases();
           },
           error: (err) => {
@@ -742,27 +742,27 @@ completePhase(activity: any) {
     console.warn(`⚠️ No se puede completar la fase ${activity.name}`);
     return;
   }
-  
+
   const crewIdToUse = this.crewId || this.currentCrewIdFromLoadEmployees;
   if (!crewIdToUse || crewIdToUse === 0) {
     console.error('❌ crewId inválido');
     return;
   }
-  
+
   // Buscar el TicketStatus existente para actualizar endingDate
   this.ticketStatusService.getByTicket(this.ticketId).subscribe({
     next: (ticketStatuses: any[]) => {
-      const existingStatus = ticketStatuses.find(ts => 
+      const existingStatus = ticketStatuses.find(ts =>
         Number(ts.taskstatusid) === Number(activity.id)
       );
-      
+
       if (existingStatus && existingStatus.startingdate) {
         // Actualizar con endingDate
         const now = new Date();
         const newEndingDate = now.toISOString();
         console.log(`🕐 Completando fase - enviando endingDate: ${newEndingDate}`);
         console.log(`🕐 Hora local actual: ${now.toLocaleString()}`);
-        
+
         this.ticketStatusService.update(activity.id, this.ticketId, {
           startingDate: existingStatus.startingdate,
           endingDate: newEndingDate,
@@ -773,24 +773,24 @@ completePhase(activity: any) {
             console.log(`✅ Fase ${activity.name} completada:`, updatedStatus);
             activity.completed = true;
             activity.locked = true;
-            
+
             // 🎯 AUTOMÁTICAMENTE LLENAR EL CAMPO PHOTO NAME CON EL NOMBRE DE LA FASE
             this.name = activity.name;
             console.log(`📝 Photo name automáticamente establecido a: ${this.name}`);
-            
+
             // ✅ SUBIR FOTO SI HAY ARCHIVOS SELECCIONADOS
             if (this.selectedFiles && this.selectedFiles.length > 0) {
               // ✅ CORREGIDO: Usar taskStatusId (activity.id) en lugar de ticketstatusid
               console.log(`📸 Subiendo foto para fase completada ${activity.name} con taskStatusId: ${activity.id}`);
               this.uploadPhotoEvidence(activity.id, activity);
             }
-            
+
             // 🎯 VERIFICAR SI SE COMPLETÓ LA ÚLTIMA FASE OBLIGATORIA
             if (this.isLastRequiredPhaseCompleted()) {
               console.log(`🎉 ¡Última fase obligatoria completada! Actualizando comment7d a TK - COMPLETED`);
               this.updateTicketComment7d('TK - COMPLETED');
             }
-            
+
             this.loadLinkedPhases(); // Recargar para actualizar estado
             // Verificar si se completó la última fase
             this.checkAndUpdateEndingDate();
@@ -873,10 +873,10 @@ private executeSaveAndPhoto(selectedPhases: any[]) {
 
       selectedPhases.forEach(phase => {
         // Verificar el estado actual de la fase
-        const existingPhaseStatus = existingStatuses.find(ts => 
+        const existingPhaseStatus = existingStatuses.find(ts =>
           Number(ts.taskstatusid) === Number(phase.id)
         );
-        
+
         if (existingPhaseStatus) {
           // La fase ya existe, actualizar según su estado
           if (!existingPhaseStatus.startingdate) {
@@ -891,7 +891,7 @@ private executeSaveAndPhoto(selectedPhases: any[]) {
         } else {
           // Fase no asignada - crear nueva
           const currentDate = this.getCurrentDateString();
-          
+
           const savePhase$ = this.ticketStatusService.create({
             ticketId: this.ticketId,
             crewId: crewIdToUse,
@@ -910,16 +910,16 @@ private executeSaveAndPhoto(selectedPhases: any[]) {
               console.log(`🔍 Propiedades de newTicketStatus:`, Object.keys(newTicketStatus || {}));
               console.log(`🔍 taskstatusid:`, newTicketStatus?.taskstatusid);
               console.log(`🔍 ticketid:`, newTicketStatus?.ticketid);
-              
+
               completedOperations++;
-              
+
               // ✅ SUBIR FOTO SOLO SI HAY ARCHIVO SELECCIONADO
               if (this.selectedFiles && this.selectedFiles.length > 0) {
                 // ✅ CORREGIDO: Usar taskStatusId (phase.id) en lugar de ticketstatusid
                 console.log(`📸 Subiendo foto para fase ${phase.name} con taskStatusId: ${phase.id}`);
                 this.uploadPhotoEvidence(phase.id, phase);
               }
-              
+
               // Verificar si todas las operaciones están completadas
               if (completedOperations === totalOperations) {
                 this.loadLinkedPhases();
@@ -929,7 +929,7 @@ private executeSaveAndPhoto(selectedPhases: any[]) {
             error: (err) => {
               console.error(`❌ Error creando TicketStatus para fase ${phase.name}:`, err);
               completedOperations++;
-              
+
               if (completedOperations === totalOperations) {
                 this.loadLinkedPhases();
                 this.checkAndUpdateEndingDate();
@@ -956,19 +956,19 @@ private executeSaveAndPhoto(selectedPhases: any[]) {
 // Método para verificar si se debe actualizar el endingDate
 private checkAndUpdateEndingDate() {
   console.log('🔄 Verificando si se debe actualizar ending date...');
-  
+
   // Obtener todas las fases del ticket actual
   this.ticketStatusService.getByTicket(this.ticketId).subscribe({
     next: (existingStatuses: any[]) => {
       console.log('📋 TicketStatus existentes:', existingStatuses);
-      
+
       // Obtener los IDs de las fases completadas (con endingDate)
       const completedPhaseIds = existingStatuses
         .filter(ts => ts.endingdate)
         .map(ts => Number(ts.taskstatusid));
-      
+
       console.log('✅ Fases completadas (con endingDate):', completedPhaseIds);
-      
+
       // Verificar si todas las fases obligatorias están completadas
       let allRequiredPhasesCompleted = true;
       let lastCompletedPhase = null;
@@ -977,7 +977,7 @@ private checkAndUpdateEndingDate() {
       for (let i = this.activities.length - 1; i >= 0; i--) {
         const activity = this.activities[i];
         const isCompleted = completedPhaseIds.includes(Number(activity.id));
-        
+
         if (isCompleted) {
           // Encontrar la última fase completada
           if (!lastCompletedPhase) {
@@ -1025,10 +1025,10 @@ onPhaseChecked(activity: any) {
     activity.checked = false; // Desmarcar si no se puede
     return;
   }
-  
+
   if (activity.checked) {
     this.name = activity.name;
-    
+
     // Si la fase está asignada pero no iniciada, preguntar si quiere iniciarla
     if (this.isPhaseAssigned(activity)) {
       const confirmStart = confirm(`¿Deseas iniciar la fase "${activity.name}"? Esto marcará la fecha de inicio.`);
@@ -1037,7 +1037,7 @@ onPhaseChecked(activity: any) {
         return;
       }
     }
-    
+
     // Si la fase está iniciada pero no completada, preguntar si quiere completarla
     if (this.isPhaseStarted(activity)) {
       const confirmComplete = confirm(`¿Deseas completar la fase "${activity.name}"? Esto marcará la fecha de finalización.`);
@@ -1094,7 +1094,7 @@ onFileSelected(event: Event, activity: any) {
         const fileExtension = file.name.split('.').pop() || 'jpg';
         const safeName = `${Date.now()}_${this.ticketId}_${activity.id}.${fileExtension}`;
         const renamedFile = new File([file], safeName, { type: file.type });
-        
+
         activity.selectedFiles.push(renamedFile);
         const reader = new FileReader();
         reader.onload = () => {
@@ -1150,14 +1150,14 @@ uploadPhotoEvidence(taskStatusId: number, activity: any): void {
     next: (res) => {
       this.clearPhotoInputsActivity(activity);
       this.loadCurrentTicketImages();
-      
+
       // 🎯 VERIFICAR SI HAY ISSUE REPORTADO
       const hasIssue = activity.comment && activity.comment.trim().length > 0;
       if (hasIssue) {
         console.log(`⚠️ Issue detectado en fase ${activity.name}: ${activity.comment}`);
         this.updateTicketComment7d('TK - ON HOLD OFF');
       }
-      
+
       this.completePhase(activity);
     },
     error: (err) => {
@@ -1187,7 +1187,7 @@ private askToCompletePhase(taskStatusId: number): void {
       `¿Deseas marcar la fase "${activity.name}" como completada?\n\n` +
       `Esto marcará la fecha de finalización y bloqueará la fase.`
     );
-    
+
     if (confirmComplete) {
       this.completePhase(activity);
     } else {
@@ -1201,19 +1201,19 @@ private askToCompletePhase(taskStatusId: number): void {
 // 🎯 NUEVO MÉTODO PARA ACTUALIZAR ENDING DATE DEL TICKET STATUS
 private updateTicketStatusEndingDate(taskStatusId: number): void {
   console.log(`🔄 Actualizando ending date para TaskStatus ID: ${taskStatusId} y Ticket ID: ${this.ticketId}`);
-  
+
   this.ticketStatusService.getByTicket(this.ticketId).subscribe({
     next: (ticketStatuses: any[]) => {
-      const existingStatus = ticketStatuses.find(ts => 
+      const existingStatus = ticketStatuses.find(ts =>
         Number(ts.taskstatusid) === Number(taskStatusId)
       );
-      
+
       if (existingStatus && existingStatus.startingdate && !existingStatus.endingdate) {
         // Actualizar con endingDate usando la clave compuesta
         const now = new Date();
         const newEndingDate = now.toISOString();
         console.log(`🕐 Actualizando ending date: ${newEndingDate}`);
-        
+
         this.ticketStatusService.update(taskStatusId, this.ticketId, {
           startingDate: existingStatus.startingdate,
           endingDate: newEndingDate,
@@ -1222,7 +1222,7 @@ private updateTicketStatusEndingDate(taskStatusId: number): void {
         }).subscribe({
           next: () => {
             console.log(`✅ Ending date actualizado para TaskStatus ID: ${taskStatusId} y Ticket ID: ${this.ticketId}`);
-            
+
             // Actualizar la actividad correspondiente en la UI
             const activity = this.activities.find(a => Number(a.id) === Number(taskStatusId));
             if (activity) {
@@ -1231,7 +1231,7 @@ private updateTicketStatusEndingDate(taskStatusId: number): void {
               activity.endDate = newEndingDate;
               console.log(`✅ Actividad ${activity.name} marcada como completada`);
             }
-            
+
             // Recargar fases para actualizar estado
             this.loadLinkedPhases();
           },
@@ -1255,25 +1255,25 @@ loadCurrentTicketImages() {
     console.warn('⚠️ No hay ticketId para cargar imágenes');
     return;
   }
-  
+
   console.log('🖼️ Cargando imágenes del ticket:', this.ticketId);
-  
+
   this.ticketStatusService.getByTicket(this.ticketId).subscribe({
     next: (ticketStatuses: any[]) => {
       console.log('📋 TicketStatus recibidos:', ticketStatuses.length);
-      
+
       const ticketStatusMap = new Map<string, any>();
       ticketStatuses.forEach(ts => {
         ticketStatusMap.set(`${ts.taskstatusid}_${ts.ticketid}`, ts);
       });
-      
+
       this.photoEvidenceService.getAllPhotoEvidence().subscribe({
         next: (photos) => {
           console.log('📸 Total de fotos recibidas:', photos.length);
-          
+
           const ticketPhotos = photos.filter(p => p.ticketid === this.ticketId);
           console.log('📸 Fotos del ticket actual:', ticketPhotos.length);
-          
+
           if (ticketPhotos.length === 0) {
             this.currentTicketImages = [];
             this.filteredTicketImages = [];
@@ -1379,10 +1379,10 @@ private updateLeafletRoutes() {
   console.log(`🗺️ Lat: ${this.location?.lat}`);
   console.log(`🗺️ Lng: ${this.location?.lng}`);
   console.log(`🗺️ TicketId: ${this.ticketId}`);
-  
+
   if (this.location && this.location.address && this.location.lat && this.location.lng) {
     console.log(`✅ Todas las condiciones cumplidas, creando ruta`);
-    
+
     this.leafletRoutes = [{
       routeId: this.ticketId, // Usar ticketId como routeId para identificación única
       routeCode: this.routeCode || 'CURRENT',
@@ -1394,15 +1394,15 @@ private updateLeafletRoutes() {
         queue: 0 // Siempre será 0 ya que es la única ubicación
       }]
     }];
-    
+
     console.log(`🗺️ LeafletRoutes creado:`, this.leafletRoutes);
-    
+
     // Centrar y hacer zoom automático a la ubicación actual
     setTimeout(() => {
       if (this.leafletMap && this.location.lat && this.location.lng) {
         console.log(`🎯 Centrando mapa en ubicación actual`);
         this.leafletMap.setCenter(this.location.lat, this.location.lng);
-        
+
         // Hacer zoom más cercano para ver mejor la ubicación
         setTimeout(() => {
           this.leafletMap.setZoom(17); // Zoom cercano para vista detallada
@@ -1418,7 +1418,7 @@ private updateLeafletRoutes() {
     console.warn(`⚠️ address: ${this.location?.address}, lat: ${this.location?.lat}, lng: ${this.location?.lng}`);
     this.leafletRoutes = [];
   }
-  
+
   console.log(`🗺️ === updateLeafletRoutes COMPLETED ===`);
 }
 
@@ -1472,7 +1472,7 @@ debugMapState(): void {
   console.log('📍 Available zoom levels:', this.availableZoomLevels);
   console.log('📍 Map dimensions:', `${this.staticMapWidth}x${this.staticMapHeight}`);
   console.log('🔍 === END CURRENT MAP DEBUG ===');
-  
+
   // También llamar al debug del LeafletMap
   if (this.leafletMap) {
     this.leafletMap.debugMapState();
@@ -1488,11 +1488,11 @@ forceMapRefresh(): void {
 // Test map generation
 testMapGeneration(): void {
   console.log('🧪 Testing map generation...');
-  
+
   // Test with a known address
   const testAddress = '4840 W WRIGHTWOOD AVE, Chicago, IL';
   console.log('🧪 Using test address:', testAddress);
-  
+
   // No hay lógica de Leaflet para generar mapas aquí, ya que Leaflet maneja el estado interno
 }
 
@@ -1584,7 +1584,7 @@ updateTicketComment7d(comment: string) {
   }
 
   console.log(`🔄 Actualizando comment7d del ticket ${this.ticketId} a: ${comment}`);
-  
+
   this.ticketService.getTicketById(this.ticketId).subscribe({
     next: (currentTicket) => {
       const updatedTicket = {
@@ -1592,7 +1592,7 @@ updateTicketComment7d(comment: string) {
         comment7d: comment,
         updatedBy: this.userId
       };
-      
+
       this.ticketService.updateTicket(this.ticketId, updatedTicket).subscribe({
         next: (updatedTicketResponse) => {
           console.log(`✅ Comment7d actualizado exitosamente a: ${comment}`);
@@ -1612,9 +1612,9 @@ updateTicketComment7d(comment: string) {
 checkAllRequiredPhasesCompleted(): boolean {
   const requiredPhases = this.activities.filter(activity => !activity.optional);
   const completedPhases = requiredPhases.filter(activity => this.isPhaseCompleted(activity));
-  
+
   console.log(`📊 Verificando fases obligatorias: ${requiredPhases.length} total, ${completedPhases.length} completadas`);
-  
+
   return requiredPhases.length > 0 && completedPhases.length === requiredPhases.length;
 }
 
@@ -1638,10 +1638,10 @@ isLastRequiredPhaseCompleted(): boolean {
     console.log('ℹ️ Ruta SPOTTER detectada - no se actualizará automáticamente a completado');
     return false;
   }
-  
+
   const lastRequiredPhase = this.getLastRequiredPhase();
   if (!lastRequiredPhase) return false;
-  
+
   const lastActivity = this.activities.find(activity => activity.name === lastRequiredPhase);
   return lastActivity ? this.isPhaseCompleted(lastActivity) : false;
 }
@@ -1651,18 +1651,18 @@ zoomToCurrentLocation(): void {
   if (this.location && this.location.lat && this.location.lng && this.leafletMap) {
     console.log(`🎯 Haciendo zoom suave a ubicación actual: ${this.location.address}`);
     console.log(`🎯 Coordenadas: [${this.location.lat}, ${this.location.lng}]`);
-    
+
     // Forzar actualización del mapa
     this.updateLeafletRoutes();
-    
+
     // Centrar el mapa
     this.leafletMap.setCenter(this.location.lat, this.location.lng);
-    
+
     // Hacer zoom suave después de un pequeño delay
     setTimeout(() => {
       this.leafletMap.setZoom(17);
       console.log(`✅ Zoom suave aplicado a ubicación actual`);
-      
+
       // Forzar refresh del mapa después del zoom
       setTimeout(() => {
         this.leafletMap.refreshMap();
@@ -1682,20 +1682,20 @@ private geocodeAddress(address: string): void {
   }
 
   console.log(`🗺️ Geocodificando dirección: ${address}`);
-  
+
   // Usar Google Maps Geocoding API
   const encodedAddress = encodeURIComponent(address + ', Chicago, IL');
   const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodedAddress}&key=${this.GOOGLE_MAPS_API_KEY}`;
-  
+
   this.http.get(url).subscribe({
     next: (response: any) => {
       if (response.results && response.results.length > 0) {
         const location = response.results[0].geometry.location;
         this.location.lat = location.lat;
         this.location.lng = location.lng;
-        
+
         console.log(`✅ Coordenadas obtenidas: [${this.location.lat}, ${this.location.lng}]`);
-        
+
         // Actualizar el mapa con las nuevas coordenadas
         this.updateLeafletRoutes();
       } else {
@@ -1720,12 +1720,12 @@ private geocodeAddress(address: string): void {
 private getCurrentDateString(): string {
   const now = new Date();
   const isoString = now.toISOString();
-  
+
   // Log para debugging de fechas
   console.log(`🕐 Fecha actual generada: ${isoString}`);
   console.log(`🕐 Hora local: ${now.toLocaleString()}`);
   console.log(`🕐 Zona horaria: ${Intl.DateTimeFormat().resolvedOptions().timeZone}`);
-  
+
   return isoString;
 }
 
@@ -1734,15 +1734,17 @@ downloadFile(photoId: number, fileName: string = 'file') {
   this.photoEvidenceService.downloadPhotoEvidenceFile(photoId, fileName).subscribe({
     next: (blob) => {
       // Crear URL temporal para descarga
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = fileName;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-      
+      if (typeof window !== 'undefined') {
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      }
+
       console.log('✅ Archivo descargado:', fileName);
     },
     error: (err) => {
@@ -1754,17 +1756,17 @@ downloadFile(photoId: number, fileName: string = 'file') {
 // Método para determinar si un archivo es PDF basado en su URL
 isPdfFile(fileUrl: string): boolean {
   if (!fileUrl) return false;
-  
+
   // Si es una data URL, verificar el tipo MIME
   if (fileUrl.startsWith('data:')) {
     return fileUrl.includes('application/pdf');
   }
-  
+
   // Si es una blob URL, no podemos determinar el tipo desde la URL
   if (fileUrl.startsWith('blob:')) {
     return false; // Asumimos que no es PDF si es blob URL
   }
-  
+
   // Para URLs normales, verificar la extensión
   const extension = fileUrl.split('.').pop()?.toLowerCase();
   return extension === 'pdf';
@@ -1781,15 +1783,17 @@ getFileNameFromUrl(fileUrl: string): string {
 openPdfInNewWindow(photoId: number, fileName: string) {
   this.photoEvidenceService.getPhotoEvidenceFile(photoId).subscribe({
     next: (blob) => {
-      const url = window.URL.createObjectURL(blob);
-      const newWindow = window.open(url, '_blank');
-      if (newWindow) {
-        newWindow.document.title = fileName;
+      if (typeof window !== 'undefined') {
+        const url = window.URL.createObjectURL(blob);
+        const newWindow = window.open(url, '_blank');
+        if (newWindow) {
+          newWindow.document.title = fileName;
+        }
+        // Limpiar URL después de un tiempo
+        setTimeout(() => {
+          window.URL.revokeObjectURL(url);
+        }, 60000); // 1 minuto
       }
-      // Limpiar URL después de un tiempo
-      setTimeout(() => {
-        window.URL.revokeObjectURL(url);
-      }, 60000); // 1 minuto
     },
     error: (err) => {
       console.error('❌ Error abriendo PDF:', err);
@@ -1800,11 +1804,11 @@ openPdfInNewWindow(photoId: number, fileName: string) {
 // Método para manejar errores de carga de imágenes
 onImageError(event: Event, img: any) {
   console.error(`❌ Error cargando imagen: ${img.name}`, event);
-  
+
   // Marcar la imagen como con error
   img.error = true;
   img.loaded = false;
-  
+
   // Reemplazar con una imagen placeholder
   const target = event.target as HTMLImageElement;
   target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjRmNGY0Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkltYWdlbiBubyBkaXNwb25pYmxlPC90ZXh0Pjwvc3ZnPg==';
@@ -1820,11 +1824,11 @@ onImageLoad(img: any) {
 // Método para reintentar la carga de una imagen
 retryImageLoad(img: any) {
   console.log(`🔄 Reintentando carga de imagen: ${img.name}`);
-  
+
   // Resetear estados
   img.loaded = false;
   img.error = false;
-  
+
   // Si la imagen tiene un photoId, intentar descargarla nuevamente
   if (img.photoId) {
     this.photoEvidenceService.getPhotoEvidenceFile(img.photoId).subscribe({
