@@ -100,7 +100,7 @@
         <div class="location-header">
           <div class="location-number">{{ i + 1 }}</div>
           <div class="location-info">
-            <p class="address"><strong>{{ location.address }}</strong></p>
+            <p class="address"><strong>{{ location.displayAddress || location.address }}</strong></p>
             <p class="job-info" *ngIf="location.job">{{ location.job }}</p>
           </div>
         </div>

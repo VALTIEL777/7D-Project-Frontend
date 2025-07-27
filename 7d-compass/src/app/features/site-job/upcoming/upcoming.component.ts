@@ -70,6 +70,8 @@ teamMembers: string[] = []; // Nombres de los demás miembros
   routeCode?: string; // ✅ AGREGADO: Incluir routeCode
   lat?: number;
   lng?: number;
+  displayAddress?: string; // ✅ AGREGADO: Para mostrar direcciones consistentes
+  ticketcode?: string; // ✅ AGREGADO: Incluir ticketcode
 } = {
   address: ''
 };
@@ -84,6 +86,8 @@ remainingLocations: {
   routeCode?: string; // ✅ AGREGADO: Incluir routeCode
   lat?: number;
   lng?: number;
+  displayAddress?: string; // ✅ AGREGADO: Para mostrar direcciones consistentes
+  ticketcode?: string; // ✅ AGREGADO: Incluir ticketcode
 }[] = [];
 
 crewType: string = '';
@@ -345,14 +349,18 @@ getCrewDetails(crewId: number) {
 
       details.forEach((data: any) => {
         if (!uniqueLocationsMap.has(data.ticketid)) {
+          const formattedAddress = this.formatAddress(data);
+          const normalizedAddress = this.normalizeAddress(formattedAddress);
+          
           uniqueLocationsMap.set(data.ticketid, {
-            address: this.formatAddress(data),
+            address: normalizedAddress,
             job: data.contractunit_name || '',
             surface: data.surfacetotal,
             width: data.width,
             length: data.length,
             description: data.contractunit_description || '',
             ticketid: data.ticketid,
+            ticketcode: data.ticketcode || '', // ✅ AGREGADO: Incluir ticketcode
             contractunitid: data.contractunitid,
             routeCode: data.routecode || '',
             lat: data.latitude,
@@ -371,9 +379,14 @@ getCrewDetails(crewId: number) {
 
       this.remainingLocations = Array.from(uniqueLocationsMap.values());
 
+      // Add display address for better identification of same locations
+      this.remainingLocations.forEach(location => {
+        (location as any).displayAddress = this.getDisplayAddress(location, this.remainingLocations);
+      });
+
       // 🔍 DEBUG: Log de remainingLocations antes de ordenar
       console.log('📍 remainingLocations ANTES de ordenar:', this.remainingLocations.map((loc, idx) => 
-        `${idx + 1}. Ticket ${(loc as any).ticketid} - Address: ${loc.address}`
+        `${idx + 1}. Ticket ${(loc as any).ticketid} - Address: ${(loc as any).displayAddress}`
       ));
 
       // ✅ Geocodificar direcciones antes de generar el mapa
@@ -386,7 +399,7 @@ getCrewDetails(crewId: number) {
         
         // 🔍 DEBUG: Log de remainingLocations DESPUÉS de ordenar
         console.log('📍 remainingLocations DESPUÉS de ordenar:', this.remainingLocations.map((loc, idx) => 
-          `${idx + 1}. Ticket ${(loc as any).ticketid} - Address: ${loc.address}`
+          `${idx + 1}. Ticket ${(loc as any).ticketid} - Address: ${(loc as any).displayAddress}`
         ));
         
         this.updateLeafletRoutes();
@@ -412,77 +425,105 @@ getCrewDetails(crewId: number) {
 
 // Helper method to format address from wayfinding data
 formatAddress(data: any): string {
-
-  // Priority 1: Use specific address from addresses table (preferred) - ALWAYS include suffix if available
+  // Priority 1: Use specific address from addresses table (preferred)
   if (data.addressnumber && data.addresscardinal && data.addressstreet) {
     let formattedAddress = `${data.addressnumber} ${data.addresscardinal} ${data.addressstreet}`;
-
-    // Add suffix if available
     if (data.addresssuffix && data.addresssuffix.trim() !== '') {
       formattedAddress += ` ${data.addresssuffix}`;
     }
-
     return formattedAddress.trim();
   }
 
-  // Priority 2: Use specific address with suffix from addresses table (fallback for Priority 1)
-  if (data.addressnumber && data.addresscardinal && data.addressstreet && data.addresssuffix) {
-    const formattedAddress = `${data.addressnumber} ${data.addresscardinal} ${data.addressstreet} ${data.addresssuffix}`.trim();
-    return formattedAddress;
-  }
-
-  // Priority 3: Use wayfinding from address (range) - ALWAYS include suffix if available
-  if (data.fromaddressstreet && data.fromaddresscardinal) {
-    let formattedAddress = `${data.fromaddressstreet} ${data.fromaddresscardinal}`;
-
-    // Add suffix if available
-    if (data.fromaddresssuffix && data.fromaddresssuffix.trim() !== '') {
-      formattedAddress += ` ${data.fromaddresssuffix}`;
-    }
-
-    return formattedAddress.trim();
-  }
-
-  // Priority 4: Use wayfinding from address with suffix (fallback for Priority 3)
-  if (data.fromaddressstreet && data.fromaddresscardinal && data.fromaddresssuffix) {
-    const formattedAddress = `${data.fromaddressstreet} ${data.fromaddresscardinal} ${data.fromaddresssuffix}`.trim();
-    return formattedAddress;
-  }
-
-  // Priority 5: Use wayfinding to address (range)
-  if (data.toaddressstreet && data.fromaddresscardinal) {
-    const formattedAddress = `${data.toaddressstreet} ${data.fromaddresscardinal}`.trim();
-    return formattedAddress;
-  }
-
-  // Priority 6: Check if there's a pre-formatted address field
+  // Priority 2: Check if there's a pre-formatted address field
   if (data.address && typeof data.address === 'string' && data.address.trim() !== '') {
     return data.address.trim();
   }
 
-  // Priority 7: Try to build address from wayfinding range
-  const wayfindingParts: string[] = [];
-
-  // Check for wayfinding fields
-  if (data.fromaddressstreet) wayfindingParts.push(data.fromaddressstreet);
-  if (data.toaddressstreet) wayfindingParts.push(data.toaddressstreet);
-  if (data.fromaddresscardinal) wayfindingParts.push(data.fromaddresscardinal);
-  if (data.fromaddresssuffix) wayfindingParts.push(data.fromaddresssuffix);
-
-  // If we found some wayfinding parts, combine them
-  if (wayfindingParts.length > 0) {
-    const combinedAddress = wayfindingParts.join(' ').trim();
-    return combinedAddress;
+  // Priority 3: Handle wayfinding addresses consistently
+  // For wayfinding addresses, we need to create a consistent format
+  if (data.fromaddressnumber && data.toaddressnumber && data.fromaddressstreet) {
+    // Format: "3558 - 3655 W 84TH PL" (from-to range)
+    const fromNum = data.fromaddressnumber.trim();
+    const toNum = data.toaddressnumber.trim();
+    const cardinal = data.fromaddresscardinal || data.toaddresscardinal || '';
+    const street = data.fromaddressstreet.trim();
+    const suffix = data.fromaddresssuffix || data.toaddresssuffix || '';
+    
+    let formattedAddress = `${fromNum} - ${toNum} ${cardinal} ${street}`;
+    if (suffix && suffix.trim() !== '') {
+      formattedAddress += ` ${suffix}`;
+    }
+    return formattedAddress.trim();
   }
 
-  // Priority 8: Check for location field (but only if it's not just "STREET")
+  // Priority 4: Handle single wayfinding address
+  if (data.fromaddressnumber && data.fromaddressstreet) {
+    const number = data.fromaddressnumber.trim();
+    const cardinal = data.fromaddresscardinal || '';
+    const street = data.fromaddressstreet.trim();
+    const suffix = data.fromaddresssuffix || '';
+    
+    let formattedAddress = `${number} ${cardinal} ${street}`;
+    if (suffix && suffix.trim() !== '') {
+      formattedAddress += ` ${suffix}`;
+    }
+    return formattedAddress.trim();
+  }
+
+  // Priority 5: Handle wayfinding street only (when no numbers available)
+  if (data.fromaddressstreet && data.fromaddresscardinal) {
+    let formattedAddress = `${data.fromaddressstreet} ${data.fromaddresscardinal}`;
+    if (data.fromaddresssuffix && data.fromaddresssuffix.trim() !== '') {
+      formattedAddress += ` ${data.fromaddresssuffix}`;
+    }
+    return formattedAddress.trim();
+  }
+
+  // Priority 6: Check for location field (but only if it's not just "STREET")
   if (data.location && typeof data.location === 'string' && data.location.trim() !== '' && data.location.trim().toUpperCase() !== 'STREET') {
     return data.location.trim();
   }
 
-  // Priority 9: Fallback to any available address fields
+  // Priority 7: Fallback to any available address fields
   const fallbackAddress = `${data.addressstreet || data.fromaddressstreet || data.toaddressstreet || ''} ${data.addresscardinal || data.fromaddresscardinal || ''}`.trim();
   return fallbackAddress || 'Address not available';
+}
+
+// Helper method to normalize addresses for consistent display
+private normalizeAddress(address: string): string {
+  if (!address) return '';
+  
+  // Remove extra spaces and normalize
+  let normalized = address.trim().replace(/\s+/g, ' ');
+  
+  // Normalize common variations
+  normalized = normalized
+    .replace(/\s*-\s*/g, ' - ') // Normalize dashes
+    .replace(/\s*,\s*Chicago,\s*Illinois/gi, '') // Remove city/state if present
+    .replace(/\s*,\s*IL/gi, '') // Remove state abbreviation
+    .trim();
+  
+  return normalized;
+}
+
+// Helper method to get display address with ticket count for same locations
+private getDisplayAddress(location: any, allLocations: any[]): string {
+  const baseAddress = location.address;
+  
+  // Count how many tickets have the same address
+  const sameAddressCount = allLocations.filter(loc => 
+    this.normalizeAddress(loc.address) === this.normalizeAddress(baseAddress)
+  ).length;
+  
+  // If there's only one ticket for this address, return the address as is
+  if (sameAddressCount <= 1) {
+    return baseAddress;
+  }
+  
+  // If there are multiple tickets for the same address, add ticket info
+  // Use ticketcode if available, otherwise fallback to ticketid
+  const ticketIdentifier = location.ticketcode || `ID ${location.ticketid}`;
+  return `${baseAddress} (${ticketIdentifier})`;
 }
 
 private async geocodeRemainingLocations(): Promise<void> {
