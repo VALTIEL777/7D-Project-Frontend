@@ -75,13 +75,13 @@
       </mat-expansion-panel>
 
       <!-- Revenue -->
-      <mat-expansion-panel [expanded]="isExpanded(['/income', '/fines-penalties'])">
+      <mat-expansion-panel [expanded]="isExpanded(['/income'])">
         <mat-expansion-panel-header>
           <mat-icon>payments</mat-icon>
           <span>Revenue</span>
         </mat-expansion-panel-header>
         <a mat-button routerLink="/income" routerLinkActive="active-link" (click)="closeSidenav()">Income</a>
-        <a mat-button routerLink="/fines-penalties" routerLinkActive="active-link" (click)="closeSidenav()">Fines & Penalties</a>
+        <!-- <a mat-button routerLink="/fines-penalties" routerLinkActive="active-link" (click)="closeSidenav()">Fines & Penalties</a> -->
       </mat-expansion-panel>
 
       <!-- Manage -->
