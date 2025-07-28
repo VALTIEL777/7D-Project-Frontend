@@ -328,15 +328,15 @@ private isPhaseOptional(phaseName: string, routeCode: string): boolean {
   }
 
   this.quadrantService.getQuadrantById(quadrantId).subscribe(quadrant => {
-    const supervisorId = quadrant.supervisorId;
-    if (!supervisorId) {
-      console.warn('⚠️ No se encontró supervisorId en el cuadrante');
+    const zoneManagerId = quadrant.zoneManagerId;
+    if (!zoneManagerId) {
+      console.warn('⚠️ No se encontró zoneManagerId en el cuadrante');
       return;
     }
 
-    this.peopleService.getPeopleById(supervisorId).subscribe(supervisor => {
+    this.peopleService.getPeopleById(zoneManagerId).subscribe(supervisor => {
       this.supervisor = supervisor;
-      console.log('✅ Supervisor cargado:', this.supervisor);
+      console.log('✅ Zone Manager cargado:', this.supervisor);
     });
   });
 });
