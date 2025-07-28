@@ -737,11 +737,6 @@ onFilterChange(): void {
   if (!filter) {
     // Si se limpia el filtro, mostrar todas las ubicaciones
     this.currentLocationIndex = 0;
-    
-    // Volver a la vista general cuando se limpia el filtro
-    if (this.leafletMap) {
-      this.leafletMap.setZoom(13);
-    }
     return;
   }
 
@@ -753,24 +748,14 @@ onFilterChange(): void {
 
   if (firstFilteredIndex !== -1) {
     this.currentLocationIndex = firstFilteredIndex;
-    const foundLocation = this.remainingLocations[firstFilteredIndex];
-    
-    // Hacer zoom automático a la ubicación encontrada
-    if (foundLocation.lat && foundLocation.lng && this.leafletMap) {
-      // Usar zoom suave para mejor experiencia visual
-      this.zoomToFilteredLocation(firstFilteredIndex);
-    }
+    // ✅ NO hacer zoom automático - solo filtrar las ubicaciones
   }
 }
 
 clearFilter(): void {
   this.filterText = '';
   this.currentLocationIndex = 0;
-  
-  // Restaurar vista general cuando se limpia el filtro
-  if (this.leafletMap) {
-    this.leafletMap.setZoom(13);
-  }
+  // ✅ NO hacer zoom automático - solo limpiar el filtro
 }
 
 // Método para hacer zoom suave a ubicación filtrada
