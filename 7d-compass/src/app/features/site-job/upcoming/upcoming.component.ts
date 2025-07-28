@@ -42,7 +42,7 @@ import * as L from 'leaflet';
 export class UpcomingComponent {
 
   // Static map properties
-  // ✅ Google Maps API key removed - no longer needed for geocoding
+  // Google Maps API key removed - now using internal coordinates API
 
 staticMapUrl: string = '';
 staticMapWidth: number = 600;
@@ -127,7 +127,7 @@ crewDetails: any[] = [];
         private skillsService: SkillsService,
         private routeService: RoutesService,
         private router: Router,
-        private http: HttpClient   // ✅ Still needed for route API calls
+          private http: HttpClient   // ✅ necesario para obtener coordenadas
 
   ){}
 
@@ -416,17 +416,24 @@ getCrewDetails(crewId: number) {
       //   `${idx + 1}. Ticket ${(loc as any).ticketid} - Address: ${(loc as any).displayAddress}`
       // ));
 
-      // ✅ Direct processing like route-generator - no geocoding needed
-      // Get assigned route for the crew
-      this.getAssignedRoute().then(() => {
+      // ✅ Get coordinates for locations before generating the map
+      this.getTicketCoordinates().then(async () => {
+        // Get assigned route for the crew
+        await this.getAssignedRoute();
+
         // ✅ Ordenar remainingLocations según el orden de la ruta asignada
         this.orderLocationsByRoute();
 
-        // ✅ Direct map update - no geocoding delay
-        console.log('🔄 Direct map update - using existing coordinates');
+        // 🔍 DEBUG: Log de remainingLocations DESPUÉS de ordenar (COMENTADO)
+        // console.log('📍 remainingLocations DESPUÉS de ordenar:', this.remainingLocations.map((loc, idx) =>
+        //   `${idx + 1}. Ticket ${(loc as any).ticketid} - Address: ${(loc as any).displayAddress}`
+        // ));
+
+        // ✅ ÚNICA llamada a updateLeafletRoutes() - sin bucles
+        console.log('🔄 ÚNICA actualización del mapa - sin bucles');
         this.updateLeafletRoutes();
-      }).catch(error => {
-        console.error('Error processing route data:', error);
+      }).catch((error: any) => {
+        console.error('Error getting coordinates:', error);
       });
 
       // Si quieres también mostrar la primera location por defecto
@@ -537,7 +544,53 @@ private getDisplayAddress(location: any, allLocations: any[]): string {
   return baseAddress; // ✅ Mantener el formato original: "3558 - 3655 W 84TH PL"
 }
 
-// ✅ Geocoding removed - using existing coordinates from database like route-generator
+private async getTicketCoordinates(): Promise<void> {
+  // Get coordinates for locations that don't have them
+  const locationsWithoutCoordinates = this.remainingLocations.filter(loc => !loc.lat || !loc.lng);
+
+  if (locationsWithoutCoordinates.length === 0) {
+    return; // All locations already have coordinates
+  }
+
+  // Process locations in parallel for better performance
+  const coordinatePromises = locationsWithoutCoordinates.map(async (loc) => {
+    if (!loc.ticketcode) {
+      console.warn('Location missing ticketcode:', loc);
+      return;
+    }
+
+    try {
+      const response: any = await firstValueFrom(
+        this.http.get(`${environment.apiUrl}/tickets/coordinates/${loc.ticketcode}`)
+      );
+
+      if (response.success && response.data && response.data.addresses && response.data.addresses.length > 0) {
+        // Use the first address coordinates
+        const firstAddress = response.data.addresses[0];
+        loc.lat = firstAddress.latitude;
+        loc.lng = firstAddress.longitude;
+
+        // Update the address with the full address from the API if available
+        if (firstAddress.fullAddress) {
+          loc.address = firstAddress.fullAddress;
+        }
+
+        console.log(`✅ Got coordinates for ticket ${loc.ticketcode}:`, {
+          lat: loc.lat,
+          lng: loc.lng,
+          address: loc.address
+        });
+      } else {
+        console.warn(`❌ No coordinates found for ticket ${loc.ticketcode}`);
+      }
+    } catch (err) {
+      console.error(`❌ Error getting coordinates for ticket ${loc.ticketcode}:`, err);
+    }
+  });
+
+  // Wait for all coordinate requests to complete
+  await Promise.all(coordinatePromises);
+}
 
 
 goToCurrent(location: any) {

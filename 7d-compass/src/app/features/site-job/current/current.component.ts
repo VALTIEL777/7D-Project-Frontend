@@ -170,9 +170,9 @@ ngOnInit() {
     if (!this.location.streetFrom) this.location.streetFrom = 'Not available';
     if (!this.location.streetTo) this.location.streetTo = 'Not available';
 
-    // 🗺️ Solo mostrar la ubicación actual, no toda la ruta
+    // 🗺️ Cargar ruta completa como en upcoming
     setTimeout(() => {
-      this.updateLeafletRoutes();
+      this.loadFullRoute();
     }, 100);
   }
 
@@ -445,19 +445,19 @@ this.permits = details.reduce((acc: { id: number; number: string }[], d: any) =>
         console.log('📝 Descripción asignada:', this.location.description);
         console.log('📍 Dirección completa:', this.location.fullAddress);
 
-        // 🗺️ Solo mostrar la ubicación actual
-        this.updateLeafletRoutes();
+        // 🗺️ Cargar la ruta completa como en upcoming
+        this.loadFullRoute();
       } else if (this.isLocationFromStorage) {
         console.log('📍 Dirección seleccionada manualmente:', this.location);
         console.log('📝 Descripción desde localStorage:', this.location.description);
 
-        // 🗺️ Solo mostrar la ubicación actual
-        this.updateLeafletRoutes();
+        // 🗺️ Cargar la ruta completa como en upcoming
+        this.loadFullRoute();
       }
 
-              // 🗺️ Solo mostrar la ubicación actual después de cargar la ubicación
+              // 🗺️ Cargar ruta completa después de cargar la ubicación
         setTimeout(() => {
-          this.updateLeafletRoutes();
+          this.loadFullRoute();
         }, 500);
     },
     error: (err) => {
@@ -1387,8 +1387,8 @@ toggleGroup(group: string) {
 }
 
 // Map methods
-    private updateLeafletRoutes() {
-    console.log(`🗺️ === updateLeafletRoutes STARTED (CURRENT LOCATION ONLY) ===`);
+  private updateLeafletRoutes() {
+    console.log(`🗺️ === updateLeafletRoutes STARTED ===`);
     console.log(`🗺️ Location object:`, this.location);
     console.log(`🗺️ Address: ${this.location?.address}`);
     console.log(`🗺️ Lat: ${this.location?.lat}`);
@@ -1396,13 +1396,14 @@ toggleGroup(group: string) {
     console.log(`🗺️ TicketId: ${this.ticketId}`);
 
     if (this.location && this.location.address && this.location.lat && this.location.lng) {
-      console.log(`✅ Todas las condiciones cumplidas, creando marcador de ubicación actual`);
+      console.log(`✅ Todas las condiciones cumplidas, creando ruta`);
 
-      // ✅ Solo mostrar la ubicación actual, no toda la ruta
       this.leafletRoutes = [{
         routeId: this.ticketId, // Usar ticketId como routeId para identificación única
-        routeCode: 'CURRENT', // Marcar como ubicación actual
-        type: 'CURRENT', // Tipo especial para ubicación actual
+        routeCode: this.routeCode || 'SPOTTER',
+        type: this.routeCode?.includes('SPOTTER') ? 'SPOTTER' :
+              this.routeCode?.includes('CONCRETE') ? 'CONCRETE' :
+              this.routeCode?.includes('ASPHALT') ? 'ASPHALT' : 'SPOTTER',
         encodedPolyline: '', // No polyline, solo marcador
         tickets: [{
           ticketId: this.ticketId,
@@ -1411,12 +1412,7 @@ toggleGroup(group: string) {
         }]
       }];
 
-      // ✅ Limpiar visibleRoutes para que solo se muestre la ubicación actual
-      this.visibleRoutes.clear();
-      this.visibleRoutes.add(this.ticketId);
-
-      console.log(`🗺️ LeafletRoutes creado (solo ubicación actual):`, this.leafletRoutes);
-      console.log(`✅ VisibleRoutes actualizado:`, this.visibleRoutes);
+      console.log(`🗺️ LeafletRoutes creado:`, this.leafletRoutes);
 
       // ✅ NO hacer zoom automático - solo actualizar el mapa
       setTimeout(() => {
@@ -1431,10 +1427,9 @@ toggleGroup(group: string) {
       console.warn(`⚠️ No se pudo actualizar mapa: coordenadas no disponibles`);
       console.warn(`⚠️ address: ${this.location?.address}, lat: ${this.location?.lat}, lng: ${this.location?.lng}`);
       this.leafletRoutes = [];
-      this.visibleRoutes.clear();
     }
 
-    console.log(`🗺️ === updateLeafletRoutes COMPLETED (CURRENT LOCATION ONLY) ===`);
+    console.log(`🗺️ === updateLeafletRoutes COMPLETED ===`);
   }
 
 // Zoom control methods
