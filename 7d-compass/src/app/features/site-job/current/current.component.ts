@@ -54,7 +54,7 @@ export class CurrentComponent {
 
   // Set para rastrear imágenes que ya han cargado
   loadedImageIds = new Set<number>();
-  
+
   // Set para rastrear actividades que están subiendo fotos
   uploadingActivities = new Set<number>();
 
@@ -170,9 +170,9 @@ ngOnInit() {
     if (!this.location.streetFrom) this.location.streetFrom = 'Not available';
     if (!this.location.streetTo) this.location.streetTo = 'Not available';
 
-    // 🗺️ Cargar ruta completa como en upcoming
+    // 🗺️ Solo mostrar la ubicación actual, no toda la ruta
     setTimeout(() => {
-      this.loadFullRoute();
+      this.updateLeafletRoutes();
     }, 100);
   }
 
@@ -361,26 +361,26 @@ loadTicketCode() {
 loadSupervisor() {
   this.ticketService.getTicketById(this.ticketId).subscribe(ticket => {
    const quadrantId = ticket.quadrantId;
- 
+
    if (!quadrantId) {
      console.warn('⚠️ No se encontró quadrantId en el ticket');
      return;
    }
- 
+
    this.quadrantService.getQuadrantById(quadrantId).subscribe(quadrant => {
      const zoneManagerId = quadrant.zoneManagerId;
      if (!zoneManagerId) {
        console.warn('⚠️ No se encontró zoneManagerId en el cuadrante');
        return;
      }
- 
+
      this.peopleService.getPeopleById(zoneManagerId).subscribe(supervisor => {
        this.supervisor = supervisor;
        console.log('✅ Zone Manager cargado:', this.supervisor);
      });
    });
  });
- 
+
  }
 
 
@@ -445,19 +445,19 @@ this.permits = details.reduce((acc: { id: number; number: string }[], d: any) =>
         console.log('📝 Descripción asignada:', this.location.description);
         console.log('📍 Dirección completa:', this.location.fullAddress);
 
-        // 🗺️ Cargar la ruta completa como en upcoming
-        this.loadFullRoute();
+        // 🗺️ Solo mostrar la ubicación actual
+        this.updateLeafletRoutes();
       } else if (this.isLocationFromStorage) {
         console.log('📍 Dirección seleccionada manualmente:', this.location);
         console.log('📝 Descripción desde localStorage:', this.location.description);
 
-        // 🗺️ Cargar la ruta completa como en upcoming
-        this.loadFullRoute();
+        // 🗺️ Solo mostrar la ubicación actual
+        this.updateLeafletRoutes();
       }
 
-              // 🗺️ Cargar ruta completa después de cargar la ubicación
+              // 🗺️ Solo mostrar la ubicación actual después de cargar la ubicación
         setTimeout(() => {
-          this.loadFullRoute();
+          this.updateLeafletRoutes();
         }, 500);
     },
     error: (err) => {
@@ -1128,10 +1128,10 @@ uploadPhotoEvidence(taskStatusId: number, activity: any): void {
     console.error('❌ userId es undefined o null');
     return;
   }
-  
+
   // ✅ Agregar actividad al set de carga
   this.uploadingActivities.add(activity.id);
-  
+
   const formData = new FormData();
   activity.selectedFiles.forEach((file: File, index: number) => {
     formData.append('file', file);
@@ -1155,7 +1155,7 @@ uploadPhotoEvidence(taskStatusId: number, activity: any): void {
     next: (res) => {
       // ✅ Remover actividad del set de carga
       this.uploadingActivities.delete(activity.id);
-      
+
       this.clearPhotoInputsActivity(activity);
       this.loadCurrentTicketImages();
 
@@ -1387,8 +1387,8 @@ toggleGroup(group: string) {
 }
 
 // Map methods
-  private updateLeafletRoutes() {
-    console.log(`🗺️ === updateLeafletRoutes STARTED ===`);
+    private updateLeafletRoutes() {
+    console.log(`🗺️ === updateLeafletRoutes STARTED (CURRENT LOCATION ONLY) ===`);
     console.log(`🗺️ Location object:`, this.location);
     console.log(`🗺️ Address: ${this.location?.address}`);
     console.log(`🗺️ Lat: ${this.location?.lat}`);
@@ -1396,14 +1396,13 @@ toggleGroup(group: string) {
     console.log(`🗺️ TicketId: ${this.ticketId}`);
 
     if (this.location && this.location.address && this.location.lat && this.location.lng) {
-      console.log(`✅ Todas las condiciones cumplidas, creando ruta`);
+      console.log(`✅ Todas las condiciones cumplidas, creando marcador de ubicación actual`);
 
+      // ✅ Solo mostrar la ubicación actual, no toda la ruta
       this.leafletRoutes = [{
         routeId: this.ticketId, // Usar ticketId como routeId para identificación única
-        routeCode: this.routeCode || 'SPOTTER',
-        type: this.routeCode?.includes('SPOTTER') ? 'SPOTTER' : 
-              this.routeCode?.includes('CONCRETE') ? 'CONCRETE' : 
-              this.routeCode?.includes('ASPHALT') ? 'ASPHALT' : 'SPOTTER',
+        routeCode: 'CURRENT', // Marcar como ubicación actual
+        type: 'CURRENT', // Tipo especial para ubicación actual
         encodedPolyline: '', // No polyline, solo marcador
         tickets: [{
           ticketId: this.ticketId,
@@ -1412,7 +1411,12 @@ toggleGroup(group: string) {
         }]
       }];
 
-      console.log(`🗺️ LeafletRoutes creado:`, this.leafletRoutes);
+      // ✅ Limpiar visibleRoutes para que solo se muestre la ubicación actual
+      this.visibleRoutes.clear();
+      this.visibleRoutes.add(this.ticketId);
+
+      console.log(`🗺️ LeafletRoutes creado (solo ubicación actual):`, this.leafletRoutes);
+      console.log(`✅ VisibleRoutes actualizado:`, this.visibleRoutes);
 
       // ✅ NO hacer zoom automático - solo actualizar el mapa
       setTimeout(() => {
@@ -1427,9 +1431,10 @@ toggleGroup(group: string) {
       console.warn(`⚠️ No se pudo actualizar mapa: coordenadas no disponibles`);
       console.warn(`⚠️ address: ${this.location?.address}, lat: ${this.location?.lat}, lng: ${this.location?.lng}`);
       this.leafletRoutes = [];
+      this.visibleRoutes.clear();
     }
 
-    console.log(`🗺️ === updateLeafletRoutes COMPLETED ===`);
+    console.log(`🗺️ === updateLeafletRoutes COMPLETED (CURRENT LOCATION ONLY) ===`);
   }
 
 // Zoom control methods
@@ -1722,7 +1727,7 @@ zoomToCurrentLocation(): void {
           hasPolyline: !!(assignedRoute.encodedpolyline || assignedRoute.encodedPolyline),
           ticketsCount: assignedRoute.tickets?.length || 0
         });
-        
+
         // ✅ Determinar el tipo correcto basado en routeCode
         let routeType = 'SPOTTER'; // fallback
         if (assignedRoute.routecode || assignedRoute.routeCode) {
@@ -1735,9 +1740,9 @@ zoomToCurrentLocation(): void {
             routeType = 'SPOTTER';
           }
         }
-        
+
         console.log('🎯 Tipo de ruta determinado:', routeType);
-        
+
         // Crear la ruta para Leaflet como en upcoming
         const routeId = assignedRoute.routeid || assignedRoute.routeId;
         this.leafletRoutes = [{
@@ -1750,17 +1755,17 @@ zoomToCurrentLocation(): void {
 
         // ✅ Agregar la ruta al visibleRoutes para que se muestre
         this.visibleRoutes = new Set([routeId]);
-        
+
         console.log('🗺️ Ruta completa cargada:', this.leafletRoutes);
         console.log('✅ VisibleRoutes actualizado:', this.visibleRoutes);
-        
+
         // Actualizar el mapa sin hacer zoom automático
         setTimeout(() => {
           if (this.leafletMap) {
             console.log('🗺️ Antes de refreshMap - leafletRoutes:', this.leafletRoutes);
             this.leafletMap.refreshMap();
             console.log('✅ Mapa actualizado con ruta completa');
-            
+
             // Verificar que la ruta se pintó correctamente
             setTimeout(() => {
               console.log('🔍 Verificando estado del mapa después de 500ms...');
