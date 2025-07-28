@@ -358,7 +358,23 @@ getCrewDetails(crewId: number) {
             backendAddress: data.address,
             formattedAddress: this.formatAddress(data),
             rawAddress: rawAddress,
-            finalAddress: address
+            finalAddress: address,
+            // ✅ DEBUG: Ver todos los campos de dirección disponibles
+            addressFields: {
+              addressnumber: data.addressnumber,
+              addresscardinal: data.addresscardinal,
+              addressstreet: data.addressstreet,
+              addresssuffix: data.addresssuffix,
+              fromaddressnumber: data.fromaddressnumber,
+              fromaddresscardinal: data.fromaddresscardinal,
+              fromaddressstreet: data.fromaddressstreet,
+              fromaddresssuffix: data.fromaddresssuffix,
+              toaddressnumber: data.toaddressnumber,
+              toaddresscardinal: data.toaddresscardinal,
+              toaddressstreet: data.toaddressstreet,
+              toaddresssuffix: data.toaddresssuffix,
+              location: data.location
+            }
           });
           
           uniqueLocationsMap.set(data.ticketid, {
@@ -434,12 +450,33 @@ getCrewDetails(crewId: number) {
 
 // Helper method to format address from wayfinding data
 formatAddress(data: any): string {
-  // Priority 1: Use specific address from addresses table (preferred)
-  if (data.addressnumber && data.addresscardinal && data.addressstreet) {
-    let formattedAddress = `${data.addressnumber} ${data.addresscardinal} ${data.addressstreet}`;
-    if (data.addresssuffix && data.addresssuffix.trim() !== '') {
-      formattedAddress += ` ${data.addresssuffix}`;
-    }
+  // ✅ Priority 1: Concatenar los cuatro campos específicos
+  const addressnumber = data.addressnumber || '';
+  const addresscardinal = data.addresscardinal || '';
+  const addressstreet = data.addressstreet || '';
+  const addresssuffix = data.addresssuffix || '';
+  
+  // Construir la dirección concatenando los campos
+  let formattedAddress = '';
+  
+  if (addressnumber && addressnumber.trim() !== '') {
+    formattedAddress += addressnumber.trim();
+  }
+  
+  if (addresscardinal && addresscardinal.trim() !== '') {
+    formattedAddress += formattedAddress ? ` ${addresscardinal.trim()}` : addresscardinal.trim();
+  }
+  
+  if (addressstreet && addressstreet.trim() !== '') {
+    formattedAddress += formattedAddress ? ` ${addressstreet.trim()}` : addressstreet.trim();
+  }
+  
+  if (addresssuffix && addresssuffix.trim() !== '') {
+    formattedAddress += formattedAddress ? ` ${addresssuffix.trim()}` : addresssuffix.trim();
+  }
+  
+  // Si tenemos una dirección válida, la retornamos
+  if (formattedAddress.trim() !== '') {
     return formattedAddress.trim();
   }
 
@@ -448,53 +485,13 @@ formatAddress(data: any): string {
     return data.address.trim();
   }
 
-  // Priority 3: Handle wayfinding addresses consistently
-  // For wayfinding addresses, we need to create a consistent format
-  if (data.fromaddressnumber && data.toaddressnumber && data.fromaddressstreet) {
-    // Format: "3558 - 3655 W 84TH PL" (from-to range)
-    const fromNum = data.fromaddressnumber.trim();
-    const toNum = data.toaddressnumber.trim();
-    const cardinal = data.fromaddresscardinal || data.toaddresscardinal || '';
-    const street = data.fromaddressstreet.trim();
-    const suffix = data.fromaddresssuffix || data.toaddresssuffix || '';
-    
-    let formattedAddress = `${fromNum} - ${toNum} ${cardinal} ${street}`;
-    if (suffix && suffix.trim() !== '') {
-      formattedAddress += ` ${suffix}`;
-    }
-    return formattedAddress.trim();
-  }
-
-  // Priority 4: Handle single wayfinding address
-  if (data.fromaddressnumber && data.fromaddressstreet) {
-    const number = data.fromaddressnumber.trim();
-    const cardinal = data.fromaddresscardinal || '';
-    const street = data.fromaddressstreet.trim();
-    const suffix = data.fromaddresssuffix || '';
-    
-    let formattedAddress = `${number} ${cardinal} ${street}`;
-    if (suffix && suffix.trim() !== '') {
-      formattedAddress += ` ${suffix}`;
-    }
-    return formattedAddress.trim();
-  }
-
-  // Priority 5: Handle wayfinding street only (when no numbers available)
-  if (data.fromaddressstreet && data.fromaddresscardinal) {
-    let formattedAddress = `${data.fromaddressstreet} ${data.fromaddresscardinal}`;
-    if (data.fromaddresssuffix && data.fromaddresssuffix.trim() !== '') {
-      formattedAddress += ` ${data.fromaddresssuffix}`;
-    }
-    return formattedAddress.trim();
-  }
-
-  // Priority 6: Check for location field (but only if it's not just "STREET")
+  // Priority 3: Check for location field (but only if it's not just "STREET")
   if (data.location && typeof data.location === 'string' && data.location.trim() !== '' && data.location.trim().toUpperCase() !== 'STREET') {
     return data.location.trim();
   }
 
-  // Priority 7: Fallback to any available address fields
-  const fallbackAddress = `${data.addressstreet || data.fromaddressstreet || data.toaddressstreet || ''} ${data.addresscardinal || data.fromaddresscardinal || ''}`.trim();
+  // Priority 4: Fallback to any available address fields (excluding fromaddress/toaddress)
+  const fallbackAddress = `${data.addressstreet || ''} ${data.addresscardinal || ''}`.trim();
   return fallbackAddress || 'Address not available';
 }
 
