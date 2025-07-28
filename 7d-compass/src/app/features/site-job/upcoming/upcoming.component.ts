@@ -242,15 +242,16 @@ crewDetails: any[] = [];
         //   });
         // }
         
-        this.updateLeafletRoutes();
+        // ✅ NO llamar updateLeafletRoutes() aquí - se llamará desde getCrewDetails()
+        // this.updateLeafletRoutes();
         
-        // Forzar actualización del mapa después de un pequeño delay
-        setTimeout(() => {
-          this.updateLeafletRoutes();
-          if (this.leafletMap) {
-            this.leafletMap.refreshMap();
-          }
-        }, 1000);
+        // ✅ NO forzar actualización duplicada
+        // setTimeout(() => {
+        //   this.updateLeafletRoutes();
+        //   if (this.leafletMap) {
+        //     this.leafletMap.refreshMap();
+        //   }
+        // }, 1000);
 
         if (assignedRoute) {
           // For debugging, let's also check if we can force a specific route
@@ -373,7 +374,8 @@ getCrewDetails(crewId: number) {
               toaddresscardinal: data.toaddresscardinal,
               toaddressstreet: data.toaddressstreet,
               toaddresssuffix: data.toaddresssuffix,
-              location: data.location
+              location: data.location,
+              
             }
           });
           
@@ -427,6 +429,8 @@ getCrewDetails(crewId: number) {
         //   `${idx + 1}. Ticket ${(loc as any).ticketid} - Address: ${(loc as any).displayAddress}`
         // ));
         
+        // ✅ ÚNICA llamada a updateLeafletRoutes() - sin bucles
+        console.log('🔄 ÚNICA actualización del mapa - sin bucles');
         this.updateLeafletRoutes();
       }).catch(error => {
         // Error handling silently

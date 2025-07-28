@@ -102,6 +102,7 @@
           <div class="location-info">
             <p class="address"><strong>{{ location.displayAddress || location.address }}</strong></p>
             <p class="job-info" *ngIf="location.job">{{ location.job }}</p>
+            <p class="size-info"><strong>Size:</strong> {{ location.length || 'Not available'}} x {{ location.width || 'Not available' }} ft</p>
           </div>
         </div>
         <div class="location-actions">
