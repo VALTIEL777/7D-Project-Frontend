@@ -1,16 +1,33 @@
 .grid-container {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 60% 40%;
   gap: 1rem;
   height: 100vh;
   padding: 1rem;
   box-sizing: border-box;
+
+  // Mobile responsive design
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr 1fr;
+    height: auto;
+    min-height: 100vh;
+    gap: 0.5rem;
+    padding: 0.5rem;
+  }
 }
 
 .card-table {
   grid-column: 1;
   grid-row: 1;
   overflow: hidden;
+
+  // Mobile responsive
+  @media (max-width: 768px) {
+    grid-column: 1;
+    grid-row: 1;
+    min-height: 50vh;
+  }
 }
 
 .card-map {
@@ -19,6 +36,13 @@
   display: flex;
   flex-direction: column;
   height: 100%;
+
+  // Mobile responsive
+  @media (max-width: 768px) {
+    grid-column: 1;
+    grid-row: 2;
+    min-height: 50vh;
+  }
 
   app-card-with-button {
     flex: 1;
@@ -146,6 +170,11 @@
 .map-container {
   flex: 1;
   min-height: 400px;
+
+  // Mobile responsive
+  @media (max-width: 768px) {
+    min-height: 300px;
+  }
 }
 
 

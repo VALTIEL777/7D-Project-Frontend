@@ -32,7 +32,7 @@ interface ColumnDefinition {
 export class UsersComponent extends BaseDashboardComponent implements OnInit {
   columns: ColumnDefinition[] = [
     { name: 'fullName', header: 'Full Name', cell: u => `${u.firstname} ${u.lastname}` },
-    { name: 'username', header: 'Username', cell: u => u.username },
+    { name: 'username', header: 'Username', cell: u => u.user?.username || 'No username' },
     { name: 'email', header: 'Email', cell: u => u.email },
     { name: 'phone', header: 'Phone', cell: u => u.phone },
     { name: 'role', header: 'Role', cell: u => u.role },
@@ -62,7 +62,8 @@ export class UsersComponent extends BaseDashboardComponent implements OnInit {
 
   // Override text search to include user fields
   protected override matchesTextSearch(item: any, searchTerm: string): boolean {
-    const searchableFields = ['firstname', 'lastname', 'username', 'email', 'role'];
+    const searchableFields = ['firstname', 'lastname', 'role'];
+    const username = item.user?.username || '';
 
     return searchableFields.some(field => {
       const value = this.getNestedValue(item, field);
@@ -70,17 +71,47 @@ export class UsersComponent extends BaseDashboardComponent implements OnInit {
         return String(value).toLowerCase().includes(searchTerm);
       }
       return false;
-    });
+    }) || username.toLowerCase().includes(searchTerm);
   }
 
   loadUsers(): void {
     this.peopleService.getAllPeople().subscribe({
       next: data => {
+        console.log('✅ API Response received:', data);
+        console.log('📊 Total users:', data.length);
+
+        // Log each user's key properties
+        data.forEach((user, index) => {
+          console.log(`👤 User ${index + 1}:`, {
+            employeeId: user.employeeId,
+            userId: user.userId,
+            firstname: user.firstname,
+            lastname: user.lastname,
+            username: user.user?.username || 'No username',
+            email: user.email,
+            phone: user.phone,
+            role: user.role,
+            hasUserAccount: !!user.user,
+            userObject: user.user,
+            allKeys: Object.keys(user)
+          });
+        });
+
         this.tableData = data;
         this.allData = [...data];
         this.filteredData = [...data];
+
+        console.log('✅ Users loaded successfully. Total users:', this.tableData.length);
       },
-      error: err => console.error('Error loading users:', err)
+      error: err => {
+        console.error('❌ Error loading users:', err);
+        console.error('❌ Error details:', {
+          status: err.status,
+          statusText: err.statusText,
+          message: err.message,
+          url: err.url
+        });
+      }
     });
   }
 
@@ -113,22 +144,25 @@ onEdit(user: any) {
   const dialogRef = this.dialog.open(SearchDialogComponent, {
     width: '500px',
     data: {
-      title: `User: ${user.username}`,
+      title: `User: ${user.user?.username || user.firstname} ${user.lastname}`,
       data: {
         ...user,
-        name: `${user.firstname} ${user.lastname}`
+        name: `${user.firstname} ${user.lastname}`,
+        username: user.user?.username || ''
       },
-        excludedFields: ['UserId', 'name', 'username', 'employeeid', 'deletedat', 'updatedat', 'createdat', 'createdby', 'updatedby'],
+        excludedFields: ['userId', 'name', 'employeeId', 'deletedAt', 'updatedAt', 'createdAt', 'createdBy', 'updatedBy', 'user'],
         fields: [
           { name: 'firstname', label: 'First Name', type: 'text', required: true },
           { name: 'lastname', label: 'Last Name', type: 'text', required: true },
+          { name: 'username', label: 'Username', type: 'text', required: true },
+          { name: 'password', label: 'Password', type: 'password', required: false, placeholder: 'Leave blank to keep current password' },
           { name: 'email', label: 'Email', type: 'text', required: false },
           { name: 'phone', label: 'Phone', type: 'text', required: false },
           { name: 'role', label: 'Role', type: 'select', required: false, options: [
-            { value: 'Side Worker', label: 'Side Worker' },
+            { value: 'Regional Manager', label: 'Regional Manager' },
+            { value: 'Quadrant Manager', label: 'Quadrant Manager' },
             { value: 'Admin', label: 'Admin' },
-            { value: 'Accounting', label: 'Accounting' },
-            { value: 'Assistant', label: 'Assistant' }
+            { value: 'Operator', label: 'Operator' }
           ]}
         ]
     }
@@ -136,24 +170,25 @@ onEdit(user: any) {
 
   dialogRef.afterClosed().subscribe(result => {
     if (result) {
-      const [firstname, ...lastnameParts] = result.name.split(' ');
-      const lastname = lastnameParts.join(' ');
-
-        const index = this.tableData.findIndex(u => u.employeeid === user.employeeid);
+      const index = this.tableData.findIndex(u => u.employeeId === user.employeeId);
 
       if (index !== -1) {
         const updatedUser = {
           ...user,
-          firstname,
-          lastname,
-          ...result
+          ...result,
+          updatedBy: this.getCurrentUserId()
         };
 
-        this.peopleService.updatePeople(user.employeeid, updatedUser).subscribe({
+        // Remove password if it's empty to keep current password
+        if (!updatedUser.password || updatedUser.password.trim() === '') {
+          delete updatedUser.password;
+        }
+
+        this.peopleService.updatePeople(user.employeeId, updatedUser).subscribe({
           next: () => {
             this.tableData[index] = updatedUser;
-              this.allData = [...this.tableData];
-              this.applyFilters();
+            this.allData = [...this.tableData];
+            this.applyFilters();
           },
           error: err => console.error('Error updating user:', err)
         });
@@ -179,13 +214,19 @@ onDelete(user: any) {
 
   dialogRef.afterClosed().subscribe(confirmed => {
     if (confirmed) {
-      if (!user.employeeid) {
-        console.error('Cannot delete user: employeeid is undefined', user);
+      if (!user.employeeId) {
+        console.error('Cannot delete user: employeeId is undefined', user);
         return;
       }
-      this.peopleService.deletePeople(user.employeeid).subscribe({
+
+      const deletePayload = {
+        deleteUser: true,
+        updatedBy: this.getCurrentUserId()
+      };
+
+      this.peopleService.deletePeople(user.employeeId, deletePayload).subscribe({
         next: () => {
-          this.tableData = this.tableData.filter(u => u.employeeid !== user.employeeid);
+          this.tableData = this.tableData.filter(u => u.employeeId !== user.employeeId);
           this.allData = [...this.tableData];
           this.applyFilters();
           console.log('User deleted:', user);

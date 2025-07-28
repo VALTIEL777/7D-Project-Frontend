@@ -1,8 +1,15 @@
 <div class="table-container">
 
-  <table mat-table [dataSource]="dataSource" class="mat-elevation-z1">
+  <table mat-table [dataSource]="dataSource" matSort class="mat-elevation-z1">
     <ng-container *ngFor="let column of columns" [matColumnDef]="column.name">
-      <th mat-header-cell *matHeaderCellDef>{{ column.header }}</th>
+      <th mat-header-cell *matHeaderCellDef>
+        <ng-container *ngIf="!column.isActionColumn; else noSort">
+          <span mat-sort-header>{{ column.header }}</span>
+        </ng-container>
+        <ng-template #noSort>
+          {{ column.header }}
+        </ng-template>
+      </th>
       <td
         mat-cell
         *matCellDef="let element"
@@ -16,6 +23,7 @@
         <ng-template #actions>
           <div class="actions-container">
             <button
+              *ngIf="showEditButton"
               mat-icon-button
               class="edit-button"
               matTooltip="Edit"
@@ -24,6 +32,7 @@
               <mat-icon>edit</mat-icon>
             </button>
             <button
+              *ngIf="showDeleteButton"
               mat-icon-button
               class="delete-button"
               matTooltip="Delete"
@@ -33,10 +42,11 @@
             </button>
 
              <button
-      *ngIf="column.name === 'show'"
+      *ngIf="showViewButton && column.name === 'show'"
   mat-icon-button
   class="show-button"
-  matTooltip="Show Route">
+  matTooltip="Show Route"
+  (click)="view.emit(element)">
     <mat-icon>visibility</mat-icon>
     </button>
              <button

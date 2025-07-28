@@ -15,8 +15,12 @@
         <app-data-table
           *ngIf="!loading && !error"
           [title]="'Routes'"
-          [data]="routes"
-          [columns]="routeColumns">
+          [data]="filteredRoutes"
+          [columns]="routeColumns"
+          [showEditButton]="false"
+          [showDeleteButton]="false"
+          [showViewButton]="true"
+          (view)="onRouteSelect($event)">
         </app-data-table>
       </app-card-with-button>
     </div>
@@ -35,14 +39,6 @@
           </div>
           <div class="route-details">
             <div class="detail-item">
-              <span class="label">Distance:</span>
-              <span class="value">{{ (selectedRoute.totalDistance / 1000).toFixed(2) }} km</span>
-            </div>
-            <div class="detail-item">
-              <span class="label">Duration:</span>
-              <span class="value">{{ Math.round(selectedRoute.totalDuration / 60) }} min</span>
-            </div>
-            <div class="detail-item">
               <span class="label">Addresses:</span>
               <span class="value">{{ selectedRoute.addressCount }}</span>
             </div>
@@ -51,6 +47,14 @@
 
         <app-leaflet-map
           *ngIf="selectedRoute"
+          #leafletMap
+          [routes]="leafletRoutes"
+          [config]="mapConfig"
+          [showMarkers]="true"
+          [showPolylines]="true"
+          [height]="'100%'"
+          [width]="'100%'"
+          [visibleRoutes]="visibleRoutes"
           class="map-container">
         </app-leaflet-map>
       </app-card-with-button>

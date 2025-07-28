@@ -4,7 +4,7 @@
       [title]="'User Management'"
       [data]="filteredUserData"
       [columns]="columns"
-      [pageSizeOptions]="[5, 10, 20]"
+      [pageSizeOptions]="[15, 20, 25]"
       (edit)="onEdit($event)"
       (delete)="onDelete($event)">
     </app-data-table>
@@ -20,13 +20,14 @@
     { name: 'firstname', label: 'First Name', type: 'text', required: true },
     { name: 'lastname', label: 'Last Name', type: 'text', required: true },
     { name: 'username', label: 'Username', type: 'text', required: true },
+    { name: 'password', label: 'Password', type: 'password', required: true },
     { name: 'email', label: 'Email', type: 'email', required: false },
     { name: 'phone', label: 'Phone', type: 'text', required: false },
     { name: 'role', label: 'Role', type: 'select', required: false, options: [
-      { value: 'Side Worker', label: 'Side Worker' },
+      { value: 'Regional Manager', label: 'Regional Manager' },
+      { value: 'Quadrant Manager', label: 'Quadrant Manager' },
       { value: 'Admin', label: 'Admin' },
-      { value: 'Accounting', label: 'Accounting' },
-      { value: 'Assistant', label: 'Assistant' }
+      { value: 'Operator', label: 'Operator' }
     ]}
   ]"
   [excludedFields]="['employeeid', 'createdAt', 'updatedAt', 'createdBy', 'updatedBy', 'deletedAt']"
