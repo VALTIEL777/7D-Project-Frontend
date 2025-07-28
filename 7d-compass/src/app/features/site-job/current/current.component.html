@@ -8,10 +8,6 @@
   <div class="map-header">
     <h3 class="map-title">Location Map</h3>
     <div class="map-controls">
-      <button mat-stroked-button (click)="zoomToCurrentLocation()" class="zoom-location-btn" title="Zoom to Current Location">
-        <mat-icon>my_location</mat-icon>
-        Zoom to Location
-      </button>
     </div>
   </div>
 
@@ -20,7 +16,8 @@
       [routes]="leafletRoutes"
       [config]="mapConfig"
       [showMarkers]="true"
-      [showPolylines]="false"
+      [showPolylines]="true"
+      [visibleRoutes]="visibleRoutes"
       [height]="staticMapHeight + 'px'"
       [width]="'100%'">
     </app-leaflet-map>
@@ -352,6 +349,9 @@
 <h3 class="sub-title">Contact supervisor</h3>
 <p *ngIf="supervisor"><strong>Name:</strong>
    {{ supervisor.firstname }} {{ supervisor.lastname }}
+</p>
+<p *ngIf="supervisor"><strong>E-mail:</strong>
+  {{ supervisor.email }}
 </p>
 <p *ngIf="supervisor"><strong>Phone:</strong>
    {{ supervisor.phone }}

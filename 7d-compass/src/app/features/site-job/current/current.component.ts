@@ -24,6 +24,8 @@ import { TicketService } from '../../../core/services/ticket.service';
 import { QuadrantsService } from '../../../core/services/location/quadrants.service';
 import { RouteData, MapConfig, LeafletMapComponent } from '../../../shared/leaflet-map/leaflet-map.component';
 import { HttpClient } from '@angular/common/http';
+import { firstValueFrom } from 'rxjs';
+import { environment } from '../../../../environments/environment';
 
 @Component({
   selector: 'app-current',
@@ -114,16 +116,17 @@ filterDateFrom: Date | null = null;
 filterDateTo: Date | null = null;
 filteredTicketImages: any[] = [];
 
-leafletRoutes: RouteData[] = [];
-mapConfig: MapConfig = {
-  center: [41.8781, -87.6298], // Chicago
-  zoom: 15,
-  minZoom: 8,
-  maxZoom: 18,
-  tileLayer: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-  attribution: '© OpenStreetMap contributors'
-};
-@ViewChild(LeafletMapComponent) leafletMap!: LeafletMapComponent;
+  leafletRoutes: RouteData[] = [];
+  visibleRoutes: Set<number> = new Set();
+  mapConfig: MapConfig = {
+    center: [41.8781, -87.6298], // Chicago
+    zoom: 15,
+    minZoom: 8,
+    maxZoom: 18,
+    tileLayer: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    attribution: '© OpenStreetMap contributors'
+  };
+  @ViewChild(LeafletMapComponent) leafletMap!: LeafletMapComponent;
 
   constructor(
      private crewsService: CrewsService,
@@ -167,9 +170,9 @@ ngOnInit() {
     if (!this.location.streetFrom) this.location.streetFrom = 'Not available';
     if (!this.location.streetTo) this.location.streetTo = 'Not available';
 
-    // 🗺️ Actualizar mapa inmediatamente si la ubicación viene del localStorage
+    // 🗺️ Cargar ruta completa como en upcoming
     setTimeout(() => {
-      this.updateLeafletRoutes();
+      this.loadFullRoute();
     }, 100);
   }
 
@@ -355,30 +358,30 @@ loadTicketCode() {
   });
 }
 
-  loadSupervisor() {
- this.ticketService.getTicketById(this.ticketId).subscribe(ticket => {
-  const quadrantId = ticket.quadrantId;
-
-  if (!quadrantId) {
-    console.warn('⚠️ No se encontró quadrantId en el ticket');
-    return;
-  }
-
-  this.quadrantService.getQuadrantById(quadrantId).subscribe(quadrant => {
-    const supervisorId = quadrant.supervisorId;
-    if (!supervisorId) {
-      console.warn('⚠️ No se encontró supervisorId en el cuadrante');
-      return;
-    }
-
-    this.peopleService.getPeopleById(supervisorId).subscribe(supervisor => {
-      this.supervisor = supervisor;
-      console.log('✅ Supervisor cargado:', this.supervisor);
-    });
-  });
-});
-
-}
+loadSupervisor() {
+  this.ticketService.getTicketById(this.ticketId).subscribe(ticket => {
+   const quadrantId = ticket.quadrantId;
+ 
+   if (!quadrantId) {
+     console.warn('⚠️ No se encontró quadrantId en el ticket');
+     return;
+   }
+ 
+   this.quadrantService.getQuadrantById(quadrantId).subscribe(quadrant => {
+     const zoneManagerId = quadrant.zoneManagerId;
+     if (!zoneManagerId) {
+       console.warn('⚠️ No se encontró zoneManagerId en el cuadrante');
+       return;
+     }
+ 
+     this.peopleService.getPeopleById(zoneManagerId).subscribe(supervisor => {
+       this.supervisor = supervisor;
+       console.log('✅ Zone Manager cargado:', this.supervisor);
+     });
+   });
+ });
+ 
+ }
 
 
 
@@ -442,25 +445,20 @@ this.permits = details.reduce((acc: { id: number; number: string }[], d: any) =>
         console.log('📝 Descripción asignada:', this.location.description);
         console.log('📍 Dirección completa:', this.location.fullAddress);
 
-        // 🗺️ Geocodificar la dirección para obtener coordenadas
-        this.geocodeAddress(this.location.address);
+        // 🗺️ Cargar la ruta completa como en upcoming
+        this.loadFullRoute();
       } else if (this.isLocationFromStorage) {
         console.log('📍 Dirección seleccionada manualmente:', this.location);
         console.log('📝 Descripción desde localStorage:', this.location.description);
 
-        // 🗺️ Geocodificar la dirección del localStorage si no tiene coordenadas
-        if (!this.location.lat || !this.location.lng) {
-          this.geocodeAddress(this.location.address);
-        } else {
-          // Si ya tiene coordenadas, actualizar el mapa
-          this.updateLeafletRoutes();
-        }
+        // 🗺️ Cargar la ruta completa como en upcoming
+        this.loadFullRoute();
       }
 
-      // 🗺️ Actualizar mapa después de cargar la ubicación
-      setTimeout(() => {
-        this.updateLeafletRoutes();
-      }, 500);
+              // 🗺️ Cargar ruta completa después de cargar la ubicación
+        setTimeout(() => {
+          this.loadFullRoute();
+        }, 500);
     },
     error: (err) => {
       console.error('❌ Error obteniendo detalles del crew', err);
@@ -1389,55 +1387,50 @@ toggleGroup(group: string) {
 }
 
 // Map methods
-private updateLeafletRoutes() {
-  console.log(`🗺️ === updateLeafletRoutes STARTED ===`);
-  console.log(`🗺️ Location object:`, this.location);
-  console.log(`🗺️ Address: ${this.location?.address}`);
-  console.log(`🗺️ Lat: ${this.location?.lat}`);
-  console.log(`🗺️ Lng: ${this.location?.lng}`);
-  console.log(`🗺️ TicketId: ${this.ticketId}`);
+  private updateLeafletRoutes() {
+    console.log(`🗺️ === updateLeafletRoutes STARTED ===`);
+    console.log(`🗺️ Location object:`, this.location);
+    console.log(`🗺️ Address: ${this.location?.address}`);
+    console.log(`🗺️ Lat: ${this.location?.lat}`);
+    console.log(`🗺️ Lng: ${this.location?.lng}`);
+    console.log(`🗺️ TicketId: ${this.ticketId}`);
 
-  if (this.location && this.location.address && this.location.lat && this.location.lng) {
-    console.log(`✅ Todas las condiciones cumplidas, creando ruta`);
+    if (this.location && this.location.address && this.location.lat && this.location.lng) {
+      console.log(`✅ Todas las condiciones cumplidas, creando ruta`);
 
-    this.leafletRoutes = [{
-      routeId: this.ticketId, // Usar ticketId como routeId para identificación única
-      routeCode: this.routeCode || 'CURRENT',
-      type: 'CURRENT',
-      encodedPolyline: '', // No polyline, solo marcador
-      tickets: [{
-        ticketId: this.ticketId,
-        address: this.location.address,
-        queue: 0 // Siempre será 0 ya que es la única ubicación
-      }]
-    }];
+      this.leafletRoutes = [{
+        routeId: this.ticketId, // Usar ticketId como routeId para identificación única
+        routeCode: this.routeCode || 'SPOTTER',
+        type: this.routeCode?.includes('SPOTTER') ? 'SPOTTER' : 
+              this.routeCode?.includes('CONCRETE') ? 'CONCRETE' : 
+              this.routeCode?.includes('ASPHALT') ? 'ASPHALT' : 'SPOTTER',
+        encodedPolyline: '', // No polyline, solo marcador
+        tickets: [{
+          ticketId: this.ticketId,
+          address: this.location.address,
+          queue: 0 // Siempre será 0 ya que es la única ubicación
+        }]
+      }];
 
-    console.log(`🗺️ LeafletRoutes creado:`, this.leafletRoutes);
+      console.log(`🗺️ LeafletRoutes creado:`, this.leafletRoutes);
 
-    // Centrar y hacer zoom automático a la ubicación actual
-    setTimeout(() => {
-      if (this.leafletMap && this.location.lat && this.location.lng) {
-        console.log(`🎯 Centrando mapa en ubicación actual`);
-        this.leafletMap.setCenter(this.location.lat, this.location.lng);
+      // ✅ NO hacer zoom automático - solo actualizar el mapa
+      setTimeout(() => {
+        if (this.leafletMap) {
+          console.log(`✅ Mapa actualizado sin zoom automático`);
+          this.leafletMap.refreshMap();
+        } else {
+          console.warn(`⚠️ LeafletMap no disponible`);
+        }
+      }, 100);
+    } else {
+      console.warn(`⚠️ No se pudo actualizar mapa: coordenadas no disponibles`);
+      console.warn(`⚠️ address: ${this.location?.address}, lat: ${this.location?.lat}, lng: ${this.location?.lng}`);
+      this.leafletRoutes = [];
+    }
 
-        // Hacer zoom más cercano para ver mejor la ubicación
-        setTimeout(() => {
-          this.leafletMap.setZoom(17); // Zoom cercano para vista detallada
-          console.log(`✅ Zoom aplicado a ubicación actual`);
-        }, 100);
-      } else {
-        console.warn(`⚠️ LeafletMap no disponible o coordenadas faltantes`);
-        console.warn(`⚠️ leafletMap: ${!!this.leafletMap}, lat: ${this.location?.lat}, lng: ${this.location?.lng}`);
-      }
-    }, 0);
-  } else {
-    console.warn(`⚠️ No se pudo actualizar mapa: coordenadas no disponibles`);
-    console.warn(`⚠️ address: ${this.location?.address}, lat: ${this.location?.lat}, lng: ${this.location?.lng}`);
-    this.leafletRoutes = [];
+    console.log(`🗺️ === updateLeafletRoutes COMPLETED ===`);
   }
-
-  console.log(`🗺️ === updateLeafletRoutes COMPLETED ===`);
-}
 
 // Zoom control methods
 changeZoomLevel(zoomLevel: number): void {
@@ -1691,47 +1684,109 @@ zoomToCurrentLocation(): void {
   }
 }
 
-// Método para geocodificar una dirección y obtener coordenadas
-private geocodeAddress(address: string): void {
-  if (!address || address.trim() === '') {
-    console.warn('⚠️ No hay dirección para geocodificar');
-    return;
-  }
+  // Método para cargar la ruta completa como en upcoming
+  async loadFullRoute(): Promise<void> {
+    try {
+      console.log('🗺️ Cargando ruta completa para el ticket:', this.ticketId);
 
-  console.log(`🗺️ Geocodificando dirección: ${address}`);
+      // Obtener todas las rutas disponibles
+      const spottingRoutesResponse = await firstValueFrom(this.http.get<any>(`${environment.apiUrl}/routes/spotting`));
+      const concreteRoutesResponse = await firstValueFrom(this.http.get<any>(`${environment.apiUrl}/routes/concrete`));
+      const asphaltRoutesResponse = await firstValueFrom(this.http.get<any>(`${environment.apiUrl}/routes/asphalt`));
 
-  // Usar Google Maps Geocoding API
-  const encodedAddress = encodeURIComponent(address + ', Chicago, IL');
-  const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodedAddress}&key=${this.GOOGLE_MAPS_API_KEY}`;
+      // Combinar todas las rutas
+      const allRoutes = [
+        ...(spottingRoutesResponse?.routes || []),
+        ...(concreteRoutesResponse?.routes || []),
+        ...(asphaltRoutesResponse?.routes || [])
+      ];
 
-  this.http.get(url).subscribe({
-    next: (response: any) => {
-      if (response.results && response.results.length > 0) {
-        const location = response.results[0].geometry.location;
-        this.location.lat = location.lat;
-        this.location.lng = location.lng;
+      // Buscar la ruta que contiene el ticket actual
+      let assignedRoute = null;
+      for (const route of allRoutes) {
+        if (route.tickets && Array.isArray(route.tickets)) {
+          const routeTicketIds = route.tickets.map((ticket: any) => ticket.ticketId || ticket.ticketid).filter((id: any) => id);
+          if (routeTicketIds.includes(this.ticketId)) {
+            assignedRoute = route;
+            break;
+          }
+        }
+      }
 
-        console.log(`✅ Coordenadas obtenidas: [${this.location.lat}, ${this.location.lng}]`);
+      if (assignedRoute) {
+        console.log('✅ Ruta encontrada:', assignedRoute.routeid || assignedRoute.routeId);
+        console.log('🔍 Detalles de la ruta:', {
+          routeId: assignedRoute.routeid || assignedRoute.routeId,
+          routeCode: assignedRoute.routecode || assignedRoute.routeCode,
+          type: assignedRoute.type,
+          hasPolyline: !!(assignedRoute.encodedpolyline || assignedRoute.encodedPolyline),
+          ticketsCount: assignedRoute.tickets?.length || 0
+        });
+        
+        // ✅ Determinar el tipo correcto basado en routeCode
+        let routeType = 'SPOTTER'; // fallback
+        if (assignedRoute.routecode || assignedRoute.routeCode) {
+          const routeCode = (assignedRoute.routecode || assignedRoute.routeCode).toUpperCase();
+          if (routeCode.includes('ASPHALT')) {
+            routeType = 'ASPHALT';
+          } else if (routeCode.includes('CONCRETE')) {
+            routeType = 'CONCRETE';
+          } else if (routeCode.includes('SPOTTER')) {
+            routeType = 'SPOTTER';
+          }
+        }
+        
+        console.log('🎯 Tipo de ruta determinado:', routeType);
+        
+        // Crear la ruta para Leaflet como en upcoming
+        const routeId = assignedRoute.routeid || assignedRoute.routeId;
+        this.leafletRoutes = [{
+          routeId: routeId,
+          routeCode: assignedRoute.routecode || assignedRoute.routeCode || 'CURRENT',
+          type: routeType,
+          encodedPolyline: assignedRoute.encodedpolyline || assignedRoute.encodedPolyline || '',
+          tickets: assignedRoute.tickets || []
+        }];
 
-        // Actualizar el mapa con las nuevas coordenadas
-        this.updateLeafletRoutes();
+        // ✅ Agregar la ruta al visibleRoutes para que se muestre
+        this.visibleRoutes = new Set([routeId]);
+        
+        console.log('🗺️ Ruta completa cargada:', this.leafletRoutes);
+        console.log('✅ VisibleRoutes actualizado:', this.visibleRoutes);
+        
+        // Actualizar el mapa sin hacer zoom automático
+        setTimeout(() => {
+          if (this.leafletMap) {
+            console.log('🗺️ Antes de refreshMap - leafletRoutes:', this.leafletRoutes);
+            this.leafletMap.refreshMap();
+            console.log('✅ Mapa actualizado con ruta completa');
+            
+            // Verificar que la ruta se pintó correctamente
+            setTimeout(() => {
+              console.log('🔍 Verificando estado del mapa después de 500ms...');
+              if (this.leafletMap) {
+                this.leafletMap.debugMapState();
+              }
+            }, 500);
+          } else {
+            console.warn('⚠️ LeafletMap no disponible');
+          }
+        }, 100);
       } else {
-        console.warn(`⚠️ No se encontraron coordenadas para: ${address}`);
-        // Usar coordenadas por defecto de Chicago
-        this.location.lat = 41.8781;
-        this.location.lng = -87.6298;
+        console.warn('⚠️ No se encontró ruta para el ticket:', this.ticketId);
+        console.log('🔍 Buscando en todas las rutas disponibles...');
+        allRoutes.forEach((route, index) => {
+          console.log(`  ${index + 1}. Route ${route.routeid || route.routeId}: ${route.tickets?.length || 0} tickets`);
+        });
+        // Fallback: mostrar solo la ubicación actual
         this.updateLeafletRoutes();
       }
-    },
-    error: (error) => {
-      console.error('❌ Error geocodificando dirección:', error);
-      // Usar coordenadas por defecto de Chicago
-      this.location.lat = 41.8781;
-      this.location.lng = -87.6298;
+    } catch (error) {
+      console.error('❌ Error cargando ruta completa:', error);
+      // Fallback: mostrar solo la ubicación actual
       this.updateLeafletRoutes();
     }
-  });
-}
+  }
 
 // Helper method to get current date in local timezone
 private getCurrentDateString(): string {
