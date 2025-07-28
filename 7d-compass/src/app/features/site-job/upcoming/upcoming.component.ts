@@ -1,4 +1,4 @@
-import { Component, ViewChild } from '@angular/core';
+import { Component, ViewChild, OnDestroy } from '@angular/core';
 import { SitejobLayoutComponent } from '../../../shared/sitejob-layout/sitejob-layout.component';
 import { CardWithButtonComponent } from '../../../shared/card-with-button/card-with-button.component';
 import { MatTableModule } from '@angular/material/table';
@@ -22,6 +22,7 @@ import { firstValueFrom } from 'rxjs';
 import { RouteData, MapConfig, LeafletMapComponent } from '../../../shared/leaflet-map/leaflet-map.component';
 import { environment } from '../../../../environments/environment';
 import * as L from 'leaflet';
+import { TicketStatusService } from '../../../core/services/route/ticketstatus.service';
 
 
 @Component({
@@ -39,7 +40,7 @@ import * as L from 'leaflet';
   templateUrl: './upcoming.component.html',
   styleUrl: './upcoming.component.scss'
 })
-export class UpcomingComponent {
+export class UpcomingComponent implements OnDestroy {
 
   // Static map properties
 private readonly GOOGLE_MAPS_API_KEY = 'AIzaSyDwEG-Tyq2kpHc4wznqVvSU0Dj2B_idzlY';
@@ -127,12 +128,257 @@ crewDetails: any[] = [];
         private skillsService: SkillsService,
         private routeService: RoutesService,
         private router: Router,
-          private http: HttpClient   // ✅ necesario para geocodificación
+        private http: HttpClient,   // ✅ necesario para geocodificación
+        private ticketStatusService: TicketStatusService  // 🎯 Para verificar estado de fases
 
   ){}
 
   ngOnInit() {
     this.loadEmployees();
+    
+    // 🎯 ESCUCHAR CAMBIOS EN EL ESTADO DE COMPLETADO DE UBICACIONES
+    this.setupLocationCompletionListener();
+  }
+
+  // 🎯 MÉTODO PARA VERIFICAR INMEDIATAMENTE UBICACIONES COMPLETADAS DESPUÉS DE CARGAR
+  private checkInitialCompletedLocations(): void {
+    // Esperar un poco para que se carguen los datos
+    setTimeout(() => {
+      this.checkForCompletedLocations();
+    }, 2000);
+  }
+
+  private completionCheckInterval: any; // 🎯 Para limpiar el intervalo
+  private currentCheckIndex: number = 0; // 🎯 Índice rotativo para verificar ubicaciones
+  private useCrewTypeMatching: boolean = true; // 🎯 Modo de verificación: true = crew type, false = todas las fases
+
+  // 🎯 MÉTODO PARA ESCUCHAR CUANDO SE COMPLETA UNA UBICACIÓN
+  private setupLocationCompletionListener(): void {
+    // Verificar cada 5 segundos si alguna ubicación se completó
+    this.completionCheckInterval = setInterval(() => {
+      this.checkForCompletedLocations();
+    }, 5000);
+  }
+
+  // 🎯 MÉTODO PARA LIMPIAR EL INTERVALO CUANDO SE DESTRUYE EL COMPONENTE
+  ngOnDestroy(): void {
+    if (this.completionCheckInterval) {
+      clearInterval(this.completionCheckInterval);
+    }
+  }
+
+  // 🎯 MÉTODO PARA VERIFICAR UBICACIONES COMPLETADAS
+  private checkForCompletedLocations(): void {
+    if (this.remainingLocations.length === 0) {
+      return;
+    }
+
+    // Obtener el crewId actual
+    const storedUserId = Number(localStorage.getItem('userId'));
+    const person = this.employeeList.find(p => p.userid === storedUserId);
+    const currentCrewId = person?.crewid;
+
+    if (!currentCrewId) {
+      return;
+    }
+
+    // 🎯 VERIFICAR SOLO UNA UBICACIÓN A LA VEZ PARA EVITAR SOBRECARGA
+    // Usar un índice rotativo para verificar diferentes ubicaciones en cada ciclo
+    if (!this.currentCheckIndex) {
+      this.currentCheckIndex = 0;
+    }
+
+    const location = this.remainingLocations[this.currentCheckIndex];
+    if (location) {
+      const ticketId = (location as any).ticketid;
+      if (ticketId) {
+        this.checkLocationCompletionStatus(ticketId, location, this.currentCheckIndex);
+      }
+    }
+
+    // Rotar al siguiente índice para la próxima verificación
+    this.currentCheckIndex = (this.currentCheckIndex + 1) % this.remainingLocations.length;
+  }
+
+  // 🎯 MÉTODO PARA VERIFICAR EL ESTADO DE COMPLETADO DE UNA UBICACIÓN ESPECÍFICA
+  private checkLocationCompletionStatus(ticketId: number, location: any, locationIndex: number): void {
+    this.ticketStatusService.getByTicket(ticketId).subscribe({
+      next: (ticketStatuses: any[]) => {
+        let shouldRemove = false;
+        
+        if (this.useCrewTypeMatching) {
+          // 🎯 MODO 1: Verificar si la fase completada es idéntica al crew type
+          shouldRemove = this.isCompletedPhaseMatchingCrewType(ticketStatuses, location);
+        } else {
+          // 🎯 MODO 2: Verificar si todas las fases obligatorias están completadas
+          shouldRemove = this.areAllRequiredPhasesCompleted(ticketStatuses, location);
+        }
+        
+        if (shouldRemove) {
+          console.log(`✅ Ubicación completada detectada: ${location.address}`);
+          this.removeCompletedLocation(locationIndex);
+        }
+      },
+      error: (err) => {
+        console.error(`❌ Error verificando estado de ubicación ${ticketId}:`, err);
+      }
+    });
+  }
+
+  // 🎯 MÉTODO PARA VERIFICAR SI LA FASE COMPLETADA ES IDÉNTICA AL CREW TYPE
+  private isCompletedPhaseMatchingCrewType(ticketStatuses: any[], location: any): boolean {
+    // Obtener el crewType actual
+    const storedUserId = Number(localStorage.getItem('userId'));
+    const person = this.employeeList.find(p => p.userid === storedUserId);
+    const currentCrewType = person?.type || this.crewType;
+    
+    console.log(`🔍 Verificando crew type para ${location.address}:`);
+    console.log(`  - Crew Type actual: ${currentCrewType}`);
+    
+    // Verificar si el crew type es válido
+    if (!this.isValidCrewType(currentCrewType)) {
+      console.log(`⚠️ Crew type "${currentCrewType}" no es válido para eliminación automática`);
+      return false;
+    }
+    
+    // Buscar fases completadas que coincidan con el crew type
+    const completedPhases = ticketStatuses.filter(ts => ts.endingdate);
+    
+    console.log(`  - Fases completadas encontradas:`, completedPhases.map(ts => ts.taskname));
+    
+    // Verificar si alguna fase completada coincide EXACTAMENTE con el crew type
+    const matchingCompletedPhase = completedPhases.find(ts => {
+      const phaseName = ts.taskname?.toLowerCase() || '';
+      const crewType = currentCrewType?.toLowerCase() || '';
+      
+      // 🎯 COMPARACIÓN EXACTA: Crew type debe ser igual al nombre de la fase
+      const isMatching = phaseName === crewType;
+      
+      console.log(`    - Fase: ${phaseName}, Crew Type: ${crewType}, Coincide: ${isMatching}`);
+      
+      return isMatching;
+    });
+    
+    // 🎯 DEBUG: Mostrar todas las fases disponibles para referencia
+    const allAvailablePhases = [
+      'spotting', 'install signs', 'grind', 'asphalt', 'crack seal', 'stripping',
+      'sawcut', 'removal', 'framing', 'concrete', 'pour', 'clean'
+    ];
+    
+    console.log(`📋 Fases disponibles para crew types: ${allAvailablePhases.join(', ')}`);
+    console.log(`🎯 Crew type actual: ${currentCrewType}`);
+    console.log(`🔍 Fases completadas en esta ubicación: ${completedPhases.map(ts => ts.taskname).join(', ')}`);
+    
+    if (matchingCompletedPhase) {
+      console.log(`✅ Fase completada coincide con crew type: ${matchingCompletedPhase.taskname}`);
+      return true;
+    }
+    
+    console.log(`❌ No se encontró fase completada que coincida con el crew type`);
+    return false;
+  }
+
+  // 🎯 MÉTODO PARA VERIFICAR SI EL CREW TYPE ES VÁLIDO
+  private isValidCrewType(crewType: string): boolean {
+    const validCrewTypes = [
+      'spotting', 'install signs', 'grind', 'asphalt', 'crack seal', 'stripping',
+      'sawcut', 'removal', 'framing', 'concrete', 'pour', 'clean'
+    ];
+    
+    const normalizedCrewType = crewType?.toLowerCase() || '';
+    const isValid = validCrewTypes.includes(normalizedCrewType);
+    
+    console.log(`🔍 Verificando crew type: "${normalizedCrewType}" - Válido: ${isValid}`);
+    
+    return isValid;
+  }
+
+  // 🎯 MÉTODO ALTERNATIVO: VERIFICAR SI TODAS LAS FASES OBLIGATORIAS ESTÁN COMPLETADAS
+  private areAllRequiredPhasesCompleted(ticketStatuses: any[], location: any): boolean {
+    // Obtener el routeCode de la ubicación
+    const routeCode = location.routeCode || '';
+    
+    // Definir las fases obligatorias según el tipo de ruta
+    let requiredPhases: string[] = [];
+    
+    if (routeCode.includes('ASPHALT')) {
+      requiredPhases = ['Crack Seal'];
+    } else if (routeCode.includes('CONCRETE')) {
+      requiredPhases = ['Clean'];
+    } else if (routeCode.includes('SPOTTER')) {
+      requiredPhases = ['Spotting'];
+    }
+    
+    if (requiredPhases.length === 0) {
+      return false; // No hay fases obligatorias definidas
+    }
+    
+    // Verificar que todas las fases obligatorias tengan endingDate (estén completadas)
+    const completedRequiredPhases = requiredPhases.filter(phaseName => {
+      const phaseStatus = ticketStatuses.find(ts => 
+        ts.taskname === phaseName && ts.endingdate
+      );
+      return phaseStatus !== undefined;
+    });
+    
+    console.log(`🔍 Verificando fases obligatorias para ${location.address}:`);
+    console.log(`  - Fases requeridas: ${requiredPhases.join(', ')}`);
+    console.log(`  - Fases completadas: ${completedRequiredPhases.join(', ')}`);
+    console.log(`  - Total requeridas: ${requiredPhases.length}, Completadas: ${completedRequiredPhases.length}`);
+    
+    return completedRequiredPhases.length === requiredPhases.length;
+  }
+
+  // 🎯 MÉTODO PARA ELIMINAR UNA UBICACIÓN COMPLETADA DEL LISTADO
+  private removeCompletedLocation(locationIndex: number): void {
+    if (locationIndex >= 0 && locationIndex < this.remainingLocations.length) {
+      const removedLocation = this.remainingLocations[locationIndex];
+      console.log(`🗑️ Eliminando ubicación completada: ${removedLocation.address}`);
+      
+      // Eliminar la ubicación del array
+      this.remainingLocations.splice(locationIndex, 1);
+      
+      // Actualizar el índice actual si es necesario
+      if (this.currentLocationIndex >= this.remainingLocations.length) {
+        this.currentLocationIndex = Math.max(0, this.remainingLocations.length - 1);
+      }
+      
+      // Actualizar el mapa si hay ubicaciones restantes
+      if (this.remainingLocations.length > 0) {
+        this.updateLeafletRoutes();
+      } else {
+        // Si no quedan ubicaciones, limpiar el mapa
+        this.leafletRoutes = [];
+        this.visibleRoutes.clear();
+      }
+      
+      console.log(`✅ Ubicación eliminada. Restantes: ${this.remainingLocations.length}`);
+    }
+  }
+
+  // 🎯 MÉTODO PÚBLICO PARA FORZAR VERIFICACIÓN MANUAL
+  public forceCheckCompletedLocations(): void {
+    console.log('🔄 Verificación manual de ubicaciones completadas iniciada...');
+    this.checkForCompletedLocations();
+  }
+
+  // 🎯 MÉTODO PÚBLICO PARA CAMBIAR A MODO CREW TYPE MATCHING
+  public setCrewTypeMatchingMode(enabled: boolean): void {
+    this.useCrewTypeMatching = enabled;
+    console.log(`🎯 Modo crew type matching: ${enabled ? 'ACTIVADO' : 'DESACTIVADO'}`);
+  }
+
+  // 🎯 MÉTODO PÚBLICO PARA OBTENER EL MODO ACTUAL
+  public getCurrentMode(): string {
+    return this.useCrewTypeMatching ? 'Crew Type Matching' : 'All Required Phases';
+  }
+
+  // 🎯 MÉTODO PÚBLICO PARA OBTENER TODOS LOS CREW TYPES VÁLIDOS
+  public getValidCrewTypes(): string[] {
+    return [
+      'Spotting', 'Install Signs', 'Grind', 'Asphalt', 'Crack Seal', 'Stripping',
+      'Sawcut', 'Removal', 'Framing', 'Concrete', 'Pour', 'Clean'
+    ];
   }
 
   // Temporary debugging method to force a specific route
@@ -440,11 +686,14 @@ getCrewDetails(crewId: number) {
       if (this.remainingLocations.length > 0) {
         this.location = this.remainingLocations[0];
       }
-      this.isLoading = false;
+                this.isLoading = false;
 
-      // === INTEGRACIÓN PARA LEAFLET ROUTES ===
-      // Esta lógica se maneja ahora en updateLeafletRoutes() que se llama después de getAssignedRoute()
-      // === FIN INTEGRACIÓN ===
+          // 🎯 VERIFICAR UBICACIONES COMPLETADAS DESPUÉS DE CARGAR
+          this.checkInitialCompletedLocations();
+
+          // === INTEGRACIÓN PARA LEAFLET ROUTES ===
+          // Esta lógica se maneja ahora en updateLeafletRoutes() que se llama después de getAssignedRoute()
+          // === FIN INTEGRACIÓN ===
     },
     error: (err) => {
       this.isLoading = false;
