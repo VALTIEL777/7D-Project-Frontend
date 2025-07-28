@@ -133,17 +133,35 @@ export class PermitsComponent extends BaseDashboardComponent implements OnInit {
     this.filteredData = [...this.allData];
   }
 
-  // Override text search to include permit fields
+  // Override text search to include permit fields and associated tickets
   protected override matchesTextSearch(item: any, searchTerm: string): boolean {
     const searchableFields = ['permitNumber', 'status', 'startDate', 'expireDate'];
 
-    return searchableFields.some(field => {
+    // Buscar en campos del permiso
+    const permitMatch = searchableFields.some(field => {
       const value = this.getNestedValue(item, field);
       if (value) {
-        return String(value).toLowerCase().includes(searchTerm);
+        return String(value).toLowerCase().includes(searchTerm.toLowerCase());
       }
       return false;
     });
+
+    if (permitMatch) {
+      return true;
+    }
+
+    // Buscar en tickets asociados por ticketCode
+    if (item.tickets && Array.isArray(item.tickets)) {
+      return item.tickets.some((ticket: any) => {
+        const ticketCode = ticket.ticketCode || ticket.ticketcode;
+        if (ticketCode) {
+          return String(ticketCode).toLowerCase().includes(searchTerm.toLowerCase());
+        }
+        return false;
+      });
+    }
+
+    return false;
   }
 
   // Getter for filtered permit data
