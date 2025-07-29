@@ -53,6 +53,13 @@
 </ul>
 
 <h3 class="sub-title">Gallery</h3>
+
+<!-- 🎯 NUEVO: Notificación de actualización de galería -->
+<div *ngIf="galleryUpdatedMessage" class="update-notification" style="background-color: #2196f3; color: white; padding: 8px 16px; border-radius: 4px; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+  <mat-icon style="color: white;">photo_library</mat-icon>
+  <span>{{ galleryUpdatedMessage }}</span>
+</div>
+
 <!-- Date filter now inside the Gallery section -->
 <div class="date-filter" style="display: flex; gap: 16px; align-items: center; margin-bottom: 16px;">
   <mat-form-field appearance="outline">
@@ -128,11 +135,11 @@
               
               <p class="photo-date" *ngIf="img.startingdate">
                 <mat-icon class="calendar-icon">calendar_today</mat-icon>
-                <strong>Start:</strong> {{ img.startingdate | date:'medium' }}
+                <strong>Start:</strong> {{ img.startingdate | date:'MMM d, y, h:mm a' }}
               </p>
               <p class="photo-date" *ngIf="img.endingdate">
                 <mat-icon class="calendar-icon">calendar_today</mat-icon>
-                <strong>End:</strong> {{ img.endingdate | date:'medium' }}
+                <strong>End:</strong> {{ img.endingdate | date:'MMM d, y, h:mm a' }}
               </p>
               <p class="photo-comment-text">{{ img.comment || 'No issues reported' }}</p>
             </div>
@@ -194,12 +201,12 @@
         
         <!-- Mostrar fecha de inicio si está iniciada -->
         <span *ngIf="isPhaseStarted(activity) || isPhaseCompleted(activity)" class="activity-date">
-          Started: {{ activity.startDate | date:'short' }}
+          Started: {{ activity.startDate | date:'MMM d, y, h:mm a' }}
         </span>
         
         <!-- Mostrar fecha de finalización si está completada -->
         <span *ngIf="isPhaseCompleted(activity)" class="activity-date">
-          Completed: {{ activity.endDate | date:'short' }}
+          Completed: {{ activity.endDate | date:'MMM d, y, h:mm a' }}
         </span>
 
         <span class="crew-evidence">Remenber take a crew photo.</span>
@@ -220,7 +227,7 @@
   Start Phase
 </button>
       
-      <!-- Botón para completar fase iniciada -->
+      <!-- Botón para completar fase iniciada
       <button 
         *ngIf="isPhaseStarted(activity) && !isPreviousPhaseIncomplete(activity)" 
         mat-stroked-button 
@@ -230,7 +237,7 @@
       >
         <mat-icon>done</mat-icon>
         Complete Phase
-      </button>
+      </button> -->
       
       <!-- Indicador de fase completada -->
       <span *ngIf="isPhaseCompleted(activity)" class="completed-indicator">
@@ -311,6 +318,75 @@
     </mat-expansion-panel>
   </div>
 </div>
+
+<!-- 🎯 Comments -->
+<div class="comments-header">
+  <h3 class="sub-title">Comments</h3>
+  <button mat-icon-button 
+          class="toggle-all-comments-btn" 
+          (click)="toggleAllCommentsVisibility()" 
+          [title]="showAllComments ? 'Hide all comments' : 'Show all comments'">
+    <mat-icon>{{ showAllComments ? 'visibility' : 'visibility_off' }}</mat-icon>
+  </button>
+</div>
+
+<!-- 🎯 NUEVO: Notificación de actualización de comentarios -->
+<div *ngIf="commentsUpdatedMessage" class="update-notification" style="background-color: #4caf50; color: white; padding: 8px 16px; border-radius: 4px; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+  <mat-icon style="color: white;">check_circle</mat-icon>
+  <span>{{ commentsUpdatedMessage }}</span>
+</div>
+
+<div class="comments-section">
+  <mat-form-field appearance="outline" style="width: 100%; margin-bottom: 16px;">
+    <mat-label>Search comments</mat-label>
+    <mat-icon matPrefix>search</mat-icon>
+    <input matInput [(ngModel)]="commentFilterText" (ngModelChange)="onCommentFilterChange()" placeholder="Search by comment text, phase name, or date">
+  </mat-form-field>
+  
+  <div class="comments-container">
+    <div *ngFor="let comment of filteredComments; let i = index" 
+         class="comment-item" 
+         [class.hidden-comment]="isCommentHidden(i)"
+         [style.display]="isCommentHidden(i) ? 'none' : 'block'">
+      <div class="comment-header">
+        <div class="comment-phase">
+          <mat-icon class="phase-icon">assignment</mat-icon>
+          <span class="phase-name">{{ comment.phaseName }}</span>
+        </div>
+        <div class="comment-date">
+          <mat-icon class="date-icon">schedule</mat-icon>
+          <span>{{ comment.date | date:'MMM d, y, h:mm a' }}</span>
+          <button mat-icon-button 
+                  class="toggle-comment-btn" 
+                  (click)="toggleCommentVisibility(i)" 
+                  [title]="isCommentHidden(i) ? 'Show comment' : 'Hide comment'">
+            <mat-icon>{{ isCommentHidden(i) ? 'radio_button_unchecked' : 'check_circle' }}</mat-icon>
+          </button>
+        </div>
+      </div>
+      
+      <div class="comment-content">
+        <mat-icon *ngIf="comment.hasIssue" class="issue-icon" color="warn">warning</mat-icon>
+        <p class="comment-text">{{ comment.text }}</p>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Mostrar mensaje si no hay comentarios -->
+  <div *ngIf="filteredComments.length === 0" class="no-comments">
+    <p class="no-comments-text">
+      <mat-icon color="info">info</mat-icon>
+      <span *ngIf="getCommentsFromImages().length === 0">
+        No comments have been added to photos yet.
+      </span>
+      <span *ngIf="getCommentsFromImages().length > 0">
+        No comments match the applied filter.
+      </span>
+    </p>
+  </div>
+</div>
+
+<mat-divider></mat-divider>
 
 <!-- Permits -->
 <h3 class="sub-title">Permits</h3>

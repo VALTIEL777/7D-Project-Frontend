@@ -23,6 +23,7 @@ import { RouteData, MapConfig, LeafletMapComponent } from '../../../shared/leafl
 import { environment } from '../../../../environments/environment';
 import * as L from 'leaflet';
 import { TicketStatusService } from '../../../core/services/route/ticketstatus.service';
+import { TaskstatusService } from '../../../core/services/route/taskstatus.service';
 
 
 @Component({
@@ -77,19 +78,20 @@ teamMembers: string[] = []; // Nombres de los demás miembros
   address: ''
 };
 
-remainingLocations: {
-  address: string;
-  job?: string;
-  surface?: number;
-  width?: number;
-  length?: number;
-  description?: string; // ✅ AGREGADO: Incluir descripción
-  routeCode?: string; // ✅ AGREGADO: Incluir routeCode
-  lat?: number;
-  lng?: number;
-  displayAddress?: string; // ✅ AGREGADO: Para mostrar direcciones consistentes
-  ticketcode?: string; // ✅ AGREGADO: Incluir ticketcode
-}[] = [];
+  remainingLocations: {
+    address: string;
+    job?: string;
+    surface?: number;
+    width?: number;
+    length?: number;
+    description?: string; // ✅ AGREGADO: Incluir descripción
+    routeCode?: string; // ✅ AGREGADO: Incluir routeCode
+    lat?: number;
+    lng?: number;
+    displayAddress?: string; // ✅ AGREGADO: Para mostrar direcciones consistentes
+    ticketcode?: string; // ✅ AGREGADO: Incluir ticketcode
+    isHidden?: boolean; // 🎯 NUEVO: Para ocultar ubicaciones completadas
+  }[] = [];
 
 crewType: string = '';
 
@@ -130,7 +132,8 @@ crewDetails: any[] = [];
         private router: Router,
 
         private http: HttpClient,   // ✅ Still needed for route API calls
-        private ticketStatusService: TicketStatusService  // 🎯 Para verificar estado de fases
+        private ticketStatusService: TicketStatusService,  // 🎯 Para verificar estado de fases
+        private taskstatusService: TaskstatusService  // 🎯 Para obtener nombres de fases
 
   ){}
 
@@ -152,13 +155,16 @@ crewDetails: any[] = [];
   private completionCheckInterval: any; // 🎯 Para limpiar el intervalo
   private currentCheckIndex: number = 0; // 🎯 Índice rotativo para verificar ubicaciones
   private useCrewTypeMatching: boolean = true; // 🎯 Modo de verificación: true = crew type, false = todas las fases
+  private isCheckingLocations: boolean = false; // 🎯 NUEVO: Evitar verificaciones simultáneas
+  private lastMapUpdate: number = 0; // 🎯 NUEVO: Controlar frecuencia de actualizaciones del mapa
+  private lastCompletionLog: { [key: string]: number } = {}; // 🎯 NUEVO: Evitar logs repetitivos
 
   // 🎯 MÉTODO PARA ESCUCHAR CUANDO SE COMPLETA UNA UBICACIÓN
   private setupLocationCompletionListener(): void {
-    // Verificar cada 5 segundos si alguna ubicación se completó
+    // Verificar cada 30 segundos todas las ubicaciones (reducido de 10 a 30)
     this.completionCheckInterval = setInterval(() => {
       this.checkForCompletedLocations();
-    }, 5000);
+    }, 30000);
   }
 
   // 🎯 MÉTODO PARA LIMPIAR EL INTERVALO CUANDO SE DESTRUYE EL COMPONENTE
@@ -170,9 +176,23 @@ crewDetails: any[] = [];
 
   // 🎯 MÉTODO PARA VERIFICAR UBICACIONES COMPLETADAS
   private checkForCompletedLocations(): void {
+    // 🎯 NUEVO: Evitar verificaciones simultáneas
+    if (this.isCheckingLocations) {
+      return;
+    }
+
     if (this.remainingLocations.length === 0) {
       return;
     }
+
+    // 🎯 NUEVO: Verificar si hay ubicaciones visibles para verificar
+    const visibleLocations = this.remainingLocations.filter(loc => !loc.isHidden);
+    if (visibleLocations.length === 0) {
+      return; // No hay ubicaciones visibles para verificar
+    }
+
+    // 🎯 NUEVO: Marcar que estamos verificando
+    this.isCheckingLocations = true;
 
     // Obtener el crewId actual
     const storedUserId = Number(localStorage.getItem('userId'));
@@ -180,103 +200,158 @@ crewDetails: any[] = [];
     const currentCrewId = person?.crewid;
 
     if (!currentCrewId) {
+      this.isCheckingLocations = false;
       return;
     }
 
-    // 🎯 VERIFICAR SOLO UNA UBICACIÓN A LA VEZ PARA EVITAR SOBRECARGA
-    // Usar un índice rotativo para verificar diferentes ubicaciones en cada ciclo
-    if (!this.currentCheckIndex) {
-      this.currentCheckIndex = 0;
-    }
-
-    const location = this.remainingLocations[this.currentCheckIndex];
-    if (location) {
+    // 🎯 VERIFICAR SOLO LAS UBICACIONES VISIBLES
+    const locationsToCheck = visibleLocations;
+    let completedCount = 0;
+    
+    const checkPromises = locationsToCheck.map((location, originalIndex) => {
       const ticketId = (location as any).ticketid;
       if (ticketId) {
-        this.checkLocationCompletionStatus(ticketId, location, this.currentCheckIndex);
+        // Encontrar el índice actual en remainingLocations (puede haber cambiado)
+        const currentIndex = this.remainingLocations.findIndex(loc => 
+          (loc as any).ticketid === ticketId && loc.address === location.address
+        );
+        
+        if (currentIndex !== -1) {
+          return this.checkLocationCompletionStatus(ticketId, location, currentIndex).then(() => {
+            // 🎯 NUEVO: Incrementar contador si la ubicación fue completada
+            if (this.remainingLocations[currentIndex]?.isHidden) {
+              completedCount++;
+            }
+          });
+        }
       }
-    }
+      return Promise.resolve();
+    });
 
-    // Rotar al siguiente índice para la próxima verificación
-    this.currentCheckIndex = (this.currentCheckIndex + 1) % this.remainingLocations.length;
+    // 🎯 NUEVO: Esperar a que todas las verificaciones terminen
+    Promise.all(checkPromises).finally(() => {
+      this.isCheckingLocations = false;
+      
+      // 🎯 NUEVO: Solo actualizar el mapa si hubo cambios
+      if (completedCount > 0) {
+        this.updateLeafletRoutes();
+      }
+      
+      // 🎯 NUEVO: Limpiar logs antiguos (más de 5 minutos)
+      const now = Date.now();
+      Object.keys(this.lastCompletionLog).forEach(key => {
+        if (now - this.lastCompletionLog[key] > 300000) { // 5 minutos
+          delete this.lastCompletionLog[key];
+        }
+      });
+    });
   }
 
   // 🎯 MÉTODO PARA VERIFICAR EL ESTADO DE COMPLETADO DE UNA UBICACIÓN ESPECÍFICA
-  private checkLocationCompletionStatus(ticketId: number, location: any, locationIndex: number): void {
-    this.ticketStatusService.getByTicket(ticketId).subscribe({
-      next: (ticketStatuses: any[]) => {
-        let shouldRemove = false;
+  private checkLocationCompletionStatus(ticketId: number, location: any, locationIndex: number): Promise<void> {
+    return new Promise((resolve) => {
+      this.ticketStatusService.getByTicket(ticketId).subscribe({
+        next: (ticketStatuses: any[]) => {
+          // 🎯 SOLUCIÓN TEMPORAL: Obtener nombres de fases usando taskstatusid
+          this.getPhaseNamesForTicketStatuses(ticketStatuses).then(enhancedTicketStatuses => {
+            let shouldRemove = false;
 
-        if (this.useCrewTypeMatching) {
-          // 🎯 MODO 1: Verificar si la fase completada es idéntica al crew type
-          shouldRemove = this.isCompletedPhaseMatchingCrewType(ticketStatuses, location);
-        } else {
-          // 🎯 MODO 2: Verificar si todas las fases obligatorias están completadas
-          shouldRemove = this.areAllRequiredPhasesCompleted(ticketStatuses, location);
-        }
+            if (this.useCrewTypeMatching) {
+              // 🎯 MODO 1: Verificar si la fase completada es idéntica al crew type
+              shouldRemove = this.isCompletedPhaseMatchingCrewType(enhancedTicketStatuses, location);
+            } else {
+              // 🎯 MODO 2: Verificar si todas las fases obligatorias están completadas
+              shouldRemove = this.areAllRequiredPhasesCompleted(enhancedTicketStatuses, location);
+            }
 
-        if (shouldRemove) {
-          console.log(`✅ Ubicación completada detectada: ${location.address}`);
-          this.removeCompletedLocation(locationIndex);
+            if (shouldRemove) {
+              // 🎯 NUEVO: Evitar logs repetitivos - solo logear una vez por ubicación por minuto
+              const locationKey = `${location.address}-${ticketId}`;
+              const now = Date.now();
+              const lastLog = this.lastCompletionLog[locationKey] || 0;
+              
+              if (now - lastLog > 60000) { // Solo logear una vez por minuto
+                console.log(`✅ Ubicación completada detectada: ${location.address} (Ticket: ${ticketId})`);
+                this.lastCompletionLog[locationKey] = now;
+              }
+              
+              // 🎯 IMPORTANTE: Verificar que el ticketId coincida antes de ocultar
+              if ((location as any).ticketid === ticketId) {
+                this.hideCompletedLocation(locationIndex);
+              }
+            }
+            resolve();
+          });
+        },
+        error: (err) => {
+          console.error(`❌ Error verificando estado de ubicación ${ticketId}:`, err);
+          resolve();
         }
-      },
-      error: (err) => {
-        console.error(`❌ Error verificando estado de ubicación ${ticketId}:`, err);
-      }
+      });
     });
+  }
+
+  // 🎯 NUEVO MÉTODO: Obtener nombres de fases usando taskstatusid
+  private async getPhaseNamesForTicketStatuses(ticketStatuses: any[]): Promise<any[]> {
+    try {
+      // Obtener todos los TaskStatus para mapear nombres
+      const taskStatuses = await firstValueFrom(this.taskstatusService.getAllTaskStatuses());
+      
+      // Crear un mapa de taskstatusid -> name
+      const taskStatusMap = new Map();
+      (taskStatuses as any[]).forEach((ts: any) => {
+        taskStatusMap.set(ts.taskstatusid, ts.name);
+      });
+
+      // Enriquecer los ticketStatuses con los nombres de fases
+      const enhancedTicketStatuses = ticketStatuses.map(ts => ({
+        ...ts,
+        name: taskStatusMap.get(ts.taskstatusid) || 'N/A'
+      }));
+
+      return enhancedTicketStatuses;
+    } catch (error) {
+      console.error('❌ Error obteniendo nombres de fases:', error);
+      return ticketStatuses; // Retornar original si hay error
+    }
   }
 
   // 🎯 MÉTODO PARA VERIFICAR SI LA FASE COMPLETADA ES IDÉNTICA AL CREW TYPE
   private isCompletedPhaseMatchingCrewType(ticketStatuses: any[], location: any): boolean {
-    // Obtener el crewType actual
+    // Obtener el crewType y crewId actual
     const storedUserId = Number(localStorage.getItem('userId'));
     const person = this.employeeList.find(p => p.userid === storedUserId);
     const currentCrewType = person?.type || this.crewType;
-
-    console.log(`🔍 Verificando crew type para ${location.address}:`);
-    console.log(`  - Crew Type actual: ${currentCrewType}`);
+    const currentCrewId = person?.crewid;
 
     // Verificar si el crew type es válido
     if (!this.isValidCrewType(currentCrewType)) {
-      console.log(`⚠️ Crew type "${currentCrewType}" no es válido para eliminación automática`);
       return false;
     }
 
-    // Buscar fases completadas que coincidan con el crew type
-    const completedPhases = ticketStatuses.filter(ts => ts.endingdate);
-
-    console.log(`  - Fases completadas encontradas:`, completedPhases.map(ts => ts.taskname));
+    // Buscar fases completadas que coincidan con el crew type Y el crewId actual
+    const completedPhases = ticketStatuses.filter(ts => {
+      const hasEndingDate = ts.endingdate;
+      const hasEndingTime = ts.endingtime;
+      const hasCompletedStatus = ts.status === 'completed' || ts.status === 'COMPLETED';
+      const hasEndDate = ts.enddate;
+      
+      // 🎯 IMPORTANTE: Verificar que la fase fue completada por el crew actual
+      const wasCompletedByCurrentCrew = ts.crewid === currentCrewId;
+      
+      return (hasEndingDate || hasEndingTime || hasCompletedStatus || hasEndDate) && wasCompletedByCurrentCrew;
+    });
 
     // Verificar si alguna fase completada coincide EXACTAMENTE con el crew type
     const matchingCompletedPhase = completedPhases.find(ts => {
-      const phaseName = ts.taskname?.toLowerCase() || '';
+      const phaseName = (ts.name || ts.taskname || ts.taskName || ts.phasename || ts.phaseName || ts.description || '').toLowerCase();
       const crewType = currentCrewType?.toLowerCase() || '';
 
       // 🎯 COMPARACIÓN EXACTA: Crew type debe ser igual al nombre de la fase
-      const isMatching = phaseName === crewType;
-
-      console.log(`    - Fase: ${phaseName}, Crew Type: ${crewType}, Coincide: ${isMatching}`);
-
-      return isMatching;
+      return phaseName === crewType;
     });
 
-    // 🎯 DEBUG: Mostrar todas las fases disponibles para referencia
-    const allAvailablePhases = [
-      'spotting', 'install signs', 'grind', 'asphalt', 'crack seal', 'stripping',
-      'sawcut', 'removal', 'framing', 'concrete', 'pour', 'clean'
-    ];
-
-    console.log(`📋 Fases disponibles para crew types: ${allAvailablePhases.join(', ')}`);
-    console.log(`🎯 Crew type actual: ${currentCrewType}`);
-    console.log(`🔍 Fases completadas en esta ubicación: ${completedPhases.map(ts => ts.taskname).join(', ')}`);
-
-    if (matchingCompletedPhase) {
-      console.log(`✅ Fase completada coincide con crew type: ${matchingCompletedPhase.taskname}`);
-      return true;
-    }
-
-    console.log(`❌ No se encontró fase completada que coincida con el crew type`);
-    return false;
+    return !!matchingCompletedPhase;
   }
 
   // 🎯 MÉTODO PARA VERIFICAR SI EL CREW TYPE ES VÁLIDO
@@ -287,17 +362,16 @@ crewDetails: any[] = [];
     ];
 
     const normalizedCrewType = crewType?.toLowerCase() || '';
-    const isValid = validCrewTypes.includes(normalizedCrewType);
-
-    console.log(`🔍 Verificando crew type: "${normalizedCrewType}" - Válido: ${isValid}`);
-
-    return isValid;
+    return validCrewTypes.includes(normalizedCrewType);
   }
 
   // 🎯 MÉTODO ALTERNATIVO: VERIFICAR SI TODAS LAS FASES OBLIGATORIAS ESTÁN COMPLETADAS
   private areAllRequiredPhasesCompleted(ticketStatuses: any[], location: any): boolean {
-    // Obtener el routeCode de la ubicación
+    // Obtener el routeCode de la ubicación y el crewId actual
     const routeCode = location.routeCode || '';
+    const storedUserId = Number(localStorage.getItem('userId'));
+    const person = this.employeeList.find(p => p.userid === storedUserId);
+    const currentCrewId = person?.crewid;
 
     // Definir las fases obligatorias según el tipo de ruta
     let requiredPhases: string[] = [];
@@ -314,27 +388,48 @@ crewDetails: any[] = [];
       return false; // No hay fases obligatorias definidas
     }
 
-    // Verificar que todas las fases obligatorias tengan endingDate (estén completadas)
+    // Verificar que todas las fases obligatorias tengan endingDate Y sean completadas por el crew actual
     const completedRequiredPhases = requiredPhases.filter(phaseName => {
       const phaseStatus = ticketStatuses.find(ts =>
-        ts.taskname === phaseName && ts.endingdate
+        ts.taskname === phaseName && 
+        ts.endingdate && 
+        ts.crewid === currentCrewId // 🎯 IMPORTANTE: Solo fases completadas por el crew actual
       );
       return phaseStatus !== undefined;
     });
-
-    console.log(`🔍 Verificando fases obligatorias para ${location.address}:`);
-    console.log(`  - Fases requeridas: ${requiredPhases.join(', ')}`);
-    console.log(`  - Fases completadas: ${completedRequiredPhases.join(', ')}`);
-    console.log(`  - Total requeridas: ${requiredPhases.length}, Completadas: ${completedRequiredPhases.length}`);
 
     return completedRequiredPhases.length === requiredPhases.length;
   }
 
   // 🎯 MÉTODO PARA ELIMINAR UNA UBICACIÓN COMPLETADA DEL LISTADO
+  private hideCompletedLocation(locationIndex: number): void {
+    if (locationIndex >= 0 && locationIndex < this.remainingLocations.length) {
+      const locationToHide = this.remainingLocations[locationIndex];
+      locationToHide.isHidden = true;
+      console.log(`👻 Ubicación ocultada: ${locationToHide.address} (Restantes visibles: ${this.getVisibleLocationsCount()})`);
+
+      // Actualizar el índice actual si es necesario
+      if (this.currentLocationIndex >= this.remainingLocations.length) {
+        this.currentLocationIndex = Math.max(0, this.remainingLocations.length - 1);
+      }
+
+      // 🎯 NUEVO: Controlar frecuencia de actualizaciones del mapa
+      const now = Date.now();
+      if (now - this.lastMapUpdate > 1000) { // Solo actualizar cada segundo
+        this.lastMapUpdate = now;
+        this.updateLeafletRoutes();
+      }
+    }
+  }
+
+  private getVisibleLocationsCount(): number {
+    return this.remainingLocations.filter(loc => !loc.isHidden).length;
+  }
+
   private removeCompletedLocation(locationIndex: number): void {
     if (locationIndex >= 0 && locationIndex < this.remainingLocations.length) {
       const removedLocation = this.remainingLocations[locationIndex];
-      console.log(`🗑️ Eliminando ubicación completada: ${removedLocation.address}`);
+      console.log(`✅ Ubicación eliminada: ${removedLocation.address} (Restantes: ${this.remainingLocations.length - 1})`);
 
       // Eliminar la ubicación del array
       this.remainingLocations.splice(locationIndex, 1);
@@ -352,8 +447,10 @@ crewDetails: any[] = [];
         this.leafletRoutes = [];
         this.visibleRoutes.clear();
       }
-
-      console.log(`✅ Ubicación eliminada. Restantes: ${this.remainingLocations.length}`);
+      
+      // 🎯 IMPORTANTE: Retornar inmediatamente para evitar procesar más ubicaciones
+      // ya que el array cambió y los índices ya no son válidos
+      return;
     }
   }
 
@@ -380,6 +477,54 @@ crewDetails: any[] = [];
       'Spotting', 'Install Signs', 'Grind', 'Asphalt', 'Crack Seal', 'Stripping',
       'Sawcut', 'Removal', 'Framing', 'Concrete', 'Pour', 'Clean'
     ];
+  }
+
+  // 🎯 MÉTODO PÚBLICO PARA MOSTRAR TODAS LAS UBICACIONES (INCLUYENDO OCULTAS)
+  public showAllHiddenLocations(): void {
+    this.remainingLocations.forEach(location => {
+      location.isHidden = false;
+    });
+    console.log(`👁️ Todas las ubicaciones mostradas: ${this.remainingLocations.length}`);
+    this.updateLeafletRoutes();
+  }
+
+  // 🎯 MÉTODO PÚBLICO PARA OCULTAR UBICACIONES COMPLETADAS
+  public hideCompletedLocations(): void {
+    this.checkForCompletedLocations();
+  }
+
+  // 🎯 MÉTODO PARA AGRUPAR UBICACIONES POR DIRECCIÓN
+  get groupedLocations() {
+    // 🎯 NUEVO: Aplicar filtro a las ubicaciones visibles
+    const visibleLocations = this.remainingLocations.filter(location => !location.isHidden);
+    
+    // Aplicar filtro de búsqueda
+    const filter = this.filterText.trim().toLowerCase();
+    let filteredLocations = visibleLocations;
+    
+    if (filter) {
+      filteredLocations = visibleLocations.filter(loc =>
+        loc.address.toLowerCase().includes(filter) ||
+        loc.job?.toLowerCase().includes(filter)
+      );
+    }
+    
+    // Agrupar por dirección
+    const grouped = filteredLocations.reduce((groups: any, location) => {
+      const address = location.address;
+      if (!groups[address]) {
+        groups[address] = [];
+      }
+      groups[address].push(location);
+      return groups;
+    }, {});
+
+    // Convertir a array de grupos
+    return Object.keys(grouped).map(address => ({
+      address: address,
+      locations: grouped[address],
+      isMultiple: grouped[address].length > 1
+    }));
   }
 
   // Temporary debugging method to force a specific route
@@ -868,24 +1013,28 @@ goToCurrent(location: any) {
 }
 
 
-get filteredLocations() {
-  const filter = this.filterText.trim().toLowerCase();
-  if (!filter) {
-    return this.remainingLocations;
+private updateLeafletRoutes() {
+  // 🎯 NUEVO: Verificar que el mapa esté disponible y no esté en proceso de actualización
+  if (!this.leafletMap || !this.assignedRoute) {
+    return;
   }
 
-  return this.remainingLocations.filter(loc =>
-    loc.address.toLowerCase().includes(filter) ||
-    loc.job?.toLowerCase().includes(filter)
-  );
-}
+  // 🎯 NUEVO: Verificar que el mapa esté inicializado
+  try {
+    const map = (this.leafletMap as any).map;
+    if (!map || !map.invalidateSize) {
+      console.warn('⚠️ Mapa no está completamente inicializado');
+      return;
+    }
+  } catch (error) {
+    console.warn('⚠️ Error verificando estado del mapa:', error);
+    return;
+  }
 
-private updateLeafletRoutes() {
   // Verificar si la ruta tiene polyline (probar ambos formatos de nombres)
   const hasPolyline = this.assignedRoute.encodedpolyline || this.assignedRoute.encodedPolyline;
 
-  if (this.assignedRoute && hasPolyline) {
-
+  if (hasPolyline) {
     this.leafletRoutes = [{
       routeId: this.assignedRoute.routeid || this.assignedRoute.routeId,
       routeCode: this.assignedRoute.routecode || this.assignedRoute.routeCode,
@@ -902,6 +1051,21 @@ private updateLeafletRoutes() {
     this.leafletRoutes = [];
     this.visibleRoutes.clear();
   }
+
+  // 🎯 NUEVO: Usar setTimeout para dar tiempo al mapa a procesar los cambios
+  setTimeout(() => {
+    if (this.leafletMap) {
+      try {
+        // Intentar invalidar el tamaño del mapa de forma segura
+        const map = (this.leafletMap as any).map;
+        if (map && map.invalidateSize && typeof map.invalidateSize === 'function') {
+          map.invalidateSize();
+        }
+      } catch (error) {
+        console.warn('⚠️ Error al actualizar el mapa:', error);
+      }
+    }
+  }, 100);
 }
 
 // Zoom control methods

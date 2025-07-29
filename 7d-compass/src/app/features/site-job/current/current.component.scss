@@ -95,6 +95,179 @@
   width: fit-content;
 }
 
+// 🎯 ESTILOS PARA LA SECCIÓN DE COMENTARIOS
+.comments-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+
+  .sub-title {
+    margin: 0;
+  }
+
+  .toggle-all-comments-btn {
+    color: #005cbb;
+    background-color: rgba(0, 92, 187, 0.1);
+    border-radius: 50%;
+    transition: all 0.2s ease;
+
+    &:hover {
+      background-color: #005cbb;
+      color: white;
+      transform: scale(1.1);
+    }
+
+    mat-icon {
+      font-size: 20px;
+      width: 20px;
+      height: 20px;
+    }
+  }
+}
+
+.comments-section {
+  margin-bottom: 24px;
+}
+
+.comments-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.comment-item {
+  background: white;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border-left: 4px solid #005cbb;
+  transition: all 0.3s ease;
+  overflow: hidden;
+
+  &:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    transform: translateY(-2px);
+  }
+
+  &.hidden-comment {
+    opacity: 0;
+    transform: translateY(-10px);
+    max-height: 0;
+    padding: 0;
+    margin: 0;
+  }
+}
+
+.comment-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #e0e0e0;
+
+  .comment-phase {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    .phase-icon {
+      color: #005cbb;
+      font-size: 20px;
+      width: 20px;
+      height: 20px;
+    }
+
+    .phase-name {
+      font-weight: 600;
+      color: #2c3e50;
+      font-size: 14px;
+    }
+  }
+
+  .comment-date {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+
+    .date-icon {
+      color: #666;
+      font-size: 16px;
+      width: 16px;
+      height: 16px;
+    }
+
+    span {
+      font-size: 12px;
+      color: #666;
+    }
+
+    .toggle-comment-btn {
+      color: #005cbb;
+      background-color: rgba(0, 92, 187, 0.1);
+      border-radius: 50%;
+      transition: all 0.2s ease;
+      margin-left: 8px;
+
+      &:hover {
+        background-color: #005cbb;
+        color: white;
+        transform: scale(1.1);
+      }
+
+      mat-icon {
+        font-size: 16px;
+        width: 16px;
+        height: 16px;
+      }
+    }
+  }
+}
+
+.comment-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+
+  .issue-icon {
+    margin-top: 2px;
+    flex-shrink: 0;
+  }
+
+  .comment-text {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.5;
+    color: #333;
+    flex: 1;
+  }
+}
+
+.no-comments {
+  text-align: center;
+  padding: 32px 16px;
+  background: #f8f9fa;
+  border-radius: 12px;
+  border: 2px dashed #dee2e6;
+
+  .no-comments-text {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    color: #666;
+    font-size: 14px;
+    margin: 0;
+
+    mat-icon {
+      font-size: 20px;
+      width: 20px;
+      height: 20px;
+    }
+  }
+}
+
 .info-list {
   list-style: none;
   padding: 0;
@@ -601,15 +774,7 @@
       }
     }
 
-    &.complete-btn {
-      background-color: #fff3e0;
-      color: #f57c00;
-      border-color: #f57c00;
-
-      &:hover {
-        background-color: #ffe0b2;
-      }
-    }
+  
 
     mat-icon {
       font-size: 18px;

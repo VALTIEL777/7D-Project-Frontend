@@ -109,6 +109,14 @@ diggers: { id: number; number: string }[] = [];
 currentTicketImages: any[] = [];
 openedGroups: { [key: string]: boolean } = {};
 
+// 🎯 Propiedades para la sección de comentarios
+filteredComments: any[] = [];
+commentFilterText: string = '';
+hiddenComments: Set<number> = new Set(); // Controla qué comentarios están ocultos
+showAllComments: boolean = true; // Controla si todos los comentarios están visibles
+commentsUpdatedMessage: string = ''; // 🎯 NUEVO: Mensaje de actualización de comentarios
+galleryUpdatedMessage: string = ''; // 🎯 NUEVO: Mensaje de actualización de galería
+
 activityFilterText: string = '';
 filteredActivities: any[] = [];
 
@@ -1157,7 +1165,17 @@ uploadPhotoEvidence(taskStatusId: number, activity: any): void {
       this.uploadingActivities.delete(activity.id);
 
       this.clearPhotoInputsActivity(activity);
+      
+      // 🎯 NUEVO: Actualizar imágenes y comentarios automáticamente
       this.loadCurrentTicketImages();
+      
+      // 🎯 NUEVO: Actualizar comentarios después de un breve delay
+      setTimeout(() => {
+        // 🎯 NUEVO: Recargar imágenes para asegurar que se incluyan las nuevas
+        this.loadCurrentTicketImages();
+        this.updateCommentsAfterUpload();
+        this.updateGalleryAfterUpload();
+      }, 2000); // 🎯 AUMENTADO: Dar más tiempo para que el backend procese la imagen
 
       // 🎯 VERIFICAR SI HAY ISSUE REPORTADO
       const hasIssue = activity.comment && activity.comment.trim().length > 0;
@@ -1292,6 +1310,15 @@ loadCurrentTicketImages() {
           if (ticketPhotos.length === 0) {
             this.currentTicketImages = [];
             this.filteredTicketImages = [];
+            // 🎯 NUEVO: Aplicar filtros de fecha incluso cuando no hay fotos
+            this.applyDateFilter();
+            
+            // 🎯 NUEVO: Mostrar notificación de galería vacía
+            this.galleryUpdatedMessage = 'Gallery updated - No images found';
+            setTimeout(() => {
+              this.galleryUpdatedMessage = '';
+            }, 2000);
+            
             return;
           }
 
@@ -1341,6 +1368,25 @@ loadCurrentTicketImages() {
             this.currentTicketImages = images;
             this.filteredTicketImages = [...this.currentTicketImages];
             this.applyDateFilter();
+            
+            // 🎯 ACTUALIZAR COMENTARIOS FILTRADOS
+            this.filteredComments = this.getCommentsFromImages();
+            
+            // 🎯 NUEVO: Aplicar filtro de comentarios si existe
+            if (this.commentFilterText.trim()) {
+              this.onCommentFilterChange();
+            }
+            
+            // 🎯 NUEVO: Mostrar notificación de galería actualizada si hay imágenes
+            if (images.length > 0) {
+              this.galleryUpdatedMessage = 'Gallery loaded successfully!';
+              setTimeout(() => {
+                this.galleryUpdatedMessage = '';
+              }, 2000);
+            }
+            
+            // 🎯 NUEVO: Log para debugging
+            console.log(`🖼️ Galería actualizada: ${images.length} imágenes cargadas`);
           });
         },
         error: (err) => {
@@ -1514,6 +1560,67 @@ onActivityFilterChange() {
     this.filteredActivities = this.activities.filter(a =>
       a.name.toLowerCase().includes(filter)
     );
+  }
+}
+
+// 🎯 MÉTODO PARA FILTRAR COMENTARIOS
+onCommentFilterChange() {
+  const filter = this.commentFilterText.trim().toLowerCase();
+  if (!filter) {
+    this.filteredComments = this.getCommentsFromImages();
+  } else {
+    this.filteredComments = this.getCommentsFromImages().filter(comment =>
+      comment.text.toLowerCase().includes(filter) ||
+      comment.phaseName.toLowerCase().includes(filter) ||
+      comment.date.toLowerCase().includes(filter)
+    );
+  }
+}
+
+// 🎯 MÉTODO PARA OBTENER COMENTARIOS DE LAS IMÁGENES
+getCommentsFromImages(): any[] {
+  if (!this.currentTicketImages || this.currentTicketImages.length === 0) {
+    return [];
+  }
+
+  return this.currentTicketImages
+    .filter(img => img.comment && img.comment.trim() !== '' && img.comment !== 'No issues reported')
+    .map(img => ({
+      text: img.comment,
+      phaseName: img.name,
+      date: img.startingdate || img.date,
+      photoId: img.photoId || img.photoid,
+      hasIssue: img.comment && img.comment.trim().length > 0 && img.comment !== 'No issues reported'
+    }))
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()); // Ordenar por fecha más reciente
+}
+
+// 🎯 MÉTODO PARA ALTERNAR VISIBILIDAD DE UN COMENTARIO ESPECÍFICO
+toggleCommentVisibility(commentIndex: number): void {
+  if (this.hiddenComments.has(commentIndex)) {
+    this.hiddenComments.delete(commentIndex);
+  } else {
+    this.hiddenComments.add(commentIndex);
+  }
+}
+
+// 🎯 MÉTODO PARA VERIFICAR SI UN COMENTARIO ESTÁ OCULTO
+isCommentHidden(commentIndex: number): boolean {
+  return this.hiddenComments.has(commentIndex);
+}
+
+// 🎯 MÉTODO PARA OCULTAR/MOSTRAR TODOS LOS COMENTARIOS
+toggleAllCommentsVisibility(): void {
+  this.showAllComments = !this.showAllComments;
+  
+  if (this.showAllComments) {
+    // Mostrar todos los comentarios
+    this.hiddenComments.clear();
+  } else {
+    // Ocultar todos los comentarios
+    this.filteredComments.forEach((_, index) => {
+      this.hiddenComments.add(index);
+    });
   }
 }
 
@@ -1930,6 +2037,43 @@ clearDateFilters() {
   this.filterDateFrom = null;
   this.filterDateTo = null;
   this.applyDateFilter();
+}
+
+// 🎯 NUEVO MÉTODO: Actualizar comentarios después de subir evidencia
+private updateCommentsAfterUpload(): void {
+  console.log('🔄 Actualizando comentarios después de subir evidencia...');
+  
+  // Actualizar los comentarios filtrados
+  this.filteredComments = this.getCommentsFromImages();
+  
+  // Aplicar el filtro de búsqueda si existe
+  if (this.commentFilterText.trim()) {
+    this.onCommentFilterChange();
+  }
+  
+  // 🎯 NUEVO: Mostrar mensaje de actualización temporal
+  this.commentsUpdatedMessage = 'Comments updated successfully!';
+  setTimeout(() => {
+    this.commentsUpdatedMessage = '';
+  }, 3000);
+  
+  console.log(`✅ Comentarios actualizados: ${this.filteredComments.length} comentarios encontrados`);
+}
+
+// 🎯 NUEVO MÉTODO: Actualizar galería después de subir evidencia
+private updateGalleryAfterUpload(): void {
+  console.log('🖼️ Actualizando galería después de subir evidencia...');
+  
+  // 🎯 NUEVO: Recargar imágenes para asegurar que se incluyan las nuevas
+  this.loadCurrentTicketImages();
+  
+  // Mostrar mensaje de actualización temporal
+  this.galleryUpdatedMessage = 'Gallery updated successfully!';
+  setTimeout(() => {
+    this.galleryUpdatedMessage = '';
+  }, 3000);
+  
+  console.log(`✅ Galería actualizada: ${this.filteredTicketImages.length} imágenes encontradas`);
 }
 
 }

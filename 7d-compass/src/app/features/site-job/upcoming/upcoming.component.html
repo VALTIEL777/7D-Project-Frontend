@@ -14,7 +14,7 @@
         <h3 class="map-title">Locations Map</h3>
         <div *ngIf="filterText.trim()" class="filter-indicator">
           <mat-icon>filter_list</mat-icon>
-          <span>Filtered: {{ filteredLocations.length }} of {{ remainingLocations.length }}</span>
+          <span>Filtered: {{ groupedLocations.length }} groups</span>
         </div>
         <div *ngIf="!filterText.trim() && remainingLocations.length > 1" class="route-info">
           <mat-icon>directions</mat-icon>
@@ -28,17 +28,6 @@
         </div>
       </div>
       <div class="map-controls">
-        <button mat-icon-button (click)="goToPreviousLocation()" [disabled]="remainingLocations.length === 0" title="Previous Location">
-          <mat-icon>chevron_left</mat-icon>
-        </button>
-        <span class="location-info">{{ getLocationNavigationInfo() }}</span>
-        <button mat-icon-button (click)="goToNextLocation()" [disabled]="remainingLocations.length === 0" title="Next Location">
-          <mat-icon>chevron_right</mat-icon>
-        </button>
-        <button mat-stroked-button (click)="debugMapState()" class="debug-btn" title="Show Route">
-          <mat-icon>map</mat-icon>
-          Show Route
-        </button>
       </div>
     </div>
 
@@ -87,29 +76,48 @@
     </mat-form-field>
 
     <!-- ❌ Mostrar mensaje si no hay resultados -->
-    <div *ngIf="filteredLocations.length === 0" class="no-locations">
+    <div *ngIf="groupedLocations.length === 0" class="no-locations">
       <p class="no-locations-text">
         <mat-icon color="warn">info</mat-icon>
-        There is no route assigned yet.
+        <span *ngIf="filterText.trim()">No locations found matching "{{ filterText }}"</span>
+        <span *ngIf="!filterText.trim()">There is no route assigned yet.</span>
       </p>
     </div>
 
-    <!-- 📍 Lista filtrada -->
+    <!-- 📍 Lista filtrada agrupada -->
     <div class="locations-list">
-      <div *ngFor="let location of filteredLocations; let i = index" class="location-card">
+      <div *ngFor="let group of groupedLocations; let i = index" class="location-card">
         <div class="location-header">
           <div class="location-number">{{ i + 1 }}</div>
           <div class="location-info">
-            <p class="address"><strong>{{ location.displayAddress || location.address }}</strong></p>
-            <p class="job-info" *ngIf="location.job">{{ location.job }}</p>
-            <p class="size-info"><strong>Size:</strong> {{ location.length || 'Not available'}} x {{ location.width || 'Not available' }} ft</p>
+            <p class="address"><strong>{{ group.address }}</strong></p>
+            
+            <!-- Si es una ubicación única, mostrar como antes -->
+            <div *ngIf="!group.isMultiple">
+              <p class="job-info" *ngIf="group.locations[0].job">{{ group.locations[0].job }}</p>
+              <p class="size-info"><strong>Size:</strong> {{ group.locations[0].length || 'Not available'}} x {{ group.locations[0].width || 'Not available' }} ft</p>
+            </div>
+            
+            <!-- Si hay múltiples ubicaciones, mostrar lista -->
+            <div *ngIf="group.isMultiple" class="multiple-locations">
+              <div *ngFor="let location of group.locations; let j = index" class="location-item">
+                <div class="location-item-content">
+                  <p class="job-info" *ngIf="location.job">{{ location.job }}</p>
+                  <p class="size-info"><strong>Size:</strong> {{ location.length || 'Not available'}} x {{ location.width || 'Not available' }} ft</p>
+                </div>
+                <div class="location-item-action">
+                  <button mat-icon-button class="small-go-btn" (click)="goToCurrent(location)" title="Go to location">
+                    <mat-icon class="icon">place</mat-icon>
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-        <div class="location-actions">
-          <!-- <button mat-stroked-button class="show-on-map-btn" (click)="showLocationOnMap(i)" title="Show on Map">
-            <mat-icon class="icon">map</mat-icon>Show on Map
-          </button> -->
-          <button mat-raised-button class="custom-select-button" (click)="goToCurrent(location)">
+        
+        <!-- Botón principal solo para ubicaciones únicas -->
+        <div class="location-actions" *ngIf="!group.isMultiple">
+          <button mat-raised-button class="custom-select-button" (click)="goToCurrent(group.locations[0])">
             <mat-icon class="icon">place</mat-icon>Go to location
           </button>
         </div>

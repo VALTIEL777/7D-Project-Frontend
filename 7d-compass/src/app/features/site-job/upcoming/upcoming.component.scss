@@ -264,6 +264,12 @@
   @media (min-width: 1200px) {
     padding-inline: 64px;
   }
+
+  // 🎯 VISTA MÓVIL: Contenedor principal
+  @media (max-width: 767px) {
+    padding-inline: 16px; // 🎯 PADDING HORIZONTAL NORMAL
+    overflow: visible; // 🎯 PERMITIR QUE EL CONTENIDO SE EXTENDA
+  }
 }
 
 .loader-container {
@@ -384,6 +390,13 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
+
+  // 🎯 VISTA MÓVIL: Lista de ubicaciones
+  @media (max-width: 767px) {
+    width: 100%; // 🎯 ANCHO COMPLETO
+    max-width: none; // 🎯 SIN LÍMITE DE ANCHO
+    overflow: visible; // 🎯 PERMITIR QUE EL CONTENIDO SE EXTENDA
+  }
 }
 
 .location-card {
@@ -396,6 +409,15 @@
 
   &:hover {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+
+  // 🎯 VISTA MÓVIL: Cards principales
+  @media (max-width: 767px) {
+    width: 100%; // 🎯 ANCHO COMPLETO
+    max-width: none; // 🎯 SIN LÍMITE DE ANCHO
+    overflow: visible; // 🎯 PERMITIR QUE EL CONTENIDO SE EXTENDA
+    box-sizing: border-box; // 🎯 INCLUIR PADDING EN EL ANCHO
+    padding: 16px; // 🎯 PADDING UNIFORME
   }
 }
 
@@ -449,6 +471,133 @@
     &:hover {
       background-color: rgba(0, 92, 187, 0.1);
     }
+  }
+}
+
+// 🎯 ESTILOS PARA AGRUPACIÓN DE UBICACIONES
+.multiple-locations {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+  
+  // 🎯 ASEGURAR QUE TODAS LAS MINI-CARDS TENGAN EL MISMO ESPACIADO
+  .location-item {
+    &:first-child {
+      margin-top: 0;
+    }
+    
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+
+  // 🎯 VISTA MÓVIL: Contenedor de mini-cards
+  @media (max-width: 767px) {
+    width: 100%; // 🎯 ANCHO COMPLETO
+    max-width: none; // 🎯 SIN LÍMITE DE ANCHO
+    overflow: visible; // 🎯 PERMITIR QUE LAS MINI-CARDS SE EXTENDAN
+  }
+}
+
+.location-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  border-left: 3px solid #005cbb;
+  transition: background-color 0.2s ease;
+  height: 70px; // 🎯 ALTURA FIJA UNIFORME PARA TODAS LAS MINI-CARDS
+  box-sizing: border-box;
+
+  &:hover {
+    background-color: #e9ecef;
+  }
+
+  .location-item-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center; // 🎯 CENTRAR CONTENIDO VERTICALMENTE
+    height: 54px; // 🎯 ALTURA FIJA PARA EL CONTENIDO (70px - 16px padding)
+    min-width: 0; // 🎯 PERMITIR QUE SE ENCOJA
+    overflow: hidden; // 🎯 EVITAR DESBORDAMIENTO
+
+    .job-info {
+      font-size: 0.85rem;
+      color: #666;
+      margin: 0 0 4px 0; // 🎯 MÁS ESPACIO ENTRE JOB-INFO Y SIZE-INFO
+      font-weight: 500;
+      line-height: 1.3; // 🎯 ALTURA DE LÍNEA MEJORADA
+      max-height: 1.3em; // 🎯 ALTURA MÁXIMA PARA CONSISTENCIA
+      overflow: hidden; // 🎯 EVITAR DESBORDAMIENTO
+      text-overflow: ellipsis; // 🎯 MOSTRAR "..." SI EL TEXTO ES MUY LARGO
+      white-space: nowrap; // 🎯 EVITAR SALTO DE LÍNEA
+      width: 100%; // 🎯 OCUPAR TODO EL ANCHO DISPONIBLE
+    }
+
+    .size-info {
+      font-size: 0.8rem;
+      color: #888;
+      margin: 0;
+      line-height: 1.3; // 🎯 ALTURA DE LÍNEA MEJORADA
+      max-height: 1.3em; // 🎯 ALTURA MÁXIMA PARA CONSISTENCIA
+      overflow: hidden; // 🎯 EVITAR DESBORDAMIENTO
+      text-overflow: ellipsis; // 🎯 MOSTRAR "..." SI EL TEXTO ES MUY LARGO
+      white-space: nowrap; // 🎯 EVITAR SALTO DE LÍNEA
+      width: 100%; // 🎯 OCUPAR TODO EL ANCHO DISPONIBLE
+    }
+
+    // 🎯 PLACEHOLDER PARA CUANDO NO HAY JOB-INFO
+    .job-info:empty::before {
+      content: '';
+      display: block;
+      height: 1.3em;
+      margin-bottom: 4px;
+    }
+  }
+
+  .location-item-action {
+    flex-shrink: 0;
+    margin-left: 8px;
+    width: 40px; // 🎯 ANCHO FIJO PARA EL BOTÓN
+    display: flex;
+    justify-content: center;
+
+    .small-go-btn {
+      width: 32px;
+      height: 32px;
+      min-width: 32px;
+      max-width: 32px; // 🎯 ANCHO MÁXIMO FIJO
+      color: #005cbb;
+      background-color: rgba(0, 92, 187, 0.1);
+      border-radius: 50%;
+      transition: all 0.2s ease;
+      flex-shrink: 0; // 🎯 NO PERMITIR QUE SE ENCOJA
+
+      &:hover {
+        background-color: #005cbb;
+        color: white;
+        transform: scale(1.1);
+      }
+
+      .icon {
+        font-size: 16px;
+        width: 16px;
+        height: 16px;
+        margin: 0;
+      }
+    }
+  }
+
+  // 🎯 VISTA MÓVIL: Tarjetas internas se extienden hacia la derecha manteniendo diseño original
+  @media (max-width: 767px) {
+    margin-right: -16px; // 🎯 EXTENDER SOLO HACIA LA DERECHA
+    padding-right: 16px; // 🎯 PADDING PARA EL CONTENIDO
+    border-radius: 8px 0 0 8px; // 🎯 MANTENER BORDES REDONDEADOS EN EL LADO IZQUIERDO
+    width: calc(100% + 16px); // 🎯 OCUPAR ANCHO COMPLETO + EL MARGEN
   }
 }
 

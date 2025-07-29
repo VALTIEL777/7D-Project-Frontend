@@ -28,9 +28,8 @@
 
         <p class="date-info">
           <mat-icon class="calendar-icon">calendar_today</mat-icon>
-          <strong>Started:</strong> {{ location.startingDate | date:'medium' }}<br />
-          <mat-icon class="calendar-icon-completed">calendar_today</mat-icon>
-          <strong>Completed:</strong> {{ location.endingDate | date:'medium' }}
+          <strong>Started:</strong> {{ location.startingDate | date:'MMM d, y, h:mm a' }}<br />
+          <strong>Completed:</strong> {{ location.endingDate | date:'MMM d, y, h:mm a' }}
         </p>
 
         <!-- ✅ NUEVO: Mostrar fases completadas -->
