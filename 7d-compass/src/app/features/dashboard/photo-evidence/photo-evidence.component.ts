@@ -50,6 +50,14 @@ interface Address {
   fullAddress: string;
 }
 
+interface ContractUnit {
+  contractUnitId: number;
+  name: string;
+  description: string;
+  unit: string;
+  costPerUnit: number;
+}
+
 interface Ticket {
   ticketId: number;
   ticketCode: string;
@@ -59,6 +67,7 @@ interface Ticket {
   quantity: number;
   daysOutstanding: number;
   comment7d: string;
+  contractUnit: ContractUnit;
   addresses: Address[];
   taskStatuses: TaskStatus[];
 }
@@ -137,6 +146,20 @@ export class PhotoEvidenceComponent extends BaseDashboardComponent implements On
       cell: (ticket: any) => ticket.contractUnit?.name || 'N/A'
     },
     {
+      name: 'size',
+      header: 'Size',
+      cell: (ticket: any) => {
+        if (ticket.wayfinding && ticket.wayfinding.dimensions) {
+          const width = ticket.wayfinding.dimensions.width;
+          const length = ticket.wayfinding.dimensions.length;
+          if (width && length) {
+            return `${width}*${length}`;
+          }
+        }
+        return 'N/A';
+      }
+    },
+    {
       name: 'address',
       header: 'Address',
       cell: (ticket: any) => {
@@ -182,7 +205,7 @@ export class PhotoEvidenceComponent extends BaseDashboardComponent implements On
 
   // Override text search to include relevant fields
   protected override matchesTextSearch(item: any, searchTerm: string): boolean {
-    const searchableFields = ['incidentName', 'ticketCode', 'incidentId', 'contractUnit'];
+    const searchableFields = ['incidentName', 'ticketCode', 'incidentId'];
 
     // Check the main searchable fields
     const mainFieldMatch = searchableFields.some(field => {
@@ -202,6 +225,18 @@ export class PhotoEvidenceComponent extends BaseDashboardComponent implements On
       const contractUnitMatch = item.contractUnit.name.toLowerCase().includes(searchTerm.toLowerCase());
       if (contractUnitMatch) {
         return true;
+      }
+    }
+
+    // Check size field specifically
+    if (item.wayfinding && item.wayfinding.dimensions) {
+      const width = item.wayfinding.dimensions.width;
+      const length = item.wayfinding.dimensions.length;
+      if (width && length) {
+        const sizeString = `${width}*${length}`;
+        if (sizeString.toLowerCase().includes(searchTerm.toLowerCase())) {
+          return true;
+        }
       }
     }
 
@@ -244,6 +279,15 @@ export class PhotoEvidenceComponent extends BaseDashboardComponent implements On
         console.log('📊 Response summary:', response.summary);
         console.log('📋 Total incidents:', response.data.length);
 
+        // Log the first incident structure to see the actual properties
+        if (response.data && response.data.length > 0) {
+          console.log('🔍 First incident structure:', response.data[0]);
+          if (response.data[0].tickets && response.data[0].tickets.length > 0) {
+            console.log('🔍 First ticket structure:', response.data[0].tickets[0]);
+            console.log('🔍 Contract unit in first ticket:', response.data[0].tickets[0].contractUnit);
+          }
+        }
+
         if (response.success) {
           this.galleryData = response.data;
           // Flatten the data structure for the table
@@ -252,6 +296,12 @@ export class PhotoEvidenceComponent extends BaseDashboardComponent implements On
           console.log('✅ Gallery data loaded successfully');
           console.log('📋 Flattened data count:', this.allData.length);
           console.log('📊 Total count for pagination:', this.totalCount);
+
+          // Log the first flattened ticket to see the structure
+          if (this.allData.length > 0) {
+            console.log('🔍 First flattened ticket:', this.allData[0]);
+            console.log('🔍 Contract unit in flattened ticket:', this.allData[0].contractUnit);
+          }
         } else {
           console.error('❌ API returned error:', response.message);
           this.error = response.message || 'Failed to load gallery data';
@@ -277,12 +327,22 @@ export class PhotoEvidenceComponent extends BaseDashboardComponent implements On
 
     this.galleryData.forEach(incident => {
       incident.tickets.forEach(ticket => {
+        // Skip tickets with MOBILIZATION in contract unit name
+        if (ticket.contractUnit && ticket.contractUnit.name) {
+          const contractUnitName = ticket.contractUnit.name.toLowerCase();
+          if (contractUnitName.includes('mobilization')) {
+            console.log('🚫 Skipping MOBILIZATION ticket:', ticket.ticketCode, 'Contract Unit:', ticket.contractUnit.name);
+            return; // Skip this ticket
+          }
+        }
+
         // Add incident information to each ticket
         const ticketWithIncident = {
           ...ticket,
           incidentId: incident.incidentId,
           incidentName: incident.incidentName,
-          earliestRptDate: incident.earliestRptDate
+          earliestRptDate: incident.earliestRptDate,
+          contractUnit: ticket.contractUnit // Preserve contractUnit information
         };
         flattenedData.push(ticketWithIncident);
       });
@@ -290,6 +350,8 @@ export class PhotoEvidenceComponent extends BaseDashboardComponent implements On
 
     this.allData = flattenedData;
     this.filteredData = [...this.allData];
+
+    console.log('📊 Total tickets after filtering MOBILIZATION:', this.allData.length);
   }
 
   // Getter for filtered gallery data
@@ -657,9 +719,53 @@ export class PhotoEvidenceComponent extends BaseDashboardComponent implements On
     // Clean the task status for filename (remove special characters)
     const cleanTaskStatus = taskStatus.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_');
 
-    // Get file extension from URL or default to .jpg
-    const urlParts = photoUrl.split('.');
-    const extension = urlParts.length > 1 ? urlParts[urlParts.length - 1].split('?')[0] : 'jpg';
+    // Determine the correct file extension
+    let extension = 'jpg'; // Default to jpg
+
+    // Check if it's a blob URL (starts with blob:)
+    if (photoUrl.startsWith('blob:')) {
+      // For blob URLs, we need to determine the type from the original photo data
+      if (photo.photo && photo.photo.includes('data:image/')) {
+        // Extract MIME type from data URL
+        const mimeMatch = photo.photo.match(/data:image\/([^;]+)/);
+        if (mimeMatch) {
+          const mimeType = mimeMatch[1];
+          switch (mimeType) {
+            case 'jpeg':
+            case 'jpg':
+              extension = 'jpg';
+              break;
+            case 'png':
+              extension = 'png';
+              break;
+            case 'gif':
+              extension = 'gif';
+              break;
+            case 'webp':
+              extension = 'webp';
+              break;
+            default:
+              extension = 'jpg';
+          }
+        }
+      } else if (photo.photo && photo.photo.includes('.')) {
+        // Try to extract extension from the original photo filename
+        const photoParts = photo.photo.split('.');
+        if (photoParts.length > 1) {
+          const photoExt = photoParts[photoParts.length - 1].toLowerCase();
+          if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(photoExt)) {
+            extension = photoExt === 'jpeg' ? 'jpg' : photoExt;
+          }
+        }
+      }
+    } else if (photoUrl.includes('.')) {
+      // For regular URLs, extract extension from URL
+      const urlParts = photoUrl.split('.');
+      const urlExt = urlParts[urlParts.length - 1].split('?')[0].toLowerCase();
+      if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(urlExt)) {
+        extension = urlExt === 'jpeg' ? 'jpg' : urlExt;
+      }
+    }
 
     const filename = `${ticketNumber}_${cleanAddress}_${cleanTaskStatus}_${dateTaken}.${extension}`;
 
@@ -675,6 +781,8 @@ export class PhotoEvidenceComponent extends BaseDashboardComponent implements On
     document.body.removeChild(link);
 
     console.log('📥 Downloading photo:', filename);
+    console.log('🔍 Photo URL type:', photoUrl.startsWith('blob:') ? 'blob' : 'regular');
+    console.log('🔍 Original photo data:', photo.photo ? 'exists' : 'none');
   }
 
   onPageChange(page: number) {

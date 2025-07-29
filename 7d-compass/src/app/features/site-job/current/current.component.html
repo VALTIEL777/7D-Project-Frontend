@@ -8,6 +8,10 @@
   <div class="map-header">
     <h3 class="map-title">Location Map</h3>
     <div class="map-controls">
+      <button mat-stroked-button class="debug-btn" (click)="zoomToCurrentLocation()" title="Zoom to current location">
+        <mat-icon>my_location</mat-icon>
+        Zoom to Location
+      </button>
     </div>
   </div>
 
@@ -88,7 +92,7 @@
             Current Ticket Images ({{ filteredTicketImages.length }} total)
           </mat-panel-title>
         </mat-expansion-panel-header>
-        
+
         <div *ngFor="let groupName of (groupedImages | keyvalue)">
           <button mat-button class="group-button" (click)="toggleGroup(groupName.key)">
             {{ openedGroups[groupName.key] ? 'Hide' : 'Show' }} {{ groupName.key }} ({{ groupName.value.length }})
@@ -96,7 +100,7 @@
           <div class="images-container" *ngIf="openedGroups[groupName.key]">
             <div *ngFor="let img of groupName.value" class="photo-item">
               <p class="photo-name">{{ img.name }}</p>
-              
+
               <!-- Image container with loading indicator -->
               <div class="image-container">
                 <!-- Error indicator with retry button -->
@@ -108,14 +112,14 @@
                     Retry
                   </button>
                 </div>
-                
+
                 <!-- Show image if it's an image -->
-                <img *ngIf="!isPdfFile(img.url)" 
-                     [src]="img.url" 
-                     [alt]="img.name" 
+                <img *ngIf="!isPdfFile(img.url)"
+                     [src]="img.url"
+                     [alt]="img.name"
                      class="location-image"
                      (error)="onImageError($event, img)" />
-                
+
                 <!-- Show PDF if it's a PDF -->
                 <div *ngIf="isPdfFile(img.url)" class="pdf-container">
                   <mat-icon class="pdf-icon">picture_as_pdf</mat-icon>
@@ -132,7 +136,7 @@
                   </div>
                 </div>
               </div>
-              
+
               <p class="photo-date" *ngIf="img.startingdate">
                 <mat-icon class="calendar-icon">calendar_today</mat-icon>
                 <strong>Start:</strong> {{ img.startingdate | date:'MMM d, y, h:mm a' }}
@@ -179,31 +183,31 @@
         <mat-icon *ngIf="!activity.assigned" class="status-icon not-assigned" title="Not assigned">
           radio_button_unchecked
         </mat-icon>
-        
+
         <!-- Estado: Asignada pero no iniciada -->
         <mat-icon *ngIf="isPhaseAssigned(activity)" class="status-icon assigned" title="Assigned - Click to start">
           assignment
         </mat-icon>
-        
+
         <!-- Estado: Iniciada pero no completada -->
         <mat-icon *ngIf="isPhaseStarted(activity)" class="status-icon started" title="Started - Click to complete">
           play_circle
         </mat-icon>
-        
+
         <!-- Estado: Completada -->
         <mat-icon *ngIf="isPhaseCompleted(activity)" class="status-icon completed" title="Completed">
           check_circle
         </mat-icon>
       </div>
-      
+
       <div class="activity-content">
         <span class="activity-name">{{ activity.name }}</span>
-        
+
         <!-- Mostrar fecha de inicio si está iniciada -->
         <span *ngIf="isPhaseStarted(activity) || isPhaseCompleted(activity)" class="activity-date">
           Started: {{ activity.startDate | date:'MMM d, y, h:mm a' }}
         </span>
-        
+
         <!-- Mostrar fecha de finalización si está completada -->
         <span *ngIf="isPhaseCompleted(activity)" class="activity-date">
           Completed: {{ activity.endDate | date:'MMM d, y, h:mm a' }}
@@ -212,39 +216,39 @@
         <span class="crew-evidence">Remenber take a crew photo.</span>
       </div>
     </div>
-    
+
     <div class="activity-actions">
       <!-- Botón para iniciar fase asignada -->
       <!-- Botón para iniciar fase asignada o fase opcional no asignada -->
-<button 
-  *ngIf="(isPhaseAssigned(activity) || (activity.optional && !activity.assigned)) && !isPreviousPhaseIncomplete(activity)" 
-  mat-stroked-button 
-  color="primary" 
+<button
+  *ngIf="(isPhaseAssigned(activity) || (activity.optional && !activity.assigned)) && !isPreviousPhaseIncomplete(activity)"
+  mat-stroked-button
+  color="primary"
   (click)="startPhase(activity)"
   class="action-btn start-btn"
 >
   <mat-icon>play_arrow</mat-icon>
   Start Phase
 </button>
-      
+
       <!-- Botón para completar fase iniciada
-      <button 
-        *ngIf="isPhaseStarted(activity) && !isPreviousPhaseIncomplete(activity)" 
-        mat-stroked-button 
-        color="accent" 
+      <button
+        *ngIf="isPhaseStarted(activity) && !isPreviousPhaseIncomplete(activity)"
+        mat-stroked-button
+        color="accent"
         (click)="completePhase(activity)"
         class="action-btn complete-btn"
       >
         <mat-icon>done</mat-icon>
         Complete Phase
       </button> -->
-      
+
       <!-- Indicador de fase completada -->
       <span *ngIf="isPhaseCompleted(activity)" class="completed-indicator">
         <mat-icon>check</mat-icon>
         Completed
       </span>
-      
+
       <!-- Indicador de fase bloqueada por fase anterior -->
       <span *ngIf="isPreviousPhaseIncomplete(activity)" class="blocked-indicator" style="color: #bdbdbd; display: flex; align-items: center; gap: 4px;">
         <mat-icon>lock</mat-icon>
@@ -322,9 +326,9 @@
 <!-- 🎯 Comments -->
 <div class="comments-header">
   <h3 class="sub-title">Comments</h3>
-  <button mat-icon-button 
-          class="toggle-all-comments-btn" 
-          (click)="toggleAllCommentsVisibility()" 
+  <button mat-icon-button
+          class="toggle-all-comments-btn"
+          (click)="toggleAllCommentsVisibility()"
           [title]="showAllComments ? 'Hide all comments' : 'Show all comments'">
     <mat-icon>{{ showAllComments ? 'visibility' : 'visibility_off' }}</mat-icon>
   </button>
@@ -342,10 +346,10 @@
     <mat-icon matPrefix>search</mat-icon>
     <input matInput [(ngModel)]="commentFilterText" (ngModelChange)="onCommentFilterChange()" placeholder="Search by comment text, phase name, or date">
   </mat-form-field>
-  
+
   <div class="comments-container">
-    <div *ngFor="let comment of filteredComments; let i = index" 
-         class="comment-item" 
+    <div *ngFor="let comment of filteredComments; let i = index"
+         class="comment-item"
          [class.hidden-comment]="isCommentHidden(i)"
          [style.display]="isCommentHidden(i) ? 'none' : 'block'">
       <div class="comment-header">
@@ -356,22 +360,22 @@
         <div class="comment-date">
           <mat-icon class="date-icon">schedule</mat-icon>
           <span>{{ comment.date | date:'MMM d, y, h:mm a' }}</span>
-          <button mat-icon-button 
-                  class="toggle-comment-btn" 
-                  (click)="toggleCommentVisibility(i)" 
+          <button mat-icon-button
+                  class="toggle-comment-btn"
+                  (click)="toggleCommentVisibility(i)"
                   [title]="isCommentHidden(i) ? 'Show comment' : 'Hide comment'">
             <mat-icon>{{ isCommentHidden(i) ? 'radio_button_unchecked' : 'check_circle' }}</mat-icon>
           </button>
         </div>
       </div>
-      
+
       <div class="comment-content">
         <mat-icon *ngIf="comment.hasIssue" class="issue-icon" color="warn">warning</mat-icon>
         <p class="comment-text">{{ comment.text }}</p>
       </div>
     </div>
   </div>
-  
+
   <!-- Mostrar mensaje si no hay comentarios -->
   <div *ngIf="filteredComments.length === 0" class="no-comments">
     <p class="no-comments-text">

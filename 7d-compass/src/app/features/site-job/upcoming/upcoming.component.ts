@@ -142,6 +142,9 @@ crewDetails: any[] = [];
 
     // 🎯 ESCUCHAR CAMBIOS EN EL ESTADO DE COMPLETADO DE UBICACIONES
     this.setupLocationCompletionListener();
+
+    // 🎯 EXPONER MÉTODOS DE DEBUG PARA CONSOLE
+    this.exposeDebugMethods();
   }
 
   // 🎯 MÉTODO PARA VERIFICAR INMEDIATAMENTE UBICACIONES COMPLETADAS DESPUÉS DE CARGAR
@@ -207,15 +210,15 @@ crewDetails: any[] = [];
     // 🎯 VERIFICAR SOLO LAS UBICACIONES VISIBLES
     const locationsToCheck = visibleLocations;
     let completedCount = 0;
-    
+
     const checkPromises = locationsToCheck.map((location, originalIndex) => {
       const ticketId = (location as any).ticketid;
       if (ticketId) {
         // Encontrar el índice actual en remainingLocations (puede haber cambiado)
-        const currentIndex = this.remainingLocations.findIndex(loc => 
+        const currentIndex = this.remainingLocations.findIndex(loc =>
           (loc as any).ticketid === ticketId && loc.address === location.address
         );
-        
+
         if (currentIndex !== -1) {
           return this.checkLocationCompletionStatus(ticketId, location, currentIndex).then(() => {
             // 🎯 NUEVO: Incrementar contador si la ubicación fue completada
@@ -231,12 +234,12 @@ crewDetails: any[] = [];
     // 🎯 NUEVO: Esperar a que todas las verificaciones terminen
     Promise.all(checkPromises).finally(() => {
       this.isCheckingLocations = false;
-      
+
       // 🎯 NUEVO: Solo actualizar el mapa si hubo cambios
       if (completedCount > 0) {
         this.updateLeafletRoutes();
       }
-      
+
       // 🎯 NUEVO: Limpiar logs antiguos (más de 5 minutos)
       const now = Date.now();
       Object.keys(this.lastCompletionLog).forEach(key => {
@@ -269,12 +272,12 @@ crewDetails: any[] = [];
               const locationKey = `${location.address}-${ticketId}`;
               const now = Date.now();
               const lastLog = this.lastCompletionLog[locationKey] || 0;
-              
+
               if (now - lastLog > 60000) { // Solo logear una vez por minuto
                 console.log(`✅ Ubicación completada detectada: ${location.address} (Ticket: ${ticketId})`);
                 this.lastCompletionLog[locationKey] = now;
               }
-              
+
               // 🎯 IMPORTANTE: Verificar que el ticketId coincida antes de ocultar
               if ((location as any).ticketid === ticketId) {
                 this.hideCompletedLocation(locationIndex);
@@ -296,7 +299,7 @@ crewDetails: any[] = [];
     try {
       // Obtener todos los TaskStatus para mapear nombres
       const taskStatuses = await firstValueFrom(this.taskstatusService.getAllTaskStatuses());
-      
+
       // Crear un mapa de taskstatusid -> name
       const taskStatusMap = new Map();
       (taskStatuses as any[]).forEach((ts: any) => {
@@ -335,10 +338,10 @@ crewDetails: any[] = [];
       const hasEndingTime = ts.endingtime;
       const hasCompletedStatus = ts.status === 'completed' || ts.status === 'COMPLETED';
       const hasEndDate = ts.enddate;
-      
+
       // 🎯 IMPORTANTE: Verificar que la fase fue completada por el crew actual
       const wasCompletedByCurrentCrew = ts.crewid === currentCrewId;
-      
+
       return (hasEndingDate || hasEndingTime || hasCompletedStatus || hasEndDate) && wasCompletedByCurrentCrew;
     });
 
@@ -391,8 +394,8 @@ crewDetails: any[] = [];
     // Verificar que todas las fases obligatorias tengan endingDate Y sean completadas por el crew actual
     const completedRequiredPhases = requiredPhases.filter(phaseName => {
       const phaseStatus = ticketStatuses.find(ts =>
-        ts.taskname === phaseName && 
-        ts.endingdate && 
+        ts.taskname === phaseName &&
+        ts.endingdate &&
         ts.crewid === currentCrewId // 🎯 IMPORTANTE: Solo fases completadas por el crew actual
       );
       return phaseStatus !== undefined;
@@ -447,7 +450,7 @@ crewDetails: any[] = [];
         this.leafletRoutes = [];
         this.visibleRoutes.clear();
       }
-      
+
       // 🎯 IMPORTANTE: Retornar inmediatamente para evitar procesar más ubicaciones
       // ya que el array cambió y los índices ya no son válidos
       return;
@@ -493,22 +496,82 @@ crewDetails: any[] = [];
     this.checkForCompletedLocations();
   }
 
+  // 🎯 MÉTODO PÚBLICO PARA DEBUGGEAR LA ASIGNACIÓN DE RUTAS
+  public debugRouteAssignment(): void {
+    const storedUserId = Number(localStorage.getItem('userId'));
+    const person = this.employeeList.find(p => p.userid === storedUserId);
+    const currentCrewType = person?.type || this.crewType;
+    const currentCrewId = person?.crewid;
+
+    console.log('🔍 === ROUTE ASSIGNMENT DEBUG ===');
+    console.log('👤 Current User:', {
+      userId: storedUserId,
+      name: person?.name || 'Not found',
+      crewId: currentCrewId,
+      crewType: currentCrewType
+    });
+    console.log('📍 Remaining Locations:', this.remainingLocations.length);
+    console.log('🎫 Ticket IDs:', this.remainingLocations.map(loc => (loc as any).ticketid));
+    console.log('🗺️ Assigned Route:', {
+      routeId: this.assignedRouteId,
+      routeCode: this.assignedRoute?.routecode || this.assignedRoute?.routeCode,
+      type: this.assignedRoute?.type,
+      hasPolyline: !!(this.assignedRoute?.encodedpolyline || this.assignedRoute?.encodedPolyline),
+      ticketsCount: this.assignedRoute?.tickets?.length || 0
+    });
+    console.log('🔍 === END DEBUG ===');
+  }
+
+  // 🎯 MÉTODO PÚBLICO PARA FORZAR UNA RUTA ESPECÍFICA
+  public forceRouteAssignment(routeId: number): void {
+    console.log(`🎯 Forcing route assignment to ID: ${routeId}`);
+    this.forceSpecificRoute(routeId);
+  }
+
+  // 🎯 MÉTODO PÚBLICO PARA TESTING - EXPONER EN WINDOW PARA CONSOLE
+  public exposeDebugMethods(): void {
+    // Expose debug methods to window for console access
+    (window as any).debugUpcoming = {
+      debugRoute: () => this.debugRouteAssignment(),
+      forceRoute: (id: number) => this.forceRouteAssignment(id),
+      getCrewInfo: () => {
+        const storedUserId = Number(localStorage.getItem('userId'));
+        const person = this.employeeList.find(p => p.userid === storedUserId);
+        return {
+          userId: storedUserId,
+          name: person?.name,
+          crewId: person?.crewid,
+          crewType: person?.type || this.crewType
+        };
+      },
+      getRouteInfo: () => ({
+        assignedRouteId: this.assignedRouteId,
+        routeCode: this.assignedRoute?.routecode || this.assignedRoute?.routeCode,
+        type: this.assignedRoute?.type,
+        hasPolyline: !!(this.assignedRoute?.encodedpolyline || this.assignedRoute?.encodedPolyline),
+        ticketsCount: this.assignedRoute?.tickets?.length || 0
+      }),
+      refreshRoute: () => this.getAssignedRoute()
+    };
+    console.log('🔧 Debug methods exposed to window.debugUpcoming');
+  }
+
   // 🎯 MÉTODO PARA AGRUPAR UBICACIONES POR DIRECCIÓN
   get groupedLocations() {
     // 🎯 NUEVO: Aplicar filtro a las ubicaciones visibles
     const visibleLocations = this.remainingLocations.filter(location => !location.isHidden);
-    
+
     // Aplicar filtro de búsqueda
     const filter = this.filterText.trim().toLowerCase();
     let filteredLocations = visibleLocations;
-    
+
     if (filter) {
       filteredLocations = visibleLocations.filter(loc =>
         loc.address.toLowerCase().includes(filter) ||
         loc.job?.toLowerCase().includes(filter)
       );
     }
-    
+
     // Agrupar por dirección
     const grouped = filteredLocations.reduce((groups: any, location) => {
       const address = location.address;
@@ -547,122 +610,187 @@ crewDetails: any[] = [];
   // Method to get the assigned route for the crew
   async getAssignedRoute(): Promise<void> {
     try {
-      // Get routes by type (like route-generator does)
+      // Get the current crew type and crew ID
+      const storedUserId = Number(localStorage.getItem('userId'));
+      const person = this.employeeList.find(p => p.userid === storedUserId);
+      const currentCrewType = person?.type || this.crewType;
+      const currentCrewId = person?.crewid;
 
-      // Get spotting routes first (since crew type is "Spotting")
-      const spottingRoutesResponse = await firstValueFrom(this.http.get<any>(`${environment.apiUrl}/routes/spotting`));
+      console.log('🔍 Route Assignment Debug:', {
+        crewType: currentCrewType,
+        crewId: currentCrewId,
+        userId: storedUserId
+      });
 
-      // Get concrete routes
-      const concreteRoutesResponse = await firstValueFrom(this.http.get<any>(`${environment.apiUrl}/routes/concrete`));
+      // Get routes by type based on crew type
+      let allRoutes: any[] = [];
 
-      // Get asphalt routes
-      const asphaltRoutesResponse = await firstValueFrom(this.http.get<any>(`${environment.apiUrl}/routes/asphalt`));
+      // Map crew type to route type
+      const crewTypeToRouteType: { [key: string]: string } = {
+        'spotting': 'spotting',
+        'concrete': 'concrete',
+        'asphalt': 'asphalt',
+        'crack seal': 'asphalt',
+        'grind': 'asphalt',
+        'stripping': 'asphalt',
+        'sawcut': 'concrete',
+        'removal': 'concrete',
+        'framing': 'concrete',
+        'pour': 'concrete',
+        'clean': 'concrete',
+        'install signs': 'spotting'
+      };
 
-      // Combine all routes
-      const allRoutes = [
-        ...(spottingRoutesResponse?.routes || []),
-        ...(concreteRoutesResponse?.routes || []),
-        ...(asphaltRoutesResponse?.routes || [])
-      ];
+      const routeType = crewTypeToRouteType[currentCrewType?.toLowerCase()] || 'spotting';
+      console.log('🎯 Mapped route type:', routeType, 'for crew type:', currentCrewType);
+
+      // Get routes for the specific type first
+      try {
+        const specificRouteResponse = await firstValueFrom(
+          this.http.get<any>(`${environment.apiUrl}/routes/${routeType}`)
+        );
+        if (specificRouteResponse?.routes) {
+          allRoutes = [...specificRouteResponse.routes];
+          console.log(`✅ Found ${allRoutes.length} routes for type: ${routeType}`);
+        }
+      } catch (error) {
+        console.warn(`⚠️ No routes found for type: ${routeType}`);
+      }
+
+      // If no routes found for specific type, get all route types
+      if (allRoutes.length === 0) {
+        console.log('🔄 Getting all route types as fallback...');
+
+        try {
+          const [spottingRoutes, concreteRoutes, asphaltRoutes] = await Promise.all([
+            firstValueFrom(this.http.get<any>(`${environment.apiUrl}/routes/spotting`)),
+            firstValueFrom(this.http.get<any>(`${environment.apiUrl}/routes/concrete`)),
+            firstValueFrom(this.http.get<any>(`${environment.apiUrl}/routes/asphalt`))
+          ]);
+
+          allRoutes = [
+            ...(spottingRoutes?.routes || []),
+            ...(concreteRoutes?.routes || []),
+            ...(asphaltRoutes?.routes || [])
+          ];
+
+          console.log(`✅ Found ${allRoutes.length} total routes across all types`);
+        } catch (error) {
+          console.error('❌ Error fetching routes:', error);
+        }
+      }
 
       if (allRoutes && allRoutes.length > 0) {
-        // Look for routes that match the crew's work type or have tickets that match this crew's tickets
         let assignedRoute = null;
 
-        // First, try to find a route that has tickets matching this crew's tickets
+        // Priority 1: Find route with matching tickets for this crew
         const crewTicketIds = this.remainingLocations.map(loc => (loc as any).ticketid).filter((id: any) => id);
+        console.log('🎫 Crew ticket IDs:', crewTicketIds);
 
         for (const route of allRoutes) {
           if (route.tickets && Array.isArray(route.tickets)) {
             const routeTicketIds = route.tickets.map((ticket: any) => ticket.ticketId || ticket.ticketid).filter((id: any) => id);
-
-            // Check if any tickets match
             const matchingTickets = crewTicketIds.filter((id: any) => routeTicketIds.includes(id));
+
             if (matchingTickets.length > 0) {
+              console.log(`✅ Found route with matching tickets: ${route.routeid || route.routeId} (${matchingTickets.length} matches)`);
               assignedRoute = route;
               break;
             }
           }
         }
 
-        // If no matching route found, try to find by type
+        // Priority 2: Find route by type matching crew type
         if (!assignedRoute) {
-          // Look for UPCOMING routes first, then SPOTTER routes
-          const upcomingRoute = allRoutes.find((route: any) => route.type === 'UPCOMING');
-          const spotterRoute = allRoutes.find((route: any) => route.type === 'SPOTTER');
+          const routeTypeMap: { [key: string]: string } = {
+            'spotting': 'SPOTTER',
+            'concrete': 'CONCRETE',
+            'asphalt': 'ASPHALT',
+            'crack seal': 'ASPHALT',
+            'grind': 'ASPHALT',
+            'stripping': 'ASPHALT',
+            'sawcut': 'CONCRETE',
+            'removal': 'CONCRETE',
+            'framing': 'CONCRETE',
+            'pour': 'CONCRETE',
+            'clean': 'CONCRETE',
+            'install signs': 'SPOTTER'
+          };
 
-          if (upcomingRoute) {
-            assignedRoute = upcomingRoute;
-          } else if (spotterRoute) {
-            assignedRoute = spotterRoute;
-          } else {
-            // Use the first available route as fallback
-            assignedRoute = allRoutes[0];
+          const expectedRouteType = routeTypeMap[currentCrewType?.toLowerCase()] || 'SPOTTER';
+          console.log(`🎯 Looking for route type: ${expectedRouteType}`);
+
+          const matchingRoute = allRoutes.find((route: any) =>
+            route.type === expectedRouteType ||
+            route.routecode?.toUpperCase().includes(expectedRouteType) ||
+            route.routeCode?.toUpperCase().includes(expectedRouteType)
+          );
+
+          if (matchingRoute) {
+            console.log(`✅ Found matching route by type: ${matchingRoute.routeid || matchingRoute.routeId}`);
+            assignedRoute = matchingRoute;
           }
         }
 
-        // If still no route found, try to get route ID 3 directly (as a fallback)
+        // Priority 3: Find UPCOMING routes
+        if (!assignedRoute) {
+          const upcomingRoute = allRoutes.find((route: any) => route.type === 'UPCOMING');
+          if (upcomingRoute) {
+            console.log(`✅ Found UPCOMING route: ${upcomingRoute.routeid || upcomingRoute.routeId}`);
+            assignedRoute = upcomingRoute;
+          }
+        }
+
+        // Priority 4: Find any route with encoded polyline
+        if (!assignedRoute) {
+          const routeWithPolyline = allRoutes.find((route: any) =>
+            (route.encodedpolyline && route.encodedpolyline.length > 0) ||
+            (route.encodedPolyline && route.encodedPolyline.length > 0)
+          );
+          if (routeWithPolyline) {
+            console.log(`✅ Found route with polyline: ${routeWithPolyline.routeid || routeWithPolyline.routeId}`);
+            assignedRoute = routeWithPolyline;
+          }
+        }
+
+        // Priority 5: Use first available route as fallback
+        if (!assignedRoute && allRoutes.length > 0) {
+          assignedRoute = allRoutes[0];
+          console.log(`⚠️ Using fallback route: ${assignedRoute.routeid || assignedRoute.routeId}`);
+        }
+
+        // Priority 6: Try to get route ID 3 directly (as a last resort)
         if (!assignedRoute) {
           try {
             const route3 = await firstValueFrom(this.routeService.getRouteById(3));
             if (route3) {
+              console.log('✅ Using route ID 3 as last resort');
               assignedRoute = route3;
             }
           } catch (error) {
-            // Error handling silently
-          }
-        }
-
-        // If still no route, try to find any route with encoded polyline
-        if (!assignedRoute) {
-          const routeWithPolyline = allRoutes.find((route: any) => route.encodedpolyline && route.encodedpolyline.length > 0);
-          if (routeWithPolyline) {
-            assignedRoute = routeWithPolyline;
+            console.warn('⚠️ Could not fetch route ID 3');
           }
         }
 
         this.assignedRoute = assignedRoute;
         this.assignedRouteId = assignedRoute?.routeid || assignedRoute?.routeId;
 
-        // 🔍 DEBUG: Log de datos de la ruta recibidos (COMENTADO)
-        // console.log('🔍 Datos de la ruta recibidos:', this.assignedRoute);
-        // console.log('🎫 Tickets de la ruta:', this.assignedRoute?.tickets);
-        // if (this.assignedRoute?.tickets) {
-        //   console.log('📋 Detalle de tickets con queue:');
-        //   this.assignedRoute.tickets.forEach((ticket: any, index: number) => {
-        //     console.log(`  ${index + 1}. Ticket ${ticket.ticketId || ticket.ticketid} - Queue: ${ticket.queue} - Address: ${ticket.address}`);
-        //   });
-        // }
-
-        // ✅ NO llamar updateLeafletRoutes() aquí - se llamará desde getCrewDetails()
-        // this.updateLeafletRoutes();
-
-        // ✅ NO forzar actualización duplicada
-        // setTimeout(() => {
-        //   this.updateLeafletRoutes();
-        //   if (this.leafletMap) {
-        //     this.leafletMap.refreshMap();
-        //   }
-        // }, 1000);
-
         if (assignedRoute) {
-          // For debugging, let's also check if we can force a specific route
-          const hasPolyline = this.assignedRoute.encodedpolyline || this.assignedRoute.encodedPolyline;
-          if (!hasPolyline) {
-            const routeWithPolyline = allRoutes.find((route: any) => {
-              const routePolyline = route.encodedpolyline || route.encodedPolyline;
-              return routePolyline && routePolyline.length > 0;
-            });
-            if (routeWithPolyline) {
-              const routeId = routeWithPolyline.routeid || routeWithPolyline.routeId;
-              this.assignedRoute = routeWithPolyline;
-              this.assignedRouteId = routeId;
-            }
-          }
+          console.log('🎯 Final assigned route:', {
+            routeId: this.assignedRouteId,
+            routeCode: assignedRoute.routecode || assignedRoute.routeCode,
+            type: assignedRoute.type,
+            hasPolyline: !!(assignedRoute.encodedpolyline || assignedRoute.encodedPolyline),
+            ticketsCount: assignedRoute.tickets?.length || 0
+          });
+        } else {
+          console.warn('❌ No route assigned to crew');
         }
+      } else {
+        console.warn('❌ No routes available');
       }
     } catch (error) {
-      // Error handling silently
+      console.error('❌ Error in getAssignedRoute:', error);
     }
   }
 
@@ -965,15 +1093,13 @@ private async getTicketCoordinates(): Promise<void> {
         loc.lat = firstAddress.latitude;
         loc.lng = firstAddress.longitude;
 
-        // Update the address with the full address from the API if available
-        if (firstAddress.fullAddress) {
-          loc.address = firstAddress.fullAddress;
-        }
-
+        // ✅ FIXED: Preserve the original address format - don't overwrite it!
+        // Only update coordinates, keep the original address for route matching
         console.log(`✅ Got coordinates for ticket ${loc.ticketcode}:`, {
           lat: loc.lat,
           lng: loc.lng,
-          address: loc.address
+          originalAddress: loc.address,
+          apiAddress: firstAddress.fullAddress
         });
       } else {
         console.warn(`❌ No coordinates found for ticket ${loc.ticketcode}`);

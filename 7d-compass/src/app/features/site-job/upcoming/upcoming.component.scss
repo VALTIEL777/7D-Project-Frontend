@@ -126,7 +126,7 @@
     .refresh-btn {
       color: white;
       border-color: rgba(255, 255, 255, 0.3);
-      
+
       &:hover {
         background-color: rgba(255, 255, 255, 0.1);
       }
@@ -135,10 +135,10 @@
     .debug-btn {
       color: white;
       border-color: rgba(255, 255, 255, 0.3);
-      background-color: rgba(76, 175, 80, 0.2);
-      
+      background-color: rgba(255, 193, 7, 0.2);
+
       &:hover {
-        background-color: rgba(76, 175, 80, 0.3);
+        background-color: rgba(255, 193, 7, 0.3);
       }
     }
   }
@@ -467,7 +467,7 @@
   .show-on-map-btn {
     color: #005cbb;
     border-color: #005cbb;
-    
+
     &:hover {
       background-color: rgba(0, 92, 187, 0.1);
     }
@@ -480,13 +480,13 @@
   flex-direction: column;
   gap: 8px;
   margin-top: 8px;
-  
+
   // 🎯 ASEGURAR QUE TODAS LAS MINI-CARDS TENGAN EL MISMO ESPACIADO
   .location-item {
     &:first-child {
       margin-top: 0;
     }
-    
+
     &:last-child {
       margin-bottom: 0;
     }
@@ -827,7 +827,7 @@
 
   .location-actions {
     justify-content: stretch;
-    
+
     .custom-select-button {
       width: 100%;
     }
@@ -867,7 +867,7 @@
   .location-actions {
     flex-direction: column;
     gap: 8px;
-    
+
     .show-on-map-btn,
     .zoom-btn,
     .custom-select-button {
@@ -900,13 +900,13 @@
   color: white;
   border: none;
   transition: all 0.3s ease;
-  
+
   &:hover {
     background: linear-gradient(135deg, #45a049 0%, #3d8b40 100%);
     transform: translateY(-1px);
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
   }
-  
+
   mat-icon {
     margin-right: 4px;
   }
@@ -917,13 +917,13 @@
   color: white;
   border: none;
   transition: all 0.3s ease;
-  
+
   &:hover {
     background: linear-gradient(135deg, #f57c00 0%, #ef6c00 100%);
     transform: translateY(-1px);
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
   }
-  
+
   mat-icon {
     margin-right: 4px;
   }

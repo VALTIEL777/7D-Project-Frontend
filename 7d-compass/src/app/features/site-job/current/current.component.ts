@@ -1165,10 +1165,10 @@ uploadPhotoEvidence(taskStatusId: number, activity: any): void {
       this.uploadingActivities.delete(activity.id);
 
       this.clearPhotoInputsActivity(activity);
-      
+
       // 🎯 NUEVO: Actualizar imágenes y comentarios automáticamente
       this.loadCurrentTicketImages();
-      
+
       // 🎯 NUEVO: Actualizar comentarios después de un breve delay
       setTimeout(() => {
         // 🎯 NUEVO: Recargar imágenes para asegurar que se incluyan las nuevas
@@ -1312,13 +1312,13 @@ loadCurrentTicketImages() {
             this.filteredTicketImages = [];
             // 🎯 NUEVO: Aplicar filtros de fecha incluso cuando no hay fotos
             this.applyDateFilter();
-            
+
             // 🎯 NUEVO: Mostrar notificación de galería vacía
             this.galleryUpdatedMessage = 'Gallery updated - No images found';
             setTimeout(() => {
               this.galleryUpdatedMessage = '';
             }, 2000);
-            
+
             return;
           }
 
@@ -1368,15 +1368,15 @@ loadCurrentTicketImages() {
             this.currentTicketImages = images;
             this.filteredTicketImages = [...this.currentTicketImages];
             this.applyDateFilter();
-            
+
             // 🎯 ACTUALIZAR COMENTARIOS FILTRADOS
             this.filteredComments = this.getCommentsFromImages();
-            
+
             // 🎯 NUEVO: Aplicar filtro de comentarios si existe
             if (this.commentFilterText.trim()) {
               this.onCommentFilterChange();
             }
-            
+
             // 🎯 NUEVO: Mostrar notificación de galería actualizada si hay imágenes
             if (images.length > 0) {
               this.galleryUpdatedMessage = 'Gallery loaded successfully!';
@@ -1384,7 +1384,7 @@ loadCurrentTicketImages() {
                 this.galleryUpdatedMessage = '';
               }, 2000);
             }
-            
+
             // 🎯 NUEVO: Log para debugging
             console.log(`🖼️ Galería actualizada: ${images.length} imágenes cargadas`);
           });
@@ -1612,7 +1612,7 @@ isCommentHidden(commentIndex: number): boolean {
 // 🎯 MÉTODO PARA OCULTAR/MOSTRAR TODOS LOS COMENTARIOS
 toggleAllCommentsVisibility(): void {
   this.showAllComments = !this.showAllComments;
-  
+
   if (this.showAllComments) {
     // Mostrar todos los comentarios
     this.hiddenComments.clear();
@@ -1765,30 +1765,97 @@ isLastRequiredPhaseCompleted(): boolean {
 
 // Método para hacer zoom suave a la ubicación actual
 zoomToCurrentLocation(): void {
-  if (this.location && this.location.lat && this.location.lng && this.leafletMap) {
-    console.log(`🎯 Haciendo zoom suave a ubicación actual: ${this.location.address}`);
-    console.log(`🎯 Coordenadas: [${this.location.lat}, ${this.location.lng}]`);
+  console.log('🎯 Intentando hacer zoom a ubicación actual...');
+  console.log('📍 Location data:', this.location);
+  console.log('🗺️ LeafletMap available:', !!this.leafletMap);
 
-    // Forzar actualización del mapa
-    this.updateLeafletRoutes();
-
-    // Centrar el mapa
-    this.leafletMap.setCenter(this.location.lat, this.location.lng);
-
-    // Hacer zoom suave después de un pequeño delay
-    setTimeout(() => {
-      this.leafletMap.setZoom(17);
-      console.log(`✅ Zoom suave aplicado a ubicación actual`);
-
-      // Forzar refresh del mapa después del zoom
-      setTimeout(() => {
-        this.leafletMap.refreshMap();
-        console.log(`🔄 Mapa refrescado después del zoom`);
-      }, 500);
-    }, 200);
-  } else {
-    console.warn(`⚠️ No se pudo hacer zoom a la ubicación actual: coordenadas no disponibles`);
+  if (!this.location) {
+    console.warn('⚠️ No hay datos de ubicación disponibles');
+    return;
   }
+
+  if (!this.leafletMap) {
+    console.warn('⚠️ Mapa no disponible');
+    return;
+  }
+
+  // Verificar si tenemos coordenadas válidas
+  const hasValidCoordinates = this.location.lat && this.location.lng &&
+                             !isNaN(this.location.lat) && !isNaN(this.location.lng) &&
+                             this.location.lat !== 0 && this.location.lng !== 0;
+
+  if (!hasValidCoordinates) {
+    console.warn('⚠️ Coordenadas no válidas:', {
+      lat: this.location.lat,
+      lng: this.location.lng,
+      address: this.location.address
+    });
+
+    // 🎯 NUEVO: Intentar obtener coordenadas desde la dirección si no están disponibles
+    if (this.location.address) {
+      console.log('🔍 Intentando geocodificar dirección:', this.location.address);
+      this.geocodeAddress(this.location.address);
+    }
+    return;
+  }
+
+  console.log(`🎯 Haciendo zoom suave a ubicación actual: ${this.location.address}`);
+  console.log(`🎯 Coordenadas: [${this.location.lat}, ${this.location.lng}]`);
+
+  // Forzar actualización del mapa
+  this.updateLeafletRoutes();
+
+  // Centrar el mapa - verificar que las coordenadas estén disponibles
+  if (this.location.lat !== undefined && this.location.lng !== undefined) {
+    this.leafletMap.setCenter(this.location.lat, this.location.lng);
+  } else {
+    console.warn('⚠️ Coordenadas no disponibles para centrar el mapa');
+    return;
+  }
+
+  // Hacer zoom suave después de un pequeño delay
+  setTimeout(() => {
+    this.leafletMap.setZoom(17);
+    console.log(`✅ Zoom suave aplicado a ubicación actual`);
+
+    // Forzar refresh del mapa después del zoom
+    setTimeout(() => {
+      this.leafletMap.refreshMap();
+      console.log(`🔄 Mapa refrescado después del zoom`);
+    }, 500);
+  }, 200);
+}
+
+// 🎯 NUEVO: Método para geocodificar dirección si no hay coordenadas
+private geocodeAddress(address: string): void {
+  // Usar Google Maps Geocoding API
+  const geocodingUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${this.GOOGLE_MAPS_API_KEY}`;
+
+  this.http.get<any>(geocodingUrl).subscribe({
+    next: (response) => {
+      if (response.results && response.results.length > 0) {
+        const location = response.results[0].geometry.location;
+        this.location.lat = location.lat;
+        this.location.lng = location.lng;
+
+        console.log('✅ Coordenadas obtenidas por geocodificación:', {
+          lat: this.location.lat,
+          lng: this.location.lng,
+          address: address
+        });
+
+        // Intentar hacer zoom nuevamente con las nuevas coordenadas
+        setTimeout(() => {
+          this.zoomToCurrentLocation();
+        }, 100);
+      } else {
+        console.warn('⚠️ No se pudieron obtener coordenadas para la dirección:', address);
+      }
+    },
+    error: (error) => {
+      console.error('❌ Error en geocodificación:', error);
+    }
+  });
 }
 
   // Método para cargar la ruta completa como en upcoming
@@ -1864,21 +1931,15 @@ zoomToCurrentLocation(): void {
         // Actualizar el mapa sin hacer zoom automático
         setTimeout(() => {
           if (this.leafletMap) {
-            console.log('🗺️ Antes de refreshMap - leafletRoutes:', this.leafletRoutes);
             this.leafletMap.refreshMap();
-            console.log('✅ Mapa actualizado con ruta completa');
+            console.log('🔄 Mapa refrescado después de cargar ruta completa');
 
-            // Verificar que la ruta se pintó correctamente
+            // 🎯 NUEVO: Hacer zoom a la ubicación actual después de cargar la ruta
             setTimeout(() => {
-              console.log('🔍 Verificando estado del mapa después de 500ms...');
-              if (this.leafletMap) {
-                this.leafletMap.debugMapState();
-              }
+              this.zoomToCurrentLocation();
             }, 500);
-          } else {
-            console.warn('⚠️ LeafletMap no disponible');
           }
-        }, 100);
+        }, 1000);
       } else {
         console.warn('⚠️ No se encontró ruta para el ticket:', this.ticketId);
         console.log('🔍 Buscando en todas las rutas disponibles...');
@@ -2042,37 +2103,37 @@ clearDateFilters() {
 // 🎯 NUEVO MÉTODO: Actualizar comentarios después de subir evidencia
 private updateCommentsAfterUpload(): void {
   console.log('🔄 Actualizando comentarios después de subir evidencia...');
-  
+
   // Actualizar los comentarios filtrados
   this.filteredComments = this.getCommentsFromImages();
-  
+
   // Aplicar el filtro de búsqueda si existe
   if (this.commentFilterText.trim()) {
     this.onCommentFilterChange();
   }
-  
+
   // 🎯 NUEVO: Mostrar mensaje de actualización temporal
   this.commentsUpdatedMessage = 'Comments updated successfully!';
   setTimeout(() => {
     this.commentsUpdatedMessage = '';
   }, 3000);
-  
+
   console.log(`✅ Comentarios actualizados: ${this.filteredComments.length} comentarios encontrados`);
 }
 
 // 🎯 NUEVO MÉTODO: Actualizar galería después de subir evidencia
 private updateGalleryAfterUpload(): void {
   console.log('🖼️ Actualizando galería después de subir evidencia...');
-  
+
   // 🎯 NUEVO: Recargar imágenes para asegurar que se incluyan las nuevas
   this.loadCurrentTicketImages();
-  
+
   // Mostrar mensaje de actualización temporal
   this.galleryUpdatedMessage = 'Gallery updated successfully!';
   setTimeout(() => {
     this.galleryUpdatedMessage = '';
   }, 3000);
-  
+
   console.log(`✅ Galería actualizada: ${this.filteredTicketImages.length} imágenes encontradas`);
 }
 

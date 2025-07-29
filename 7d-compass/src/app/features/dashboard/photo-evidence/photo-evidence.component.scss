@@ -5,39 +5,54 @@
   padding: 1rem;
   box-sizing: border-box;
   min-height: calc(100vh - 2rem);
+  width: 100%;
+  max-width: 100%;
 
   // Mobile responsive design
   @media (max-width: 768px) {
     grid-template-columns: 1fr;
-    grid-template-rows: 1fr 1fr;
+    grid-template-rows: auto auto;
     gap: 0.5rem;
-    padding: 0.5rem;
+    padding: 0.25rem;
     min-height: auto;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
   }
 }
 
 .table-section {
   grid-column: 1;
   grid-row: 1;
+  width: 100%;
+  max-width: 100%;
 
   app-card-with-button {
     height: 100%;
     display: flex;
     flex-direction: column;
+    width: 100%;
+    max-width: 100%;
 
     app-data-table {
       flex: 1;
       display: flex;
       flex-direction: column;
+      width: 100%;
+      max-width: 100%;
 
       ::ng-deep .mat-mdc-table-container {
         flex: 1;
         overflow: auto;
         max-height: none; // Remove any max-height constraints
+        width: 100%;
+        max-width: 100%;
       }
 
       ::ng-deep .mat-mdc-paginator {
         flex-shrink: 0;
+        width: 100%;
+        max-width: 100%;
       }
     }
   }
@@ -46,22 +61,31 @@
   @media (max-width: 768px) {
     grid-column: 1;
     grid-row: 1;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
   }
 }
 
 .gallery-section {
   grid-column: 2;
   grid-row: 1;
+  width: 100%;
+  max-width: 100%;
 
   app-card-with-button {
     height: 100%;
     display: flex;
     flex-direction: column;
+    width: 100%;
+    max-width: 100%;
 
     ::ng-deep .card-content {
       flex: 1;
       overflow-y: auto;
-      max-height: calc(100vh - 100px); // Limit height to prevent excessive scrolling
+      max-height: calc(100vh - 80px); // Limit height to prevent excessive scrolling
+      width: 100%;
+      max-width: 100%;
     }
   }
 
@@ -69,10 +93,18 @@
   @media (max-width: 768px) {
     grid-column: 1;
     grid-row: 2;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
 
     app-card-with-button {
+      width: 100%;
+      max-width: 100%;
+
       ::ng-deep .card-content {
-        max-height: calc(50vh - 100px); // Smaller height on mobile
+        max-height: calc(100vh - 100px); // Full viewport height on mobile
+        width: 100%;
+        max-width: 100%;
       }
     }
   }
@@ -410,6 +442,25 @@
     vertical-align: top; // Align content to top of cell
     padding: 8px 12px; // Add some padding for better readability
     line-height: 1.4; // Improve line spacing for multi-line text
+  }
+
+  // Mobile responsive table
+  @media (max-width: 768px) {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+
+    .mat-mdc-cell {
+      padding: 6px 8px; // Smaller padding on mobile
+      font-size: 12px; // Smaller font on mobile
+      min-width: 80px; // Minimum width for cells
+    }
+
+    .mat-mdc-header-cell {
+      padding: 6px 8px; // Smaller padding on mobile
+      font-size: 12px; // Smaller font on mobile
+      min-width: 80px; // Minimum width for cells
+    }
   }
 }
 

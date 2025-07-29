@@ -388,7 +388,7 @@
   background-color: #f8f9fa;
   color: #6c757d;
   z-index: 1;
-  
+
   p {
     margin: 8px 0 0 0;
     font-size: 12px;
@@ -410,20 +410,20 @@
   background-color: #fff5f5;
   color: #dc3545;
   z-index: 1;
-  
+
   mat-icon {
     font-size: 32px;
     width: 32px;
     height: 32px;
     margin-bottom: 8px;
   }
-  
+
   p {
     margin: 8px 0;
     font-size: 12px;
     text-align: center;
   }
-  
+
   button {
     margin-top: 8px;
     font-size: 11px;
@@ -447,11 +447,11 @@
   background-color: #f4f4f4;
   display: block;
   transition: opacity 0.3s ease;
-  
+
   &:hover {
     opacity: 0.9;
   }
-  
+
   // Estilo para imágenes con error
   &[alt*="Error"] {
     background-color: #f8f9fa;
@@ -547,10 +547,10 @@
     .debug-btn {
       color: white;
       border-color: rgba(255, 255, 255, 0.3);
-      background-color: rgba(255, 255, 255, 0.1);
+      background-color: rgba(255, 193, 7, 0.2);
 
       &:hover {
-        background-color: rgba(255, 255, 255, 0.2);
+        background-color: rgba(255, 193, 7, 0.3);
       }
     }
 
@@ -774,7 +774,7 @@
       }
     }
 
-  
+
 
     mat-icon {
       font-size: 18px;
@@ -1038,13 +1038,13 @@
   color: white;
   border: none;
   transition: all 0.3s ease;
-  
+
   &:hover {
     background: linear-gradient(135deg, #F57C00 0%, #EF6C00 100%);
     transform: translateY(-1px);
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
   }
-  
+
   mat-icon {
     margin-right: 4px;
   }
@@ -1056,13 +1056,13 @@
   color: white;
   border: none;
   transition: all 0.3s ease;
-  
+
   &:hover {
     background: linear-gradient(135deg, #7B1FA2 0%, #6A1B9A 100%);
     transform: translateY(-1px);
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
   }
-  
+
   mat-icon {
     margin-right: 4px;
   }
@@ -1167,7 +1167,7 @@
 // ✅ Estilos para el spinner de upload
 .upload-spinner {
   margin-right: 8px;
-  
+
   ::ng-deep .mat-spinner-circle {
     stroke: #ffffff !important;
   }
@@ -1178,16 +1178,16 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  
+
   &:disabled {
     opacity: 0.6;
     cursor: not-allowed;
   }
-  
+
   mat-icon {
     margin-right: 4px;
   }
-  
+
   span {
     white-space: nowrap;
   }

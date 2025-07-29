@@ -28,6 +28,10 @@
         </div>
       </div>
       <div class="map-controls">
+        <button mat-stroked-button class="debug-btn" (click)="debugRouteAssignment()" title="Debug route assignment">
+          <mat-icon>bug_report</mat-icon>
+          Debug Route
+        </button>
       </div>
     </div>
 
@@ -91,13 +95,13 @@
           <div class="location-number">{{ i + 1 }}</div>
           <div class="location-info">
             <p class="address"><strong>{{ group.address }}</strong></p>
-            
+
             <!-- Si es una ubicación única, mostrar como antes -->
             <div *ngIf="!group.isMultiple">
               <p class="job-info" *ngIf="group.locations[0].job">{{ group.locations[0].job }}</p>
               <p class="size-info"><strong>Size:</strong> {{ group.locations[0].length || 'Not available'}} x {{ group.locations[0].width || 'Not available' }} ft</p>
             </div>
-            
+
             <!-- Si hay múltiples ubicaciones, mostrar lista -->
             <div *ngIf="group.isMultiple" class="multiple-locations">
               <div *ngFor="let location of group.locations; let j = index" class="location-item">
@@ -114,7 +118,7 @@
             </div>
           </div>
         </div>
-        
+
         <!-- Botón principal solo para ubicaciones únicas -->
         <div class="location-actions" *ngIf="!group.isMultiple">
           <button mat-raised-button class="custom-select-button" (click)="goToCurrent(group.locations[0])">
