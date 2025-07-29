@@ -1,0 +1,90 @@
+<app-dashboard-layout>
+  <div class="grid-container">
+    <div class="card card-table">
+      <app-card-with-button title="Photo Evidence" [showEyeButton]="false">
+        <div *ngIf="loading" class="loading-container">
+          <div class="loading-spinner"></div>
+          <p>Loading photo evidence...</p>
+        </div>
+
+        <div *ngIf="error" class="error-container">
+          <p class="error-message">{{ error }}</p>
+          <button mat-button (click)="loadGalleryData()">Retry</button>
+        </div>
+
+        <app-data-table
+          *ngIf="!loading && !error"
+          [title]="'Photo Evidence'"
+          [data]="filteredGalleryData"
+          [columns]="columns"
+          [showEditButton]="false"
+          [showDeleteButton]="false"
+          [showViewButton]="true"
+          [pageSizeOptions]="[14]"
+          [shouldShowViewButton]="shouldShowViewButton"
+          (view)="onTicketSelect($event)">
+        </app-data-table>
+      </app-card-with-button>
+    </div>
+
+    <div class="card card-gallery">
+      <app-card-with-button title="Photo Gallery" [showEyeButton]="false">
+        <div *ngIf="!selectedTicket" class="no-ticket-selected">
+          <mat-icon>photo_library</mat-icon>
+          <p>Select a ticket from the table to view its photos</p>
+        </div>
+
+        <div *ngIf="selectedTicket" class="ticket-info">
+          <div class="ticket-header">
+            <h3>{{ selectedTicket?.ticketCode }}</h3>
+            <span class="ticket-type">{{ selectedTicket?.ticketType }}</span>
+          </div>
+          <div class="ticket-details">
+            <div class="detail-item">
+              <span class="label">Address:</span>
+              <span class="value">{{ selectedTicket?.addresses?.[0]?.fullAddress || 'N/A' }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="label">Photos:</span>
+              <span class="value">{{ selectedTicket ? getPhotoCount(selectedTicket) : 0 }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="label">Task Statuses:</span>
+              <span class="value">{{ selectedTicket ? getTaskStatusCount(selectedTicket) : 0 }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div *ngIf="selectedTicket && selectedPhotos.length > 0" class="photo-gallery">
+          <div class="gallery-grid">
+            <div *ngFor="let photo of selectedPhotos" class="photo-item">
+              <div class="photo-container">
+                <img
+                  [src]="getPhotoPreviewUrl(photo)"
+                  [alt]="photo.name || 'Photo'"
+                  class="photo-preview"
+                  (error)="onImageError($event)">
+                <div class="photo-overlay">
+                  <button mat-icon-button class="view-photo-btn" (click)="viewPhoto(photo)">
+                    <mat-icon>visibility</mat-icon>
+                  </button>
+                </div>
+              </div>
+              <div class="photo-info">
+                <div class="photo-name">{{ photo.name || 'Photo' }}</div>
+                <div class="task-status">{{ photo.taskStatusName }}</div>
+                <div class="photo-date">{{ formatDate(photo.date) }}</div>
+                <div class="photo-comment" *ngIf="photo.comment">{{ photo.comment }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div *ngIf="selectedTicket && selectedPhotos.length === 0" class="no-photos">
+          <mat-icon>photo_camera</mat-icon>
+          <p>No photos available for this ticket</p>
+        </div>
+      </app-card-with-button>
+    </div>
+  </div>
+</app-dashboard-layout>

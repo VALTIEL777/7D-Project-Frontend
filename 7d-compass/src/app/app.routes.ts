@@ -57,6 +57,14 @@ export const routes: Routes = [
     canActivate: [AuthGuard],
   },
   {
+    path: 'photo-evidence',
+    loadComponent: () =>
+      import(
+        './features/dashboard/photo-evidence/photo-evidence.component'
+      ).then((m) => m.PhotoEvidenceComponent),
+    canActivate: [AuthGuard],
+  },
+  {
     path: 'route-generator',
     loadComponent: () =>
       import(

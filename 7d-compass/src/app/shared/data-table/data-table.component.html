@@ -42,10 +42,10 @@
             </button>
 
              <button
-      *ngIf="showViewButton && column.name === 'show'"
+      *ngIf="showViewButton && column.name === 'show' && shouldShowViewButton(element)"
   mat-icon-button
   class="show-button"
-  matTooltip="Show Route"
+  matTooltip="Show Photos"
   (click)="view.emit(element)">
     <mat-icon>visibility</mat-icon>
     </button>
