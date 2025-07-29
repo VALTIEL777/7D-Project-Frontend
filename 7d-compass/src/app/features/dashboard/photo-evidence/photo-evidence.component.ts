@@ -12,6 +12,8 @@ import { environment } from '../../../../environments/environment';
 import { BaseDashboardComponent } from '../../../shared/base-dashboard.component';
 import { FilterService } from '../../../core/services/filter.service';
 import { PhotoEvidenceService } from '../../../core/services/route/photoevidence.service';
+import { ConfirmationDialogComponent } from '../../../shared/confirmation-dialog/confirmation-dialog.component';
+import { InputDialogComponent } from '../../../shared/input-dialog/input-dialog.component';
 
 interface PhotoEvidence {
   photoId: number;
@@ -130,6 +132,11 @@ export class PhotoEvidenceComponent extends BaseDashboardComponent implements On
       cell: (ticket: any) => ticket.ticketCode || 'N/A'
     },
     {
+      name: 'contractUnit',
+      header: 'Contract Unit',
+      cell: (ticket: any) => ticket.contractUnit?.name || 'N/A'
+    },
+    {
       name: 'address',
       header: 'Address',
       cell: (ticket: any) => {
@@ -138,6 +145,11 @@ export class PhotoEvidenceComponent extends BaseDashboardComponent implements On
         }
         return 'N/A';
       }
+    },
+    {
+      name: 'comments',
+      header: 'Photo Comments',
+      cell: (ticket: any) => this.getAllPhotoComments(ticket)
     },
     {
       name: 'show',
@@ -170,15 +182,41 @@ export class PhotoEvidenceComponent extends BaseDashboardComponent implements On
 
   // Override text search to include relevant fields
   protected override matchesTextSearch(item: any, searchTerm: string): boolean {
-    const searchableFields = ['incidentName', 'ticketCode', 'incidentId'];
+    const searchableFields = ['incidentName', 'ticketCode', 'incidentId', 'contractUnit'];
 
-    return searchableFields.some(field => {
+    // Check the main searchable fields
+    const mainFieldMatch = searchableFields.some(field => {
       const value = item[field];
       if (value) {
-        return String(value).toLowerCase().includes(searchTerm);
+        return String(value).toLowerCase().includes(searchTerm.toLowerCase());
       }
       return false;
     });
+
+    if (mainFieldMatch) {
+      return true;
+    }
+
+    // Check contract unit name specifically
+    if (item.contractUnit && item.contractUnit.name) {
+      const contractUnitMatch = item.contractUnit.name.toLowerCase().includes(searchTerm.toLowerCase());
+      if (contractUnitMatch) {
+        return true;
+      }
+    }
+
+    // Check address field specifically
+    if (item.addresses && item.addresses.length > 0) {
+      const addressMatch = item.addresses.some((address: any) => {
+        if (address.fullAddress) {
+          return address.fullAddress.toLowerCase().includes(searchTerm.toLowerCase());
+        }
+        return false;
+      });
+      return addressMatch;
+    }
+
+    return false;
   }
 
   // Override date range to use earliest report date
@@ -365,6 +403,34 @@ export class PhotoEvidenceComponent extends BaseDashboardComponent implements On
     return ticket.taskStatuses.length;
   }
 
+  getAllPhotoComments(ticket: Ticket): string {
+    const comments: string[] = [];
+
+    ticket.taskStatuses.forEach(taskStatus => {
+      if (taskStatus.photoEvidence && taskStatus.photoEvidence.length > 0) {
+        taskStatus.photoEvidence.forEach(photo => {
+          if (photo.comment && photo.comment.trim()) {
+            comments.push(photo.comment.trim());
+          }
+        });
+      }
+    });
+
+    if (comments.length === 0) {
+      return 'No comments';
+    }
+
+    // Join all comments with line breaks
+    const allComments = comments.join('\n');
+
+    // Limit to 200 characters to prevent table from becoming too wide
+    if (allComments.length > 200) {
+      return allComments.substring(0, 197) + '...';
+    }
+
+    return allComments;
+  }
+
   hasPhotos(ticket: Ticket): boolean {
     let hasPhotos = false;
     ticket.taskStatuses.forEach(taskStatus => {
@@ -375,8 +441,36 @@ export class PhotoEvidenceComponent extends BaseDashboardComponent implements On
     return hasPhotos;
   }
 
-  shouldShowViewButton(ticket: any): boolean {
+  shouldShowViewButton = (ticket: any): boolean => {
     return this.hasPhotos(ticket);
+  }
+
+  getPhotosByPhase(): { phaseName: string; photos: PhotoEvidence[] }[] {
+    const phaseGroups: { [key: string]: PhotoEvidence[] } = {};
+
+    // Group photos by task status name
+    this.selectedPhotos.forEach(photo => {
+      const phaseName = photo.taskStatusName || 'Unknown Phase';
+      if (!phaseGroups[phaseName]) {
+        phaseGroups[phaseName] = [];
+      }
+      phaseGroups[phaseName].push(photo);
+    });
+
+    // Convert to array format and sort by phase name
+    return Object.keys(phaseGroups)
+      .map(phaseName => ({
+        phaseName,
+        photos: phaseGroups[phaseName]
+      }))
+      .sort((a, b) => a.phaseName.localeCompare(b.phaseName));
+  }
+
+  getTaskStatusId(phaseName: string): number {
+    if (!this.selectedTicket) return 0;
+
+    const taskStatus = this.selectedTicket.taskStatuses.find(ts => ts.name === phaseName);
+    return taskStatus ? taskStatus.taskStatusId : 0;
   }
 
   onImageError(event: any): void {
@@ -386,14 +480,201 @@ export class PhotoEvidenceComponent extends BaseDashboardComponent implements On
   }
 
   viewPhoto(photo: PhotoEvidence): void {
-    // Open photo in a dialog or new window
+    // Download photo with custom filename
     if (photo.photoURL) {
-      window.open(photo.photoURL, '_blank');
+      this.downloadPhoto(photo.photoURL, photo);
     } else if (photo.photo) {
-      // For base64 images, create a data URL
+      // For base64 images, create a data URL and download
       const dataUrl = photo.photo;
-      window.open(dataUrl, '_blank');
+      this.downloadPhoto(dataUrl, photo);
     }
+  }
+
+  addPhoto(): void {
+    if (!this.selectedTicket) {
+      this.snackBar.open('Please select a ticket first', 'Close', { duration: 3000 });
+      return;
+    }
+
+    // Use the first task status as default
+    const firstTaskStatus = this.selectedTicket.taskStatuses[0];
+    if (!firstTaskStatus) {
+      this.snackBar.open('No task status available for this ticket', 'Close', { duration: 3000 });
+      return;
+    }
+
+    this.addPhotoToPhase(firstTaskStatus.taskStatusId);
+  }
+
+  private uploadPhoto(file: File, taskStatusId: number, comment: string = ''): void {
+    if (!this.selectedTicket) return;
+
+    const formData = new FormData();
+    formData.append('ticketStatusId', taskStatusId.toString());
+    formData.append('ticketId', this.selectedTicket.ticketId.toString());
+    formData.append('file', file);
+    formData.append('name', `Photo ${new Date().toLocaleString()}`);
+    formData.append('comment', comment);
+    formData.append('date', '2024-01-15T10:30:00Z');
+    formData.append('createdBy', '1'); // TODO: Get from auth service
+    formData.append('updatedBy', '1'); // TODO: Get from auth service
+
+    this.http.post(`${environment.apiUrl}/photoevidence`, formData).subscribe({
+      next: (response: any) => {
+        console.log('✅ Photo uploaded successfully:', response);
+        this.snackBar.open('Photo uploaded successfully', 'Close', { duration: 3000 });
+
+        // Refresh the current ticket's photos immediately
+        this.refreshCurrentTicketPhotos();
+      },
+      error: (error) => {
+        console.error('❌ Error uploading photo:', error);
+        this.snackBar.open('Error uploading photo', 'Close', { duration: 3000 });
+      }
+    });
+  }
+
+  addPhotoToPhase(taskStatusId: number): void {
+    if (!this.selectedTicket) {
+      this.snackBar.open('Please select a ticket first', 'Close', { duration: 3000 });
+      return;
+    }
+
+    // Create a file input element
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = 'image/png,image/jpg,image/jpeg';
+    fileInput.multiple = false;
+
+    fileInput.onchange = (event: any) => {
+      const file = event.target.files[0];
+      if (file) {
+        this.showCommentDialog(file, taskStatusId);
+      }
+    };
+
+    fileInput.click();
+  }
+
+  private showCommentDialog(file: File, taskStatusId: number): void {
+    const dialogRef = this.dialog.open(InputDialogComponent, {
+      width: '500px',
+      data: {
+        title: 'Add Photo Comment',
+        message: 'Please enter a comment for this photo (optional):',
+        inputLabel: 'Comment',
+        inputPlaceholder: 'Enter photo comment...',
+        confirmText: 'Upload Photo',
+        cancelText: 'Cancel',
+        required: false
+      }
+    });
+
+    dialogRef.afterClosed().subscribe(result => {
+      if (result !== null && result !== undefined) {
+        this.uploadPhoto(file, taskStatusId, result);
+      }
+    });
+  }
+
+  deletePhoto(photo: PhotoEvidence): void {
+    const dialogRef = this.dialog.open(ConfirmationDialogComponent, {
+      width: '450px',
+      data: {
+        title: 'Delete Photo',
+        message: `Are you sure you want to delete this photo? This action cannot be undone.`,
+        confirmText: 'Delete',
+        cancelText: 'Cancel'
+      }
+    });
+
+    dialogRef.afterClosed().subscribe(confirmed => {
+      if (confirmed) {
+        this.http.delete(`${environment.apiUrl}/photoevidence/${photo.photoId}`).subscribe({
+          next: () => {
+            console.log('✅ Photo deleted successfully');
+            this.snackBar.open('Photo deleted successfully', 'Close', { duration: 3000 });
+
+            // Refresh the current ticket's photos immediately
+            this.refreshCurrentTicketPhotos();
+          },
+          error: (error) => {
+            console.error('❌ Error deleting photo:', error);
+            this.snackBar.open('Error deleting photo', 'Close', { duration: 3000 });
+          }
+        });
+      }
+    });
+  }
+
+  private refreshCurrentTicketPhotos(): void {
+    if (!this.selectedTicket) return;
+
+    // Reload the gallery data to get the latest photos
+    this.http.get<GalleryResponse>(`${environment.apiUrl}/tickets/gallery`).subscribe({
+      next: (response) => {
+        if (response.success) {
+          this.galleryData = response.data;
+          this.flattenGalleryData();
+
+          // Find the updated ticket in the new data
+          const updatedTicket = this.findTicketInGalleryData(this.selectedTicket!.ticketId);
+          if (updatedTicket) {
+            // Update the selected ticket with fresh data
+            this.selectedTicket = updatedTicket;
+            // Reload photos for the updated ticket
+            this.onTicketSelect(updatedTicket);
+          }
+        }
+      },
+      error: (error) => {
+        console.error('❌ Error refreshing ticket photos:', error);
+        this.snackBar.open('Error refreshing photos', 'Close', { duration: 3000 });
+      }
+    });
+  }
+
+  private findTicketInGalleryData(ticketId: number): Ticket | null {
+    for (const incident of this.galleryData) {
+      const ticket = incident.tickets.find(t => t.ticketId === ticketId);
+      if (ticket) {
+        return ticket;
+      }
+    }
+    return null;
+  }
+
+  private downloadPhoto(photoUrl: string, photo: PhotoEvidence): void {
+    // Create filename: ticketNumber_Addresses_taskStatus_dateTaken
+    const ticketNumber = this.selectedTicket?.ticketCode || 'unknown';
+    const address = this.selectedTicket?.addresses?.[0]?.fullAddress || 'unknown';
+    const taskStatus = photo.taskStatusName || 'unknown';
+    const dateTaken = photo.date ? new Date(photo.date).toISOString().split('T')[0] : 'unknown';
+
+    // Clean the address for filename (remove special characters)
+    const cleanAddress = address.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_');
+
+    // Clean the task status for filename (remove special characters)
+    const cleanTaskStatus = taskStatus.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_');
+
+    // Get file extension from URL or default to .jpg
+    const urlParts = photoUrl.split('.');
+    const extension = urlParts.length > 1 ? urlParts[urlParts.length - 1].split('?')[0] : 'jpg';
+
+    const filename = `${ticketNumber}_${cleanAddress}_${cleanTaskStatus}_${dateTaken}.${extension}`;
+
+    // Create download link
+    const link = document.createElement('a');
+    link.href = photoUrl;
+    link.download = filename;
+    link.target = '_blank';
+
+    // Trigger download
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    console.log('📥 Downloading photo:', filename);
   }
 
   onPageChange(page: number) {

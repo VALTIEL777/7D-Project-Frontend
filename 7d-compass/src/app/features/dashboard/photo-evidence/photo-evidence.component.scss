@@ -1,89 +1,112 @@
-.grid-container {
+.content-container {
   display: grid;
   grid-template-columns: 60% 40%;
   gap: 1rem;
-  height: calc(100vh - 2rem);
   padding: 1rem;
   box-sizing: border-box;
+  min-height: calc(100vh - 2rem);
 
   // Mobile responsive design
   @media (max-width: 768px) {
     grid-template-columns: 1fr;
     grid-template-rows: 1fr 1fr;
-    height: auto;
-    min-height: calc(100vh - 1rem);
     gap: 0.5rem;
     padding: 0.5rem;
+    min-height: auto;
   }
 }
 
-.card-table {
+.table-section {
   grid-column: 1;
   grid-row: 1;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
+
+  app-card-with-button {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+
+    app-data-table {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+
+      ::ng-deep .mat-mdc-table-container {
+        flex: 1;
+        overflow: auto;
+        max-height: none; // Remove any max-height constraints
+      }
+
+      ::ng-deep .mat-mdc-paginator {
+        flex-shrink: 0;
+      }
+    }
+  }
 
   // Mobile responsive
   @media (max-width: 768px) {
     grid-column: 1;
     grid-row: 1;
-    min-height: 50vh;
   }
+}
+
+.gallery-section {
+  grid-column: 2;
+  grid-row: 1;
 
   app-card-with-button {
-    flex: 1;
+    height: 100%;
     display: flex;
     flex-direction: column;
 
     ::ng-deep .card-content {
       flex: 1;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
+      overflow-y: auto;
+      max-height: calc(100vh - 100px); // Limit height to prevent excessive scrolling
     }
   }
-
-  app-data-table {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-
-    ::ng-deep .mat-mdc-table-container {
-      flex: 1;
-      overflow: auto;
-    }
-
-    ::ng-deep .mat-mdc-paginator {
-      flex-shrink: 0;
-    }
-  }
-}
-
-.card-gallery {
-  grid-column: 2;
-  grid-row: 1;
-  display: flex;
-  flex-direction: column;
-  height: 100%;
 
   // Mobile responsive
   @media (max-width: 768px) {
     grid-column: 1;
     grid-row: 2;
-    min-height: 50vh;
+
+    app-card-with-button {
+      ::ng-deep .card-content {
+        max-height: calc(50vh - 100px); // Smaller height on mobile
+      }
+    }
+  }
+}
+
+.no-ticket-selected {
+  app-card-with-button {
+    ::ng-deep .card-content {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 200px;
+    }
   }
 
-  app-card-with-button {
-    flex: 1;
+  .no-ticket-content {
     display: flex;
     flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    color: #666;
 
-    ::ng-deep .card-content {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
+    mat-icon {
+      font-size: 48px;
+      width: 48px;
+      height: 48px;
+      margin-bottom: 1rem;
+      color: #ccc;
+    }
+
+    p {
+      margin: 0;
+      font-size: 16px;
     }
   }
 }
@@ -176,7 +199,7 @@
 
   .ticket-details {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(2, 1fr);
     gap: 1rem;
 
     .detail-item {
@@ -196,6 +219,8 @@
       }
     }
   }
+
+
 }
 
 .photo-gallery {
@@ -203,10 +228,71 @@
   padding: 1rem;
   overflow-y: auto;
 
-  .gallery-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-    gap: 1rem;
+  .phase-groups {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+  }
+
+  .phase-group {
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #fafafa;
+
+    .phase-header {
+      background: #1976d2;
+      color: white;
+      padding: 0.75rem 1rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+
+      .phase-info {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+
+        .phase-title {
+          margin: 0;
+          font-size: 16px;
+          font-weight: 600;
+        }
+
+        .photo-count {
+          font-size: 12px;
+          background: rgba(255, 255, 255, 0.2);
+          padding: 2px 8px;
+          border-radius: 12px;
+          align-self: flex-start;
+        }
+      }
+
+      .add-photo-btn {
+        color: white;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 50%;
+        transition: background-color 0.2s ease;
+
+        &:hover {
+          background: rgba(255, 255, 255, 0.3);
+        }
+
+        mat-icon {
+          font-size: 20px;
+          width: 20px;
+          height: 20px;
+        }
+      }
+    }
+
+    .gallery-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 1rem;
+      padding: 1rem;
+      background: white;
+    }
   }
 
   .photo-item {
@@ -244,16 +330,24 @@
         display: flex;
         align-items: center;
         justify-content: center;
+        gap: 0.5rem;
         opacity: 0;
         transition: opacity 0.2s ease;
 
-        .view-photo-btn {
+        .view-photo-btn,
+        .delete-photo-btn {
           color: white;
           background: rgba(255, 255, 255, 0.2);
           border-radius: 50%;
 
           &:hover {
             background: rgba(255, 255, 255, 0.3);
+          }
+        }
+
+        .delete-photo-btn {
+          &:hover {
+            background: rgba(244, 67, 54, 0.8) !important;
           }
         }
       }
@@ -273,32 +367,32 @@
       padding: 0.75rem;
 
       .photo-name {
-        font-size: 12px;
+        font-size: 14px;
         font-weight: 600;
         color: #333;
-        margin-bottom: 2px;
+        margin-bottom: 4px;
         line-height: 1.2;
       }
 
       .task-status {
-        font-size: 10px;
+        font-size: 12px;
         color: #1976d2;
         font-weight: 500;
-        margin-bottom: 2px;
+        margin-bottom: 3px;
         text-transform: uppercase;
         letter-spacing: 0.5px;
       }
 
       .photo-date {
-        font-size: 9px;
+        font-size: 11px;
         color: #666;
-        margin-bottom: 2px;
+        margin-bottom: 3px;
       }
 
       .photo-comment {
-        font-size: 10px;
-        color: #555;
-        line-height: 1.2;
+        font-size: 12px;
+        color: #000;
+        line-height: 1.3;
         display: -webkit-box;
         -webkit-line-clamp: 2;
         -webkit-box-orient: vertical;
@@ -306,6 +400,16 @@
         text-overflow: ellipsis;
       }
     }
+  }
+}
+
+// Table cell styling for comments column
+::ng-deep .mat-mdc-table {
+  .mat-mdc-cell {
+    white-space: pre-line; // This allows line breaks to be displayed
+    vertical-align: top; // Align content to top of cell
+    padding: 8px 12px; // Add some padding for better readability
+    line-height: 1.4; // Improve line spacing for multi-line text
   }
 }
 
