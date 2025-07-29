@@ -53,13 +53,14 @@
       </mat-expansion-panel>
 
       <!-- Files & Reports -->
-      <mat-expansion-panel [expanded]="isExpanded(['/report-center', '/files-permits'])">
+      <mat-expansion-panel [expanded]="isExpanded(['/report-center', '/files-permits', '/photo-evidence'])">
         <mat-expansion-panel-header>
           <mat-icon>folder</mat-icon>
           <span>Files & Reports</span>
         </mat-expansion-panel-header>
         <a mat-button routerLink="/report-center" routerLinkActive="active-link" (click)="closeSidenav()">Report Center</a>
         <a mat-button routerLink="/files-permits" routerLinkActive="active-link" (click)="closeSidenav()">Files & Permits</a>
+        <a mat-button routerLink="/photo-evidence" routerLinkActive="active-link" (click)="closeSidenav()">Photo Evidence</a>
       </mat-expansion-panel>
 
       <!-- Routes -->
