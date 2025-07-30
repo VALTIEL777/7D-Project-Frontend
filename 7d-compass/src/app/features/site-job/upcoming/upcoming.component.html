@@ -79,12 +79,23 @@
       <input matInput [(ngModel)]="filterText" (ngModelChange)="onFilterChange()" placeholder="Search by address or job type">
     </mat-form-field>
 
+    <!-- 🎯 NUEVO: Indicador de ubicaciones visibles -->
+    <div *ngIf="!isLoading && remainingLocations.length > 0" class="locations-info">
+      <p class="locations-info-text">
+        <mat-icon>visibility</mat-icon>
+        <span>Showing {{ getVisibleLocationsInfo().visible }} of {{ getVisibleLocationsInfo().total }} locations</span>
+        <span class="locations-breakdown">
+          ({{ getVisibleLocationsInfo().completed }} completed, {{ getVisibleLocationsInfo().inProgress }} in progress)
+        </span>
+      </p>
+    </div>
+
     <!-- ❌ Mostrar mensaje si no hay resultados -->
     <div *ngIf="groupedLocations.length === 0" class="no-locations">
       <p class="no-locations-text">
         <mat-icon color="warn">info</mat-icon>
-        <span *ngIf="filterText.trim()">No locations found matching "{{ filterText }}"</span>
-        <span *ngIf="!filterText.trim()">There is no route assigned yet.</span>
+        <span *ngIf="filterText.trim()">No active locations found matching "{{ filterText }}"</span>
+        <span *ngIf="!filterText.trim()">No active locations (completed or in progress) to display.</span>
       </p>
     </div>
 
@@ -94,6 +105,19 @@
         <div class="location-header">
           <div class="location-number">{{ i + 1 }}</div>
           <div class="location-info">
+            <!-- 🎯 NUEVO: Indicador de estado de la ubicación -->
+            <div class="location-status" *ngIf="!group.isMultiple && (group.locations[0].completed || group.locations[0].started)">
+              <mat-icon 
+                [class.status-completed]="group.locations[0].completed"
+                [class.status-started]="group.locations[0].started && !group.locations[0].completed"
+                class="status-icon">
+                {{ getLocationStatusIcon(group.locations[0]) }}
+              </mat-icon>
+              <span class="status-text">
+                {{ getLocationStatus(group.locations[0]) }}
+              </span>
+            </div>
+            
             <p class="address"><strong>{{ group.address }}</strong></p>
 
             <!-- Si es una ubicación única, mostrar como antes -->

@@ -9,6 +9,10 @@ import { CrewsService } from '../../../../core/services/human-resources/crew.ser
 import { BaseDashboardComponent } from '../../../../shared/base-dashboard.component';
 import { FilterService } from '../../../../core/services/filter.service';
 import { FabButtonComponent } from '../../../../shared/fab-button/fab-button.component';
+import { UsedInventoryService } from '../../../../core/services/material/used-inventory.service';
+import { UsedEquipmentService } from '../../../../core/services/material/used-equipment.service';
+import { InventoryService } from '../../../../core/services/material/inventory.service';
+import { EquipmentService } from '../../../../core/services/material/equipment.service';
 
 interface ColumnDefinition {
   name: string;
@@ -35,21 +39,26 @@ export class CrewsComponent extends BaseDashboardComponent implements OnInit {
     { name: 'type', header: 'Type', cell: (crew) => crew.type },
     { name: 'employees', header: 'Team Members', cell: (crew) => this.formatEmployees(crew.employees) },
     { name: 'leader', header: 'Team Leader', cell: (crew) => this.getLeader(crew.employees) },
-    { name: 'workedHours', header: 'Worked Hours',cell: (crew: any) => {
-    const hours = typeof crew.workedhours === 'number'
-      ? crew.workedhours
-      : parseFloat(crew.workedhours);
-    return !isNaN(hours) ? hours.toFixed(2) : '0.00';
-  }},
-    { name: 'equipment', header: 'Assigned Equipment', cell: (crew) => this.formatEquipment(crew.equipment) },
+    { name: 'inventory', header: 'Assigned Inventory', cell: (crew) => this.formatAssignedInventory(crew.crewid) },
+    { name: 'equipment', header: 'Assigned Equipment', cell: (crew) => this.formatAssignedEquipment(crew.crewid) },
     { name: 'actions', header: 'Actions', cell: () => '', isActionColumn: true }
   ];
 
   tableData: any[] = [];
+  
+  // Propiedades para almacenar datos de inventario y equipamiento
+  usedInventoryData: any[] = [];
+  usedEquipmentData: any[] = [];
+  inventoryData: any[] = [];
+  equipmentData: any[] = [];
 
   constructor(
     private dialog: MatDialog,
     private crewsService: CrewsService,
+    private usedInventoryService: UsedInventoryService,
+    private usedEquipmentService: UsedEquipmentService,
+    private inventoryService: InventoryService,
+    private equipmentService: EquipmentService,
     filterService: FilterService
   ) {
     super(filterService);
@@ -94,15 +103,40 @@ export class CrewsComponent extends BaseDashboardComponent implements OnInit {
   }
 
   private loadCrews(): void {
-    this.crewsService.getCrewsWithEmployees().subscribe({
-      next: (data) => {
-        this.tableData = data;
-        this.allData = [...this.tableData];
-        this.filteredData = [...this.allData];
-      },
-      error: (error) => {
-        console.error('Error loading crews:', error);
-      }
+    // Cargar crews y datos relacionados en paralelo
+    import('rxjs').then(({ forkJoin }) => {
+      forkJoin({
+        crews: this.crewsService.getCrewsWithEmployees(),
+        usedInventory: this.usedInventoryService.getAllUsedInventory(),
+        usedEquipment: this.usedEquipmentService.getAllUsedEquipment(),
+        inventory: this.inventoryService.getAllInventory(),
+        equipment: this.equipmentService.getAllEquipment()
+      }).subscribe({
+        next: (data) => {
+          this.tableData = data.crews;
+          this.usedInventoryData = data.usedInventory;
+          this.usedEquipmentData = data.usedEquipment;
+          this.inventoryData = data.inventory;
+          this.equipmentData = data.equipment;
+          
+          this.allData = [...this.tableData];
+          this.filteredData = [...this.allData];
+        },
+        error: (error) => {
+          console.error('Error loading crews and related data:', error);
+          // Si falla la carga múltiple, intentar solo con crews
+          this.crewsService.getCrewsWithEmployees().subscribe({
+            next: (data) => {
+              this.tableData = data;
+              this.allData = [...this.tableData];
+              this.filteredData = [...this.allData];
+            },
+            error: (crewError) => {
+              console.error('Error loading crews:', crewError);
+            }
+          });
+        }
+      });
     });
   }
 
@@ -117,6 +151,48 @@ export class CrewsComponent extends BaseDashboardComponent implements OnInit {
 
   private formatEquipment(equipment: any[] = []): string {
     return equipment.map(e => e.equipmentName).join(', ');
+  }
+
+  private formatAssignedInventory(crewId: number): string {
+    if (!crewId || this.usedInventoryData.length === 0 || this.inventoryData.length === 0) {
+      return 'No inventory assigned';
+    }
+
+    // Filtrar inventario usado por este crew
+    const crewUsedInventory = this.usedInventoryData.filter(ui => ui.crewId === crewId);
+    
+    if (crewUsedInventory.length === 0) {
+      return 'No inventory assigned';
+    }
+
+    // Mapear a nombres de inventario
+    const inventoryNames = crewUsedInventory.map(ui => {
+      const inventory = this.inventoryData.find(inv => inv.inventoryId === ui.inventoryId);
+      return inventory ? inventory.name : `Inventory ID: ${ui.inventoryId}`;
+    });
+
+    return inventoryNames.join(', ');
+  }
+
+  private formatAssignedEquipment(crewId: number): string {
+    if (!crewId || this.usedEquipmentData.length === 0 || this.equipmentData.length === 0) {
+      return 'No equipment assigned';
+    }
+
+    // Filtrar equipamiento usado por este crew
+    const crewUsedEquipment = this.usedEquipmentData.filter(ue => ue.crewId === crewId);
+    
+    if (crewUsedEquipment.length === 0) {
+      return 'No equipment assigned';
+    }
+
+    // Mapear a nombres de equipamiento
+    const equipmentNames = crewUsedEquipment.map(ue => {
+      const equipment = this.equipmentData.find(eq => eq.equipmentId === ue.equipmentId);
+      return equipment ? equipment.equipmentName : `Equipment ID: ${ue.equipmentId}`;
+    });
+
+    return equipmentNames.join(', ');
   }
 
   onEdit(crew: any) {

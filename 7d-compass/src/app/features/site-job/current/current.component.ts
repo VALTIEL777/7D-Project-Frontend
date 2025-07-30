@@ -794,9 +794,9 @@ completePhase(activity: any) {
               this.uploadPhotoEvidence(activity.id, activity);
             }
 
-            // 🎯 VERIFICAR SI SE COMPLETÓ LA ÚLTIMA FASE OBLIGATORIA
-            if (this.isLastRequiredPhaseCompleted()) {
-              console.log(`🎉 ¡Última fase obligatoria completada! Actualizando comment7d a TK - COMPLETED`);
+            // 🎯 VERIFICAR SI SE COMPLETÓ CRACK SEAL O CLEAN (ÚNICAS FASES QUE ACTUALIZAN A COMPLETED)
+            if (this.shouldUpdateTicketToCompleted(activity.name)) {
+              console.log(`🎉 ¡Fase ${activity.name} completada! Actualizando comment7d a TK - COMPLETED`);
               this.updateTicketComment7d('TK - COMPLETED');
             }
 
@@ -1748,20 +1748,26 @@ getLastRequiredPhase(): string | null {
   return null;
 }
 
-// 🎯 MÉTODO PARA VERIFICAR SI SE COMPLETÓ LA ÚLTIMA FASE OBLIGATORIA
-isLastRequiredPhaseCompleted(): boolean {
-  // No actualizar a completado si es una ruta SPOTTER
-  if (this.routeCode.includes('SPOTTER')) {
-    console.log('ℹ️ Ruta SPOTTER detectada - no se actualizará automáticamente a completado');
-    return false;
+  // 🎯 MÉTODO PARA VERIFICAR SI UNA FASE DEBE ACTUALIZAR EL TICKET A COMPLETED
+  shouldUpdateTicketToCompleted(activityName: string): boolean {
+    // Solo Crack Seal y Clean actualizan el ticket a COMPLETED
+    return activityName === 'Crack Seal' || activityName === 'Clean';
   }
 
-  const lastRequiredPhase = this.getLastRequiredPhase();
-  if (!lastRequiredPhase) return false;
+  // 🎯 MÉTODO PARA VERIFICAR SI SE COMPLETÓ LA ÚLTIMA FASE OBLIGATORIA (DEPRECATED)
+  isLastRequiredPhaseCompleted(): boolean {
+    // No actualizar a completado si es una ruta SPOTTER
+    if (this.routeCode.includes('SPOTTER')) {
+      console.log('ℹ️ Ruta SPOTTER detectada - no se actualizará automáticamente a completado');
+      return false;
+    }
 
-  const lastActivity = this.activities.find(activity => activity.name === lastRequiredPhase);
-  return lastActivity ? this.isPhaseCompleted(lastActivity) : false;
-}
+    const lastRequiredPhase = this.getLastRequiredPhase();
+    if (!lastRequiredPhase) return false;
+
+    const lastActivity = this.activities.find(activity => activity.name === lastRequiredPhase);
+    return lastActivity ? this.isPhaseCompleted(lastActivity) : false;
+  }
 
 // Método para hacer zoom suave a la ubicación actual
 zoomToCurrentLocation(): void {

@@ -90,7 +90,16 @@ teamMembers: string[] = []; // Nombres de los demás miembros
     lng?: number;
     displayAddress?: string; // ✅ AGREGADO: Para mostrar direcciones consistentes
     ticketcode?: string; // ✅ AGREGADO: Incluir ticketcode
-    isHidden?: boolean; // 🎯 NUEVO: Para ocultar ubicaciones completadas
+    ticketid?: number; // 🎯 NUEVO: Para identificar el ticket
+    // 🎯 NUEVO: Propiedades para el sistema de checks como en current
+    checked?: boolean;
+    locked?: boolean;
+    assigned?: boolean;
+    started?: boolean;
+    completed?: boolean;
+    startDate?: string | null;
+    endDate?: string | null;
+    isHidden?: boolean; // Mantener para compatibilidad
   }[] = [];
 
 crewType: string = '';
@@ -172,13 +181,37 @@ crewDetails: any[] = [];
 
   // 🎯 MÉTODO PARA LIMPIAR EL INTERVALO CUANDO SE DESTRUYE EL COMPONENTE
   ngOnDestroy(): void {
+    console.log('🔄 Componente upcoming destruyéndose...');
+    
+    // 🎯 NUEVO: Limpiar intervalo de verificación
     if (this.completionCheckInterval) {
       clearInterval(this.completionCheckInterval);
+      this.completionCheckInterval = null;
+      console.log('✅ Intervalo de verificación limpiado');
     }
+
+    // 🎯 NUEVO: Limpiar estado de verificación
+    this.isCheckingLocations = false;
+    
+    // 🎯 NUEVO: Limpiar logs
+    this.lastCompletionLog = {};
+    
+    // 🎯 NUEVO: Limpiar rutas para evitar accesos posteriores
+    this.leafletRoutes = [];
+    this.visibleRoutes.clear();
+    this.assignedRoute = null;
+    
+    console.log('✅ Componente upcoming destruido completamente');
   }
 
   // 🎯 MÉTODO PARA VERIFICAR UBICACIONES COMPLETADAS
   private checkForCompletedLocations(): void {
+    // 🎯 NUEVO: Verificar si el componente está siendo destruido
+    if (!this.completionCheckInterval) {
+      console.log('⚠️ Verificación cancelada - componente en proceso de destrucción');
+      return;
+    }
+
     // 🎯 NUEVO: Evitar verificaciones simultáneas
     if (this.isCheckingLocations) {
       return;
@@ -252,22 +285,28 @@ crewDetails: any[] = [];
 
   // 🎯 MÉTODO PARA VERIFICAR EL ESTADO DE COMPLETADO DE UNA UBICACIÓN ESPECÍFICA
   private checkLocationCompletionStatus(ticketId: number, location: any, locationIndex: number): Promise<void> {
+    // 🎯 NUEVO: Verificar si el componente está siendo destruido
+    if (!this.completionCheckInterval) {
+      console.log('⚠️ Verificación de ubicación cancelada - componente en proceso de destrucción');
+      return Promise.resolve();
+    }
+
     return new Promise((resolve) => {
       this.ticketStatusService.getByTicket(ticketId).subscribe({
         next: (ticketStatuses: any[]) => {
           // 🎯 SOLUCIÓN TEMPORAL: Obtener nombres de fases usando taskstatusid
           this.getPhaseNamesForTicketStatuses(ticketStatuses).then(enhancedTicketStatuses => {
-            let shouldRemove = false;
+            let isCompleted = false;
 
             if (this.useCrewTypeMatching) {
               // 🎯 MODO 1: Verificar si la fase completada es idéntica al crew type
-              shouldRemove = this.isCompletedPhaseMatchingCrewType(enhancedTicketStatuses, location);
+              isCompleted = this.isCompletedPhaseMatchingCrewType(enhancedTicketStatuses, location);
             } else {
               // 🎯 MODO 2: Verificar si todas las fases obligatorias están completadas
-              shouldRemove = this.areAllRequiredPhasesCompleted(enhancedTicketStatuses, location);
+              isCompleted = this.areAllRequiredPhasesCompleted(enhancedTicketStatuses, location);
             }
 
-            if (shouldRemove) {
+            if (isCompleted) {
               // 🎯 NUEVO: Evitar logs repetitivos - solo logear una vez por ubicación por minuto
               const locationKey = `${location.address}-${ticketId}`;
               const now = Date.now();
@@ -278,9 +317,14 @@ crewDetails: any[] = [];
                 this.lastCompletionLog[locationKey] = now;
               }
 
-              // 🎯 IMPORTANTE: Verificar que el ticketId coincida antes de ocultar
+              // 🎯 IMPORTANTE: Verificar que el ticketId coincida antes de marcar como completada
               if ((location as any).ticketid === ticketId) {
-                this.hideCompletedLocation(locationIndex);
+                this.markLocationAsCompleted(locationIndex, enhancedTicketStatuses);
+              }
+            } else {
+              // 🎯 NUEVO: Marcar como pendiente si no está completada
+              if ((location as any).ticketid === ticketId) {
+                this.markLocationAsPending(locationIndex, enhancedTicketStatuses);
               }
             }
             resolve();
@@ -288,10 +332,101 @@ crewDetails: any[] = [];
         },
         error: (err) => {
           console.error(`❌ Error verificando estado de ubicación ${ticketId}:`, err);
+          // 🎯 NUEVO: Marcar como pendiente en caso de error
+          if ((location as any).ticketid === ticketId) {
+            this.markLocationAsPending(locationIndex, []);
+          }
           resolve();
         }
       });
     });
+  }
+
+  // 🎯 NUEVO MÉTODO: Marcar ubicación como completada (similar a current)
+  private markLocationAsCompleted(locationIndex: number, ticketStatuses: any[]): void {
+    if (locationIndex >= 0 && locationIndex < this.remainingLocations.length) {
+      const location = this.remainingLocations[locationIndex];
+      
+      // 🎯 NUEVO: Aplicar lógica similar a current.component.ts
+      location.checked = true;
+      location.locked = true; // Bloquear si está completada
+      location.assigned = true;
+      location.completed = true;
+      
+      // 🎯 NUEVO: Obtener fechas de inicio y fin
+      const completedStatus = ticketStatuses.find(ts => ts.endingdate);
+      if (completedStatus) {
+        location.startDate = completedStatus.startingdate;
+        location.endDate = completedStatus.endingdate;
+      }
+      
+      console.log(`✅ Ubicación marcada como completada: ${location.address}`);
+    }
+  }
+
+  // 🎯 NUEVO MÉTODO: Marcar ubicación como pendiente (similar a current)
+  private markLocationAsPending(locationIndex: number, ticketStatuses: any[]): void {
+    if (locationIndex >= 0 && locationIndex < this.remainingLocations.length) {
+      const location = this.remainingLocations[locationIndex];
+      
+      // 🎯 NUEVO: Aplicar lógica similar a current.component.ts
+      location.checked = false;
+      location.locked = false;
+      location.assigned = ticketStatuses.length > 0;
+      location.completed = false;
+      
+      // 🎯 NUEVO: Determinar si está iniciada pero no completada
+      const startedStatus = ticketStatuses.find(ts => ts.startingdate && !ts.endingdate);
+      if (startedStatus) {
+        location.started = true;
+        location.checked = true;
+        location.startDate = startedStatus.startingdate;
+        location.endDate = null;
+      } else {
+        location.started = false;
+        location.startDate = null;
+        location.endDate = null;
+      }
+      
+      console.log(`⏳ Ubicación marcada como pendiente: ${location.address}`);
+    }
+  }
+
+  // 🎯 NUEVO MÉTODO: Verificar si una ubicación está asignada pero no iniciada
+  isLocationAssigned(location: any): boolean {
+    return location.assigned && !location.started && !location.completed;
+  }
+
+  // 🎯 NUEVO MÉTODO: Verificar si una ubicación está iniciada pero no completada
+  isLocationStarted(location: any): boolean {
+    return location.started && !location.completed;
+  }
+
+  // 🎯 NUEVO MÉTODO: Verificar si una ubicación está completada
+  isLocationCompleted(location: any): boolean {
+    return location.completed;
+  }
+
+  // 🎯 NUEVO MÉTODO: Obtener el estado de una ubicación como texto
+  getLocationStatus(location: any): string {
+    if (location.completed) {
+      return 'Completed';
+    } else if (location.started) {
+      return 'In Progress';
+    } else {
+      return 'Not Visible'; // 🎯 NUEVO: Para ubicaciones que no se muestran
+    }
+  }
+
+  // 🎯 NUEVO MÉTODO: Obtener el icono de estado de una ubicación
+  getLocationStatusIcon(location: any): string {
+    if (location.completed) {
+      return 'check_circle';
+    } else if (location.started) {
+      return 'pending';
+    } else {
+      return 'visibility_off'; // 🎯 NUEVO: Para ubicaciones que no se muestran
+    }
   }
 
   // 🎯 NUEVO MÉTODO: Obtener nombres de fases usando taskstatusid
@@ -405,28 +540,16 @@ crewDetails: any[] = [];
   }
 
   // 🎯 MÉTODO PARA ELIMINAR UNA UBICACIÓN COMPLETADA DEL LISTADO
+  // 🎯 DEPRECATED: Este método ya no oculta ubicaciones, las marca como completadas
   private hideCompletedLocation(locationIndex: number): void {
-    if (locationIndex >= 0 && locationIndex < this.remainingLocations.length) {
-      const locationToHide = this.remainingLocations[locationIndex];
-      locationToHide.isHidden = true;
-      console.log(`👻 Ubicación ocultada: ${locationToHide.address} (Restantes visibles: ${this.getVisibleLocationsCount()})`);
-
-      // Actualizar el índice actual si es necesario
-      if (this.currentLocationIndex >= this.remainingLocations.length) {
-        this.currentLocationIndex = Math.max(0, this.remainingLocations.length - 1);
-      }
-
-      // 🎯 NUEVO: Controlar frecuencia de actualizaciones del mapa
-      const now = Date.now();
-      if (now - this.lastMapUpdate > 1000) { // Solo actualizar cada segundo
-        this.lastMapUpdate = now;
-        this.updateLeafletRoutes();
-      }
-    }
+    console.warn('⚠️ hideCompletedLocation está deprecado. Usar markLocationAsCompleted en su lugar.');
+    // 🎯 NUEVO: En lugar de ocultar, marcar como completada
+    this.markLocationAsCompleted(locationIndex, []);
   }
 
   private getVisibleLocationsCount(): number {
-    return this.remainingLocations.filter(loc => !loc.isHidden).length;
+    // 🎯 NUEVO: Contar ubicaciones con estado "Completed" o "In Progress"
+    return this.remainingLocations.filter(loc => loc.completed || loc.started).length;
   }
 
   private removeCompletedLocation(locationIndex: number): void {
@@ -482,17 +605,72 @@ crewDetails: any[] = [];
     ];
   }
 
-  // 🎯 MÉTODO PÚBLICO PARA MOSTRAR TODAS LAS UBICACIONES (INCLUYENDO OCULTAS)
+  // 🎯 MÉTODO PÚBLICO PARA MOSTRAR TODAS LAS UBICACIONES (INCLUYENDO COMPLETADAS)
   public showAllHiddenLocations(): void {
+    // 🎯 NUEVO: Mostrar todas las ubicaciones temporalmente
     this.remainingLocations.forEach(location => {
-      location.isHidden = false;
+      location.completed = false;
+      location.checked = false;
+      location.locked = false;
+      location.started = false;
+      location.assigned = false;
     });
-    console.log(`👁️ Todas las ubicaciones mostradas: ${this.remainingLocations.length}`);
+    console.log(`👁️ Todas las ubicaciones mostradas temporalmente: ${this.remainingLocations.length}`);
     this.updateLeafletRoutes();
   }
 
-  // 🎯 MÉTODO PÚBLICO PARA OCULTAR UBICACIONES COMPLETADAS
+  // 🎯 NUEVO MÉTODO: Mostrar solo ubicaciones activas (Completed e In Progress)
+  public showOnlyActiveLocations(): void {
+    console.log(`🎯 Mostrando solo ubicaciones activas (Completed e In Progress)`);
+    this.updateLeafletRoutes();
+  }
+
+  // 🎯 NUEVO MÉTODO: Obtener información de ubicaciones visibles
+  public getVisibleLocationsInfo(): any {
+    const completedCount = this.remainingLocations.filter(loc => loc.completed).length;
+    const inProgressCount = this.remainingLocations.filter(loc => loc.started && !loc.completed).length;
+    const totalVisible = completedCount + inProgressCount;
+    const totalLocations = this.remainingLocations.length;
+
+    return {
+      completed: completedCount,
+      inProgress: inProgressCount,
+      visible: totalVisible,
+      total: totalLocations,
+      hidden: totalLocations - totalVisible
+    };
+  }
+
+  // 🎯 NUEVO MÉTODO: Detectar si el error está relacionado con reoptimización automática
+  private isOptimizationError(error: any): boolean {
+    const errorMessage = error?.message || error?.toString() || '';
+    return errorMessage.includes('Unexpected token') && 
+           errorMessage.includes('JSON') && 
+           errorMessage.includes('position');
+  }
+
+  // 🎯 NUEVO MÉTODO: Manejar errores de optimización de manera más robusta
+  private handleOptimizationError(routeId: number, rawValue: any): number[] {
+    console.warn(`⚠️ Detected optimization error for route ${routeId}`);
+    console.warn(`🔄 This might be caused by automatic route reoptimization from current component`);
+    console.warn(`🔄 Raw optimizedOrder value:`, rawValue);
+    
+    // 🎯 NUEVO: Intentar recuperar datos válidos del rawValue
+    if (typeof rawValue === 'string') {
+      const numbers = rawValue.match(/\d+/g);
+      if (numbers && numbers.length > 0) {
+        const recoveredOrder = numbers.map(Number);
+        console.log(`✅ Recovered valid order from malformed string:`, recoveredOrder);
+        return recoveredOrder;
+      }
+    }
+    
+    return [];
+  }
+
+  // 🎯 MÉTODO PÚBLICO PARA MARCAR UBICACIONES COMPLETADAS
   public hideCompletedLocations(): void {
+    console.log('🔄 Verificando y marcando ubicaciones completadas...');
     this.checkForCompletedLocations();
   }
 
@@ -558,8 +736,10 @@ crewDetails: any[] = [];
 
   // 🎯 MÉTODO PARA AGRUPAR UBICACIONES POR DIRECCIÓN
   get groupedLocations() {
-    // 🎯 NUEVO: Aplicar filtro a las ubicaciones visibles
-    const visibleLocations = this.remainingLocations.filter(location => !location.isHidden);
+    // 🎯 NUEVO: Filtrar solo ubicaciones con estado "Completed" o "In Progress"
+    const visibleLocations = this.remainingLocations.filter(location => 
+      location.completed || location.started
+    );
 
     // Aplicar filtro de búsqueda
     const filter = this.filterText.trim().toLowerCase();
@@ -772,6 +952,44 @@ crewDetails: any[] = [];
           }
         }
 
+          // 🎯 NUEVO: Validar optimizedOrder antes de asignar la ruta
+  if (assignedRoute && assignedRoute.optimizedOrder) {
+    try {
+      if (typeof assignedRoute.optimizedOrder === 'string') {
+        // 🎯 NUEVO: Limpiar el string antes de parsear
+        const cleanedOptimizedOrder = assignedRoute.optimizedOrder
+          .replace(/[^\d,\[\]]/g, '') // Remover caracteres no válidos
+          .replace(/,\s*,/g, ',') // Remover comas duplicadas
+          .replace(/^,+|,+$/g, ''); // Remover comas al inicio y final
+        
+        if (cleanedOptimizedOrder) {
+          assignedRoute.optimizedOrder = JSON.parse(`[${cleanedOptimizedOrder}]`);
+        } else {
+          assignedRoute.optimizedOrder = [];
+        }
+      }
+          } catch (error) {
+        console.error(`❌ Error parsing optimizedOrder for route ${assignedRoute.routeId || assignedRoute.routeid}:`, error);
+        console.error('Raw optimizedOrder value:', assignedRoute.optimizedOrder);
+        
+        // 🎯 NUEVO: Usar el método de manejo de errores de optimización
+        if (this.isOptimizationError(error)) {
+          assignedRoute.optimizedOrder = this.handleOptimizationError(
+            assignedRoute.routeId || assignedRoute.routeid, 
+            assignedRoute.optimizedOrder
+          );
+        } else {
+          assignedRoute.optimizedOrder = [];
+        }
+      }
+  }
+
+        // 🎯 NUEVO: Verificar si el componente está siendo destruido antes de asignar
+        if (!this.completionCheckInterval) {
+          console.log('⚠️ Asignación de ruta cancelada - componente en proceso de destrucción');
+          return;
+        }
+
         this.assignedRoute = assignedRoute;
         this.assignedRouteId = assignedRoute?.routeid || assignedRoute?.routeId;
 
@@ -781,7 +999,8 @@ crewDetails: any[] = [];
             routeCode: assignedRoute.routecode || assignedRoute.routeCode,
             type: assignedRoute.type,
             hasPolyline: !!(assignedRoute.encodedpolyline || assignedRoute.encodedPolyline),
-            ticketsCount: assignedRoute.tickets?.length || 0
+            ticketsCount: assignedRoute.tickets?.length || 0,
+            optimizedOrderValid: Array.isArray(assignedRoute.optimizedOrder)
           });
         } else {
           console.warn('❌ No route assigned to crew');
@@ -919,7 +1138,15 @@ getCrewDetails(crewId: number) {
             toaddressnumber: data.toaddressnumber || '',
             toaddresscardinal: data.toaddresscardinal || '',
             toaddressstreet: data.toaddressstreet || '',
-            toaddresssuffix: data.toaddresssuffix || ''
+            toaddresssuffix: data.toaddresssuffix || '',
+            // 🎯 NUEVO: Propiedades de estado inicializadas
+            checked: false,
+            locked: false,
+            assigned: false,
+            started: false,
+            completed: false,
+            startDate: null,
+            endDate: null
           });
         }
       });
@@ -952,6 +1179,11 @@ getCrewDetails(crewId: number) {
         // ✅ ÚNICA llamada a updateLeafletRoutes() - sin bucles
         console.log('🔄 ÚNICA actualización del mapa - sin bucles');
         this.updateLeafletRoutes();
+
+        // 🎯 NUEVO: Verificar estado de todas las ubicaciones después de cargar
+        setTimeout(() => {
+          this.checkForCompletedLocations();
+        }, 2000); // Esperar 2 segundos para que se carguen los datos
       }).catch((error: any) => {
         console.error('Error getting coordinates:', error);
       });
@@ -1139,60 +1371,98 @@ goToCurrent(location: any) {
 }
 
 
-private updateLeafletRoutes() {
-  // 🎯 NUEVO: Verificar que el mapa esté disponible y no esté en proceso de actualización
-  if (!this.leafletMap || !this.assignedRoute) {
-    return;
-  }
-
-  // 🎯 NUEVO: Verificar que el mapa esté inicializado
-  try {
-    const map = (this.leafletMap as any).map;
-    if (!map || !map.invalidateSize) {
-      console.warn('⚠️ Mapa no está completamente inicializado');
+  private updateLeafletRoutes() {
+    // 🎯 NUEVO: Verificar si el componente está siendo destruido
+    if (!this.completionCheckInterval) {
+      console.log('⚠️ Actualización de mapa cancelada - componente en proceso de destrucción');
       return;
     }
-  } catch (error) {
-    console.warn('⚠️ Error verificando estado del mapa:', error);
-    return;
-  }
 
-  // Verificar si la ruta tiene polyline (probar ambos formatos de nombres)
-  const hasPolyline = this.assignedRoute.encodedpolyline || this.assignedRoute.encodedPolyline;
+    // 🎯 NUEVO: Verificar que el mapa esté disponible y no esté en proceso de actualización
+    if (!this.leafletMap || !this.assignedRoute) {
+      return;
+    }
 
-  if (hasPolyline) {
-    this.leafletRoutes = [{
-      routeId: this.assignedRoute.routeid || this.assignedRoute.routeId,
-      routeCode: this.assignedRoute.routecode || this.assignedRoute.routeCode,
-      type: this.assignedRoute.type,
-      encodedPolyline: this.assignedRoute.encodedpolyline || this.assignedRoute.encodedPolyline,
-      tickets: this.forceCorrectOrder(this.assignedRoute.tickets || [])
-    }];
+    // 🎯 NUEVO: Verificar que el mapa esté inicializado
+    try {
+      const map = (this.leafletMap as any).map;
+      if (!map || !map.invalidateSize) {
+        console.warn('⚠️ Mapa no está completamente inicializado');
+        return;
+      }
+    } catch (error) {
+      console.warn('⚠️ Error verificando estado del mapa:', error);
+      return;
+    }
 
-    // Agregar la ruta asignada al conjunto de rutas visibles
-    this.visibleRoutes.clear();
-    const routeId = this.assignedRoute.routeid || this.assignedRoute.routeId;
-    this.visibleRoutes.add(routeId);
-  } else {
-    this.leafletRoutes = [];
-    this.visibleRoutes.clear();
-  }
-
-  // 🎯 NUEVO: Usar setTimeout para dar tiempo al mapa a procesar los cambios
-  setTimeout(() => {
-    if (this.leafletMap) {
+    // 🎯 NUEVO: Validar optimizedOrder para evitar errores de parsing
+    if (this.assignedRoute.optimizedOrder) {
       try {
-        // Intentar invalidar el tamaño del mapa de forma segura
-        const map = (this.leafletMap as any).map;
-        if (map && map.invalidateSize && typeof map.invalidateSize === 'function') {
-          map.invalidateSize();
+        if (typeof this.assignedRoute.optimizedOrder === 'string') {
+          // 🎯 NUEVO: Limpiar el string antes de parsear
+          const cleanedOptimizedOrder = this.assignedRoute.optimizedOrder
+            .replace(/[^\d,\[\]]/g, '') // Remover caracteres no válidos
+            .replace(/,\s*,/g, ',') // Remover comas duplicadas
+            .replace(/^,+|,+$/g, ''); // Remover comas al inicio y final
+          
+          if (cleanedOptimizedOrder) {
+            this.assignedRoute.optimizedOrder = JSON.parse(`[${cleanedOptimizedOrder}]`);
+          } else {
+            this.assignedRoute.optimizedOrder = [];
+          }
         }
       } catch (error) {
-        console.warn('⚠️ Error al actualizar el mapa:', error);
+        console.error(`❌ Error parsing optimizedOrder for route ${this.assignedRoute.routeId || this.assignedRoute.routeid}:`, error);
+        console.error('Raw optimizedOrder value:', this.assignedRoute.optimizedOrder);
+        
+        // 🎯 NUEVO: Usar el método de manejo de errores de optimización
+        if (this.isOptimizationError(error)) {
+          this.assignedRoute.optimizedOrder = this.handleOptimizationError(
+            this.assignedRoute.routeId || this.assignedRoute.routeid, 
+            this.assignedRoute.optimizedOrder
+          );
+        } else {
+          this.assignedRoute.optimizedOrder = [];
+        }
       }
     }
-  }, 100);
-}
+
+    // Verificar si la ruta tiene polyline (probar ambos formatos de nombres)
+    const hasPolyline = this.assignedRoute.encodedpolyline || this.assignedRoute.encodedPolyline;
+
+    if (hasPolyline) {
+      this.leafletRoutes = [{
+        routeId: this.assignedRoute.routeid || this.assignedRoute.routeId,
+        routeCode: this.assignedRoute.routecode || this.assignedRoute.routeCode,
+        type: this.assignedRoute.type,
+        encodedPolyline: this.assignedRoute.encodedpolyline || this.assignedRoute.encodedPolyline,
+        tickets: this.forceCorrectOrder(this.assignedRoute.tickets || [])
+      }];
+
+      // Agregar la ruta asignada al conjunto de rutas visibles
+      this.visibleRoutes.clear();
+      const routeId = this.assignedRoute.routeid || this.assignedRoute.routeId;
+      this.visibleRoutes.add(routeId);
+    } else {
+      this.leafletRoutes = [];
+      this.visibleRoutes.clear();
+    }
+
+    // 🎯 NUEVO: Usar setTimeout para dar tiempo al mapa a procesar los cambios
+    setTimeout(() => {
+      if (this.leafletMap) {
+        try {
+          // Intentar invalidar el tamaño del mapa de forma segura
+          const map = (this.leafletMap as any).map;
+          if (map && map.invalidateSize && typeof map.invalidateSize === 'function') {
+            map.invalidateSize();
+          }
+        } catch (error) {
+          console.warn('⚠️ Error al actualizar el mapa:', error);
+        }
+      }
+    }, 100);
+  }
 
 // Zoom control methods
 changeZoomLevel(zoomLevel: number): void {
@@ -1401,11 +1671,17 @@ private sortTicketsByOrder(tickets: any[]): any[] {
   return finalTickets;
 }
 
-// ✅ MÉTODO CORREGIDO: Usar el campo queue de RouteTickets
-private forceCorrectOrder(tickets: any[]): any[] {
-  if (!tickets || tickets.length === 0) {
-    return tickets;
-  }
+  // ✅ MÉTODO CORREGIDO: Usar el campo queue de RouteTickets
+  private forceCorrectOrder(tickets: any[]): any[] {
+    // 🎯 NUEVO: Verificar si el componente está siendo destruido
+    if (!this.completionCheckInterval) {
+      console.log('⚠️ Ordenamiento de tickets cancelado - componente en proceso de destrucción');
+      return tickets;
+    }
+
+    if (!tickets || tickets.length === 0) {
+      return tickets;
+    }
 
   // ✅ Mapear tickets manteniendo el queue original de RouteTickets
   const finalTickets = tickets.map((t: any) => ({
