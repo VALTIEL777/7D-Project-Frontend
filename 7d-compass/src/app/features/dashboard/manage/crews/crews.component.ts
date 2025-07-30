@@ -1,5 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { DashboardLayoutComponent } from "../../../../shared/dashboard-layout/dashboard-layout.component";
 import { CardWithButtonComponent } from '../../../../shared/card-with-button/card-with-button.component';
 import { DataTableComponent } from '../../../../shared/data-table/data-table.component';
@@ -13,6 +14,7 @@ import { UsedInventoryService } from '../../../../core/services/material/used-in
 import { UsedEquipmentService } from '../../../../core/services/material/used-equipment.service';
 import { InventoryService } from '../../../../core/services/material/inventory.service';
 import { EquipmentService } from '../../../../core/services/material/equipment.service';
+import { RoutesService } from '../../../../core/services/route/route.service';
 
 interface ColumnDefinition {
   name: string;
@@ -35,8 +37,9 @@ interface ColumnDefinition {
 })
 export class CrewsComponent extends BaseDashboardComponent implements OnInit {
   columns: ColumnDefinition[] = [
-    { name: 'crewId', header: 'ID', cell: (crew) => `${crew.crewid ?? ''}` },
+    { name: 'crewid', header: 'ID', cell: (crew) => `${crew.crewid ?? ''}` },
     { name: 'type', header: 'Type', cell: (crew) => crew.type },
+    { name: 'routecode', header: 'Route Code', cell: (crew) => this.formatRouteCode(crew.routeId) },
     { name: 'employees', header: 'Team Members', cell: (crew) => this.formatEmployees(crew.employees) },
     { name: 'leader', header: 'Team Leader', cell: (crew) => this.getLeader(crew.employees) },
     { name: 'inventory', header: 'Assigned Inventory', cell: (crew) => this.formatAssignedInventory(crew.crewid) },
@@ -51,14 +54,17 @@ export class CrewsComponent extends BaseDashboardComponent implements OnInit {
   usedEquipmentData: any[] = [];
   inventoryData: any[] = [];
   equipmentData: any[] = [];
+  routesData: any[] = []; // ✅ Nueva propiedad para almacenar rutas
 
   constructor(
     private dialog: MatDialog,
+    private snackBar: MatSnackBar,
     private crewsService: CrewsService,
     private usedInventoryService: UsedInventoryService,
     private usedEquipmentService: UsedEquipmentService,
     private inventoryService: InventoryService,
     private equipmentService: EquipmentService,
+    private routesService: RoutesService,
     filterService: FilterService
   ) {
     super(filterService);
@@ -86,6 +92,8 @@ export class CrewsComponent extends BaseDashboardComponent implements OnInit {
       }
       return false;
     }) ||
+    // ✅ También buscar en routecode
+    (item.routeId && this.formatRouteCode(item.routeId).toLowerCase().includes(searchTerm)) ||
     // Also search in employee names
     (item.employees && Array.isArray(item.employees) &&
      item.employees.some((emp: any) => {
@@ -110,7 +118,8 @@ export class CrewsComponent extends BaseDashboardComponent implements OnInit {
         usedInventory: this.usedInventoryService.getAllUsedInventory(),
         usedEquipment: this.usedEquipmentService.getAllUsedEquipment(),
         inventory: this.inventoryService.getAllInventory(),
-        equipment: this.equipmentService.getAllEquipment()
+        equipment: this.equipmentService.getAllEquipment(),
+        routes: this.routesService.getAllRoutes() // ✅ Agregar carga de rutas
       }).subscribe({
         next: (data) => {
           this.tableData = data.crews;
@@ -118,6 +127,13 @@ export class CrewsComponent extends BaseDashboardComponent implements OnInit {
           this.usedEquipmentData = data.usedEquipment;
           this.inventoryData = data.inventory;
           this.equipmentData = data.equipment;
+          this.routesData = data.routes || []; // ✅ Almacenar rutas
+          
+          // ✅ DEBUG: Log de datos cargados
+          console.log('📦 Crews loaded:', this.tableData.length);
+          console.log('📦 Routes loaded:', this.routesData.length);
+          console.log('📦 Sample route data:', this.routesData[0]);
+          console.log('📦 Sample crew data:', this.tableData[0]);
           
           this.allData = [...this.tableData];
           this.filteredData = [...this.allData];
@@ -195,7 +211,50 @@ export class CrewsComponent extends BaseDashboardComponent implements OnInit {
     return equipmentNames.join(', ');
   }
 
+  private formatRouteCode(routeId: number): string {
+    if (!routeId || this.routesData.length === 0) {
+      return 'No route assigned';
+    }
+
+    // ✅ Buscar la ruta por diferentes posibles nombres de propiedades
+    const route = this.routesData.find(r => 
+      r.routeId === routeId || 
+      r.routeid === routeId || 
+      r.id === routeId
+    );
+
+    if (route) {
+      // ✅ Obtener el routecode de diferentes posibles nombres de propiedades
+      const routeCode = route.routeCode || route.routecode || route.code || 'N/A';
+      return routeCode;
+    }
+
+    // ✅ Si no se encuentra la ruta, mostrar el ID
+    return `Route ID: ${routeId}`;
+  }
+
+  // ✅ MÉTODO PARA VERIFICAR SI UN CREW TIENE RUTA ASIGNADA
+  private hasRouteAssigned(crew: any): boolean {
+    return !!(crew.routeId || crew.routeid);
+  }
+
+  // ✅ MÉTODO PARA DEBUGGEAR
+  private debugCrewData(crew: any, action: string): void {
+    console.log(`🔍 Debug ${action}:`, {
+      crew: crew,
+      crewId: crew.crewid || crew.crewId,
+      type: crew.type,
+      routeId: crew.routeId || crew.routeid,
+      hasRoute: this.hasRouteAssigned(crew),
+      routeCode: this.formatRouteCode(crew.routeId || crew.routeid),
+      hasEmployees: !!crew.employees,
+      employeeCount: crew.employees?.length || 0
+    });
+  }
+
   onEdit(crew: any) {
+    this.debugCrewData(crew, 'EDIT');
+    
     const dialogRef = this.dialog.open(SearchDialogComponent, {
       width: '500px',
       data: {
@@ -205,28 +264,62 @@ export class CrewsComponent extends BaseDashboardComponent implements OnInit {
           teamMembers: this.formatEmployees(crew.employees),
           equipmentList: this.formatEquipment(crew.equipment)
         },
-        excludedFields: ['crewId', 'employees', 'equipment', 'deletedat', 'updatedat', 'createdat', 'createdby', 'updatedby']
+        excludedFields: ['crewid', 'employees', 'equipment', 'deletedat', 'updatedat', 'createdat', 'createdby', 'updatedby']
       }
     });
 
     dialogRef.afterClosed().subscribe(result => {
       if (result) {
-        const index = this.tableData.findIndex(c => c.crewId === crew.crewId);
-        if (index !== -1) {
-          this.tableData[index] = {
-            ...this.tableData[index],
-            type: result.type || this.tableData[index].type,
-            workedHours: result.workedHours || this.tableData[index].workedHours,
-            photo: result.photo || this.tableData[index].photo
-          };
-          this.allData = [...this.tableData];
-          this.applyFilters();
+        // ✅ Llamar al servicio para actualizar en el backend
+        const crewId = crew.crewid || crew.crewId;
+        if (crewId) {
+          this.crewsService.updateCrew(crewId, {
+            type: result.type || crew.type,
+            workedHours: result.workedHours || crew.workedHours,
+            photo: result.photo || crew.photo,
+            updatedBy: this.getCurrentUserId()
+          }).subscribe({
+            next: (updatedCrew) => {
+              // ✅ Actualizar en la tabla local
+              const index = this.tableData.findIndex(c => (c.crewid || c.crewId) === crewId);
+              if (index !== -1) {
+                this.tableData[index] = {
+                  ...this.tableData[index],
+                  ...updatedCrew
+                };
+                this.allData = [...this.tableData];
+                this.applyFilters();
+                console.log('✅ Crew updated successfully:', updatedCrew);
+                
+                // ✅ Mostrar mensaje de éxito
+                this.snackBar.open('✅ Crew updated successfully!', 'Close', {
+                  duration: 3000,
+                  horizontalPosition: 'center',
+                  verticalPosition: 'top',
+                  panelClass: ['success-snackbar']
+                });
+              }
+            },
+            error: (err) => {
+              console.error('❌ Error updating crew:', err);
+              
+              // ✅ Mostrar mensaje de error
+              this.snackBar.open('❌ Error updating crew. Please try again.', 'Close', {
+                duration: 5000,
+                horizontalPosition: 'center',
+                verticalPosition: 'top',
+                panelClass: ['error-snackbar']
+              });
+            }
+          });
         }
       }
     });
   }
 
   onDelete(crew: any) {
+    this.debugCrewData(crew, 'DELETE');
+    
     const dialogRef = this.dialog.open(ConfirmationDialogComponent, {
       width: '450px',
       disableClose: true,
@@ -241,11 +334,40 @@ export class CrewsComponent extends BaseDashboardComponent implements OnInit {
 
     dialogRef.afterClosed().subscribe(confirmed => {
       if (confirmed) {
-        this.tableData = this.tableData.filter(c => c.crewId !== crew.crewId);
-        this.allData = [...this.tableData];
-        this.applyFilters();
-        console.log('Crew deleted:', crew);
-        // Aquí podrías también llamar a this.crewsService.deleteCrew(crew.crewId)
+        // ✅ Llamar al servicio para eliminar en el backend
+        const crewId = crew.crewid || crew.crewId;
+        if (crewId) {
+          this.crewsService.deleteCrew(crewId).subscribe({
+            next: (response) => {
+              // ✅ Eliminar de la tabla local
+              this.tableData = this.tableData.filter(c => (c.crewid || c.crewId) !== crewId);
+              this.allData = [...this.tableData];
+              this.applyFilters();
+              console.log('✅ Crew deleted successfully:', response);
+              
+              // ✅ Mostrar mensaje de éxito
+              this.snackBar.open('✅ Crew deleted successfully!', 'Close', {
+                duration: 3000,
+                horizontalPosition: 'center',
+                verticalPosition: 'top',
+                panelClass: ['success-snackbar']
+              });
+            },
+            error: (err) => {
+              console.error('❌ Error deleting crew:', err);
+              
+              // ✅ Mostrar mensaje de error
+              this.snackBar.open('❌ Error deleting crew. Please try again.', 'Close', {
+                duration: 5000,
+                horizontalPosition: 'center',
+                verticalPosition: 'top',
+                panelClass: ['error-snackbar']
+              });
+            }
+          });
+        } else {
+          console.error('❌ No crew ID found for deletion');
+        }
       }
     });
   }

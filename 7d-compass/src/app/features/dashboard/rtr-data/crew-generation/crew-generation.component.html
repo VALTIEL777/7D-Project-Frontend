@@ -46,7 +46,12 @@
               <mat-label>Employee Name</mat-label>
               <mat-autocomplete #auto="matAutocomplete" [displayWith]="displayEmployee" (optionSelected)="onEmployeeSelected($event.option.value)">
                 <mat-option *ngFor="let employee of filteredEmployees | async" [value]="employee">
-                  {{ employee.name }}
+                  <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                    <span>{{ employee.name }}</span>
+                    <span class="employee-available">
+                      ✅ Disponible
+                    </span>
+                  </div>
                 </mat-option>
               </mat-autocomplete>
               <input type="text" matInput [formControl]="employeeControl" [matAutocomplete]="auto" placeholder="Select or type employee name" />
@@ -72,6 +77,14 @@
             <button mat-mini-fab color="primary" (click)="addEmployee()" type="button">
               <mat-icon>add</mat-icon>
             </button>
+          </div>
+          
+          <!-- ✅ NUEVA SECCIÓN: Información sobre empleados disponibles -->
+          <div class="employee-stats">
+            <small>
+              📊 Empleados disponibles: {{ getAvailableEmployees().length }} | 
+              Empleados asignados: {{ getAssignedEmployees().length }}
+            </small>
           </div>
           <div *ngIf="employeeDataa?.length" class="custom-list">
             <div *ngFor="let emp of employeeDataa" class="custom-list-item">

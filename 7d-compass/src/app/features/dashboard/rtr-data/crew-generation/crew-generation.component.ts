@@ -430,9 +430,24 @@ private _filterEmployees(value: string | any): any[] {
     ? value.toLowerCase()
     : value?.name?.toLowerCase() || '';
 
-  return this.employeeList.filter(employee =>
-    employee.name.toLowerCase().includes(filterValue)
+  // ✅ Filtrar solo empleados disponibles (sin equipo asignado) y que no estén ya en la lista
+  const currentEmployeeIds = this.employees.controls.map(emp => emp.get('employeeid')?.value);
+  
+  return this.employeeList.filter(employee => 
+    employee.name.toLowerCase().includes(filterValue) &&
+    !employee.crewid && // Solo empleados sin equipo asignado
+    !currentEmployeeIds.includes(employee.employeeid) // No incluir empleados ya en la lista
   );
+}
+
+// ✅ NUEVO MÉTODO: Obtener empleados disponibles (sin equipo asignado)
+getAvailableEmployees(): any[] {
+  return this.employeeList.filter(employee => !employee.crewid);
+}
+
+// ✅ NUEVO MÉTODO: Obtener empleados asignados
+getAssignedEmployees(): any[] {
+  return this.employeeList.filter(employee => employee.crewid);
 }
 
 
@@ -475,6 +490,57 @@ addEmployee() {
 
   if (!selected || !selected.employeeid) {
     console.warn('⚠️ No se puede agregar el empleado. Falta información.');
+    return;
+  }
+
+  // ✅ VALIDACIÓN: Verificar si el empleado ya tiene un equipo asignado
+  if (selected.crewid) {
+    this.snackBar.open(
+      `⚠️ ${selected.name} ya tiene un equipo asignado (${selected.type || 'Sin tipo'}). No se puede agregar nuevamente.`, 
+      'Cerrar', 
+      {
+        duration: 5000,
+        horizontalPosition: 'center',
+        verticalPosition: 'top',
+        panelClass: ['warning-snackbar']
+      }
+    );
+    
+    // Limpiar el formulario
+    this.form.patchValue({
+      selectedEmployee: null,
+      selectedSkills: [],
+      isLeader: false
+    });
+    this.employeeControl.setValue('');
+    this.employeeControl.markAsPristine();
+    this.employeeControl.markAsUntouched();
+    return;
+  }
+
+  // ✅ VALIDACIÓN: Verificar si el empleado ya está en la lista actual
+  const isAlreadyInList = this.employees.controls.some(emp => emp.get('employeeid')?.value === selected.employeeid);
+  if (isAlreadyInList) {
+    this.snackBar.open(
+      `⚠️ ${selected.name} ya está en la lista actual. No se puede agregar duplicados.`, 
+      'Cerrar', 
+      {
+        duration: 3000,
+        horizontalPosition: 'center',
+        verticalPosition: 'top',
+        panelClass: ['warning-snackbar']
+      }
+    );
+    
+    // Limpiar el formulario
+    this.form.patchValue({
+      selectedEmployee: null,
+      selectedSkills: [],
+      isLeader: false
+    });
+    this.employeeControl.setValue('');
+    this.employeeControl.markAsPristine();
+    this.employeeControl.markAsUntouched();
     return;
   }
 
