@@ -47,7 +47,14 @@ export class PermitsComponent extends BaseDashboardComponent implements OnInit {
     {
       name: 'permitNumber',
       header: 'Permit Number',
-      cell: (permit: any) => permit.permitNumber || permit.permitnumber || 'N/A'
+      cell: (permit: any) => {
+        const permitNumber = permit.permitNumber || permit.permitnumber || 'N/A';
+        const duplicateCount = this.getDuplicateCount(permit);
+        if (duplicateCount > 1) {
+          return `${permitNumber} (${duplicateCount} duplicados)`;
+        }
+        return permitNumber;
+      }
     },
     {
       name: 'status',
@@ -109,6 +116,13 @@ export class PermitsComponent extends BaseDashboardComponent implements OnInit {
   pdfFileError: string | null = null;
   uploadingFile = false;
   permitFiles: { [permitId: number]: any[] } = {};
+  
+  // Propiedades para seguimiento de progreso de subida
+  uploadProgress = {
+    current: 0,
+    total: 0,
+    isUploading: false
+  };
 
   constructor(
     private dialog: MatDialog,
@@ -547,6 +561,45 @@ export class PermitsComponent extends BaseDashboardComponent implements OnInit {
     this.uploadingFile = true;
     this.pdfFileError = null;
 
+    // Buscar todos los permisos con el mismo permitNumber
+    const samePermitNumber = permit.permitNumber || permit.permitnumber;
+    const permitsWithSameNumber = this.tableData.filter(p => 
+      (p.permitNumber || p.permitnumber) === samePermitNumber
+    );
+
+    console.log(`📄 Encontrados ${permitsWithSameNumber.length} permisos con permitNumber: ${samePermitNumber}`);
+
+    // Si solo hay un permiso con ese número, subir normalmente
+    if (permitsWithSameNumber.length === 1) {
+      this.uploadSinglePermitFile(permit);
+      return;
+    }
+
+    // Si hay múltiples permisos con el mismo número, mostrar confirmación
+    const dialogRef = this.dialog.open(ConfirmationDialogComponent, {
+      width: '500px',
+      disableClose: true,
+      panelClass: 'confirmation-dialog',
+      data: {
+        title: 'Propagar PDF a Permisos Similares',
+        message: `Se encontraron ${permitsWithSameNumber.length} permisos con el mismo número (${samePermitNumber}).\n\n¿Deseas subir el archivo PDF a todos los permisos con este número?\n\nPermisos encontrados:\n${permitsWithSameNumber.map(p => `• ${p.permitNumber} (ID: ${p.PermitId})`).join('\n')}`,
+        confirmText: 'Subir a Todos',
+        cancelText: 'Solo a Este'
+      }
+    });
+
+    dialogRef.afterClosed().subscribe(confirmed => {
+      if (confirmed) {
+        // Subir a todos los permisos con el mismo número
+        this.uploadToMultiplePermits(permitsWithSameNumber);
+      } else {
+        // Subir solo al permiso seleccionado
+        this.uploadSinglePermitFile(permit);
+      }
+    });
+  }
+
+  private uploadSinglePermitFile(permit: any): void {
     // Obtener el ticketId del primer ticket asociado al permiso
     let ticketId = null;
     if (permit.tickets && permit.tickets.length > 0) {
@@ -555,9 +608,9 @@ export class PermitsComponent extends BaseDashboardComponent implements OnInit {
 
     // Crear FormData siguiendo el patrón de current.component
     const formData = new FormData();
-    formData.append('file', this.selectedPermitFile);
+    formData.append('file', this.selectedPermitFile!);
     formData.append('ticketId', ticketId?.toString() || '');
-    formData.append('name', this.selectedPermitFile.name);
+    formData.append('name', this.selectedPermitFile!.name);
     formData.append('comment', `Archivo subido para el permiso: ${permit.permitNumber}`);
 
     this.photoEvidenceService.uploadPhotoEvidence(formData).subscribe({
@@ -575,6 +628,88 @@ export class PermitsComponent extends BaseDashboardComponent implements OnInit {
         this.pdfFileError = 'Error al subir el archivo. Inténtalo de nuevo.';
         this.snackBar.open('Error al subir el archivo', 'Close', { duration: 3000 });
       }
+    });
+  }
+
+  private uploadToMultiplePermits(permits: any[]): void {
+    console.log(`📄 Iniciando subida a ${permits.length} permisos...`);
+    
+    // Inicializar progreso
+    this.uploadProgress = {
+      current: 0,
+      total: permits.length,
+      isUploading: true
+    };
+    
+    // Mostrar resumen antes de subir
+    const permitNumbers = permits.map(p => p.permitNumber || p.permitnumber).join(', ');
+    this.snackBar.open(`📄 Subiendo archivo a ${permits.length} permisos: ${permitNumbers}`, 'Close', { duration: 3000 });
+    
+    let completedUploads = 0;
+    let failedUploads = 0;
+    const totalUploads = permits.length;
+
+    permits.forEach((permit, index) => {
+      // Crear una copia del archivo para cada permiso
+      const fileCopy = new File([this.selectedPermitFile!], this.selectedPermitFile!.name, { 
+        type: this.selectedPermitFile!.type 
+      });
+
+      // Obtener el ticketId del primer ticket asociado al permiso
+      let ticketId = null;
+      if (permit.tickets && permit.tickets.length > 0) {
+        ticketId = permit.tickets[0].ticketId || permit.tickets[0].ticketid;
+      }
+
+      // Crear FormData para este permiso
+      const formData = new FormData();
+      formData.append('file', fileCopy);
+      formData.append('ticketId', ticketId?.toString() || '');
+      formData.append('name', fileCopy.name);
+      formData.append('comment', `Archivo subido para el permiso: ${permit.permitNumber} (propagado automáticamente)`);
+
+      this.photoEvidenceService.uploadPhotoEvidence(formData).subscribe({
+        next: (response) => {
+          completedUploads++;
+          this.uploadProgress.current = completedUploads;
+          console.log(`✅ Archivo subido exitosamente para permiso ${permit.permitNumber} (${completedUploads}/${totalUploads})`);
+          
+          // Recargar archivos para este permiso
+          this.loadPermitFiles(permit.PermitId);
+          
+          // Verificar si todas las subidas han terminado
+          if (completedUploads + failedUploads === totalUploads) {
+            this.uploadingFile = false;
+            this.selectedPermitFile = null;
+            this.uploadProgress.isUploading = false;
+            
+            if (failedUploads === 0) {
+              this.snackBar.open(`✅ Archivo PDF subido exitosamente a ${completedUploads} permisos`, 'Close', { duration: 4000 });
+            } else {
+              this.snackBar.open(`⚠️ Archivo subido a ${completedUploads} permisos, ${failedUploads} fallaron`, 'Close', { duration: 5000 });
+            }
+          }
+        },
+        error: (error) => {
+          failedUploads++;
+          this.uploadProgress.current = completedUploads + failedUploads;
+          console.error(`❌ Error subiendo archivo para permiso ${permit.permitNumber}:`, error);
+          
+          // Verificar si todas las subidas han terminado
+          if (completedUploads + failedUploads === totalUploads) {
+            this.uploadingFile = false;
+            this.selectedPermitFile = null;
+            this.uploadProgress.isUploading = false;
+            
+            if (failedUploads === totalUploads) {
+              this.pdfFileError = 'Error al subir el archivo a todos los permisos.';
+              this.snackBar.open('Error al subir el archivo', 'Close', { duration: 3000 });
+            } else {
+              this.snackBar.open(`⚠️ Archivo subido a ${completedUploads} permisos, ${failedUploads} fallaron`, 'Close', { duration: 5000 });
+            }
+          }
+        }
+      });
     });
   }
 
@@ -806,5 +941,105 @@ export class PermitsComponent extends BaseDashboardComponent implements OnInit {
     // TODO: Implement this when auth service is available
     // return this.authService.getCurrentUser()?.id || 1;
     return 1; // Default for now
+  }
+
+  // Método para obtener permisos con el mismo permitNumber
+  getPermitsWithSameNumber(permitNumber: string): any[] {
+    return this.tableData.filter(p => 
+      (p.permitNumber || p.permitnumber) === permitNumber
+    );
+  }
+
+  // Método para verificar si un permiso tiene duplicados
+  hasDuplicatePermitNumber(permit: any): boolean {
+    const permitNumber = permit.permitNumber || permit.permitnumber;
+    const duplicates = this.getPermitsWithSameNumber(permitNumber);
+    return duplicates.length > 1;
+  }
+
+  // Método para obtener el número de duplicados de un permiso
+  getDuplicateCount(permit: any): number {
+    const permitNumber = permit.permitNumber || permit.permitnumber;
+    const duplicates = this.getPermitsWithSameNumber(permitNumber);
+    return duplicates.length;
+  }
+
+  // Método para verificar si hay permisos duplicados en general
+  hasDuplicatePermits(): boolean {
+    const permitNumbers = new Set();
+    return this.tableData.some(permit => {
+      const permitNumber = permit.permitNumber || permit.permitnumber;
+      if (permitNumbers.has(permitNumber)) {
+        return true;
+      }
+      permitNumbers.add(permitNumber);
+      return false;
+    });
+  }
+
+  // Método para mostrar detalles de permisos duplicados
+  showDuplicateDetails(): void {
+    // Agrupar permisos por permitNumber
+    const groupedPermits = new Map<string, any[]>();
+    
+    this.tableData.forEach(permit => {
+      const permitNumber = permit.permitNumber || permit.permitnumber;
+      if (!groupedPermits.has(permitNumber)) {
+        groupedPermits.set(permitNumber, []);
+      }
+      groupedPermits.get(permitNumber)!.push(permit);
+    });
+
+    // Filtrar solo los grupos con más de un permiso
+    const duplicates = Array.from(groupedPermits.entries())
+      .filter(([_, permits]) => permits.length > 1)
+      .map(([permitNumber, permits]) => ({
+        permitNumber,
+        permits,
+        count: permits.length
+      }));
+
+    if (duplicates.length === 0) {
+      this.snackBar.open('No se encontraron permisos duplicados', 'Close', { duration: 3000 });
+      return;
+    }
+
+    // Crear mensaje detallado con información más completa
+    let message = `Se encontraron ${duplicates.length} grupos de permisos duplicados:\n\n`;
+    duplicates.forEach((group, index) => {
+      message += `${index + 1}. Permit Number: ${group.permitNumber} (${group.count} permisos)\n`;
+      group.permits.forEach(permit => {
+        const startDate = permit.startDate || permit.startdate;
+        const expireDate = permit.expireDate || permit.expiredate;
+        const status = permit.status;
+        const ticketsCount = permit.tickets?.length || 0;
+        
+        message += `   • ID: ${permit.PermitId}\n`;
+        message += `     Status: ${status}\n`;
+        message += `     Start Date: ${startDate ? new Date(startDate).toLocaleDateString() : 'N/A'}\n`;
+        message += `     Expire Date: ${expireDate ? new Date(expireDate).toLocaleDateString() : 'N/A'}\n`;
+        message += `     Tickets asociados: ${ticketsCount}\n`;
+        message += '\n';
+      });
+    });
+
+    message += `\n💡 Nota: Al subir un archivo PDF a cualquier permiso de un grupo duplicado, se puede propagar automáticamente a todos los permisos del mismo grupo.`;
+
+    // Mostrar diálogo con detalles
+    const dialogRef = this.dialog.open(ConfirmationDialogComponent, {
+      width: '700px',
+      disableClose: false,
+      panelClass: 'confirmation-dialog',
+      data: {
+        title: 'Detalles de Permisos Duplicados',
+        message: message,
+        confirmText: 'Cerrar',
+        cancelText: 'Cerrar'
+      }
+    });
+
+    dialogRef.afterClosed().subscribe(() => {
+      // Solo cerrar el diálogo
+    });
   }
 }
