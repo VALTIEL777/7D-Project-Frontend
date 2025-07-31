@@ -37,7 +37,7 @@ interface ColumnDefinition {
 })
 export class CrewsComponent extends BaseDashboardComponent implements OnInit {
   columns: ColumnDefinition[] = [
-    { name: 'crewid', header: 'ID', cell: (crew) => `${crew.crewid ?? ''}` },
+    // { name: 'crewid', header: 'ID', cell: (crew) => `${crew.crewid ?? ''}` }, // ✅ OCULTADA
     { name: 'type', header: 'Type', cell: (crew) => crew.type },
     { name: 'routecode', header: 'Route Code', cell: (crew) => this.formatRouteCode(crew.routeId) },
     { name: 'employees', header: 'Team Members', cell: (crew) => this.formatEmployees(crew.employees) },
