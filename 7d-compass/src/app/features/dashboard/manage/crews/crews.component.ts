@@ -15,6 +15,7 @@ import { UsedEquipmentService } from '../../../../core/services/material/used-eq
 import { InventoryService } from '../../../../core/services/material/inventory.service';
 import { EquipmentService } from '../../../../core/services/material/equipment.service';
 import { RoutesService } from '../../../../core/services/route/route.service';
+import { forkJoin, map, catchError, of } from 'rxjs';
 
 interface ColumnDefinition {
   name: string;
@@ -39,7 +40,7 @@ export class CrewsComponent extends BaseDashboardComponent implements OnInit {
   columns: ColumnDefinition[] = [
     // { name: 'crewid', header: 'ID', cell: (crew) => `${crew.crewid ?? ''}` }, // ✅ OCULTADA
     { name: 'type', header: 'Type', cell: (crew) => crew.type },
-    { name: 'routecode', header: 'Route Code', cell: (crew) => this.formatRouteCode(crew.routeId) },
+    { name: 'routecode', header: 'Route Code', cell: (crew) => crew.routecode || this.formatRouteCode(crew.routeid) },
     { name: 'employees', header: 'Team Members', cell: (crew) => this.formatEmployees(crew.employees) },
     { name: 'leader', header: 'Team Leader', cell: (crew) => this.getLeader(crew.employees) },
     { name: 'inventory', header: 'Assigned Inventory', cell: (crew) => this.formatAssignedInventory(crew.crewid) },
@@ -118,8 +119,8 @@ export class CrewsComponent extends BaseDashboardComponent implements OnInit {
         usedInventory: this.usedInventoryService.getAllUsedInventory(),
         usedEquipment: this.usedEquipmentService.getAllUsedEquipment(),
         inventory: this.inventoryService.getAllInventory(),
-        equipment: this.equipmentService.getAllEquipment(),
-        routes: this.routesService.getAllRoutes() // ✅ Agregar carga de rutas
+        equipment: this.equipmentService.getAllEquipment()
+        // ✅ Remover routes del forkJoin para cargarlo por separado
       }).subscribe({
         next: (data) => {
           this.tableData = data.crews;
@@ -127,16 +128,50 @@ export class CrewsComponent extends BaseDashboardComponent implements OnInit {
           this.usedEquipmentData = data.usedEquipment;
           this.inventoryData = data.inventory;
           this.equipmentData = data.equipment;
-          this.routesData = data.routes || []; // ✅ Almacenar rutas
           
           // ✅ DEBUG: Log de datos cargados
           console.log('📦 Crews loaded:', this.tableData.length);
-          console.log('📦 Routes loaded:', this.routesData.length);
-          console.log('📦 Sample route data:', this.routesData[0]);
-          console.log('📦 Sample crew data:', this.tableData[0]);
+          console.log('📦 UsedInventory loaded:', this.usedInventoryData.length);
+          console.log('📦 Inventory loaded:', this.inventoryData.length);
+          console.log('📦 UsedEquipment loaded:', this.usedEquipmentData.length);
+          console.log('📦 Equipment loaded:', this.equipmentData.length);
+          
+          // ✅ DEBUG: Mostrar estructura completa de los primeros crews
+          if (this.tableData.length > 0) {
+            console.log('📦 Sample crew data (complete structure):', this.tableData[0]);
+            console.log('📦 All crew properties:', Object.keys(this.tableData[0]));
+          }
+          
+          // ✅ DEBUG: Sample data
+          if (this.usedInventoryData.length > 0) {
+            console.log('📦 Sample usedInventory:', this.usedInventoryData[0]);
+          }
+          if (this.inventoryData.length > 0) {
+            console.log('📦 Sample inventory:', this.inventoryData[0]);
+          }
+          if (this.usedEquipmentData.length > 0) {
+            console.log('📦 Sample usedEquipment:', this.usedEquipmentData[0]);
+          }
+          if (this.equipmentData.length > 0) {
+            console.log('📦 Sample equipment:', this.equipmentData[0]);
+          }
+          
+          // ✅ DEBUG: Verificar si equipment data está vacío
+          if (this.equipmentData.length === 0) {
+            console.warn('⚠️ Equipment data is empty - this might cause equipment names not to display');
+          }
+          
+          // ✅ DEBUG: Equipment data
+          this.debugEquipmentData();
           
           this.allData = [...this.tableData];
           this.filteredData = [...this.allData];
+          
+          // ✅ Cargar rutas por separado después de cargar crews
+          this.loadRoutesSeparately();
+          
+          // ✅ Cargar detalles de crews con información de rutas
+          this.loadCrewsWithRouteDetails();
         },
         error: (error) => {
           console.error('Error loading crews and related data:', error);
@@ -146,6 +181,12 @@ export class CrewsComponent extends BaseDashboardComponent implements OnInit {
               this.tableData = data;
               this.allData = [...this.tableData];
               this.filteredData = [...this.allData];
+              
+              // ✅ Intentar cargar rutas por separado
+              this.loadRoutesSeparately();
+              
+              // ✅ Cargar detalles de crews con información de rutas
+              this.loadCrewsWithRouteDetails();
             },
             error: (crewError) => {
               console.error('Error loading crews:', crewError);
@@ -153,6 +194,198 @@ export class CrewsComponent extends BaseDashboardComponent implements OnInit {
           });
         }
       });
+    });
+  }
+
+  private loadCrewsWithRouteDetails(): void {
+    console.log('🛣️ Loading crew details with route information...');
+    
+    // ✅ Cargar detalles de cada crew para obtener la información de rutas
+    const crewDetailsPromises = this.tableData.map(crew => {
+      const crewId = crew.crewid || crew.crewId;
+      if (!crewId) {
+        console.warn('⚠️ Crew ID is missing for route loading:', crew);
+        return Promise.resolve({ ...crew, routeid: null, routecode: null });
+      }
+      
+      return this.crewsService.getCrewDetails(crewId).toPromise()
+        .then(crewDetails => {
+          console.log(`🛣️ Crew ${crewId} details (raw):`, crewDetails);
+          
+          // ✅ Manejar múltiples filas - tomar la primera fila que tenga routeid
+          let routeid = null;
+          let routecode = null;
+          
+          if (Array.isArray(crewDetails) && crewDetails.length > 0) {
+            // ✅ Buscar la primera fila que tenga routeid
+            const firstRowWithRoute = crewDetails.find(row => row.routeid || row.routeId);
+            if (firstRowWithRoute) {
+              routeid = firstRowWithRoute.routeid || firstRowWithRoute.routeId;
+              routecode = firstRowWithRoute.routecode || firstRowWithRoute.routeCode;
+              console.log(`🛣️ Crew ${crewId} - Found route info:`, { routeid, routecode });
+            } else {
+              console.log(`🛣️ Crew ${crewId} - No route info found in any row`);
+            }
+          } else if (crewDetails && typeof crewDetails === 'object') {
+            // ✅ Si es un objeto único
+            routeid = crewDetails.routeid || crewDetails.routeId;
+            routecode = crewDetails.routecode || crewDetails.routeCode;
+            console.log(`🛣️ Crew ${crewId} - Single object route info:`, { routeid, routecode });
+          }
+          
+          return {
+            ...crew,
+            routeid,
+            routecode
+          };
+        })
+        .catch(error => {
+          console.error(`❌ Error loading details for crew ${crewId}:`, error);
+          return { ...crew, routeid: null, routecode: null };
+        });
+    });
+
+    Promise.all(crewDetailsPromises).then(crewsWithRoutes => {
+      this.tableData = crewsWithRoutes;
+      this.allData = [...this.tableData];
+      this.filteredData = [...this.allData];
+      
+      console.log('📦 Crews with route details loaded:', this.tableData.length);
+      
+      // ✅ DEBUG: Verificar que los crews ahora tienen routeid
+      this.tableData.forEach(crew => {
+        console.log(`🛣️ Crew ${crew.crewid} - routeid: ${crew.routeid}, routecode: ${crew.routecode}`);
+      });
+    });
+  }
+
+  private loadRoutesSeparately(): void {
+    console.log('🛣️ Loading routes separately...');
+    this.routesService.getAllRoutes().subscribe({
+      next: (data) => {
+        console.log('🛣️ Raw routes response:', data);
+        
+        // ✅ Manejar diferentes formatos de respuesta
+        if (Array.isArray(data)) {
+          this.routesData = data;
+          console.log('🛣️ Routes loaded as array:', this.routesData.length);
+        } else if (data && Array.isArray(data.routes)) {
+          this.routesData = data.routes;
+          console.log('🛣️ Routes loaded from data.routes:', this.routesData.length);
+        } else if (data && Array.isArray(data.data)) {
+          this.routesData = data.data;
+          console.log('🛣️ Routes loaded from data.data:', this.routesData.length);
+        } else {
+          this.routesData = [];
+          console.warn('⚠️ Unexpected routes data format:', data);
+        }
+        
+        console.log('📦 Routes loaded separately:', this.routesData.length);
+        if (this.routesData.length > 0) {
+          console.log('📦 Sample route data:', this.routesData[0]);
+        } else {
+          console.warn('⚠️ No routes found in response');
+        }
+        
+        // ✅ DEBUG: Routes data
+        this.debugRoutesData();
+      },
+      error: (error) => {
+        console.error('❌ Error loading routes separately:', error);
+        console.error('❌ Error details:', {
+          status: error.status,
+          statusText: error.statusText,
+          message: error.message,
+          url: error.url
+        });
+        this.routesData = [];
+      }
+    });
+  }
+
+  // ✅ MÉTODO PARA DEBUGGEAR EQUIPMENT DATA
+  private debugEquipmentData(): void {
+    console.log('🔍 Equipment Debug:');
+    console.log('  - Equipment data length:', this.equipmentData.length);
+    console.log('  - UsedEquipment data length:', this.usedEquipmentData.length);
+    
+    if (this.equipmentData.length > 0) {
+      console.log('  - Sample equipment:', this.equipmentData[0]);
+    }
+    
+    if (this.usedEquipmentData.length > 0) {
+      console.log('  - Sample usedEquipment:', this.usedEquipmentData[0]);
+    }
+    
+    // ✅ Verificar si hay crews con equipment asignado
+    this.tableData.forEach(crew => {
+      const crewId = crew.crewid || crew.crewId;
+      const crewUsedEquipment = this.usedEquipmentData.filter(ue => 
+        ue.crewId === crewId || 
+        ue.crewid === crewId || 
+        ue.CrewId === crewId
+      );
+      
+      if (crewUsedEquipment.length > 0) {
+        console.log(`  - Crew ${crewId} has ${crewUsedEquipment.length} equipment assignments`);
+        crewUsedEquipment.forEach(ue => {
+          const equipment = this.equipmentData.find(eq => 
+            eq.equipmentId === ue.equipmentid || 
+            eq.equipmentid === ue.equipmentid ||
+            eq.id === ue.equipmentid
+          );
+          console.log(`    * UsedEquipment: ${ue.equipmentid}, Found equipment:`, equipment);
+          if (equipment) {
+            console.log(`      Equipment name: ${equipment.equipmentname}`);
+          }
+        });
+      }
+    });
+  }
+
+  // ✅ MÉTODO PARA DEBUGGEAR ROUTES DATA
+  private debugRoutesData(): void {
+    console.log('🛣️ Routes Debug:');
+    console.log('  - Routes data length:', this.routesData.length);
+    
+    if (this.routesData.length > 0) {
+      console.log('  - Sample route:', this.routesData[0]);
+    }
+    
+    // ✅ Verificar si hay crews con route asignado (usar routeid en minúsculas)
+    this.tableData.forEach(crew => {
+      const crewId = crew.crewid || crew.crewId;
+      
+      console.log(`  - Crew ${crewId} complete data:`, crew);
+      console.log(`  - Crew ${crewId} all properties:`, Object.keys(crew));
+      
+      // ✅ Buscar cualquier propiedad que contenga "route"
+      const routeProperties = Object.keys(crew).filter(key => key.toLowerCase().includes('route'));
+      console.log(`  - Crew ${crewId} route-related properties:`, routeProperties);
+      
+      // ✅ Buscar específicamente routeid en minúsculas
+      const routeId = crew.routeid || crew.routeId || crew.route_id || crew.routeId;
+      
+      console.log(`  - Crew ${crewId} routeId value:`, routeId);
+      console.log(`  - Crew ${crewId} crew.routeid:`, crew.routeid);
+      console.log(`  - Crew ${crewId} crew.routeId:`, crew.routeId);
+      
+      if (routeId) {
+        console.log(`  - Crew ${crewId} has routeId: ${routeId}`);
+        const route = this.routesData.find(r => 
+          r.routeId === routeId || 
+          r.routeid === routeId || 
+          r.id === routeId
+        );
+        
+        if (route) {
+          console.log(`    * Found route: ${route.routecode || route.routeCode || 'N/A'}`);
+        } else {
+          console.log(`    * Route not found for routeId: ${routeId}`);
+        }
+      } else {
+        console.log(`  - Crew ${crewId} has no route assigned`);
+      }
     });
   }
 
@@ -174,17 +407,25 @@ export class CrewsComponent extends BaseDashboardComponent implements OnInit {
       return 'No inventory assigned';
     }
 
-    // Filtrar inventario usado por este crew
-    const crewUsedInventory = this.usedInventoryData.filter(ui => ui.crewId === crewId);
+    // ✅ Filtrar inventario usado por este crew (usar nombres correctos de los logs)
+    const crewUsedInventory = this.usedInventoryData.filter(ui => 
+      ui.crewId === crewId || 
+      ui.crewid === crewId || 
+      ui.CrewId === crewId
+    );
     
     if (crewUsedInventory.length === 0) {
       return 'No inventory assigned';
     }
 
-    // Mapear a nombres de inventario
+    // ✅ Mapear a nombres de inventario (usar nombres correctos de los logs)
     const inventoryNames = crewUsedInventory.map(ui => {
-      const inventory = this.inventoryData.find(inv => inv.inventoryId === ui.inventoryId);
-      return inventory ? inventory.name : `Inventory ID: ${ui.inventoryId}`;
+      const inventory = this.inventoryData.find(inv => 
+        inv.inventoryId === ui.inventoryid || 
+        inv.inventoryid === ui.inventoryid ||
+        inv.id === ui.inventoryid
+      );
+      return inventory ? inventory.name : `Inventory ID: ${ui.inventoryid}`;
     });
 
     return inventoryNames.join(', ');
@@ -195,17 +436,25 @@ export class CrewsComponent extends BaseDashboardComponent implements OnInit {
       return 'No equipment assigned';
     }
 
-    // Filtrar equipamiento usado por este crew
-    const crewUsedEquipment = this.usedEquipmentData.filter(ue => ue.crewId === crewId);
+    // ✅ Filtrar equipamiento usado por este crew (usar nombres correctos de los logs)
+    const crewUsedEquipment = this.usedEquipmentData.filter(ue => 
+      ue.crewId === crewId || 
+      ue.crewid === crewId || 
+      ue.CrewId === crewId
+    );
     
     if (crewUsedEquipment.length === 0) {
       return 'No equipment assigned';
     }
 
-    // Mapear a nombres de equipamiento
+    // ✅ Mapear a nombres de equipamiento (usar equipmentname en minúsculas)
     const equipmentNames = crewUsedEquipment.map(ue => {
-      const equipment = this.equipmentData.find(eq => eq.equipmentId === ue.equipmentId);
-      return equipment ? equipment.equipmentName : `Equipment ID: ${ue.equipmentId}`;
+      const equipment = this.equipmentData.find(eq => 
+        eq.equipmentId === ue.equipmentid || 
+        eq.equipmentid === ue.equipmentid ||
+        eq.id === ue.equipmentid
+      );
+      return equipment ? equipment.equipmentname : `Equipment ID: ${ue.equipmentid}`;
     });
 
     return equipmentNames.join(', ');
@@ -216,7 +465,7 @@ export class CrewsComponent extends BaseDashboardComponent implements OnInit {
       return 'No route assigned';
     }
 
-    // ✅ Buscar la ruta por diferentes posibles nombres de propiedades
+    // ✅ Buscar la ruta por diferentes posibles nombres de propiedades (usar routeid en minúsculas)
     const route = this.routesData.find(r => 
       r.routeId === routeId || 
       r.routeid === routeId || 
@@ -224,12 +473,14 @@ export class CrewsComponent extends BaseDashboardComponent implements OnInit {
     );
 
     if (route) {
-      // ✅ Obtener el routecode de diferentes posibles nombres de propiedades
+      // ✅ Obtener el routecode de diferentes posibles nombres de propiedades (usar routecode en minúsculas)
       const routeCode = route.routeCode || route.routecode || route.code || 'N/A';
+      console.log(`🛣️ FormatRouteCode: routeId=${routeId}, found route:`, route, `routeCode: ${routeCode}`);
       return routeCode;
     }
 
     // ✅ Si no se encuentra la ruta, mostrar el ID
+    console.log(`🛣️ FormatRouteCode: routeId=${routeId}, route not found`);
     return `Route ID: ${routeId}`;
   }
 
@@ -250,6 +501,24 @@ export class CrewsComponent extends BaseDashboardComponent implements OnInit {
       hasEmployees: !!crew.employees,
       employeeCount: crew.employees?.length || 0
     });
+    
+    // ✅ DEBUG: Verificar inventory y equipment para este crew
+    const crewId = crew.crewid || crew.crewId;
+    if (crewId) {
+      const crewUsedInventory = this.usedInventoryData.filter(ui => 
+        ui.crewId === crewId || 
+        ui.crewid === crewId || 
+        ui.CrewId === crewId
+      );
+      const crewUsedEquipment = this.usedEquipmentData.filter(ue => 
+        ue.crewId === crewId || 
+        ue.crewid === crewId || 
+        ue.CrewId === crewId
+      );
+      
+      console.log(`🔍 Crew ${crewId} - UsedInventory:`, crewUsedInventory);
+      console.log(`🔍 Crew ${crewId} - UsedEquipment:`, crewUsedEquipment);
+    }
   }
 
   onEdit(crew: any) {

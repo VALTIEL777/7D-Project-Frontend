@@ -14,13 +14,14 @@ export class RoutesService {
   // GET /routes
   getAllRoutes(): Observable<any> {
     console.log('🛣️ Getting all routes...');
-    return this.http.get<any>(`${environment.apiUrl}/routes`);
+    console.log('🛣️ Using URL:', `${this.baseUrl}`);
+    return this.http.get<any>(`${this.baseUrl}`);
   }
 
   // GET /routes/:routeId
   getRouteById(routeId: number): Observable<any> {
     console.log('🛣️ Getting route by ID:', routeId);
-    return this.http.get<any>(`${environment.apiUrl}/routes/${routeId}`);
+    return this.http.get<any>(`${this.baseUrl}/${routeId}`);
   }
 
   // POST /routes

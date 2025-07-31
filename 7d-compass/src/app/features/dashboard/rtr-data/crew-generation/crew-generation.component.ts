@@ -283,25 +283,101 @@ limitMaterialQuantity(event: any) {
       skills: this.skillsService.getAllSkills()           // Si cada skill tiene userid
     }).subscribe({
       next: ({ people, crewEmployees, crews, skills }) => {
+        // ✅ DEBUG: Log de datos cargados desde la base de datos
+        console.log('📦 People loaded:', people.length);
+        console.log('📦 CrewEmployees loaded:', crewEmployees.length);
+        console.log('📦 Crews loaded:', crews.length);
+        console.log('📦 Sample crewEmployee:', crewEmployees[0]);
+        console.log('📦 Sample crew:', crews[0]);
+        
+        // ✅ DEBUG: Mostrar todos los crewIds en crewEmployees
+        const crewIdsInCrewEmployees = [...new Set(crewEmployees.map(ce => ce.crewid || ce.crewId))];
+        console.log('🔍 Crew IDs in crewEmployees:', crewIdsInCrewEmployees);
+        console.log('🔍 Types of crew IDs in crewEmployees:', crewIdsInCrewEmployees.map(id => typeof id));
+        
+        // ✅ DEBUG: Mostrar todos los crewIds en crews
+        const crewIdsInCrews = crews.map(c => c.crewid || c.crewId);
+        console.log('🔍 Crew IDs in crews:', crewIdsInCrews);
+        console.log('🔍 Types of crew IDs in crews:', crewIdsInCrews.map(id => typeof id));
+        
+        // ✅ DEBUG: Encontrar crews huérfanos
+        const orphanedCrewIds = crewIdsInCrewEmployees.filter(id => 
+          !crewIdsInCrews.some(crewId => crewId == id) // ✅ Usar == para comparar strings y numbers
+        );
+        console.log('⚠️ Orphaned crew IDs (deleted crews):', orphanedCrewIds);
+        
        this.employeeList = people.map((person: any) => {
-  const assignment = crewEmployees.find((ce: any) => ce.employeeId === person.employeeId);
-  const crew = assignment ? crews.find((c: any) => c.crewid === assignment.crewid) : null;
+  // ✅ VERIFICAR EN LA BASE DE DATOS si el empleado está asignado a algún crew ACTIVO
+  const crewAssignment = crewEmployees.find((ce: any) => 
+    ce.employeeId === person.employeeId || 
+    ce.peopleId === person.employeeId ||
+    ce.employeeid === person.employeeId
+  );
+  
+  // ✅ Buscar el crew y verificar si EXISTE en la tabla crews
+  const crew = crewAssignment ? crews.find((c: any) => {
+    const crewId = crewAssignment.crewid || crewAssignment.crewId;
+    const cId = c.crewid || c.crewId || c.id;
+    return crewId == cId; // ✅ Usar == para comparar strings y numbers
+  }) : null;
+  
+  // ✅ Verificar si el crew existe (no fue eliminado)
+  const isCrewExists = crew !== null && crew !== undefined;
+  
   const personSkills = skills
     .filter((s: any) => s.userId === person.userId)
     .map((s: any) => s.name);
 
-  return {
+  const employeeData = {
     employeeid: person.employeeId, // ✅ Este es el que debe usarse para crear CrewEmployee
     userid: person.userId,         // ✅ Este es para identificar al usuario logueado
     name: `${person.firstname} ${person.lastname}`,
-    crewid: assignment?.crewid || null,
-    type: crew?.type || '',
-    workedhours: crew?.workedhours || 0,
+    crewid: isCrewExists ? (crewAssignment?.crewid || crewAssignment?.crewId) : null, // ✅ Solo si el crew existe
+    type: isCrewExists ? (crew?.type || '') : '',
+    workedhours: isCrewExists ? (crew?.workedhours || 0) : 0,
     skills: personSkills,
-    crewLeader: assignment?.crewleader || false
+    crewLeader: isCrewExists ? (crewAssignment?.crewleader || crewAssignment?.crewLeader || false) : false
   };
+
+  // ✅ DEBUG: Log para empleados asignados
+  if (crewAssignment && isCrewExists) {
+    console.log(`🔍 Employee ${employeeData.name} is assigned to EXISTING crew ${crewAssignment.crewid || crewAssignment.crewId}`);
+  } else if (crewAssignment && !isCrewExists) {
+    console.log(`⚠️ Employee ${employeeData.name} was assigned to DELETED crew ${crewAssignment.crewid || crewAssignment.crewId} - now available`);
+    
+    // ✅ DEBUG específico para crew 4
+    if (crewAssignment.crewid === 4 || crewAssignment.crewId === 4) {
+      console.log(`🔍 DEBUG Crew 4 - Employee: ${employeeData.name}, CrewAssignment:`, crewAssignment);
+      console.log(`🔍 DEBUG Crew 4 - Found crew in crews table:`, crew);
+      console.log(`🔍 DEBUG Crew 4 - isCrewExists:`, isCrewExists);
+    }
+  }
+
+  return employeeData;
 });
 
+        // ✅ DEBUG: Log final de empleados
+        console.log('📦 Final employeeList:', this.employeeList.length);
+        console.log('📦 Assigned employees:', this.employeeList.filter(emp => emp.crewid).length);
+        console.log('📦 Available employees:', this.employeeList.filter(emp => !emp.crewid).length);
+        
+        // ✅ DEBUG: Mostrar detalles de crews eliminados
+        const deletedCrews = crews.filter(c => c.deletedAt || c.deletedat);
+        if (deletedCrews.length > 0) {
+          console.log('🗑️ Deleted crews found:', deletedCrews.length);
+          deletedCrews.forEach(crew => {
+            console.log(`  - Crew ID: ${crew.crewid || crew.crewId}, Type: ${crew.type}, DeletedAt: ${crew.deletedAt || crew.deletedat}`);
+          });
+        }
+        
+        // ✅ DEBUG: Mostrar crews que no existen en la tabla crews pero sí en crewEmployees
+        if (orphanedCrewIds.length > 0) {
+          console.log('⚠️ Orphaned crew assignments found (crew deleted but employees still assigned):', orphanedCrewIds);
+          orphanedCrewIds.forEach(crewId => {
+            const orphanedEmployees = crewEmployees.filter(ce => (ce.crewid || ce.crewId) === crewId);
+            console.log(`  - Crew ID ${crewId}: ${orphanedEmployees.length} employees will be marked as available`);
+          });
+        }
       },
       error: (err) => console.error('Error loading employee data:', err)
     });
@@ -442,12 +518,22 @@ private _filterEmployees(value: string | any): any[] {
 
 // ✅ NUEVO MÉTODO: Obtener empleados disponibles (sin equipo asignado)
 getAvailableEmployees(): any[] {
-  return this.employeeList.filter(employee => !employee.crewid);
+  // ✅ Empleados sin crew asignado Y que no estén en la lista actual
+  const currentEmployeeIds = this.employees.controls.map(emp => emp.get('employeeid')?.value);
+  return this.employeeList.filter(employee => 
+    !employee.crewid && 
+    !currentEmployeeIds.includes(employee.employeeid)
+  );
 }
 
 // ✅ NUEVO MÉTODO: Obtener empleados asignados
 getAssignedEmployees(): any[] {
-  return this.employeeList.filter(employee => employee.crewid);
+  // ✅ Empleados con crew asignado O que estén en la lista actual
+  const currentEmployeeIds = this.employees.controls.map(emp => emp.get('employeeid')?.value);
+  return this.employeeList.filter(employee => 
+    employee.crewid || 
+    currentEmployeeIds.includes(employee.employeeid)
+  );
 }
 
 
@@ -579,9 +665,66 @@ addEmployee() {
   } else {
     this.form.get('isLeader')?.enable();
   }
+  
+  // ✅ Forzar actualización de estadísticas
+  this.forceStatsUpdate();
 }
 
 
+
+// ✅ MÉTODO PARA VERIFICAR SI UN CREW EXISTE
+private isCrewExists(crew: any): boolean {
+  return crew !== null && crew !== undefined;
+}
+
+// ✅ MÉTODO PARA VERIFICAR SI UN EMPLEADO ESTÁ ASIGNADO EN LA BASE DE DATOS
+private isEmployeeAssignedInDatabase(employeeId: number): Observable<boolean> {
+  return new Observable(observer => {
+    // ✅ Cargar crews y crewEmployees para verificar asignaciones activas
+    import('rxjs').then(({ forkJoin }) => {
+      forkJoin({
+        crewEmployees: this.crewEmployeesService.getAllCrewEmployees(),
+        crews: this.crewsService.getAllCrews()
+      }).subscribe({
+        next: ({ crewEmployees, crews }) => {
+          const crewAssignment = crewEmployees.find((ce: any) => 
+            ce.employeeId === employeeId || 
+            ce.peopleId === employeeId ||
+            ce.employeeid === employeeId
+          );
+          
+          if (crewAssignment) {
+            // ✅ Verificar si el crew existe
+            const crew = crews.find((c: any) => 
+              c.crewid === crewAssignment.crewid || 
+              c.crewId === crewAssignment.crewId ||
+              c.id === crewAssignment.crewId
+            );
+            
+            const isActive = this.isCrewExists(crew);
+            observer.next(isActive);
+          } else {
+            observer.next(false);
+          }
+          observer.complete();
+        },
+        error: (err) => {
+          console.error('❌ Error checking employee assignment:', err);
+          observer.next(false);
+          observer.complete();
+        }
+      });
+    });
+  });
+}
+
+// ✅ MÉTODO PARA FORZAR ACTUALIZACIÓN DE ESTADÍSTICAS
+private forceStatsUpdate(): void {
+  // ✅ Forzar detección de cambios en las estadísticas
+  setTimeout(() => {
+    console.log('📊 Stats updated - Available:', this.getAvailableEmployees().length, 'Assigned:', this.getAssignedEmployees().length);
+  }, 0);
+}
 
 get hasLeaderAlready(): boolean {
   return this.employees.controls.some(emp => emp.get('leader')?.value === true);
@@ -614,10 +757,12 @@ onEditEmployee(employee: any) {
           ...result
         });
         this.updateEmployeeData();
+        this.forceStatsUpdate(); // ✅ Actualizar estadísticas después de editar
       }
     }
   });
     this.updateEmployeeData();
+    this.forceStatsUpdate(); // ✅ Actualizar estadísticas después de editar
 
 }
 
@@ -640,11 +785,12 @@ onDeleteEmployee(employee: any) {
       if (index !== -1) {
         this.employees.removeAt(index);
         this.updateEmployeeData();
+        this.forceStatsUpdate(); // ✅ Llamar a forceStatsUpdate después de eliminar un empleado
       }
     }
   });
     this.updateEmployeeData();
-
+    // this.forceStatsUpdate(); // ✅ Llamar a forceStatsUpdate después de eliminar un empleado
 }
 
 // MATERIALES
@@ -1001,6 +1147,9 @@ save() {
               this.materials.clear();
               this.equipment.clear();
               this.isLoading = false; // detener loader
+
+              // ✅ RECARGAR EMPLEADOS DESPUÉS DE GUARDAR
+              this.loadEmployees();
 
               this.snackBar.open('Crew saved successfully!', 'Close', {
   duration: 3000, // milisegundos

@@ -49,7 +49,7 @@
                   <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
                     <span>{{ employee.name }}</span>
                     <span class="employee-available">
-                      ✅ Disponible
+                      Available
                     </span>
                   </div>
                 </mat-option>
@@ -82,8 +82,8 @@
           <!-- ✅ NUEVA SECCIÓN: Información sobre empleados disponibles -->
           <div class="employee-stats">
             <small>
-              📊 Empleados disponibles: {{ getAvailableEmployees().length }} | 
-              Empleados asignados: {{ getAssignedEmployees().length }}
+              📊 Available Employees: {{ getAvailableEmployees().length }} | 
+              Assigned Employees: {{ getAssignedEmployees().length }}
             </small>
           </div>
           <div *ngIf="employeeDataa?.length" class="custom-list">
