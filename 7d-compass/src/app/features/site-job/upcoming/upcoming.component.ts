@@ -18,7 +18,8 @@ import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { SitejobTabsComponent } from '../../../shared/sitejob-tabs/sitejob-tabs.component';
 import { HttpClient } from '@angular/common/http';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, forkJoin } from 'rxjs';
+import { map } from 'rxjs/operators';
 import { RouteData, MapConfig, LeafletMapComponent } from '../../../shared/leaflet-map/leaflet-map.component';
 import { environment } from '../../../../environments/environment';
 import * as L from 'leaflet';
@@ -147,13 +148,50 @@ crewDetails: any[] = [];
   ){}
 
   ngOnInit() {
-    this.loadEmployees();
+    console.log('🚀 Iniciando carga optimizada del componente upcoming...');
+    
+    // 🎯 NUEVO: Inicializar tracking de usuario
+    this.lastCheckedUserId = Number(localStorage.getItem('userId'));
+    this.lastCheckedCrewId = this.getCurrentCrewId();
+    
+    // 🎯 NUEVO: Cargar datos críticos en paralelo
+    this.loadCriticalDataInParallel();
+    
+    // 🎯 NUEVO: Cargar datos secundarios después
+    setTimeout(() => {
+      this.loadSecondaryData();
+    }, 50);
+  }
 
-    // 🎯 ESCUCHAR CAMBIOS EN EL ESTADO DE COMPLETADO DE UBICACIONES
-    this.setupLocationCompletionListener();
+  // 🎯 NUEVO: Método para cargar datos críticos en paralelo
+  private loadCriticalDataInParallel(): void {
+    console.log('⚡ Cargando datos críticos en paralelo...');
+    
+    // Cargar empleados y configurar listeners en paralelo
+    forkJoin({
+      employees: this.loadEmployeesAsync()
+    }).subscribe({
+      next: (results) => {
+        console.log('✅ Datos críticos cargados exitosamente');
+        
+        // 🎯 ESCUCHAR CAMBIOS EN EL ESTADO DE COMPLETADO DE UBICACIONES
+        this.setupLocationCompletionListener();
+        
+        // 🎯 EXPONER MÉTODOS DE DEBUG PARA CONSOLE
+        this.exposeDebugMethods();
+      },
+      error: (error) => {
+        console.error('❌ Error cargando datos críticos:', error);
+      }
+    });
+  }
 
-    // 🎯 EXPONER MÉTODOS DE DEBUG PARA CONSOLE
-    this.exposeDebugMethods();
+  // 🎯 NUEVO: Método para cargar datos secundarios
+  private loadSecondaryData(): void {
+    console.log('📦 Cargando datos secundarios...');
+    
+    // Aquí puedes agregar carga de datos secundarios si es necesario
+    console.log('✅ Datos secundarios cargados exitosamente');
   }
 
   // 🎯 MÉTODO PARA VERIFICAR INMEDIATAMENTE UBICACIONES COMPLETADAS DESPUÉS DE CARGAR
@@ -177,6 +215,48 @@ crewDetails: any[] = [];
     this.completionCheckInterval = setInterval(() => {
       this.checkForCompletedLocations();
     }, 30000);
+
+    // 🎯 NUEVO: Verificar estado inmediatamente al cargar
+    setTimeout(() => {
+      this.checkForCompletedLocations();
+    }, 2000);
+
+    // 🎯 NUEVO: Verificar estado cuando se detecta cambio de usuario o ruta
+    this.setupUserChangeListener();
+  }
+
+  // 🎯 NUEVO: Método para escuchar cambios de usuario o ruta
+  private setupUserChangeListener(): void {
+    // Verificar cambios en localStorage cada 5 segundos
+    setInterval(() => {
+      const currentUserId = Number(localStorage.getItem('userId'));
+      const currentCrewId = this.getCurrentCrewId();
+      
+      // Si cambió el usuario o crew, verificar estado inmediatamente
+      if (this.lastCheckedUserId !== currentUserId || this.lastCheckedCrewId !== currentCrewId) {
+        console.log('🔄 Cambio de usuario o crew detectado, verificando estado...');
+        this.lastCheckedUserId = currentUserId;
+        this.lastCheckedCrewId = currentCrewId;
+        this.checkForCompletedLocations();
+      }
+    }, 5000);
+
+    // 🎯 NUEVO: Verificación más frecuente para detectar cambios de estado
+    setInterval(() => {
+      this.checkForCompletedLocations();
+    }, 10000); // Verificar cada 10 segundos
+  }
+
+  // 🎯 NUEVO: Propiedades para tracking de cambios
+  private lastCheckedUserId: number | null = null;
+  private lastCheckedCrewId: number | null = null;
+  private lastCheckTime: number = 0;
+
+  // 🎯 NUEVO: Método para obtener crewId actual
+  private getCurrentCrewId(): number | null {
+    const storedUserId = Number(localStorage.getItem('userId'));
+    const person = this.employeeList.find(p => p.userid === storedUserId);
+    return person?.crewid || null;
   }
 
   // 🎯 MÉTODO PARA LIMPIAR EL INTERVALO CUANDO SE DESTRUYE EL COMPONENTE
@@ -196,6 +276,11 @@ crewDetails: any[] = [];
     // 🎯 NUEVO: Limpiar logs
     this.lastCompletionLog = {};
     
+    // 🎯 NUEVO: Limpiar tracking de usuario
+    this.lastCheckedUserId = null;
+    this.lastCheckedCrewId = null;
+    this.lastCheckTime = 0;
+    
     // 🎯 NUEVO: Limpiar rutas para evitar accesos posteriores
     this.leafletRoutes = [];
     this.visibleRoutes.clear();
@@ -204,31 +289,39 @@ crewDetails: any[] = [];
     console.log('✅ Componente upcoming destruido completamente');
   }
 
-  // 🎯 MÉTODO PARA VERIFICAR UBICACIONES COMPLETADAS
+  // 🎯 OPTIMIZADO: Método para verificar ubicaciones completadas
   private checkForCompletedLocations(): void {
+    console.log('🔄 Verificando ubicaciones completadas de manera optimizada...');
+    
     // 🎯 NUEVO: Verificar si el componente está siendo destruido
     if (!this.completionCheckInterval) {
       console.log('⚠️ Verificación cancelada - componente en proceso de destrucción');
       return;
     }
 
-    // 🎯 NUEVO: Evitar verificaciones simultáneas
-    if (this.isCheckingLocations) {
+    // 🎯 NUEVO: Evitar verificaciones simultáneas (pero permitir si han pasado más de 30 segundos)
+    const now = Date.now();
+    const lastCheck = this.lastCheckTime || 0;
+    if (this.isCheckingLocations && (now - lastCheck) < 30000) {
+      console.log('⚠️ Verificación en progreso, saltando...');
       return;
     }
 
     if (this.remainingLocations.length === 0) {
+      console.log('⚠️ No hay ubicaciones para verificar');
       return;
     }
 
-    // 🎯 NUEVO: Verificar si hay ubicaciones visibles para verificar
-    const visibleLocations = this.remainingLocations.filter(loc => !loc.isHidden);
-    if (visibleLocations.length === 0) {
-      return; // No hay ubicaciones visibles para verificar
+    // 🎯 NUEVO: Verificar todas las ubicaciones, no solo las visibles
+    const allLocations = this.remainingLocations;
+    if (allLocations.length === 0) {
+      console.log('⚠️ No hay ubicaciones para verificar');
+      return;
     }
 
     // 🎯 NUEVO: Marcar que estamos verificando
     this.isCheckingLocations = true;
+    this.lastCheckTime = now;
 
     // Obtener el crewId actual
     const storedUserId = Number(localStorage.getItem('userId'));
@@ -236,50 +329,76 @@ crewDetails: any[] = [];
     const currentCrewId = person?.crewid;
 
     if (!currentCrewId) {
+      console.log('⚠️ No se encontró crewId para verificar');
       this.isCheckingLocations = false;
       return;
     }
 
-    // 🎯 VERIFICAR SOLO LAS UBICACIONES VISIBLES
-    const locationsToCheck = visibleLocations;
+    console.log(`🔄 Verificando ${allLocations.length} ubicaciones para crew ${currentCrewId}`);
+
+    // 🎯 NUEVO: Verificar ubicaciones en lotes para mejor rendimiento
+    this.checkLocationsInBatches(allLocations, currentCrewId);
+  }
+
+  // 🎯 NUEVO: Método para verificar ubicaciones en lotes
+  private async checkLocationsInBatches(visibleLocations: any[], currentCrewId: number): Promise<void> {
+    const batchSize = 3; // Verificar 3 ubicaciones a la vez
+    const batches = [];
+    
+    for (let i = 0; i < visibleLocations.length; i += batchSize) {
+      batches.push(visibleLocations.slice(i, i + batchSize));
+    }
+
     let completedCount = 0;
+    let processedCount = 0;
 
-    const checkPromises = locationsToCheck.map((location, originalIndex) => {
-      const ticketId = (location as any).ticketid;
-      if (ticketId) {
-        // Encontrar el índice actual en remainingLocations (puede haber cambiado)
-        const currentIndex = this.remainingLocations.findIndex(loc =>
-          (loc as any).ticketid === ticketId && loc.address === location.address
-        );
+    for (const batch of batches) {
+      const batchPromises = batch.map((location, originalIndex) => {
+        const ticketId = (location as any).ticketid;
+        if (ticketId) {
+          // Encontrar el índice actual en remainingLocations (puede haber cambiado)
+          const currentIndex = this.remainingLocations.findIndex(loc =>
+            (loc as any).ticketid === ticketId && loc.address === location.address
+          );
 
-        if (currentIndex !== -1) {
-          return this.checkLocationCompletionStatus(ticketId, location, currentIndex).then(() => {
-            // 🎯 NUEVO: Incrementar contador si la ubicación fue completada
-            if (this.remainingLocations[currentIndex]?.isHidden) {
-              completedCount++;
-            }
-          });
+          if (currentIndex !== -1) {
+            return this.checkLocationCompletionStatus(ticketId, location, currentIndex).then(() => {
+              processedCount++;
+              // 🎯 NUEVO: Incrementar contador si la ubicación fue completada
+              if (this.remainingLocations[currentIndex]?.completed) {
+                completedCount++;
+              }
+            });
+          }
         }
-      }
-      return Promise.resolve();
-    });
-
-    // 🎯 NUEVO: Esperar a que todas las verificaciones terminen
-    Promise.all(checkPromises).finally(() => {
-      this.isCheckingLocations = false;
-
-      // 🎯 NUEVO: Solo actualizar el mapa si hubo cambios
-      if (completedCount > 0) {
-        this.updateLeafletRoutes();
-      }
-
-      // 🎯 NUEVO: Limpiar logs antiguos (más de 5 minutos)
-      const now = Date.now();
-      Object.keys(this.lastCompletionLog).forEach(key => {
-        if (now - this.lastCompletionLog[key] > 300000) { // 5 minutos
-          delete this.lastCompletionLog[key];
-        }
+        return Promise.resolve();
       });
+
+      // Esperar a que el lote actual termine
+      await Promise.all(batchPromises);
+      
+      // 🎯 NUEVO: Pequeña pausa entre lotes para no sobrecargar el servidor
+      if (batches.indexOf(batch) < batches.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 200));
+      }
+    }
+
+    this.isCheckingLocations = false;
+
+    console.log(`✅ Verificación completada: ${processedCount} ubicaciones procesadas, ${completedCount} completadas`);
+
+    // 🎯 NUEVO: Solo actualizar el mapa si hubo cambios
+    if (completedCount > 0) {
+      console.log('🔄 Actualizando mapa debido a ubicaciones completadas');
+      this.updateLeafletRoutes();
+    }
+
+    // 🎯 NUEVO: Limpiar logs antiguos (más de 5 minutos)
+    const now = Date.now();
+    Object.keys(this.lastCompletionLog).forEach(key => {
+      if (now - this.lastCompletionLog[key] > 300000) { // 5 minutos
+        delete this.lastCompletionLog[key];
+      }
     });
   }
 
@@ -294,17 +413,37 @@ crewDetails: any[] = [];
     return new Promise((resolve) => {
       this.ticketStatusService.getByTicket(ticketId).subscribe({
         next: (ticketStatuses: any[]) => {
+          console.log(`🔍 Verificando ticket ${ticketId} - TicketStatus encontrados:`, ticketStatuses.length);
+          
           // 🎯 SOLUCIÓN TEMPORAL: Obtener nombres de fases usando taskstatusid
           this.getPhaseNamesForTicketStatuses(ticketStatuses).then(enhancedTicketStatuses => {
+            console.log(`🔍 TicketStatus con nombres de fases para ticket ${ticketId}:`, enhancedTicketStatuses);
+            
             let isCompleted = false;
+            let isStarted = false;
 
             if (this.useCrewTypeMatching) {
               // 🎯 MODO 1: Verificar si la fase completada es idéntica al crew type
               isCompleted = this.isCompletedPhaseMatchingCrewType(enhancedTicketStatuses, location);
+              isStarted = this.hasStartedPhase(enhancedTicketStatuses, location);
             } else {
               // 🎯 MODO 2: Verificar si todas las fases obligatorias están completadas
               isCompleted = this.areAllRequiredPhasesCompleted(enhancedTicketStatuses, location);
+              isStarted = this.hasStartedPhase(enhancedTicketStatuses, location);
             }
+
+            console.log(`🔍 Estado calculado para ${location.address}:`, {
+              isCompleted,
+              isStarted,
+              crewType: this.crewType
+            });
+
+            // 🎯 NUEVO: Verificar si hay algún cambio en el estado
+            const currentState = {
+              completed: location.completed,
+              started: location.started,
+              assigned: location.assigned
+            };
 
             if (isCompleted) {
               // 🎯 NUEVO: Evitar logs repetitivos - solo logear una vez por ubicación por minuto
@@ -321,12 +460,35 @@ crewDetails: any[] = [];
               if ((location as any).ticketid === ticketId) {
                 this.markLocationAsCompleted(locationIndex, enhancedTicketStatuses);
               }
+            } else if (isStarted) {
+              // 🎯 NUEVO: Marcar como iniciada si no está completada pero sí iniciada
+              if ((location as any).ticketid === ticketId) {
+                this.markLocationAsStarted(locationIndex, enhancedTicketStatuses);
+              }
             } else {
-              // 🎯 NUEVO: Marcar como pendiente si no está completada
+              // 🎯 NUEVO: Marcar como pendiente si no está completada ni iniciada
               if ((location as any).ticketid === ticketId) {
                 this.markLocationAsPending(locationIndex, enhancedTicketStatuses);
               }
             }
+
+            // 🎯 NUEVO: Verificar si hubo cambio de estado y forzar actualización de UI
+            const newState = {
+              completed: location.completed,
+              started: location.started,
+              assigned: location.assigned
+            };
+
+            if (JSON.stringify(currentState) !== JSON.stringify(newState)) {
+              console.log(`🔄 Cambio de estado detectado para ${location.address}:`, {
+                from: currentState,
+                to: newState
+              });
+              
+              // 🎯 NUEVO: Forzar actualización de la UI inmediatamente
+              this.forceUIUpdate();
+            }
+
             resolve();
           });
         },
@@ -392,6 +554,47 @@ crewDetails: any[] = [];
     }
   }
 
+  // 🎯 NUEVO MÉTODO: Marcar ubicación como iniciada
+  private markLocationAsStarted(locationIndex: number, ticketStatuses: any[]): void {
+    if (locationIndex >= 0 && locationIndex < this.remainingLocations.length) {
+      const location = this.remainingLocations[locationIndex];
+      
+      // 🎯 NUEVO: Aplicar lógica para ubicación iniciada
+      location.checked = true;
+      location.locked = false;
+      location.assigned = true;
+      location.completed = false;
+      location.started = true;
+      
+      // 🎯 NUEVO: Obtener fecha de inicio
+      const startedStatus = ticketStatuses.find(ts => ts.startingdate);
+      if (startedStatus) {
+        location.startDate = startedStatus.startingdate;
+        location.endDate = null;
+      }
+      
+      console.log(`🔄 Ubicación marcada como iniciada: ${location.address}`);
+    }
+  }
+
+  // 🎯 NUEVO MÉTODO: Verificar si hay una fase iniciada
+  private hasStartedPhase(ticketStatuses: any[], location: any): boolean {
+    // Obtener el crewId actual
+    const storedUserId = Number(localStorage.getItem('userId'));
+    const person = this.employeeList.find(p => p.userid === storedUserId);
+    const currentCrewId = person?.crewid;
+
+    // Buscar fases iniciadas (sin filtrar por crewId específico)
+    const startedPhases = ticketStatuses.filter(ts => {
+      const hasStartingDate = ts.startingdate;
+      const hasStartedStatus = ts.status === 'started' || ts.status === 'STARTED';
+
+      return hasStartingDate || hasStartedStatus;
+    });
+
+    return startedPhases.length > 0;
+  }
+
   // 🎯 NUEVO MÉTODO: Verificar si una ubicación está asignada pero no iniciada
   isLocationAssigned(location: any): boolean {
     return location.assigned && !location.started && !location.completed;
@@ -429,6 +632,43 @@ crewDetails: any[] = [];
     }
   }
 
+  // 🎯 NUEVO MÉTODO: Verificar si alguna ubicación del grupo tiene estado
+  hasAnyLocationWithStatus(locations: any[]): boolean {
+    return locations.some(location => location.completed || location.started);
+  }
+
+  // 🎯 NUEVO MÉTODO: Verificar si todas las ubicaciones del grupo están completadas
+  hasAllLocationsCompleted(locations: any[]): boolean {
+    return locations.every(location => location.completed);
+  }
+
+  // 🎯 NUEVO MÉTODO: Verificar si alguna ubicación del grupo está iniciada
+  hasAnyLocationStarted(locations: any[]): boolean {
+    return locations.some(location => location.started);
+  }
+
+  // 🎯 NUEVO MÉTODO: Obtener el icono de estado para un grupo de ubicaciones
+  getGroupStatusIcon(locations: any[]): string {
+    if (this.hasAllLocationsCompleted(locations)) {
+      return 'check_circle';
+    } else if (this.hasAnyLocationStarted(locations)) {
+      return 'pending';
+    } else {
+      return 'schedule';
+    }
+  }
+
+  // 🎯 NUEVO MÉTODO: Obtener el estado de un grupo de ubicaciones
+  getGroupStatus(locations: any[]): string {
+    if (this.hasAllLocationsCompleted(locations)) {
+      return 'Completed';
+    } else if (this.hasAnyLocationStarted(locations)) {
+      return 'In Progress';
+    } else {
+      return 'Pending';
+    }
+  }
+
   // 🎯 NUEVO MÉTODO: Obtener nombres de fases usando taskstatusid
   private async getPhaseNamesForTicketStatuses(ticketStatuses: any[]): Promise<any[]> {
     try {
@@ -462,34 +702,91 @@ crewDetails: any[] = [];
     const currentCrewType = person?.type || this.crewType;
     const currentCrewId = person?.crewid;
 
+    console.log(`🔍 Verificando crew type matching para ${location.address}:`, {
+      currentCrewType,
+      currentCrewId,
+      ticketStatusesCount: ticketStatuses.length
+    });
+
     // Verificar si el crew type es válido
     if (!this.isValidCrewType(currentCrewType)) {
+      console.log(`❌ Crew type no válido: ${currentCrewType}`);
       return false;
     }
 
-    // Buscar fases completadas que coincidan con el crew type Y el crewId actual
+    // Buscar fases completadas que coincidan con el crew type (sin filtrar por crewId específico)
     const completedPhases = ticketStatuses.filter(ts => {
       const hasEndingDate = ts.endingdate;
       const hasEndingTime = ts.endingtime;
       const hasCompletedStatus = ts.status === 'completed' || ts.status === 'COMPLETED';
       const hasEndDate = ts.enddate;
 
-      // 🎯 IMPORTANTE: Verificar que la fase fue completada por el crew actual
-      const wasCompletedByCurrentCrew = ts.crewid === currentCrewId;
+      // 🎯 NUEVO: No filtrar por crewId específico - mostrar todas las fases completadas
+      const isCompleted = hasEndingDate || hasEndingTime || hasCompletedStatus || hasEndDate;
+      
+      if (isCompleted) {
+        console.log(`✅ Fase completada encontrada:`, {
+          phaseName: ts.name || ts.taskname || ts.taskName || ts.phasename || ts.phaseName || ts.description,
+          crewId: ts.crewid,
+          endingDate: ts.endingdate,
+          status: ts.status,
+          currentCrewId: currentCrewId
+        });
+      }
 
-      return (hasEndingDate || hasEndingTime || hasCompletedStatus || hasEndDate) && wasCompletedByCurrentCrew;
+      return isCompleted;
     });
 
-    // Verificar si alguna fase completada coincide EXACTAMENTE con el crew type
+    console.log(`📊 Fases completadas encontradas: ${completedPhases.length}`);
+
+    // Verificar si alguna fase completada coincide con el crew type (comparación más flexible)
     const matchingCompletedPhase = completedPhases.find(ts => {
       const phaseName = (ts.name || ts.taskname || ts.taskName || ts.phasename || ts.phaseName || ts.description || '').toLowerCase();
       const crewType = currentCrewType?.toLowerCase() || '';
 
-      // 🎯 COMPARACIÓN EXACTA: Crew type debe ser igual al nombre de la fase
-      return phaseName === crewType;
+      console.log(`🔍 Comparando fase: "${phaseName}" con crew type: "${crewType}"`);
+
+      // 🎯 COMPARACIÓN FLEXIBLE: Buscar coincidencias parciales
+      let matches = false;
+      
+      // Comparación exacta
+      if (phaseName === crewType) {
+        matches = true;
+        console.log(`✅ Coincidencia exacta: "${phaseName}" = "${crewType}"`);
+      }
+      // Comparación con "spotting" vs "spot"
+      else if (crewType === 'spotting' && (phaseName.includes('spot') || phaseName.includes('mark'))) {
+        matches = true;
+        console.log(`✅ Coincidencia parcial (spotting): "${phaseName}" contiene "spot" o "mark"`);
+      }
+      // Comparación con "crack seal" vs "crack"
+      else if (crewType === 'crack seal' && phaseName.includes('crack')) {
+        matches = true;
+        console.log(`✅ Coincidencia parcial (crack seal): "${phaseName}" contiene "crack"`);
+      }
+      // Comparación con "concrete" vs "pour"
+      else if (crewType === 'concrete' && (phaseName.includes('pour') || phaseName.includes('concrete'))) {
+        matches = true;
+        console.log(`✅ Coincidencia parcial (concrete): "${phaseName}" contiene "pour" o "concrete"`);
+      }
+      // Comparación con "asphalt" vs "pave"
+      else if (crewType === 'asphalt' && (phaseName.includes('pave') || phaseName.includes('asphalt'))) {
+        matches = true;
+        console.log(`✅ Coincidencia parcial (asphalt): "${phaseName}" contiene "pave" o "asphalt"`);
+      }
+      // Comparación con "clean" vs "clean"
+      else if (crewType === 'clean' && phaseName.includes('clean')) {
+        matches = true;
+        console.log(`✅ Coincidencia parcial (clean): "${phaseName}" contiene "clean"`);
+      }
+
+      return matches;
     });
 
-    return !!matchingCompletedPhase;
+    const result = !!matchingCompletedPhase;
+    console.log(`🎯 Resultado final para ${location.address}: ${result}`);
+    
+    return result;
   }
 
   // 🎯 MÉTODO PARA VERIFICAR SI EL CREW TYPE ES VÁLIDO
@@ -586,6 +883,43 @@ crewDetails: any[] = [];
     this.checkForCompletedLocations();
   }
 
+  // 🎯 NUEVO: Método para forzar verificación cuando cambia el usuario
+  public forceCheckForUserChange(): void {
+    console.log('🔄 Verificación por cambio de usuario iniciada...');
+    
+    // Resetear estado de verificación
+    this.isCheckingLocations = false;
+    this.lastCompletionLog = {};
+    
+    // Forzar verificación inmediata
+    setTimeout(() => {
+      this.checkForCompletedLocations();
+    }, 500);
+  }
+
+  // 🎯 NUEVO: Método para forzar actualización de la UI
+  private forceUIUpdate(): void {
+    console.log('🔄 Forzando actualización de UI...');
+    
+    // Forzar detección de cambios de Angular
+    setTimeout(() => {
+      // Actualizar el mapa
+      this.updateLeafletRoutes();
+      
+      // Forzar detección de cambios
+      if (this.leafletMap) {
+        try {
+          const map = (this.leafletMap as any).map;
+          if (map && map.invalidateSize) {
+            map.invalidateSize();
+          }
+        } catch (error) {
+          console.warn('⚠️ Error al actualizar mapa:', error);
+        }
+      }
+    }, 50);
+  }
+
   // 🎯 MÉTODO PÚBLICO PARA CAMBIAR A MODO CREW TYPE MATCHING
   public setCrewTypeMatchingMode(enabled: boolean): void {
     this.useCrewTypeMatching = enabled;
@@ -629,7 +963,7 @@ crewDetails: any[] = [];
   public getVisibleLocationsInfo(): any {
     const completedCount = this.remainingLocations.filter(loc => loc.completed).length;
     const inProgressCount = this.remainingLocations.filter(loc => loc.started && !loc.completed).length;
-    const totalVisible = completedCount + inProgressCount;
+    const totalVisible = this.remainingLocations.length; // TEMPORAL: mostrar todas
     const totalLocations = this.remainingLocations.length;
 
     return {
@@ -637,7 +971,7 @@ crewDetails: any[] = [];
       inProgress: inProgressCount,
       visible: totalVisible,
       total: totalLocations,
-      hidden: totalLocations - totalVisible
+      hidden: 0 // TEMPORAL: no hay ocultas
     };
   }
 
@@ -674,6 +1008,12 @@ crewDetails: any[] = [];
     this.checkForCompletedLocations();
   }
 
+  // 🎯 MÉTODO PÚBLICO PARA FORZAR VERIFICACIÓN DE UBICACIONES
+  public forceLocationCheck(): void {
+    console.log('🔄 Forzando verificación de ubicaciones...');
+    this.checkForCompletedLocations();
+  }
+
   // 🎯 MÉTODO PÚBLICO PARA DEBUGGEAR LA ASIGNACIÓN DE RUTAS
   public debugRouteAssignment(): void {
     const storedUserId = Number(localStorage.getItem('userId'));
@@ -698,6 +1038,36 @@ crewDetails: any[] = [];
       ticketsCount: this.assignedRoute?.tickets?.length || 0
     });
     console.log('🔍 === END DEBUG ===');
+  }
+
+  // 🎯 NUEVO MÉTODO: Debug del estado de ubicaciones
+  public debugLocationStates(): void {
+    console.log('🔍 === LOCATION STATES DEBUG ===');
+    console.log('📍 Total Locations:', this.remainingLocations.length);
+    
+    this.remainingLocations.forEach((location, index) => {
+      console.log(`📍 Location ${index + 1}:`, {
+        address: location.address,
+        ticketId: (location as any).ticketid,
+        completed: location.completed,
+        started: location.started,
+        assigned: location.assigned,
+        checked: location.checked,
+        locked: location.locked
+      });
+    });
+    
+    const completedCount = this.remainingLocations.filter(loc => loc.completed).length;
+    const startedCount = this.remainingLocations.filter(loc => loc.started).length;
+    const assignedCount = this.remainingLocations.filter(loc => loc.assigned).length;
+    
+    console.log('📊 Summary:', {
+      completed: completedCount,
+      started: startedCount,
+      assigned: assignedCount,
+      total: this.remainingLocations.length
+    });
+    console.log('🔍 === END LOCATION STATES DEBUG ===');
   }
 
   // 🎯 MÉTODO PÚBLICO PARA FORZAR UNA RUTA ESPECÍFICA
@@ -729,17 +1099,175 @@ crewDetails: any[] = [];
         hasPolyline: !!(this.assignedRoute?.encodedpolyline || this.assignedRoute?.encodedPolyline),
         ticketsCount: this.assignedRoute?.tickets?.length || 0
       }),
-      refreshRoute: () => this.getAssignedRoute()
+      refreshRoute: () => this.getAssignedRoute(),
+      // 🎯 NUEVO: Métodos para debugging de sincronización de estado
+      forceUserChangeCheck: () => this.forceCheckForUserChange(),
+      checkLocationStates: () => this.debugLocationStates(),
+      forceStateCheck: () => {
+        console.log('🔄 Forzando verificación de estado...');
+        this.isCheckingLocations = false;
+        this.lastCompletionLog = {};
+        this.checkForCompletedLocations();
+      },
+      forceStateCheckWithDetails: () => {
+        console.log('🔄 Forzando verificación de estado con detalles...');
+        console.log('📊 Estado actual del componente:', {
+          totalLocations: this.remainingLocations.length,
+          crewType: this.crewType,
+          currentUserId: Number(localStorage.getItem('userId')),
+          currentCrewId: this.getCurrentCrewId()
+        });
+        
+        // Verificar cada ubicación individualmente con detalles
+        this.remainingLocations.forEach((location, index) => {
+          const ticketId = (location as any).ticketid;
+          if (ticketId) {
+            console.log(`🔍 Verificando ubicación ${index + 1}: ${location.address} (Ticket: ${ticketId})`);
+            this.ticketStatusService.getByTicket(ticketId).subscribe({
+              next: (ticketStatuses: any[]) => {
+                console.log(`📊 TicketStatus para ${location.address}:`, ticketStatuses);
+                this.getPhaseNamesForTicketStatuses(ticketStatuses).then(enhancedTicketStatuses => {
+                  console.log(`📊 TicketStatus con nombres para ${location.address}:`, enhancedTicketStatuses);
+                  const isCompleted = this.isCompletedPhaseMatchingCrewType(enhancedTicketStatuses, location);
+                  const isStarted = this.hasStartedPhase(enhancedTicketStatuses, location);
+                  console.log(`✅ Estado final para ${location.address}:`, {
+                    isCompleted,
+                    isStarted,
+                    crewType: this.crewType
+                  });
+                });
+              },
+              error: (err) => {
+                console.error(`❌ Error verificando ${location.address}:`, err);
+              }
+            });
+          }
+        });
+      },
+      getCurrentUserInfo: () => ({
+        userId: this.lastCheckedUserId,
+        crewId: this.lastCheckedCrewId,
+        currentUserId: Number(localStorage.getItem('userId')),
+        currentCrewId: this.getCurrentCrewId()
+      }),
+      getLocationStatus: () => {
+        return this.remainingLocations.map(loc => ({
+          address: loc.address,
+          ticketId: (loc as any).ticketid,
+          completed: loc.completed,
+          started: loc.started,
+          assigned: loc.assigned
+        }));
+      },
+      checkSpecificLocation: (address: string) => {
+        const location = this.remainingLocations.find(loc => loc.address.includes(address));
+        if (location) {
+          const ticketId = (location as any).ticketid;
+          console.log(`🔍 Verificando ubicación específica: ${address} (Ticket: ${ticketId})`);
+          this.ticketStatusService.getByTicket(ticketId).subscribe({
+            next: (ticketStatuses: any[]) => {
+              console.log('📊 TicketStatus encontrados:', ticketStatuses);
+              this.getPhaseNamesForTicketStatuses(ticketStatuses).then(enhancedTicketStatuses => {
+                console.log('📊 TicketStatus con nombres de fases:', enhancedTicketStatuses);
+                
+                // 🎯 NUEVO: Mostrar todos los nombres de fases disponibles
+                const phaseNames = enhancedTicketStatuses.map(ts => ({
+                  name: ts.name || ts.taskname || ts.taskName || ts.phasename || ts.phaseName || ts.description,
+                  endingDate: ts.endingdate,
+                  crewId: ts.crewid,
+                  status: ts.status
+                }));
+                console.log('📋 Nombres de fases disponibles:', phaseNames);
+                
+                const isCompleted = this.isCompletedPhaseMatchingCrewType(enhancedTicketStatuses, location);
+                console.log(`✅ ¿Está completada? ${isCompleted}`);
+              });
+            },
+            error: (err) => {
+              console.error('❌ Error verificando ubicación específica:', err);
+            }
+          });
+        } else {
+          console.log(`❌ Ubicación no encontrada: ${address}`);
+        }
+      },
+      showAllPhaseNames: () => {
+        console.log('🔍 Mostrando todos los nombres de fases disponibles...');
+        this.remainingLocations.forEach((location, index) => {
+          const ticketId = (location as any).ticketid;
+          if (ticketId) {
+            this.ticketStatusService.getByTicket(ticketId).subscribe({
+              next: (ticketStatuses: any[]) => {
+                this.getPhaseNamesForTicketStatuses(ticketStatuses).then(enhancedTicketStatuses => {
+                  const phaseNames = enhancedTicketStatuses.map(ts => ({
+                    name: ts.name || ts.taskname || ts.taskName || ts.phasename || ts.phaseName || ts.description,
+                    endingDate: ts.endingdate,
+                    crewId: ts.crewid,
+                    status: ts.status
+                  }));
+                  console.log(`📍 ${location.address} (Ticket: ${ticketId}):`, phaseNames);
+                });
+              }
+            });
+          }
+        });
+      },
+      showCompletedPhases: () => {
+        console.log('🔍 Mostrando todas las fases completadas (sin filtro de crew)...');
+        this.remainingLocations.forEach((location, index) => {
+          const ticketId = (location as any).ticketid;
+          if (ticketId) {
+            this.ticketStatusService.getByTicket(ticketId).subscribe({
+              next: (ticketStatuses: any[]) => {
+                this.getPhaseNamesForTicketStatuses(ticketStatuses).then(enhancedTicketStatuses => {
+                  // Buscar todas las fases completadas sin importar el crew
+                  const completedPhases = enhancedTicketStatuses.filter(ts => {
+                    const hasEndingDate = ts.endingdate;
+                    const hasEndingTime = ts.endingtime;
+                    const hasCompletedStatus = ts.status === 'completed' || ts.status === 'COMPLETED';
+                    const hasEndDate = ts.enddate;
+                    
+                    return hasEndingDate || hasEndingTime || hasCompletedStatus || hasEndDate;
+                  });
+                  
+                  if (completedPhases.length > 0) {
+                    console.log(`✅ ${location.address} (Ticket: ${ticketId}) - Fases completadas:`, completedPhases.map(ts => ({
+                      name: ts.name || ts.taskname || ts.taskName || ts.phasename || ts.phaseName || ts.description,
+                      crewId: ts.crewid,
+                      endingDate: ts.endingdate,
+                      status: ts.status
+                    })));
+                  } else {
+                    console.log(`⏳ ${location.address} (Ticket: ${ticketId}) - Sin fases completadas`);
+                  }
+                });
+              }
+            });
+          }
+        });
+      },
+      forceSyncForAllUsers: () => {
+        console.log('🔄 Forzando sincronización para todos los usuarios...');
+        
+        // Resetear estado de verificación
+        this.isCheckingLocations = false;
+        this.lastCompletionLog = {};
+        this.lastCheckTime = 0;
+        
+        // Forzar verificación inmediata
+        setTimeout(() => {
+          console.log('🔄 Iniciando verificación sin filtro de crew...');
+          this.checkForCompletedLocations();
+        }, 100);
+      }
     };
     console.log('🔧 Debug methods exposed to window.debugUpcoming');
   }
 
   // 🎯 MÉTODO PARA AGRUPAR UBICACIONES POR DIRECCIÓN
   get groupedLocations() {
-    // 🎯 NUEVO: Filtrar solo ubicaciones con estado "Completed" o "In Progress"
-    const visibleLocations = this.remainingLocations.filter(location => 
-      location.completed || location.started
-    );
+    // 🎯 TEMPORAL: Mostrar todas las ubicaciones
+    const visibleLocations = this.remainingLocations;
 
     // Aplicar filtro de búsqueda
     const filter = this.filterText.trim().toLowerCase();
@@ -787,8 +1315,10 @@ crewDetails: any[] = [];
     }
   }
 
-  // Method to get the assigned route for the crew
+  // 🎯 OPTIMIZADO: Método para obtener la ruta asignada al crew
   async getAssignedRoute(): Promise<void> {
+    console.log('🚀 Iniciando asignación optimizada de ruta...');
+    
     try {
       // Get the current crew type and crew ID
       const storedUserId = Number(localStorage.getItem('userId'));
@@ -802,187 +1332,17 @@ crewDetails: any[] = [];
         userId: storedUserId
       });
 
-      // Get routes by type based on crew type
-      let allRoutes: any[] = [];
-
-      // Map crew type to route type
-      const crewTypeToRouteType: { [key: string]: string } = {
-        'spotting': 'spotting',
-        'concrete': 'concrete',
-        'asphalt': 'asphalt',
-        'crack seal': 'asphalt',
-        'grind': 'asphalt',
-        'stripping': 'asphalt',
-        'sawcut': 'concrete',
-        'removal': 'concrete',
-        'framing': 'concrete',
-        'pour': 'concrete',
-        'clean': 'concrete',
-        'install signs': 'spotting'
-      };
-
-      const routeType = crewTypeToRouteType[currentCrewType?.toLowerCase()] || 'spotting';
-      console.log('🎯 Mapped route type:', routeType, 'for crew type:', currentCrewType);
-
-      // Get routes for the specific type first
-      try {
-        const specificRouteResponse = await firstValueFrom(
-          this.http.get<any>(`${environment.apiUrl}/routes/${routeType}`)
-        );
-        if (specificRouteResponse?.routes) {
-          allRoutes = [...specificRouteResponse.routes];
-          console.log(`✅ Found ${allRoutes.length} routes for type: ${routeType}`);
-        }
-      } catch (error) {
-        console.warn(`⚠️ No routes found for type: ${routeType}`);
-      }
-
-      // If no routes found for specific type, get all route types
-      if (allRoutes.length === 0) {
-        console.log('🔄 Getting all route types as fallback...');
-
-        try {
-          const [spottingRoutes, concreteRoutes, asphaltRoutes] = await Promise.all([
-            firstValueFrom(this.http.get<any>(`${environment.apiUrl}/routes/spotting`)),
-            firstValueFrom(this.http.get<any>(`${environment.apiUrl}/routes/concrete`)),
-            firstValueFrom(this.http.get<any>(`${environment.apiUrl}/routes/asphalt`))
-          ]);
-
-          allRoutes = [
-            ...(spottingRoutes?.routes || []),
-            ...(concreteRoutes?.routes || []),
-            ...(asphaltRoutes?.routes || [])
-          ];
-
-          console.log(`✅ Found ${allRoutes.length} total routes across all types`);
-        } catch (error) {
-          console.error('❌ Error fetching routes:', error);
-        }
-      }
+      // 🎯 NUEVO: Cargar rutas de manera optimizada
+      const allRoutes = await this.loadRoutesOptimized(currentCrewType);
 
       if (allRoutes && allRoutes.length > 0) {
-        let assignedRoute = null;
+        // 🎯 NUEVO: Asignar ruta usando lógica optimizada
+        const assignedRoute = this.assignRouteOptimized(allRoutes, currentCrewType, currentCrewId);
 
-        // Priority 1: Find route with matching tickets for this crew
-        const crewTicketIds = this.remainingLocations.map(loc => (loc as any).ticketid).filter((id: any) => id);
-        console.log('🎫 Crew ticket IDs:', crewTicketIds);
-
-        for (const route of allRoutes) {
-          if (route.tickets && Array.isArray(route.tickets)) {
-            const routeTicketIds = route.tickets.map((ticket: any) => ticket.ticketId || ticket.ticketid).filter((id: any) => id);
-            const matchingTickets = crewTicketIds.filter((id: any) => routeTicketIds.includes(id));
-
-            if (matchingTickets.length > 0) {
-              console.log(`✅ Found route with matching tickets: ${route.routeid || route.routeId} (${matchingTickets.length} matches)`);
-              assignedRoute = route;
-              break;
-            }
-          }
+        // 🎯 NUEVO: Validar optimizedOrder antes de asignar la ruta
+        if (assignedRoute && assignedRoute.optimizedOrder) {
+          this.validateOptimizedOrder(assignedRoute);
         }
-
-        // Priority 2: Find route by type matching crew type
-        if (!assignedRoute) {
-          const routeTypeMap: { [key: string]: string } = {
-            'spotting': 'SPOTTER',
-            'concrete': 'CONCRETE',
-            'asphalt': 'ASPHALT',
-            'crack seal': 'ASPHALT',
-            'grind': 'ASPHALT',
-            'stripping': 'ASPHALT',
-            'sawcut': 'CONCRETE',
-            'removal': 'CONCRETE',
-            'framing': 'CONCRETE',
-            'pour': 'CONCRETE',
-            'clean': 'CONCRETE',
-            'install signs': 'SPOTTER'
-          };
-
-          const expectedRouteType = routeTypeMap[currentCrewType?.toLowerCase()] || 'SPOTTER';
-          console.log(`🎯 Looking for route type: ${expectedRouteType}`);
-
-          const matchingRoute = allRoutes.find((route: any) =>
-            route.type === expectedRouteType ||
-            route.routecode?.toUpperCase().includes(expectedRouteType) ||
-            route.routeCode?.toUpperCase().includes(expectedRouteType)
-          );
-
-          if (matchingRoute) {
-            console.log(`✅ Found matching route by type: ${matchingRoute.routeid || matchingRoute.routeId}`);
-            assignedRoute = matchingRoute;
-          }
-        }
-
-        // Priority 3: Find UPCOMING routes
-        if (!assignedRoute) {
-          const upcomingRoute = allRoutes.find((route: any) => route.type === 'UPCOMING');
-          if (upcomingRoute) {
-            console.log(`✅ Found UPCOMING route: ${upcomingRoute.routeid || upcomingRoute.routeId}`);
-            assignedRoute = upcomingRoute;
-          }
-        }
-
-        // Priority 4: Find any route with encoded polyline
-        if (!assignedRoute) {
-          const routeWithPolyline = allRoutes.find((route: any) =>
-            (route.encodedpolyline && route.encodedpolyline.length > 0) ||
-            (route.encodedPolyline && route.encodedPolyline.length > 0)
-          );
-          if (routeWithPolyline) {
-            console.log(`✅ Found route with polyline: ${routeWithPolyline.routeid || routeWithPolyline.routeId}`);
-            assignedRoute = routeWithPolyline;
-          }
-        }
-
-        // Priority 5: Use first available route as fallback
-        if (!assignedRoute && allRoutes.length > 0) {
-          assignedRoute = allRoutes[0];
-          console.log(`⚠️ Using fallback route: ${assignedRoute.routeid || assignedRoute.routeId}`);
-        }
-
-        // Priority 6: Try to get route ID 3 directly (as a last resort)
-        if (!assignedRoute) {
-          try {
-            const route3 = await firstValueFrom(this.routeService.getRouteById(3));
-            if (route3) {
-              console.log('✅ Using route ID 3 as last resort');
-              assignedRoute = route3;
-            }
-          } catch (error) {
-            console.warn('⚠️ Could not fetch route ID 3');
-          }
-        }
-
-          // 🎯 NUEVO: Validar optimizedOrder antes de asignar la ruta
-  if (assignedRoute && assignedRoute.optimizedOrder) {
-    try {
-      if (typeof assignedRoute.optimizedOrder === 'string') {
-        // 🎯 NUEVO: Limpiar el string antes de parsear
-        const cleanedOptimizedOrder = assignedRoute.optimizedOrder
-          .replace(/[^\d,\[\]]/g, '') // Remover caracteres no válidos
-          .replace(/,\s*,/g, ',') // Remover comas duplicadas
-          .replace(/^,+|,+$/g, ''); // Remover comas al inicio y final
-        
-        if (cleanedOptimizedOrder) {
-          assignedRoute.optimizedOrder = JSON.parse(`[${cleanedOptimizedOrder}]`);
-        } else {
-          assignedRoute.optimizedOrder = [];
-        }
-      }
-          } catch (error) {
-        console.error(`❌ Error parsing optimizedOrder for route ${assignedRoute.routeId || assignedRoute.routeid}:`, error);
-        console.error('Raw optimizedOrder value:', assignedRoute.optimizedOrder);
-        
-        // 🎯 NUEVO: Usar el método de manejo de errores de optimización
-        if (this.isOptimizationError(error)) {
-          assignedRoute.optimizedOrder = this.handleOptimizationError(
-            assignedRoute.routeId || assignedRoute.routeid, 
-            assignedRoute.optimizedOrder
-          );
-        } else {
-          assignedRoute.optimizedOrder = [];
-        }
-      }
-  }
 
         // 🎯 NUEVO: Verificar si el componente está siendo destruido antes de asignar
         if (!this.completionCheckInterval) {
@@ -1013,198 +1373,389 @@ crewDetails: any[] = [];
     }
   }
 
+  // 🎯 NUEVO: Método optimizado para cargar rutas
+  private async loadRoutesOptimized(currentCrewType: string): Promise<any[]> {
+    console.log('🔄 Cargando rutas de manera optimizada...');
+    
+    // Map crew type to route type
+    const crewTypeToRouteType: { [key: string]: string } = {
+      'spotting': 'spotting',
+      'concrete': 'concrete',
+      'asphalt': 'asphalt',
+      'crack seal': 'asphalt',
+      'grind': 'asphalt',
+      'stripping': 'asphalt',
+      'sawcut': 'concrete',
+      'removal': 'concrete',
+      'framing': 'concrete',
+      'pour': 'concrete',
+      'clean': 'concrete',
+      'install signs': 'spotting'
+    };
+
+    const routeType = crewTypeToRouteType[currentCrewType?.toLowerCase()] || 'spotting';
+    console.log('🎯 Mapped route type:', routeType, 'for crew type:', currentCrewType);
+
+    let allRoutes: any[] = [];
+
+    // Get routes for the specific type first
+    try {
+      const specificRouteResponse = await firstValueFrom(
+        this.http.get<any>(`${environment.apiUrl}/routes/${routeType}`)
+      );
+      if (specificRouteResponse?.routes) {
+        allRoutes = [...specificRouteResponse.routes];
+        console.log(`✅ Found ${allRoutes.length} routes for type: ${routeType}`);
+      }
+    } catch (error) {
+      console.warn(`⚠️ No routes found for type: ${routeType}`);
+    }
+
+    // If no routes found for specific type, get all route types in parallel
+    if (allRoutes.length === 0) {
+      console.log('🔄 Getting all route types as fallback...');
+
+      try {
+        const [spottingRoutes, concreteRoutes, asphaltRoutes] = await Promise.all([
+          firstValueFrom(this.http.get<any>(`${environment.apiUrl}/routes/spotting`)),
+          firstValueFrom(this.http.get<any>(`${environment.apiUrl}/routes/concrete`)),
+          firstValueFrom(this.http.get<any>(`${environment.apiUrl}/routes/asphalt`))
+        ]);
+
+        allRoutes = [
+          ...(spottingRoutes?.routes || []),
+          ...(concreteRoutes?.routes || []),
+          ...(asphaltRoutes?.routes || [])
+        ];
+
+        console.log(`✅ Found ${allRoutes.length} total routes across all types`);
+      } catch (error) {
+        console.error('❌ Error fetching routes:', error);
+      }
+    }
+
+    return allRoutes;
+  }
+
+  // 🎯 NUEVO: Método optimizado para asignar ruta
+  private assignRouteOptimized(allRoutes: any[], currentCrewType: string, currentCrewId: number): any {
+    console.log('🔄 Asignando ruta de manera optimizada...');
+    
+    let assignedRoute = null;
+
+    // Priority 1: Find route with matching tickets for this crew
+    const crewTicketIds = this.remainingLocations.map(loc => (loc as any).ticketid).filter((id: any) => id);
+    console.log('🎫 Crew ticket IDs:', crewTicketIds);
+
+    for (const route of allRoutes) {
+      if (route.tickets && Array.isArray(route.tickets)) {
+        const routeTicketIds = route.tickets.map((ticket: any) => ticket.ticketId || ticket.ticketid).filter((id: any) => id);
+        const matchingTickets = crewTicketIds.filter((id: any) => routeTicketIds.includes(id));
+
+        if (matchingTickets.length > 0) {
+          console.log(`✅ Found route with matching tickets: ${route.routeid || route.routeId} (${matchingTickets.length} matches)`);
+          assignedRoute = route;
+          break;
+        }
+      }
+    }
+
+    // Priority 2: Find route by type matching crew type
+    if (!assignedRoute) {
+      const routeTypeMap: { [key: string]: string } = {
+        'spotting': 'SPOTTER',
+        'concrete': 'CONCRETE',
+        'asphalt': 'ASPHALT',
+        'crack seal': 'ASPHALT',
+        'grind': 'ASPHALT',
+        'stripping': 'ASPHALT',
+        'sawcut': 'CONCRETE',
+        'removal': 'CONCRETE',
+        'framing': 'CONCRETE',
+        'pour': 'CONCRETE',
+        'clean': 'CONCRETE',
+        'install signs': 'SPOTTER'
+      };
+
+      const expectedRouteType = routeTypeMap[currentCrewType?.toLowerCase()] || 'SPOTTER';
+      console.log(`🎯 Looking for route type: ${expectedRouteType}`);
+
+      const matchingRoute = allRoutes.find((route: any) =>
+        route.type === expectedRouteType ||
+        route.routecode?.toUpperCase().includes(expectedRouteType) ||
+        route.routeCode?.toUpperCase().includes(expectedRouteType)
+      );
+
+      if (matchingRoute) {
+        console.log(`✅ Found matching route by type: ${matchingRoute.routeid || matchingRoute.routeId}`);
+        assignedRoute = matchingRoute;
+      }
+    }
+
+    // Priority 3: Find UPCOMING routes
+    if (!assignedRoute) {
+      const upcomingRoute = allRoutes.find((route: any) => route.type === 'UPCOMING');
+      if (upcomingRoute) {
+        console.log(`✅ Found UPCOMING route: ${upcomingRoute.routeid || upcomingRoute.routeId}`);
+        assignedRoute = upcomingRoute;
+      }
+    }
+
+    // Priority 4: Find any route with encoded polyline
+    if (!assignedRoute) {
+      const routeWithPolyline = allRoutes.find((route: any) =>
+        (route.encodedpolyline && route.encodedpolyline.length > 0) ||
+        (route.encodedPolyline && route.encodedPolyline.length > 0)
+      );
+      if (routeWithPolyline) {
+        console.log(`✅ Found route with polyline: ${routeWithPolyline.routeid || routeWithPolyline.routeId}`);
+        assignedRoute = routeWithPolyline;
+      }
+    }
+
+    // Priority 5: Use first available route as fallback
+    if (!assignedRoute && allRoutes.length > 0) {
+      assignedRoute = allRoutes[0];
+      console.log(`⚠️ Using fallback route: ${assignedRoute.routeid || assignedRoute.routeId}`);
+    }
+
+    // Priority 6: Try to get route ID 3 directly (as a last resort)
+    if (!assignedRoute) {
+      try {
+        const route3 = firstValueFrom(this.routeService.getRouteById(3));
+        if (route3) {
+          console.log('✅ Using route ID 3 as last resort');
+          assignedRoute = route3;
+        }
+      } catch (error) {
+        console.warn('⚠️ Could not fetch route ID 3');
+      }
+    }
+
+    return assignedRoute;
+  }
+
+  // 🎯 NUEVO: Método para validar optimizedOrder
+  private validateOptimizedOrder(assignedRoute: any): void {
+    try {
+      if (typeof assignedRoute.optimizedOrder === 'string') {
+        // 🎯 NUEVO: Limpiar el string antes de parsear
+        const cleanedOptimizedOrder = assignedRoute.optimizedOrder
+          .replace(/[^\d,\[\]]/g, '') // Remover caracteres no válidos
+          .replace(/,\s*,/g, ',') // Remover comas duplicadas
+          .replace(/^,+|,+$/g, ''); // Remover comas al inicio y final
+        
+        if (cleanedOptimizedOrder) {
+          assignedRoute.optimizedOrder = JSON.parse(`[${cleanedOptimizedOrder}]`);
+        } else {
+          assignedRoute.optimizedOrder = [];
+        }
+      }
+    } catch (error) {
+      console.error(`❌ Error parsing optimizedOrder for route ${assignedRoute.routeId || assignedRoute.routeid}:`, error);
+      console.error('Raw optimizedOrder value:', assignedRoute.optimizedOrder);
+      
+      // 🎯 NUEVO: Usar el método de manejo de errores de optimización
+      if (this.isOptimizationError(error)) {
+        assignedRoute.optimizedOrder = this.handleOptimizationError(
+          assignedRoute.routeId || assignedRoute.routeid, 
+          assignedRoute.optimizedOrder
+        );
+      } else {
+        assignedRoute.optimizedOrder = [];
+      }
+    }
+  }
+
 loadEmployees() {
-  import('rxjs').then(({ forkJoin }) => {
-    forkJoin({
-      people: this.usersService.getAllPeople(),
-      crewEmployees: this.crewEmployeesService.getAllCrewEmployees(),
-      crews: this.crewsService.getAllCrews(),
-      skills: this.skillsService.getAllSkills()
-    }).subscribe({
-      next: ({ people, crewEmployees, crews, skills }) => {
-        // 🔁 Mapea todos los empleados
-        this.employeeList = people.map((person: any) => {
-const crewAssignment = crewEmployees.find((ce: any) => ce.employeeid === person.employeeId);
-          const assignedCrew = crewAssignment
-            ? crews.find((c: any) => c.crewid === crewAssignment.crewid)
-            : null;
-          const personSkills = skills
-            .filter((s: any) => s.userId === person.userId) // CORREGIDO aquí
-            .map((s: any) => s.name);
-
-          return {
-            employeeid: person.employeeId,
-            userid: person.userId, // CORREGIDO aquí
-            name: `${person.firstname} ${person.lastname}`,
-            crewid: crewAssignment?.crewid || null,
-            type: assignedCrew?.type || '',
-            workedhours: assignedCrew?.workedhours || 0,
-            skills: personSkills,
-            crewLeader: crewAssignment?.crewleader ?? false
-          };
-        });
-
-        // ✅ Obtener el userId logueado correctamente
-        const storedUserId = Number(localStorage.getItem('userId')); // CORREGIDO aquí
-        const person = this.employeeList.find(p => p.userid === storedUserId); // CORREGIDO aquí
-
-        if (!person) {
-          return;
-        }
-
-        const currentCrewId = person.crewid;
-        if (!currentCrewId) {
-          return;
-        }
-
-        const assignedCrew = crews.find((c: any) => c.crewid === currentCrewId);
-        this.crewType = assignedCrew?.type || 'N/A';
-
-        this.getCrewDetails(currentCrewId);
-
-        const teamMembers = this.employeeList.filter(e => e.crewid === currentCrewId);
-        const leader = teamMembers.find(e => e.crewLeader);
-        const members = teamMembers.filter(e => !e.crewLeader).map(e => e.name);
-
-        this.teamLeader = leader?.name || 'N/A';
-        this.teamMembers = members;
-
-      },
-              error: (err) => {
-          // Error handling silently
-        }
-    });
+  this.loadEmployeesAsync().subscribe({
+    next: (result) => {
+      console.log('✅ Empleados cargados exitosamente');
+    },
+    error: (err) => {
+      console.error('❌ Error loading employee data:', err);
+    }
   });
+}
+
+// 🎯 NUEVO: Método async para cargar empleados
+private loadEmployeesAsync() {
+  return forkJoin({
+    people: this.usersService.getAllPeople(),
+    crewEmployees: this.crewEmployeesService.getAllCrewEmployees(),
+    crews: this.crewsService.getAllCrews(),
+    skills: this.skillsService.getAllSkills()
+  }).pipe(
+    map(({ people, crewEmployees, crews, skills }) => {
+      // 🔁 Mapea todos los empleados
+      this.employeeList = people.map((person: any) => {
+        const crewAssignment = crewEmployees.find((ce: any) => ce.employeeid === person.employeeId);
+        const assignedCrew = crewAssignment
+          ? crews.find((c: any) => c.crewid === crewAssignment.crewid)
+          : null;
+        const personSkills = skills
+          .filter((s: any) => s.userId === person.userId)
+          .map((s: any) => s.name);
+
+        return {
+          employeeid: person.employeeId,
+          userid: person.userId,
+          name: `${person.firstname} ${person.lastname}`,
+          crewid: crewAssignment?.crewid || null,
+          type: assignedCrew?.type || '',
+          workedhours: assignedCrew?.workedhours || 0,
+          skills: personSkills,
+          crewLeader: crewAssignment?.crewleader ?? false
+        };
+      });
+
+      // ✅ Obtener el userId logueado correctamente
+      const storedUserId = Number(localStorage.getItem('userId'));
+      const person = this.employeeList.find(p => p.userid === storedUserId);
+
+      if (!person) {
+        return { success: false };
+      }
+
+      const currentCrewId = person.crewid;
+      if (!currentCrewId) {
+        return { success: false };
+      }
+
+      const assignedCrew = crews.find((c: any) => c.crewid === currentCrewId);
+      this.crewType = assignedCrew?.type || 'N/A';
+
+      this.getCrewDetails(currentCrewId);
+
+      const teamMembers = this.employeeList.filter(e => e.crewid === currentCrewId);
+      const leader = teamMembers.find(e => e.crewLeader);
+      const members = teamMembers.filter(e => !e.crewLeader).map(e => e.name);
+
+      this.teamLeader = leader?.name || 'N/A';
+      this.teamMembers = members;
+      
+      return { success: true };
+    })
+  );
 }
 
 getCrewDetails(crewId: number) {
   this.isLoading = true;
+  console.log('🚀 Iniciando carga optimizada de detalles del crew...');
+  
   this.crewsService.getCrewDetails(crewId).subscribe({
     next: async (details) => {
+      console.log(`✅ Detalles del crew cargados: ${details.length} registros`);
       this.crewDetails = details;
 
-      // Mapear todos los tickets asociados a su información de ubicación
-      // Evita ubicaciones duplicadas por ticketid
-      const uniqueLocationsMap = new Map<number, any>();
+      // 🎯 NUEVO: Procesar ubicaciones de manera optimizada
+      this.processLocationsOptimized(details);
 
-      details.forEach((data: any) => {
-        if (!uniqueLocationsMap.has(data.ticketid)) {
-          // ✅ Usar directamente la dirección del backend si está disponible
-          const rawAddress = data.address || this.formatAddress(data);
-          const address = this.cleanAddress(rawAddress);
+      // 🎯 NUEVO: Cargar coordenadas y ruta en paralelo
+      await this.loadCoordinatesAndRouteOptimized();
 
-          // 🔍 DEBUG: Ver qué datos llegan del backend
-          console.log(`🔍 Ticket ${data.ticketid}:`, {
-            backendAddress: data.address,
-            formattedAddress: this.formatAddress(data),
-            rawAddress: rawAddress,
-            finalAddress: address,
-            // ✅ DEBUG: Ver todos los campos de dirección disponibles
-            addressFields: {
-              addressnumber: data.addressnumber,
-              addresscardinal: data.addresscardinal,
-              addressstreet: data.addressstreet,
-              addresssuffix: data.addresssuffix,
-              fromaddressnumber: data.fromaddressnumber,
-              fromaddresscardinal: data.fromaddresscardinal,
-              fromaddressstreet: data.fromaddressstreet,
-              fromaddresssuffix: data.fromaddresssuffix,
-              toaddressnumber: data.toaddressnumber,
-              toaddresscardinal: data.toaddresscardinal,
-              toaddressstreet: data.toaddressstreet,
-              toaddresssuffix: data.toaddresssuffix,
-              location: data.location,
-
-            }
-          });
-
-          uniqueLocationsMap.set(data.ticketid, {
-            address: address, // ✅ USAR la dirección del backend directamente
-            job: data.contractunit_name || '',
-            surface: data.surfacetotal,
-            width: data.width,
-            length: data.length,
-            description: data.contractunit_description || '',
-            ticketid: data.ticketid,
-            ticketcode: data.ticketcode || '', // ✅ AGREGADO: Incluir ticketcode
-            contractunitid: data.contractunitid,
-            routeCode: data.routecode || '',
-            lat: data.latitude,
-            lng: data.longitude,
-            fromaddressnumber: data.fromaddressnumber || '',
-            fromaddresscardinal: data.fromaddresscardinal || '',
-            fromaddressstreet: data.fromaddressstreet || '',
-            fromaddresssuffix: data.fromaddresssuffix || '',
-            toaddressnumber: data.toaddressnumber || '',
-            toaddresscardinal: data.toaddresscardinal || '',
-            toaddressstreet: data.toaddressstreet || '',
-            toaddresssuffix: data.toaddresssuffix || '',
-            // 🎯 NUEVO: Propiedades de estado inicializadas
-            checked: false,
-            locked: false,
-            assigned: false,
-            started: false,
-            completed: false,
-            startDate: null,
-            endDate: null
-          });
-        }
-      });
-
-      this.remainingLocations = Array.from(uniqueLocationsMap.values());
-
-      // Add display address for better identification of same locations
-      this.remainingLocations.forEach(location => {
-        (location as any).displayAddress = this.getDisplayAddress(location, this.remainingLocations);
-      });
-
-      // 🔍 DEBUG: Log de remainingLocations antes de ordenar (COMENTADO)
-      // console.log('📍 remainingLocations ANTES de ordenar:', this.remainingLocations.map((loc, idx) =>
-      //   `${idx + 1}. Ticket ${(loc as any).ticketid} - Address: ${(loc as any).displayAddress}`
-      // ));
-
-      // ✅ Get coordinates for locations before generating the map
-      this.getTicketCoordinates().then(async () => {
-        // Get assigned route for the crew
-        await this.getAssignedRoute();
-
-        // ✅ Ordenar remainingLocations según el orden de la ruta asignada
-        this.orderLocationsByRoute();
-
-        // 🔍 DEBUG: Log de remainingLocations DESPUÉS de ordenar (COMENTADO)
-        // console.log('📍 remainingLocations DESPUÉS de ordenar:', this.remainingLocations.map((loc, idx) =>
-        //   `${idx + 1}. Ticket ${(loc as any).ticketid} - Address: ${(loc as any).displayAddress}`
-        // ));
-
-        // ✅ ÚNICA llamada a updateLeafletRoutes() - sin bucles
-        console.log('🔄 ÚNICA actualización del mapa - sin bucles');
-        this.updateLeafletRoutes();
-
-        // 🎯 NUEVO: Verificar estado de todas las ubicaciones después de cargar
-        setTimeout(() => {
-          this.checkForCompletedLocations();
-        }, 2000); // Esperar 2 segundos para que se carguen los datos
-      }).catch((error: any) => {
-        console.error('Error getting coordinates:', error);
-      });
-
-      // Si quieres también mostrar la primera location por defecto
-      if (this.remainingLocations.length > 0) {
-        this.location = this.remainingLocations[0];
-      }
-                this.isLoading = false;
-
-          // 🎯 VERIFICAR UBICACIONES COMPLETADAS DESPUÉS DE CARGAR
-          this.checkInitialCompletedLocations();
-
-          // === INTEGRACIÓN PARA LEAFLET ROUTES ===
-          // Esta lógica se maneja ahora en updateLeafletRoutes() que se llama después de getAssignedRoute()
-          // === FIN INTEGRACIÓN ===
+      this.isLoading = false;
+      console.log('✅ Carga de detalles del crew completada');
     },
     error: (err) => {
+      console.error('❌ Error cargando detalles del crew:', err);
       this.isLoading = false;
     }
   });
+}
+
+// 🎯 NUEVO: Método optimizado para procesar ubicaciones
+private processLocationsOptimized(details: any[]): void {
+  console.log('🔄 Procesando ubicaciones de manera optimizada...');
+  
+  // Mapear todos los tickets asociados a su información de ubicación
+  // Evita ubicaciones duplicadas por ticketid
+  const uniqueLocationsMap = new Map<number, any>();
+
+  details.forEach((data: any) => {
+    if (!uniqueLocationsMap.has(data.ticketid)) {
+      // ✅ Usar directamente la dirección del backend si está disponible
+      const rawAddress = data.address || this.formatAddress(data);
+      const address = this.cleanAddress(rawAddress);
+
+      uniqueLocationsMap.set(data.ticketid, {
+        address: address,
+        job: data.contractunit_name || '',
+        surface: data.surfacetotal,
+        width: data.width,
+        length: data.length,
+        description: data.contractunit_description || '',
+        ticketid: data.ticketid,
+        ticketcode: data.ticketcode || '',
+        contractunitid: data.contractunitid,
+        routeCode: data.routecode || '',
+        lat: data.latitude,
+        lng: data.longitude,
+        fromaddressnumber: data.fromaddressnumber || '',
+        fromaddresscardinal: data.fromaddresscardinal || '',
+        fromaddressstreet: data.fromaddressstreet || '',
+        fromaddresssuffix: data.fromaddresssuffix || '',
+        toaddressnumber: data.toaddressnumber || '',
+        toaddresscardinal: data.toaddresscardinal || '',
+        toaddressstreet: data.toaddressstreet || '',
+        toaddresssuffix: data.toaddresssuffix || '',
+        // 🎯 NUEVO: Propiedades de estado inicializadas
+        checked: false,
+        locked: false,
+        assigned: false,
+        started: false,
+        completed: false,
+        startDate: null,
+        endDate: null
+      });
+    }
+  });
+
+  this.remainingLocations = Array.from(uniqueLocationsMap.values());
+
+  // Add display address for better identification of same locations
+  this.remainingLocations.forEach(location => {
+    (location as any).displayAddress = this.getDisplayAddress(location, this.remainingLocations);
+  });
+
+  console.log(`✅ ${this.remainingLocations.length} ubicaciones procesadas`);
+}
+
+// 🎯 NUEVO: Método optimizado para cargar coordenadas y ruta
+private async loadCoordinatesAndRouteOptimized(): Promise<void> {
+  console.log('🔄 Cargando coordenadas y ruta de manera optimizada...');
+  
+  try {
+    // 🎯 NUEVO: Cargar coordenadas y ruta en paralelo
+    await Promise.all([
+      this.getTicketCoordinates(),
+      this.getAssignedRoute()
+    ]);
+
+    // ✅ Ordenar remainingLocations según el orden de la ruta asignada
+    this.orderLocationsByRoute();
+
+    // ✅ ÚNICA llamada a updateLeafletRoutes() - sin bucles
+    console.log('🔄 ÚNICA actualización del mapa - sin bucles');
+    this.updateLeafletRoutes();
+
+    // 🎯 NUEVO: Verificar estado de todas las ubicaciones después de cargar
+    setTimeout(() => {
+      this.checkForCompletedLocations();
+    }, 1000); // 🎯 REDUCIDO: De 2000ms a 1000ms
+
+    // Si quieres también mostrar la primera location por defecto
+    if (this.remainingLocations.length > 0) {
+      this.location = this.remainingLocations[0];
+    }
+
+    // 🎯 VERIFICAR UBICACIONES COMPLETADAS DESPUÉS DE CARGAR
+    this.checkInitialCompletedLocations();
+
+    console.log('✅ Coordenadas y ruta cargadas exitosamente');
+  } catch (error) {
+    console.error('❌ Error cargando coordenadas y ruta:', error);
+  }
 }
 
 // Helper method to format address from wayfinding data
@@ -1300,49 +1851,74 @@ private getDisplayAddress(location: any, allLocations: any[]): string {
 }
 
 private async getTicketCoordinates(): Promise<void> {
+  console.log('🔄 Obteniendo coordenadas de manera optimizada...');
+  
   // Get coordinates for locations that don't have them
   const locationsWithoutCoordinates = this.remainingLocations.filter(loc => !loc.lat || !loc.lng);
 
   if (locationsWithoutCoordinates.length === 0) {
+    console.log('✅ Todas las ubicaciones ya tienen coordenadas');
     return; // All locations already have coordinates
   }
 
-  // Process locations in parallel for better performance
-  const coordinatePromises = locationsWithoutCoordinates.map(async (loc) => {
-    if (!loc.ticketcode) {
-      console.warn('Location missing ticketcode:', loc);
-      return;
-    }
+  console.log(`🔄 Procesando ${locationsWithoutCoordinates.length} ubicaciones sin coordenadas`);
 
-    try {
-      const response: any = await firstValueFrom(
-        this.http.get(`${environment.apiUrl}/tickets/coordinates/${loc.ticketcode}`)
-      );
+  // 🎯 NUEVO: Procesar ubicaciones en lotes para mejor rendimiento
+  const batchSize = 5; // Procesar 5 ubicaciones a la vez
+  const batches = [];
+  
+  for (let i = 0; i < locationsWithoutCoordinates.length; i += batchSize) {
+    batches.push(locationsWithoutCoordinates.slice(i, i + batchSize));
+  }
 
-      if (response.success && response.data && response.data.addresses && response.data.addresses.length > 0) {
-        // Use the first address coordinates
-        const firstAddress = response.data.addresses[0];
-        loc.lat = firstAddress.latitude;
-        loc.lng = firstAddress.longitude;
-
-        // ✅ FIXED: Preserve the original address format - don't overwrite it!
-        // Only update coordinates, keep the original address for route matching
-        console.log(`✅ Got coordinates for ticket ${loc.ticketcode}:`, {
-          lat: loc.lat,
-          lng: loc.lng,
-          originalAddress: loc.address,
-          apiAddress: firstAddress.fullAddress
-        });
-      } else {
-        console.warn(`❌ No coordinates found for ticket ${loc.ticketcode}`);
+  let processedCount = 0;
+  
+  for (const batch of batches) {
+    // Process batch in parallel
+    const batchPromises = batch.map(async (loc) => {
+      if (!loc.ticketcode) {
+        console.warn('Location missing ticketcode:', loc);
+        return;
       }
-    } catch (err) {
-      console.error(`❌ Error getting coordinates for ticket ${loc.ticketcode}:`, err);
-    }
-  });
 
-  // Wait for all coordinate requests to complete
-  await Promise.all(coordinatePromises);
+      try {
+        const response: any = await firstValueFrom(
+          this.http.get(`${environment.apiUrl}/tickets/coordinates/${loc.ticketcode}`)
+        );
+
+        if (response.success && response.data && response.data.addresses && response.data.addresses.length > 0) {
+          // Use the first address coordinates
+          const firstAddress = response.data.addresses[0];
+          loc.lat = firstAddress.latitude;
+          loc.lng = firstAddress.longitude;
+
+          // ✅ FIXED: Preserve the original address format - don't overwrite it!
+          // Only update coordinates, keep the original address for route matching
+          console.log(`✅ Got coordinates for ticket ${loc.ticketcode}:`, {
+            lat: loc.lat,
+            lng: loc.lng,
+            originalAddress: loc.address
+          });
+          
+          processedCount++;
+        } else {
+          console.warn(`❌ No coordinates found for ticket ${loc.ticketcode}`);
+        }
+      } catch (err) {
+        console.error(`❌ Error getting coordinates for ticket ${loc.ticketcode}:`, err);
+      }
+    });
+
+    // Wait for current batch to complete
+    await Promise.all(batchPromises);
+    
+    // 🎯 NUEVO: Pequeña pausa entre lotes para no sobrecargar el servidor
+    if (batches.indexOf(batch) < batches.length - 1) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+  }
+
+  console.log(`✅ Coordenadas obtenidas para ${processedCount} ubicaciones`);
 }
 
 
@@ -1371,7 +1947,10 @@ goToCurrent(location: any) {
 }
 
 
+  // 🎯 OPTIMIZADO: Método para actualizar rutas de Leaflet
   private updateLeafletRoutes() {
+    console.log('🔄 Actualizando rutas de Leaflet de manera optimizada...');
+    
     // 🎯 NUEVO: Verificar si el componente está siendo destruido
     if (!this.completionCheckInterval) {
       console.log('⚠️ Actualización de mapa cancelada - componente en proceso de destrucción');
@@ -1380,6 +1959,7 @@ goToCurrent(location: any) {
 
     // 🎯 NUEVO: Verificar que el mapa esté disponible y no esté en proceso de actualización
     if (!this.leafletMap || !this.assignedRoute) {
+      console.log('⚠️ Mapa o ruta no disponible para actualización');
       return;
     }
 
@@ -1397,36 +1977,20 @@ goToCurrent(location: any) {
 
     // 🎯 NUEVO: Validar optimizedOrder para evitar errores de parsing
     if (this.assignedRoute.optimizedOrder) {
-      try {
-        if (typeof this.assignedRoute.optimizedOrder === 'string') {
-          // 🎯 NUEVO: Limpiar el string antes de parsear
-          const cleanedOptimizedOrder = this.assignedRoute.optimizedOrder
-            .replace(/[^\d,\[\]]/g, '') // Remover caracteres no válidos
-            .replace(/,\s*,/g, ',') // Remover comas duplicadas
-            .replace(/^,+|,+$/g, ''); // Remover comas al inicio y final
-          
-          if (cleanedOptimizedOrder) {
-            this.assignedRoute.optimizedOrder = JSON.parse(`[${cleanedOptimizedOrder}]`);
-          } else {
-            this.assignedRoute.optimizedOrder = [];
-          }
-        }
-      } catch (error) {
-        console.error(`❌ Error parsing optimizedOrder for route ${this.assignedRoute.routeId || this.assignedRoute.routeid}:`, error);
-        console.error('Raw optimizedOrder value:', this.assignedRoute.optimizedOrder);
-        
-        // 🎯 NUEVO: Usar el método de manejo de errores de optimización
-        if (this.isOptimizationError(error)) {
-          this.assignedRoute.optimizedOrder = this.handleOptimizationError(
-            this.assignedRoute.routeId || this.assignedRoute.routeid, 
-            this.assignedRoute.optimizedOrder
-          );
-        } else {
-          this.assignedRoute.optimizedOrder = [];
-        }
-      }
+      this.validateOptimizedOrder(this.assignedRoute);
     }
 
+    // 🎯 NUEVO: Crear rutas de manera optimizada
+    this.createOptimizedLeafletRoutes();
+
+    // 🎯 NUEVO: Actualizar mapa con delay optimizado
+    setTimeout(() => {
+      this.refreshMapOptimized();
+    }, 50); // 🎯 REDUCIDO: De 100ms a 50ms
+  }
+
+  // 🎯 NUEVO: Método optimizado para crear rutas de Leaflet
+  private createOptimizedLeafletRoutes(): void {
     // Verificar si la ruta tiene polyline (probar ambos formatos de nombres)
     const hasPolyline = this.assignedRoute.encodedpolyline || this.assignedRoute.encodedPolyline;
 
@@ -1443,25 +2007,29 @@ goToCurrent(location: any) {
       this.visibleRoutes.clear();
       const routeId = this.assignedRoute.routeid || this.assignedRoute.routeId;
       this.visibleRoutes.add(routeId);
+      
+      console.log('✅ Rutas de Leaflet creadas exitosamente');
     } else {
       this.leafletRoutes = [];
       this.visibleRoutes.clear();
+      console.log('⚠️ No se encontró polyline en la ruta asignada');
     }
+  }
 
-    // 🎯 NUEVO: Usar setTimeout para dar tiempo al mapa a procesar los cambios
-    setTimeout(() => {
-      if (this.leafletMap) {
-        try {
-          // Intentar invalidar el tamaño del mapa de forma segura
-          const map = (this.leafletMap as any).map;
-          if (map && map.invalidateSize && typeof map.invalidateSize === 'function') {
-            map.invalidateSize();
-          }
-        } catch (error) {
-          console.warn('⚠️ Error al actualizar el mapa:', error);
+  // 🎯 NUEVO: Método optimizado para refrescar el mapa
+  private refreshMapOptimized(): void {
+    if (this.leafletMap) {
+      try {
+        // Intentar invalidar el tamaño del mapa de forma segura
+        const map = (this.leafletMap as any).map;
+        if (map && map.invalidateSize && typeof map.invalidateSize === 'function') {
+          map.invalidateSize();
+          console.log('✅ Mapa refrescado exitosamente');
         }
+      } catch (error) {
+        console.warn('⚠️ Error al actualizar el mapa:', error);
       }
-    }, 100);
+    }
   }
 
 // Zoom control methods

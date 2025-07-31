@@ -1,6 +1,16 @@
 <app-sitejob-sidenavbar [teamLeader]="teamLeader" [teamMembers]="teamMembers">
 
-<div class="content-wrapper">
+<!-- 🔄 Spinner de carga optimizado -->
+<div *ngIf="isLoading" class="loader-container">
+  <mat-spinner diameter="50"></mat-spinner>
+  <div class="loading-text">
+    <mat-icon>history</mat-icon>
+    <span>Cargando ubicaciones completadas...</span>
+  </div>
+</div>
+
+<!-- ✅ Contenido visible solo cuando no hay carga -->
+<div *ngIf="!isLoading" class="content-wrapper">
   <h2 class="section-title">Completed Locations</h2>
 
   <mat-form-field appearance="outline" style="width: 100%; margin-bottom: 16px;">

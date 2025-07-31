@@ -395,3 +395,28 @@
   justify-content: center;
 }
 
+// 🎯 NUEVO: Estilos para el loader optimizado
+.loader-container {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 60px 0;
+  gap: 16px;
+  
+  .loading-text {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #666;
+    font-size: 14px;
+    
+    mat-icon {
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+      color: #1976d2;
+    }
+  }
+}
+

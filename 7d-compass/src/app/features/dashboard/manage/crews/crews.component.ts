@@ -7,6 +7,7 @@ import { DataTableComponent } from '../../../../shared/data-table/data-table.com
 import { ConfirmationDialogComponent } from '../../../../shared/confirmation-dialog/confirmation-dialog.component';
 import { SearchDialogComponent } from '../../../../shared/search-dialog/search-dialog.component';
 import { CrewsService } from '../../../../core/services/human-resources/crew.service';
+import { CrewEmployeesService } from '../../../../core/services/human-resources/crewemployees.service';
 import { BaseDashboardComponent } from '../../../../shared/base-dashboard.component';
 import { FilterService } from '../../../../core/services/filter.service';
 import { FabButtonComponent } from '../../../../shared/fab-button/fab-button.component';
@@ -61,6 +62,7 @@ export class CrewsComponent extends BaseDashboardComponent implements OnInit {
     private dialog: MatDialog,
     private snackBar: MatSnackBar,
     private crewsService: CrewsService,
+    private crewEmployeesService: CrewEmployeesService,
     private usedInventoryService: UsedInventoryService,
     private usedEquipmentService: UsedEquipmentService,
     private inventoryService: InventoryService,
@@ -595,7 +597,7 @@ export class CrewsComponent extends BaseDashboardComponent implements OnInit {
       panelClass: 'confirmation-dialog',
       data: {
         title: 'Delete Crew',
-        message: `You are about to permanently delete the ${crew.type} crew. This action cannot be undone.`,
+        message: `You are about to permanently delete the ${crew.type} crew and remove all employee assignments. This action cannot be undone.`,
         confirmText: 'Delete',
         cancelText: 'Keep Crew'
       }
@@ -603,42 +605,94 @@ export class CrewsComponent extends BaseDashboardComponent implements OnInit {
 
     dialogRef.afterClosed().subscribe(confirmed => {
       if (confirmed) {
-        // ✅ Llamar al servicio para eliminar en el backend
         const crewId = crew.crewid || crew.crewId;
         if (crewId) {
-          this.crewsService.deleteCrew(crewId).subscribe({
-            next: (response) => {
-              // ✅ Eliminar de la tabla local
-              this.tableData = this.tableData.filter(c => (c.crewid || c.crewId) !== crewId);
-              this.allData = [...this.tableData];
-              this.applyFilters();
-              console.log('✅ Crew deleted successfully:', response);
-              
-              // ✅ Mostrar mensaje de éxito
-              this.snackBar.open('✅ Crew deleted successfully!', 'Close', {
-                duration: 3000,
-                horizontalPosition: 'center',
-                verticalPosition: 'top',
-                panelClass: ['success-snackbar']
-              });
-            },
-            error: (err) => {
-              console.error('❌ Error deleting crew:', err);
-              
-              // ✅ Mostrar mensaje de error
-              this.snackBar.open('❌ Error deleting crew. Please try again.', 'Close', {
-                duration: 5000,
-                horizontalPosition: 'center',
-                verticalPosition: 'top',
-                panelClass: ['error-snackbar']
-              });
-            }
+          console.log(`🗑️ Starting deletion process for crew ${crewId}...`);
+          
+          // ✅ Primero eliminar todas las relaciones de empleados con este crew
+          this.deleteCrewEmployeeRelations(crewId, crew.employees || []).then(() => {
+            // ✅ Después eliminar el crew
+            this.crewsService.deleteCrew(crewId).subscribe({
+              next: (response) => {
+                // ✅ Eliminar de la tabla local
+                this.tableData = this.tableData.filter(c => (c.crewid || c.crewId) !== crewId);
+                this.allData = [...this.tableData];
+                this.applyFilters();
+                console.log('✅ Crew deleted successfully:', response);
+                
+                // ✅ Mostrar mensaje de éxito
+                this.snackBar.open('✅ Crew and employee assignments deleted successfully!', 'Close', {
+                  duration: 3000,
+                  horizontalPosition: 'center',
+                  verticalPosition: 'top',
+                  panelClass: ['success-snackbar']
+                });
+              },
+              error: (err) => {
+                console.error('❌ Error deleting crew:', err);
+                
+                // ✅ Mostrar mensaje de error
+                this.snackBar.open('❌ Error deleting crew. Please try again.', 'Close', {
+                  duration: 5000,
+                  horizontalPosition: 'center',
+                  verticalPosition: 'top',
+                  panelClass: ['error-snackbar']
+                });
+              }
+            });
+          }).catch(error => {
+            console.error('❌ Error deleting crew employee relations:', error);
+            this.snackBar.open('❌ Error removing employee assignments. Please try again.', 'Close', {
+              duration: 5000,
+              horizontalPosition: 'center',
+              verticalPosition: 'top',
+              panelClass: ['error-snackbar']
+            });
           });
         } else {
           console.error('❌ No crew ID found for deletion');
         }
       }
     });
+  }
+
+  // ✅ NUEVO MÉTODO: Eliminar todas las relaciones de empleados con un crew
+  private async deleteCrewEmployeeRelations(crewId: number, employees: any[]): Promise<void> {
+    console.log(`🗑️ Deleting employee relations for crew ${crewId}...`);
+    
+    if (!employees || employees.length === 0) {
+      console.log(`📝 No employees to remove from crew ${crewId}`);
+      return Promise.resolve();
+    }
+
+    const deletePromises = employees.map(employee => {
+      const employeeId = employee.employeeid || employee.employeeId || employee.id;
+      if (!employeeId) {
+        console.warn(`⚠️ Employee ID not found for employee:`, employee);
+        return Promise.resolve();
+      }
+
+      console.log(`🗑️ Removing employee ${employeeId} from crew ${crewId}...`);
+      
+      return this.crewEmployeesService.deleteCrewEmployee(crewId, employeeId).toPromise()
+        .then(response => {
+          console.log(`✅ Employee ${employeeId} removed from crew ${crewId}:`, response);
+          return response;
+        })
+        .catch(error => {
+          console.error(`❌ Error removing employee ${employeeId} from crew ${crewId}:`, error);
+          // No lanzar error aquí para continuar con los demás empleados
+          return null;
+        });
+    });
+
+    try {
+      await Promise.all(deletePromises);
+      console.log(`✅ All employee relations deleted for crew ${crewId}`);
+    } catch (error) {
+      console.error(`❌ Error in deleteCrewEmployeeRelations for crew ${crewId}:`, error);
+      throw error;
+    }
   }
 
   onCreateCrew(newCrew: any): void {

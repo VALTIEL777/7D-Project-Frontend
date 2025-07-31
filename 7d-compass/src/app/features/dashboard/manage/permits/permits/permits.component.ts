@@ -51,7 +51,7 @@ export class PermitsComponent extends BaseDashboardComponent implements OnInit {
         const permitNumber = permit.permitNumber || permit.permitnumber || 'N/A';
         const duplicateCount = this.getDuplicateCount(permit);
         if (duplicateCount > 1) {
-          return `${permitNumber} (${duplicateCount} duplicados)`;
+          return `${permitNumber} (${duplicateCount} duplicates)`;
         }
         return permitNumber;
       }
@@ -194,22 +194,22 @@ export class PermitsComponent extends BaseDashboardComponent implements OnInit {
       next: (permits) => {
         if (!permits || permits.length === 0) {
           this.isLoading = false;
-          this.snackBar.open('No se encontraron permisos en la API', 'Close', { duration: 3000 });
+          this.snackBar.open('No permits found in API', 'Close', { duration: 3000 });
         } else {
           this.loadAssociatedData(permits);
         }
       },
-      error: (err) => {
-        this.isLoading = false;
-        console.error('❌ Error loading permits:', err);
-        this.snackBar.open(`Error cargando permisos: ${err.status} - ${err.message}`, 'Close', { duration: 5000 });
-      }
+              error: (err) => {
+          this.isLoading = false;
+          console.error('❌ Error loading permits:', err);
+          this.snackBar.open(`Error loading permits: ${err.status} - ${err.message}`, 'Close', { duration: 5000 });
+        }
     });
   }
 
   private loadAssociatedData(permits: Permit[]): void {
     // Mostrar loading state
-    this.snackBar.open('Cargando permisos y asociaciones...', 'Close', { duration: 2000 });
+    this.snackBar.open('Loading permits and associations...', 'Close', { duration: 2000 });
     
     // Cargar permited tickets y tickets en paralelo usando forkJoin
     import('rxjs').then(({ forkJoin }) => {
@@ -248,7 +248,7 @@ export class PermitsComponent extends BaseDashboardComponent implements OnInit {
           this.loadData(); // Initialize filtering data
           
           this.isLoading = false;
-          this.snackBar.open(`${this.tableData.length} permisos cargados exitosamente`, 'Close', { duration: 2000 });
+          this.snackBar.open(`${this.tableData.length} permits loaded successfully`, 'Close', { duration: 2000 });
           
           // Cargar archivos de manera diferida para no bloquear la UI
           setTimeout(() => {
@@ -261,7 +261,7 @@ export class PermitsComponent extends BaseDashboardComponent implements OnInit {
           this.tableData = permits.map(permit => ({ ...permit, tickets: [] }));
           this.allData = [...this.tableData];
           this.filteredData = [...this.tableData];
-          this.snackBar.open('Error cargando asociaciones, mostrando solo permisos', 'Close', { duration: 3000 });
+          this.snackBar.open('Error loading associations, showing only permits', 'Close', { duration: 3000 });
         }
       });
     });
@@ -318,31 +318,31 @@ export class PermitsComponent extends BaseDashboardComponent implements OnInit {
                   next: (response) => {
                     createdCount++;
                     
-                    if (createdCount === testAssociations.length) {
-                      this.snackBar.open(`${createdCount} asociaciones de prueba creadas exitosamente`, 'Close', { duration: 3000 });
-                      this.loadPermits(); // Recargar datos para mostrar las asociaciones
-                    }
+                                      if (createdCount === testAssociations.length) {
+                    this.snackBar.open(`${createdCount} test associations created successfully`, 'Close', { duration: 3000 });
+                    this.loadPermits(); // Recargar datos para mostrar las asociaciones
+                  }
                   },
                   error: (error) => {
                     console.error(`❌ Error creando asociación ${index + 1}:`, error);
-                    this.snackBar.open(`Error creando asociación ${index + 1}`, 'Close', { duration: 3000 });
+                    this.snackBar.open(`Error creating association ${index + 1}`, 'Close', { duration: 3000 });
                   }
                 });
               });
             } else {
               console.log('⚠️ No hay suficientes permisos o tickets para crear asociaciones');
-              this.snackBar.open('No hay suficientes datos para crear asociaciones', 'Close', { duration: 3000 });
+              this.snackBar.open('Not enough data to create associations', 'Close', { duration: 3000 });
             }
           },
           error: (error) => {
             console.error('❌ Error cargando tickets:', error);
-            this.snackBar.open('Error cargando tickets', 'Close', { duration: 3000 });
+            this.snackBar.open('Error loading tickets', 'Close', { duration: 3000 });
           }
         });
       },
       error: (error) => {
         console.error('❌ Error cargando permisos:', error);
-        this.snackBar.open('Error cargando permisos', 'Close', { duration: 3000 });
+        this.snackBar.open('Error loading permits', 'Close', { duration: 3000 });
       }
     });
   }
@@ -419,11 +419,11 @@ export class PermitsComponent extends BaseDashboardComponent implements OnInit {
     // Obtener el ID correcto del permiso
     const permitId = permit.PermitId || permit.permitId || permit.permitid;
     
-    if (!permitId) {
-      console.error('❌ No se pudo obtener el ID del permiso:', permit);
-      this.snackBar.open('Error: No se pudo identificar el permiso', 'Close', { duration: 3000 });
-      return;
-    }
+          if (!permitId) {
+        console.error('❌ No se pudo obtener el ID del permiso:', permit);
+        this.snackBar.open('Error: Could not identify the permit', 'Close', { duration: 3000 });
+        return;
+      }
     
     
     const dialogRef = this.dialog.open(ConfirmationDialogComponent, {
@@ -517,14 +517,14 @@ export class PermitsComponent extends BaseDashboardComponent implements OnInit {
     if (file) {
       // Validar que sea un PDF
       if (file.type !== 'application/pdf') {
-        this.pdfFileError = 'Solo se permiten archivos PDF';
+        this.pdfFileError = 'Only PDF files are allowed';
         this.selectedPermitFile = null;
         return;
       }
 
       // Validar tamaño (máximo 10MB)
       if (file.size > 10 * 1024 * 1024) {
-        this.pdfFileError = 'El archivo es demasiado grande. Máximo 10MB';
+        this.pdfFileError = 'File is too large. Maximum 10MB';
         this.selectedPermitFile = null;
         return;
       }
@@ -581,10 +581,10 @@ export class PermitsComponent extends BaseDashboardComponent implements OnInit {
       disableClose: true,
       panelClass: 'confirmation-dialog',
       data: {
-        title: 'Propagar PDF a Permisos Similares',
-        message: `Se encontraron ${permitsWithSameNumber.length} permisos con el mismo número (${samePermitNumber}).\n\n¿Deseas subir el archivo PDF a todos los permisos con este número?\n\nPermisos encontrados:\n${permitsWithSameNumber.map(p => `• ${p.permitNumber} (ID: ${p.PermitId})`).join('\n')}`,
-        confirmText: 'Subir a Todos',
-        cancelText: 'Solo a Este'
+        title: 'Propagate PDF to Similar Permits',
+        message: `Found ${permitsWithSameNumber.length} permits with the same number (${samePermitNumber}).\n\nDo you want to upload the PDF file to all permits with this number?\n\nPermits found:\n${permitsWithSameNumber.map(p => `• ${p.permitNumber} (ID: ${p.PermitId})`).join('\n')}`,
+        confirmText: 'Upload to All',
+        cancelText: 'Only This One'
       }
     });
 
@@ -611,13 +611,13 @@ export class PermitsComponent extends BaseDashboardComponent implements OnInit {
     formData.append('file', this.selectedPermitFile!);
     formData.append('ticketId', ticketId?.toString() || '');
     formData.append('name', this.selectedPermitFile!.name);
-    formData.append('comment', `Archivo subido para el permiso: ${permit.permitNumber}`);
+    formData.append('comment', `File uploaded for permit: ${permit.permitNumber}`);
 
     this.photoEvidenceService.uploadPhotoEvidence(formData).subscribe({
       next: (response) => {
         this.uploadingFile = false;
         this.selectedPermitFile = null;
-        this.snackBar.open(`Archivo PDF subido exitosamente para ${permit.permitNumber}`, 'Close', { duration: 3000 });
+        this.snackBar.open(`PDF file uploaded successfully for ${permit.permitNumber}`, 'Close', { duration: 3000 });
         
         // Recargar archivos asociados al permiso
         this.loadPermitFiles(permit.PermitId);
@@ -625,8 +625,8 @@ export class PermitsComponent extends BaseDashboardComponent implements OnInit {
       error: (error) => {
         console.error('❌ Error subiendo archivo:', error);
         this.uploadingFile = false;
-        this.pdfFileError = 'Error al subir el archivo. Inténtalo de nuevo.';
-        this.snackBar.open('Error al subir el archivo', 'Close', { duration: 3000 });
+        this.pdfFileError = 'Error uploading file. Please try again.';
+        this.snackBar.open('Error uploading file', 'Close', { duration: 3000 });
       }
     });
   }
@@ -643,7 +643,7 @@ export class PermitsComponent extends BaseDashboardComponent implements OnInit {
     
     // Mostrar resumen antes de subir
     const permitNumbers = permits.map(p => p.permitNumber || p.permitnumber).join(', ');
-    this.snackBar.open(`📄 Subiendo archivo a ${permits.length} permisos: ${permitNumbers}`, 'Close', { duration: 3000 });
+    this.snackBar.open(`📄 Uploading file to ${permits.length} permits: ${permitNumbers}`, 'Close', { duration: 3000 });
     
     let completedUploads = 0;
     let failedUploads = 0;
@@ -666,7 +666,7 @@ export class PermitsComponent extends BaseDashboardComponent implements OnInit {
       formData.append('file', fileCopy);
       formData.append('ticketId', ticketId?.toString() || '');
       formData.append('name', fileCopy.name);
-      formData.append('comment', `Archivo subido para el permiso: ${permit.permitNumber} (propagado automáticamente)`);
+      formData.append('comment', `File uploaded for permit: ${permit.permitNumber} (automatically propagated)`);
 
       this.photoEvidenceService.uploadPhotoEvidence(formData).subscribe({
         next: (response) => {
@@ -684,9 +684,9 @@ export class PermitsComponent extends BaseDashboardComponent implements OnInit {
             this.uploadProgress.isUploading = false;
             
             if (failedUploads === 0) {
-              this.snackBar.open(`✅ Archivo PDF subido exitosamente a ${completedUploads} permisos`, 'Close', { duration: 4000 });
+              this.snackBar.open(`✅ PDF file uploaded successfully to ${completedUploads} permits`, 'Close', { duration: 4000 });
             } else {
-              this.snackBar.open(`⚠️ Archivo subido a ${completedUploads} permisos, ${failedUploads} fallaron`, 'Close', { duration: 5000 });
+              this.snackBar.open(`⚠️ File uploaded to ${completedUploads} permits, ${failedUploads} failed`, 'Close', { duration: 5000 });
             }
           }
         },
@@ -702,10 +702,10 @@ export class PermitsComponent extends BaseDashboardComponent implements OnInit {
             this.uploadProgress.isUploading = false;
             
             if (failedUploads === totalUploads) {
-              this.pdfFileError = 'Error al subir el archivo a todos los permisos.';
-              this.snackBar.open('Error al subir el archivo', 'Close', { duration: 3000 });
+              this.pdfFileError = 'Error uploading file to all permits.';
+              this.snackBar.open('Error uploading file', 'Close', { duration: 3000 });
             } else {
-              this.snackBar.open(`⚠️ Archivo subido a ${completedUploads} permisos, ${failedUploads} fallaron`, 'Close', { duration: 5000 });
+              this.snackBar.open(`⚠️ File uploaded to ${completedUploads} permits, ${failedUploads} failed`, 'Close', { duration: 5000 });
             }
           }
         }
@@ -799,7 +799,7 @@ export class PermitsComponent extends BaseDashboardComponent implements OnInit {
   deletePermitFile(photoId: number, permitId: number): void {
     this.photoEvidenceService.deletePhotoEvidence(photoId).subscribe({
       next: () => {
-        this.snackBar.open('Archivo eliminado exitosamente', 'Close', { duration: 3000 });
+        this.snackBar.open('File deleted successfully', 'Close', { duration: 3000 });
         
         // Limpiar inmediatamente el array de archivos del permiso
         this.permitFiles[permitId] = [];
@@ -813,9 +813,122 @@ export class PermitsComponent extends BaseDashboardComponent implements OnInit {
       },
       error: (error) => {
         console.error('❌ Error eliminando archivo:', error);
-        this.snackBar.open('Error eliminando archivo', 'Close', { duration: 3000 });
+        this.snackBar.open('Error deleting file', 'Close', { duration: 3000 });
       }
     });
+  }
+
+  // 🎯 NUEVO: Método para eliminar archivo de un solo permiso
+  private deleteSinglePermitFile(permit: any, fileToDelete: any): void {
+    console.log('🗑️ Eliminando archivo de un solo permiso:', fileToDelete);
+    this.deletePermitFile(fileToDelete.photoid || fileToDelete.id, permit.PermitId);
+  }
+
+  // 🎯 NUEVO: Método para eliminar archivo de múltiples permisos
+  private deleteFromMultiplePermits(permits: any[], fileToDelete: any): void {
+    console.log(`🗑️ Iniciando eliminación de archivo en ${permits.length} permisos...`);
+    
+    // Mostrar resumen antes de eliminar
+    const permitNumbers = permits.map(p => p.permitNumber || p.permitnumber).join(', ');
+    this.snackBar.open(`🗑️ Deleting file from ${permits.length} permits: ${permitNumbers}`, 'Close', { duration: 3000 });
+    
+    let completedDeletions = 0;
+    let failedDeletions = 0;
+    const totalDeletions = permits.length;
+
+    permits.forEach((permit, index) => {
+      // Buscar archivos similares en cada permiso
+      this.findSimilarFilesInPermit(permit, fileToDelete).then(similarFiles => {
+        if (similarFiles.length > 0) {
+          // Eliminar cada archivo similar encontrado
+          similarFiles.forEach(file => {
+            this.photoEvidenceService.deletePhotoEvidence(file.photoid || file.id).subscribe({
+              next: (response) => {
+                completedDeletions++;
+                console.log(`✅ Archivo eliminado exitosamente para permiso ${permit.permitNumber} (${completedDeletions}/${totalDeletions})`);
+                
+                // Recargar archivos para este permiso
+                this.loadPermitFiles(permit.PermitId);
+                
+                // Verificar si todas las eliminaciones han terminado
+                if (completedDeletions + failedDeletions === totalDeletions) {
+                  this.finalizeMultipleDeletions(completedDeletions, failedDeletions);
+                }
+              },
+              error: (error) => {
+                failedDeletions++;
+                console.error(`❌ Error eliminando archivo para permiso ${permit.permitNumber}:`, error);
+                
+                // Verificar si todas las eliminaciones han terminado
+                if (completedDeletions + failedDeletions === totalDeletions) {
+                  this.finalizeMultipleDeletions(completedDeletions, failedDeletions);
+                }
+              }
+            });
+          });
+        } else {
+          // No se encontraron archivos similares en este permiso
+          console.log(`⚠️ No se encontraron archivos similares en permiso ${permit.permitNumber}`);
+          completedDeletions++;
+          
+          // Verificar si todas las eliminaciones han terminado
+          if (completedDeletions + failedDeletions === totalDeletions) {
+            this.finalizeMultipleDeletions(completedDeletions, failedDeletions);
+          }
+        }
+      });
+    });
+  }
+
+  // 🎯 NUEVO: Método para encontrar archivos similares en un permiso
+  private async findSimilarFilesInPermit(permit: any, originalFile: any): Promise<any[]> {
+    return new Promise((resolve) => {
+      // Obtener los ticketIds asociados al permiso
+      const ticketIds = permit.tickets?.map((t: any) => t.ticketId || t.ticketid).filter((id: any) => id) || [];
+
+      if (ticketIds.length === 0) {
+        resolve([]);
+        return;
+      }
+
+      this.photoEvidenceService.getAllPhotoEvidence().subscribe({
+        next: (files) => {
+          // Filtrar archivos que pertenezcan a los tickets del permiso y NO estén eliminados
+          const permitFiles = files.filter((file: any) => {
+            // Excluir archivos eliminados
+            if (file.deletedat) {
+              return false;
+            }
+            
+            // Buscar por ticketId o por comentario que mencione el permiso
+            const matchesTicketId = ticketIds.includes(file.ticketId);
+            const matchesComment = file.comment?.includes(`permit: ${permit.permitNumber}`) || 
+                                 file.comment?.includes(`permiso: ${permit.permitNumber}`);
+            
+            // Buscar archivos con el mismo nombre o contenido similar
+            const matchesFileName = file.name === originalFile.name;
+            const matchesFileSize = file.size === originalFile.size;
+            
+            return (matchesTicketId || matchesComment) && (matchesFileName || matchesFileSize);
+          });
+          
+          resolve(permitFiles);
+        },
+        error: (error) => {
+          console.error('❌ Error buscando archivos similares:', error);
+          resolve([]);
+        }
+      });
+    });
+  }
+
+  // 🎯 NUEVO: Método para finalizar múltiples eliminaciones
+  private finalizeMultipleDeletions(completedDeletions: number, failedDeletions: number): void {
+    if (failedDeletions === 0) {
+      this.snackBar.open(`✅ PDF file deleted successfully from ${completedDeletions} permits`, 'Close', { duration: 4000 });
+    } else {
+      this.snackBar.open(`⚠️ File deleted from ${completedDeletions} permits, ${failedDeletions} failed`, 'Close', { duration: 5000 });
+    }
   }
 
   getPermitFilesCount(permitId: number): number {
@@ -838,32 +951,48 @@ export class PermitsComponent extends BaseDashboardComponent implements OnInit {
     
     if (!files || files.length === 0) {
       console.log('⚠️ No hay archivos para eliminar');
-      this.snackBar.open('No hay archivos para eliminar', 'Close', { duration: 3000 });
+      this.snackBar.open('No files to delete', 'Close', { duration: 3000 });
       return;
     }
 
-    // Mostrar información del archivo a eliminar
-    const fileToDelete = files[0];
-    const fileName = fileToDelete.name || 'Archivo sin nombre';
-    const fileDate = fileToDelete.createdat ? new Date(fileToDelete.createdat).toLocaleDateString() : 'Fecha desconocida';
+    // Buscar todos los permisos con el mismo permitNumber
+    const samePermitNumber = permit.permitNumber || permit.permitnumber;
+    const permitsWithSameNumber = this.tableData.filter(p => 
+      (p.permitNumber || p.permitnumber) === samePermitNumber
+    );
 
-    // Mostrar diálogo de confirmación
+    console.log(`🗑️ Encontrados ${permitsWithSameNumber.length} permisos con permitNumber: ${samePermitNumber}`);
+
+    // Si solo hay un permiso con ese número, eliminar normalmente
+    if (permitsWithSameNumber.length === 1) {
+      this.deleteSinglePermitFile(permit, files[0]);
+      return;
+    }
+
+    // Si hay múltiples permisos con el mismo número, mostrar confirmación para propagar eliminación
+    const fileToDelete = files[0];
+    const fileName = fileToDelete.name || 'Unnamed file';
+    const fileDate = fileToDelete.createdat ? new Date(fileToDelete.createdat).toLocaleDateString() : 'Unknown date';
+
     const dialogRef = this.dialog.open(ConfirmationDialogComponent, {
-      width: '500px',
+      width: '600px',
       disableClose: true,
       panelClass: 'confirmation-dialog',
       data: {
-        title: 'Eliminar Archivo PDF',
-        message: `¿Estás seguro de que quieres eliminar el archivo PDF del permiso ${permit.permitNumber}?\n\nArchivo: ${fileName}\nFecha de subida: ${fileDate}\n\nEsta acción no se puede deshacer.`,
-        confirmText: 'Eliminar Archivo',
-        cancelText: 'Cancelar'
+        title: 'Propagate PDF Deletion to Similar Permits',
+        message: `Found ${permitsWithSameNumber.length} permits with the same number (${samePermitNumber}).\n\nDo you want to delete the PDF file from all permits with this number?\n\nFile: ${fileName}\nUpload date: ${fileDate}\n\nPermits found:\n${permitsWithSameNumber.map(p => `• ${p.permitNumber} (ID: ${p.PermitId})`).join('\n')}\n\nThis action cannot be undone.`,
+        confirmText: 'Delete from All',
+        cancelText: 'Only This One'
       }
     });
 
     dialogRef.afterClosed().subscribe(confirmed => {
       if (confirmed) {
-        console.log('🗑️ Confirmado eliminar archivo:', fileToDelete);
-        this.deletePermitFile(fileToDelete.photoid || fileToDelete.id, permitId);
+        // Eliminar de todos los permisos con el mismo número
+        this.deleteFromMultiplePermits(permitsWithSameNumber, fileToDelete);
+      } else {
+        // Eliminar solo del permiso seleccionado
+        this.deleteSinglePermitFile(permit, fileToDelete);
       }
     });
   }
@@ -1000,14 +1129,14 @@ export class PermitsComponent extends BaseDashboardComponent implements OnInit {
       }));
 
     if (duplicates.length === 0) {
-      this.snackBar.open('No se encontraron permisos duplicados', 'Close', { duration: 3000 });
+      this.snackBar.open('No duplicate permits found', 'Close', { duration: 3000 });
       return;
     }
 
     // Crear mensaje detallado con información más completa
-    let message = `Se encontraron ${duplicates.length} grupos de permisos duplicados:\n\n`;
+    let message = `Found ${duplicates.length} groups of duplicate permits:\n\n`;
     duplicates.forEach((group, index) => {
-      message += `${index + 1}. Permit Number: ${group.permitNumber} (${group.count} permisos)\n`;
+      message += `${index + 1}. Permit Number: ${group.permitNumber} (${group.count} permits)\n`;
       group.permits.forEach(permit => {
         const startDate = permit.startDate || permit.startdate;
         const expireDate = permit.expireDate || permit.expiredate;
@@ -1018,12 +1147,12 @@ export class PermitsComponent extends BaseDashboardComponent implements OnInit {
         message += `     Status: ${status}\n`;
         message += `     Start Date: ${startDate ? new Date(startDate).toLocaleDateString() : 'N/A'}\n`;
         message += `     Expire Date: ${expireDate ? new Date(expireDate).toLocaleDateString() : 'N/A'}\n`;
-        message += `     Tickets asociados: ${ticketsCount}\n`;
+        message += `     Associated tickets: ${ticketsCount}\n`;
         message += '\n';
       });
     });
 
-    message += `\n💡 Nota: Al subir un archivo PDF a cualquier permiso de un grupo duplicado, se puede propagar automáticamente a todos los permisos del mismo grupo.`;
+    message += `\n💡 Note: When uploading a PDF file to any permit in a duplicate group, it can be automatically propagated to all permits in the same group. The same applies when deleting PDF files.`;
 
     // Mostrar diálogo con detalles
     const dialogRef = this.dialog.open(ConfirmationDialogComponent, {
@@ -1031,10 +1160,10 @@ export class PermitsComponent extends BaseDashboardComponent implements OnInit {
       disableClose: false,
       panelClass: 'confirmation-dialog',
       data: {
-        title: 'Detalles de Permisos Duplicados',
+        title: 'Duplicate Permits Details',
         message: message,
-        confirmText: 'Cerrar',
-        cancelText: 'Cerrar'
+        confirmText: 'Close',
+        cancelText: 'Close'
       }
     });
 

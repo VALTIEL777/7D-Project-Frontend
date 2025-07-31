@@ -7,12 +7,6 @@
 <div class="map-section">
   <div class="map-header">
     <h3 class="map-title">Location Map</h3>
-    <div class="map-controls">
-      <button mat-stroked-button class="debug-btn" (click)="zoomToCurrentLocation()" title="Zoom to current location">
-        <mat-icon>my_location</mat-icon>
-        Zoom to Location
-      </button>
-    </div>
   </div>
 
   <div class="map-container">
@@ -55,6 +49,8 @@
   <li><strong>Street From:</strong> {{ location.streetFrom || 'Not available' }}</li>
   <li> <strong>Street To:</strong> {{ location.streetTo || 'Not available' }}</li>
 </ul>
+
+
 
 <h3 class="sub-title">Gallery</h3>
 
@@ -231,7 +227,7 @@
   Start Phase
 </button>
 
-      <!-- Botón para completar fase iniciada
+      <!-- Botón para completar fase iniciada -->
       <button
         *ngIf="isPhaseStarted(activity) && !isPreviousPhaseIncomplete(activity)"
         mat-stroked-button
@@ -241,7 +237,7 @@
       >
         <mat-icon>done</mat-icon>
         Complete Phase
-      </button> -->
+      </button>
 
       <!-- Indicador de fase completada -->
       <span *ngIf="isPhaseCompleted(activity)" class="completed-indicator">
@@ -317,24 +313,67 @@
             <mat-spinner *ngIf="isUploading(activity)" diameter="20" class="upload-spinner"></mat-spinner>
             <span>{{ isUploading(activity) ? 'Uploading...' : 'Upload evidence' }}</span>
           </button>
+          
+          <!-- 🎯 NUEVO: Indicador de progreso detallado -->
+          <div *ngIf="isUploading(activity)" class="upload-progress" style="margin-top: 8px;">
+            <mat-progress-bar mode="indeterminate" color="accent"></mat-progress-bar>
+            <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px; font-size: 12px; color: #666;">
+              <mat-icon style="font-size: 16px; width: 16px; height: 16px;">cloud_upload</mat-icon>
+              <span>Processing {{ activity.selectedFiles?.length || 0 }} files...</span>
+            </div>
+          </div>
         </mat-card>
+      </div>
+    </mat-expansion-panel>
+    
+    <!-- 🎯 NUEVO: Campo de comentario en expansion panel -->
+    <mat-expansion-panel>
+      <mat-expansion-panel-header>
+        <mat-panel-title>
+          <mat-icon style="color: #2196f3; margin-right: 8px;">comment</mat-icon>
+          Add Comment
+        </mat-panel-title>
+      </mat-expansion-panel-header>
+      
+      <div class="comment-section" style="margin: 16px 0;">
+        <div class="comment-input-container" style="display: flex; gap: 12px; align-items: flex-end;">
+          <mat-form-field appearance="outline" style="flex: 1;">
+            <mat-label>Comment for {{ activity.name }}</mat-label>
+            <textarea matInput 
+                      [(ngModel)]="activity.observation" 
+                      placeholder="Add a comment about this phase..."
+                      rows="2"
+                      maxlength="500"></textarea>
+            <mat-hint>{{ (activity.observation || '').length }}/500</mat-hint>
+          </mat-form-field>
+          
+          <button mat-raised-button 
+                  color="primary" 
+                  (click)="saveObservation(activity)"
+                  [disabled]="!activity.observation || activity.observation.trim().length === 0"
+                  style="height: 40px;">
+            <mat-icon>send</mat-icon>
+            <span style="margin-left: 4px;">Send</span>
+          </button>
+        </div>
+        
       </div>
     </mat-expansion-panel>
   </div>
 </div>
 
-<!-- 🎯 Comments -->
+<!-- 🎯 Issues -->
 <div class="comments-header">
-  <h3 class="sub-title">Comments</h3>
+  <h3 class="sub-title">Issues</h3>
   <button mat-icon-button
           class="toggle-all-comments-btn"
           (click)="toggleAllCommentsVisibility()"
-          [title]="showAllComments ? 'Hide all comments' : 'Show all comments'">
+          [title]="showAllComments ? 'Hide all issues' : 'Show all issues'">
     <mat-icon>{{ showAllComments ? 'visibility' : 'visibility_off' }}</mat-icon>
   </button>
 </div>
 
-<!-- 🎯 NUEVO: Notificación de actualización de comentarios -->
+<!-- 🎯 NUEVO: Notificación de actualización de issues -->
 <div *ngIf="commentsUpdatedMessage" class="update-notification" style="background-color: #4caf50; color: white; padding: 8px 16px; border-radius: 4px; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
   <mat-icon style="color: white;">check_circle</mat-icon>
   <span>{{ commentsUpdatedMessage }}</span>
@@ -342,9 +381,9 @@
 
 <div class="comments-section">
   <mat-form-field appearance="outline" style="width: 100%; margin-bottom: 16px;">
-    <mat-label>Search comments</mat-label>
+    <mat-label>Search issues</mat-label>
     <mat-icon matPrefix>search</mat-icon>
-    <input matInput [(ngModel)]="commentFilterText" (ngModelChange)="onCommentFilterChange()" placeholder="Search by comment text, phase name, or date">
+    <input matInput [(ngModel)]="commentFilterText" (ngModelChange)="onCommentFilterChange()" placeholder="Search by issue text, phase name, or date">
   </mat-form-field>
 
   <div class="comments-container">
@@ -362,9 +401,9 @@
           <span>{{ comment.date | date:'MMM d, y, h:mm a' }}</span>
           <button mat-icon-button
                   class="toggle-comment-btn"
-                  (click)="toggleCommentVisibility(i)"
-                  [title]="isCommentHidden(i) ? 'Show comment' : 'Hide comment'">
-            <mat-icon>{{ isCommentHidden(i) ? 'radio_button_unchecked' : 'check_circle' }}</mat-icon>
+                  (click)="clearIssue(comment)"
+                  title="Clear issue">
+            <mat-icon>check_circle</mat-icon>
           </button>
         </div>
       </div>
@@ -376,14 +415,82 @@
     </div>
   </div>
 
-  <!-- Mostrar mensaje si no hay comentarios -->
+  <!-- Mostrar mensaje si no hay issues -->
   <div *ngIf="filteredComments.length === 0" class="no-comments">
     <p class="no-comments-text">
       <mat-icon color="info">info</mat-icon>
       <span *ngIf="getCommentsFromImages().length === 0">
-        No comments have been added to photos yet.
+        No issues have been reported in photos yet.
       </span>
       <span *ngIf="getCommentsFromImages().length > 0">
+        No issues match the applied filter.
+      </span>
+    </p>
+  </div>
+</div>
+
+<mat-divider></mat-divider>
+
+<!-- 🎯 Comments (Observations) -->
+<div class="comments-header">
+  <h3 class="sub-title">Comments</h3>
+  <button mat-icon-button
+          class="toggle-all-comments-btn"
+          (click)="toggleAllObservationsVisibility()"
+          [title]="showAllObservations ? 'Hide all comments' : 'Show all comments'">
+    <mat-icon>{{ showAllObservations ? 'visibility' : 'visibility_off' }}</mat-icon>
+  </button>
+</div>
+
+<!-- 🎯 NUEVO: Notificación de actualización de comments -->
+<div *ngIf="observationsUpdatedMessage" class="update-notification" style="background-color: #2196f3; color: white; padding: 8px 16px; border-radius: 4px; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+  <mat-icon style="color: white;">check_circle</mat-icon>
+  <span>{{ observationsUpdatedMessage }}</span>
+</div>
+
+<div class="comments-section">
+  <mat-form-field appearance="outline" style="width: 100%; margin-bottom: 16px;">
+    <mat-label>Search comments</mat-label>
+    <mat-icon matPrefix>search</mat-icon>
+    <input matInput [(ngModel)]="observationFilterText" (ngModelChange)="onObservationFilterChange()" placeholder="Search by comment text, phase name, or date">
+  </mat-form-field>
+
+  <div class="comments-container">
+    <div *ngFor="let observation of filteredObservations; let i = index"
+         class="comment-item"
+         [class.hidden-comment]="isObservationHidden(i)"
+         [style.display]="isObservationHidden(i) ? 'none' : 'block'">
+      <div class="comment-header">
+        <div class="comment-phase">
+          <mat-icon class="phase-icon">comment</mat-icon>
+          <span class="phase-name">{{ observation.phaseName }}</span>
+        </div>
+        <div class="comment-date">
+          <mat-icon class="date-icon">schedule</mat-icon>
+          <span>{{ observation.date | date:'MMM d, y, h:mm a' }}</span>
+          <button mat-icon-button
+                  class="toggle-comment-btn"
+                  (click)="clearObservation(observation)"
+                  title="Clear comment">
+            <mat-icon>check_circle</mat-icon>
+          </button>
+        </div>
+      </div>
+
+      <div class="comment-content">
+        <p class="comment-text">{{ observation.text }}</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mostrar mensaje si no hay comments -->
+  <div *ngIf="filteredObservations.length === 0" class="no-comments">
+    <p class="no-comments-text">
+      <mat-icon color="info">info</mat-icon>
+      <span *ngIf="getObservationsFromTicketStatus().length === 0">
+        No comments have been added to phases yet.
+      </span>
+      <span *ngIf="getObservationsFromTicketStatus().length > 0">
         No comments match the applied filter.
       </span>
     </p>

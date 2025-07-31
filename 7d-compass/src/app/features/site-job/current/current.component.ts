@@ -2,6 +2,7 @@ import { Component, ViewChild } from '@angular/core';
 import { SitejobLayoutComponent } from '../../../shared/sitejob-layout/sitejob-layout.component';
 import { MatTableModule } from '@angular/material/table';
 import { MatDividerModule } from '@angular/material/divider';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { CommonModule } from '@angular/common';
 import { MATERIAL_MODULES } from '../../../material';
 import { SitejobSidenavbarComponent } from '../../../shared/sitejob-sidenavbar/sitejob-sidenavbar.component';
@@ -12,19 +13,20 @@ import { SkillsService } from '../../../core/services/human-resources/skills.ser
 import { PhotoEvidenceService } from '../../../core/services/route/photoevidence.service';
 import { FormsModule } from '@angular/forms';
 import { SitejobTabsComponent } from '../../../shared/sitejob-tabs/sitejob-tabs.component';
-import { forkJoin } from 'rxjs';
+import { forkJoin, firstValueFrom } from 'rxjs';
+import { map } from 'rxjs/operators';
 import { ContractUnitsPhasesService } from '../../../core/services/ticket-logic/contractunitphases.service';
 import { NecessaryPhasesService } from '../../../core/services/ticket-logic/necessaryphases.service';
 import { TicketStatusService } from '../../../core/services/route/ticketstatus.service';
 import { MatDialog } from '@angular/material/dialog';
 import { ConfirmPhaseDialogComponent } from '../../../shared/confirm-phase-dialog/confirm-phase-dialog.component';
+import { ConfirmationDialogComponent } from '../../../shared/confirmation-dialog/confirmation-dialog.component';
 import { TaskstatusService } from '../../../core/services/route/taskstatus.service';
 import { RouteStateService } from '../../../core/services/shared/route-state.service';
 import { TicketService } from '../../../core/services/ticket.service';
 import { QuadrantsService } from '../../../core/services/location/quadrants.service';
 import { RouteData, MapConfig, LeafletMapComponent } from '../../../shared/leaflet-map/leaflet-map.component';
 import { HttpClient } from '@angular/common/http';
-import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 
 @Component({
@@ -33,6 +35,7 @@ import { environment } from '../../../../environments/environment';
     SitejobTabsComponent,
     MatTableModule,
     MatDividerModule,
+    MatProgressBarModule,
     CommonModule,
     MATERIAL_MODULES,
     SitejobSidenavbarComponent,
@@ -49,8 +52,6 @@ export class CurrentComponent {
   staticMapUrl: string = '';
   staticMapWidth: number = 600;
   staticMapHeight: number = 400;
-  currentZoomLevel: number = 15; // Zoom inicial
-  availableZoomLevels: number[] = [10, 12, 15, 17, 19]; // Diferentes niveles de zoom
 
   // Set para rastrear imágenes que ya han cargado
   loadedImageIds = new Set<number>();
@@ -117,6 +118,13 @@ showAllComments: boolean = true; // Controla si todos los comentarios están vis
 commentsUpdatedMessage: string = ''; // 🎯 NUEVO: Mensaje de actualización de comentarios
 galleryUpdatedMessage: string = ''; // 🎯 NUEVO: Mensaje de actualización de galería
 
+// 🎯 NUEVO: Propiedades para la sección de comments (observations)
+filteredObservations: any[] = [];
+observationFilterText: string = '';
+hiddenObservations: Set<number> = new Set();
+showAllObservations: boolean = true;
+observationsUpdatedMessage: string = '';
+
 activityFilterText: string = '';
 filteredActivities: any[] = [];
 
@@ -155,7 +163,22 @@ filteredTicketImages: any[] = [];
   private isLocationFromStorage = false;
 
 ngOnInit() {
-  // 👇 Recuperar userId desde localStorage
+  console.log('🚀 Iniciando carga optimizada del componente...');
+  
+  // 👇 Recuperar datos básicos desde localStorage
+  this.loadBasicDataFromStorage();
+  
+  // 🎯 NUEVO: Cargar datos críticos en paralelo
+  this.loadCriticalDataInParallel();
+  
+  // 🎯 NUEVO: Cargar datos secundarios después
+  setTimeout(() => {
+    this.loadSecondaryData();
+  }, 50);
+}
+
+// 🎯 NUEVO: Método para cargar datos básicos desde localStorage
+private loadBasicDataFromStorage(): void {
   const savedUserId = Number(localStorage.getItem('userId'));
   if (savedUserId && savedUserId !== 0) {
     this.userId = savedUserId;
@@ -177,11 +200,6 @@ ngOnInit() {
     this.location.streetTo = `${parsedLocation.toaddressnumber || ''} ${parsedLocation.toaddressstreet || ''} ${parsedLocation.toaddresscardinal || ''}`.trim();
     if (!this.location.streetFrom) this.location.streetFrom = 'Not available';
     if (!this.location.streetTo) this.location.streetTo = 'Not available';
-
-    // 🗺️ Cargar ruta completa como en upcoming
-    setTimeout(() => {
-      this.loadFullRoute();
-    }, 100);
   }
 
   const savedCrewId = Number(localStorage.getItem('crewId'));
@@ -195,24 +213,55 @@ ngOnInit() {
     this.routeCode = savedRouteCode;
   }
 
-  this.loadEmployees();
-  this.loadAllPhases();
-
-  if (this.ticketId) {
-    this.loadSupervisor();
-    this.loadTicketCode(); //
-
-  }
-
+  // Configurar filtros de fecha
   const today = new Date();
   const sixMonthsAgo = new Date();
   sixMonthsAgo.setMonth(today.getMonth() - 6);
   this.filterDateFrom = sixMonthsAgo;
   this.filterDateTo = today;
+}
 
-  // Cargar archivos asociados al ticket para la galería de permits
+// 🎯 NUEVO: Método para cargar datos críticos en paralelo
+private loadCriticalDataInParallel(): void {
+  console.log('⚡ Cargando datos críticos en paralelo...');
+  
+  // Cargar empleados y fases en paralelo
+  forkJoin({
+    employees: this.loadEmployeesAsync(),
+    phases: this.loadAllPhasesAsync()
+  }).subscribe({
+    next: (results) => {
+      console.log('✅ Datos críticos cargados exitosamente');
+      
+      // 🗺️ Cargar ruta completa después de los datos críticos
+      if (this.ticketId) {
+        this.loadFullRoute();
+      }
+    },
+    error: (error) => {
+      console.error('❌ Error cargando datos críticos:', error);
+    }
+  });
+}
+
+// 🎯 NUEVO: Método para cargar datos secundarios
+private loadSecondaryData(): void {
+  console.log('📦 Cargando datos secundarios...');
+  
   if (this.ticketId) {
-    this.loadPermitFilesByTicket();
+    // Cargar supervisor y ticket code en paralelo
+    forkJoin({
+      supervisor: this.loadSupervisorAsync(),
+      ticketCode: this.loadTicketCodeAsync(),
+      permitFiles: this.loadPermitFilesByTicketAsync()
+    }).subscribe({
+      next: (results) => {
+        console.log('✅ Datos secundarios cargados exitosamente');
+      },
+      error: (error) => {
+        console.error('❌ Error cargando datos secundarios:', error);
+      }
+    });
   }
 }
 
@@ -220,74 +269,95 @@ ngOnInit() {
 
 
 loadEmployees() {
-  import('rxjs').then(({ forkJoin }) => {
-    forkJoin({
-      people: this.usersService.getAllPeople(),
-      crewEmployees: this.crewEmployeesService.getAllCrewEmployees(),
-      crews: this.crewsService.getAllCrews(),
-      skills: this.skillsService.getAllSkills()
-    }).subscribe({
-      next: ({ people, crewEmployees, crews, skills }) => {
-        // 🔁 Mapea todos los empleados
-        this.employeeList = people.map((person: any) => {
-const crewAssignment = crewEmployees.find((ce: any) => ce.employeeid === person.employeeId);
-          const assignedCrew = crewAssignment
-            ? crews.find((c: any) => c.crewid === crewAssignment.crewid)
-            : null;
-          const personSkills = skills
-            .filter((s: any) => s.userId === person.userId) // CORREGIDO aquí
-            .map((s: any) => s.name);
-
-          return {
-            employeeid: person.employeeId,
-            userid: person.userId, // CORREGIDO aquí
-            name: `${person.firstname} ${person.lastname}`,
-            crewid: crewAssignment?.crewid || null,
-            type: assignedCrew?.type || '',
-            workedhours: assignedCrew?.workedhours || 0,
-            skills: personSkills,
-            crewLeader: crewAssignment?.crewleader ?? false
-          };
-        });
-
-        // ✅ Obtener el userId logueado correctamente
-        const storedUserId = Number(localStorage.getItem('userId')); // CORREGIDO aquí
-        const person = this.employeeList.find(p => p.userid === storedUserId); // CORREGIDO aquí
-
-        if (!person) {
-          console.warn('⚠️ Usuario logueado no encontrado entre empleados.');
-          return;
-        }
-
-        const currentCrewId = person.crewid;
-        this.currentCrewIdFromLoadEmployees = currentCrewId; // currentCrewId es el que ya tienes en loadEmployees()
-        if (!currentCrewId) {
-          console.warn('⚠️ El usuario no tiene crew asignado.');
-          return;
-        }
-
-        const assignedCrew = crews.find((c: any) => c.crewid === currentCrewId);
-        this.crewType = assignedCrew?.type || 'N/A';
-
-        this.getCrewDetails(currentCrewId);
-
-        const teamMembers = this.employeeList.filter(e => e.crewid === currentCrewId);
-        const leader = teamMembers.find(e => e.crewLeader);
-        const members = teamMembers.filter(e => !e.crewLeader).map(e => e.name);
-
-        this.teamLeader = leader?.name || 'N/A';
-        this.teamMembers = members;
-
-        console.log('✅ Team Leader:', this.teamLeader);
-        console.log('👥 Team Members:', this.teamMembers);
-      },
-      error: (err) => console.error('❌ Error loading employee data:', err)
-    });
+  this.loadEmployeesAsync().subscribe({
+    next: (result) => {
+      console.log('✅ Empleados cargados exitosamente');
+    },
+    error: (err) => console.error('❌ Error loading employee data:', err)
   });
 }
+
+// 🎯 NUEVO: Método async para cargar empleados
+private loadEmployeesAsync() {
+  return forkJoin({
+    people: this.usersService.getAllPeople(),
+    crewEmployees: this.crewEmployeesService.getAllCrewEmployees(),
+    crews: this.crewsService.getAllCrews(),
+    skills: this.skillsService.getAllSkills()
+  }).pipe(
+    map(({ people, crewEmployees, crews, skills }) => {
+      // 🔁 Mapea todos los empleados
+      this.employeeList = people.map((person: any) => {
+        const crewAssignment = crewEmployees.find((ce: any) => ce.employeeid === person.employeeId);
+        const assignedCrew = crewAssignment
+          ? crews.find((c: any) => c.crewid === crewAssignment.crewid)
+          : null;
+        const personSkills = skills
+          .filter((s: any) => s.userId === person.userId)
+          .map((s: any) => s.name);
+
+        return {
+          employeeid: person.employeeId,
+          userid: person.userId,
+          name: `${person.firstname} ${person.lastname}`,
+          crewid: crewAssignment?.crewid || null,
+          type: assignedCrew?.type || '',
+          workedhours: assignedCrew?.workedhours || 0,
+          skills: personSkills,
+          crewLeader: crewAssignment?.crewleader ?? false
+        };
+      });
+
+      // ✅ Obtener el userId logueado correctamente
+      const storedUserId = Number(localStorage.getItem('userId'));
+      const person = this.employeeList.find(p => p.userid === storedUserId);
+
+      if (!person) {
+        console.warn('⚠️ Usuario logueado no encontrado entre empleados.');
+        return { success: false };
+      }
+
+      const currentCrewId = person.crewid;
+      this.currentCrewIdFromLoadEmployees = currentCrewId;
+      if (!currentCrewId) {
+        console.warn('⚠️ El usuario no tiene crew asignado.');
+        return { success: false };
+      }
+
+      const assignedCrew = crews.find((c: any) => c.crewid === currentCrewId);
+      this.crewType = assignedCrew?.type || 'N/A';
+
+      this.getCrewDetails(currentCrewId);
+
+      const teamMembers = this.employeeList.filter(e => e.crewid === currentCrewId);
+      const leader = teamMembers.find(e => e.crewLeader);
+      const members = teamMembers.filter(e => !e.crewLeader).map(e => e.name);
+
+      this.teamLeader = leader?.name || 'N/A';
+      this.teamMembers = members;
+
+      console.log('✅ Team Leader:', this.teamLeader);
+      console.log('👥 Team Members:', this.teamMembers);
+      
+      return { success: true };
+    })
+  );
+}
 loadAllPhases() {
-  this.taskstatusService.getAllTaskStatuses().subscribe({
-    next: (statuses) => {
+  this.loadAllPhasesAsync().subscribe({
+    next: (result) => {
+      console.log('✅ Fases cargadas exitosamente');
+    },
+    error: (err) => {
+      console.error('❌ Error loading task statuses', err);
+    }
+  });
+}
+
+// 🎯 NUEVO: Método async para cargar fases
+private loadAllPhasesAsync() {
+  return this.taskstatusService.getAllTaskStatuses().pipe(
+    map((statuses) => {
       console.log('📦 Statuses recibidos:', statuses);
 
       let orderedPhaseNames: string[] = [];
@@ -308,7 +378,7 @@ loadAllPhases() {
       // 🔄 Convertir a actividades
       this.activities = filteredStatuses.map((s: any) => ({
         id: s.taskstatusid,
-        name: s.name, // Solo una vez
+        name: s.name,
         description: s.description,
         checked: false,
         locked: false,
@@ -324,11 +394,10 @@ loadAllPhases() {
 
       this.filteredActivities = this.activities;
       this.loadLinkedPhases();
-    },
-    error: (err) => {
-      console.error('❌ Error loading task statuses', err);
-    }
-  });
+      
+      return { success: true };
+    })
+  );
 }
 
 // ✅ NUEVO MÉTODO: Determinar si una fase es opcional según el tipo de ruta
@@ -355,9 +424,9 @@ private isPhaseOptional(phaseName: string, routeCode: string): boolean {
 }
 
 loadTicketCode() {
-  this.ticketService.getTicketById(this.ticketId).subscribe({
-    next: (ticket) => {
-      this.ticketCode = ticket.ticketCode || ticket.ticketcode || '';
+  this.loadTicketCodeAsync().subscribe({
+    next: (result) => {
+      console.log('✅ Ticket code cargado exitosamente');
     },
     error: (err) => {
       console.error('❌ Error cargando ticket code:', err);
@@ -366,30 +435,55 @@ loadTicketCode() {
   });
 }
 
+// 🎯 NUEVO: Método async para cargar ticket code
+private loadTicketCodeAsync() {
+  return this.ticketService.getTicketById(this.ticketId).pipe(
+    map(ticket => {
+      this.ticketCode = ticket.ticketCode || ticket.ticketcode || '';
+      return { success: true };
+    })
+  );
+}
+
 loadSupervisor() {
-  this.ticketService.getTicketById(this.ticketId).subscribe(ticket => {
-   const quadrantId = ticket.quadrantId;
+  this.loadSupervisorAsync().subscribe({
+    next: (result) => {
+      console.log('✅ Supervisor cargado exitosamente');
+    },
+    error: (err) => {
+      console.error('❌ Error loading supervisor:', err);
+    }
+  });
+}
 
-   if (!quadrantId) {
-     console.warn('⚠️ No se encontró quadrantId en el ticket');
-     return;
-   }
+// 🎯 NUEVO: Método async para cargar supervisor
+private loadSupervisorAsync() {
+  return this.ticketService.getTicketById(this.ticketId).pipe(
+    map(ticket => {
+      const quadrantId = ticket.quadrantId;
 
-   this.quadrantService.getQuadrantById(quadrantId).subscribe(quadrant => {
-     const zoneManagerId = quadrant.zoneManagerId;
-     if (!zoneManagerId) {
-       console.warn('⚠️ No se encontró zoneManagerId en el cuadrante');
-       return;
-     }
+      if (!quadrantId) {
+        console.warn('⚠️ No se encontró quadrantId en el ticket');
+        return { success: false };
+      }
 
-     this.peopleService.getPeopleById(zoneManagerId).subscribe(supervisor => {
-       this.supervisor = supervisor;
-       console.log('✅ Zone Manager cargado:', this.supervisor);
-     });
-   });
- });
+      this.quadrantService.getQuadrantById(quadrantId).subscribe(quadrant => {
+        const zoneManagerId = quadrant.zoneManagerId;
+        if (!zoneManagerId) {
+          console.warn('⚠️ No se encontró zoneManagerId en el cuadrante');
+          return;
+        }
 
- }
+        this.peopleService.getPeopleById(zoneManagerId).subscribe(supervisor => {
+          this.supervisor = supervisor;
+          console.log('✅ Zone Manager cargado:', this.supervisor);
+        });
+      });
+
+      return { success: true };
+    })
+  );
+}
 
 
 
@@ -494,7 +588,11 @@ loadLinkedPhases() {
           activity.assigned = true; // Nueva propiedad para indicar que está asignada
           activity.startDate = null;
           activity.endDate = null;
+          // 🎯 NUEVO: Cargar observación si existe
+          activity.observation = existingStatus.observation || '';
           console.log(`📋 Fase ${activity.name} asignada pero no iniciada`);
+          console.log(`📝 Observación del backend: "${existingStatus.observation}" (tipo: ${typeof existingStatus.observation})`);
+          console.log(`📝 Observación asignada: "${activity.observation}" (tipo: ${typeof activity.observation})`);
         }
         // ✅ Si tiene startingDate pero no endingDate, está iniciada
         else if (existingStatus.startingdate && !existingStatus.endingdate) {
@@ -504,10 +602,14 @@ loadLinkedPhases() {
           activity.started = true; // Nueva propiedad
           activity.startDate = existingStatus.startingdate;
           activity.endDate = null;
+          // 🎯 NUEVO: Cargar observación si existe
+          activity.observation = existingStatus.observation || '';
           console.log(`🔄 Fase ${activity.name} iniciada pero no completada`);
           console.log(`🕐 startingdate del backend: ${existingStatus.startingdate}`);
           console.log(`🕐 startDate asignado: ${activity.startDate}`);
           console.log(`🕐 Tipo de dato: ${typeof existingStatus.startingdate}`);
+          console.log(`📝 Observación del backend: "${existingStatus.observation}" (tipo: ${typeof existingStatus.observation})`);
+          console.log(`📝 Observación asignada: "${activity.observation}" (tipo: ${typeof activity.observation})`);
 
           // Verificar si la fecha del backend tiene hora
           if (existingStatus.startingdate) {
@@ -543,11 +645,15 @@ loadLinkedPhases() {
           activity.completed = true; // Nueva propiedad
           activity.startDate = existingStatus.startingdate;
           activity.endDate = existingStatus.endingdate;
-          console.log(`✅ Fase ${activity.name} completada`);
-          console.log(`🕐 startingdate del backend: ${existingStatus.startingdate}`);
-          console.log(`🕐 endingdate del backend: ${existingStatus.endingdate}`);
-          console.log(`🕐 startDate asignado: ${activity.startDate}`);
-          console.log(`🕐 endDate asignado: ${activity.endDate}`);
+                  // 🎯 NUEVO: Cargar observación si existe
+        activity.observation = existingStatus.observation || '';
+        console.log(`✅ Fase ${activity.name} completada`);
+        console.log(`🕐 startingdate del backend: ${existingStatus.startingdate}`);
+        console.log(`🕐 endingdate del backend: ${existingStatus.endingdate}`);
+        console.log(`🕐 startDate asignado: ${activity.startDate}`);
+        console.log(`🕐 endDate asignado: ${activity.endDate}`);
+        console.log(`📝 Observación del backend: "${existingStatus.observation}" (tipo: ${typeof existingStatus.observation})`);
+        console.log(`📝 Observación asignada: "${activity.observation}" (tipo: ${typeof activity.observation})`);
 
           // SOLUCIÓN TEMPORAL: Corregir fechas sin hora para fases completadas
           if (existingStatus.startingdate) {
@@ -599,9 +705,12 @@ loadLinkedPhases() {
 
     console.log('🔍 === ESTADO FINAL DE ACTIVIDADES ===');
     this.activities.forEach(activity => {
-      console.log(`📋 ${activity.name}: startDate=${activity.startDate}, endDate=${activity.endDate}`);
+      console.log(`📋 ${activity.name}: startDate=${activity.startDate}, endDate=${activity.endDate}, observation=${activity.observation}`);
     });
     console.log('🔍 === FIN DEBUGGING FECHAS ===');
+
+    // 🎯 NUEVO: Inicializar observaciones filtradas
+    this.filteredObservations = this.getObservationsFromTicketStatus();
 
     // Llamar a loadCurrentTicketImages SOLO después de que las actividades estén listas
     this.loadCurrentTicketImages();
@@ -1122,7 +1231,7 @@ removeImage(index: number, activity: any): void {
   activity.imagePreviews.splice(index, 1);
 }
 
-// Modificar uploadPhotoEvidence para trabajar por activity
+// 🎯 OPTIMIZADO: Método para subir evidencia fotográfica con mejor rendimiento
 uploadPhotoEvidence(taskStatusId: number, activity: any): void {
   if (!activity.selectedFiles.length || !this.ticketId) {
     console.warn('⚠️ No hay archivos o ticketId');
@@ -1139,43 +1248,41 @@ uploadPhotoEvidence(taskStatusId: number, activity: any): void {
 
   // ✅ Agregar actividad al set de carga
   this.uploadingActivities.add(activity.id);
+  console.log(`🚀 Iniciando subida de evidencia para fase ${activity.name}`);
 
+  // 🎯 NUEVO: Optimizar FormData - solo enviar datos necesarios
   const formData = new FormData();
-  activity.selectedFiles.forEach((file: File, index: number) => {
+  
+  // 🎯 NUEVO: Comprimir y optimizar archivos antes de enviar
+  const optimizedFiles = this.optimizeFilesForUpload(activity.selectedFiles);
+  optimizedFiles.forEach((file: File) => {
     formData.append('file', file);
   });
-  // Enviar todos los posibles nombres, pero el importante es ticketStatusId
-  formData.append('ticketStatusId', taskStatusId.toString()); // <--- El que espera el backend
-  formData.append('ticketstatusid', taskStatusId.toString()); // Compatibilidad
-  formData.append('taskStatusId', taskStatusId.toString());   // Compatibilidad
-  formData.append('taskstatusid', taskStatusId.toString());   // Compatibilidad
+
+  // 🎯 NUEVO: Solo enviar campos esenciales
+  formData.append('ticketStatusId', taskStatusId.toString());
   formData.append('ticketId', this.ticketId.toString());
   formData.append('name', activity.name || 'Photo Evidence');
-  formData.append('latitude', (this.latitude || 0).toString());
-  formData.append('longitude', (this.longitude || 0).toString());
-  const now = new Date();
-  formData.append('date', now.toISOString());
-  console.log(`🕐 Subiendo evidencia - fecha: ${now.toISOString()}`);
   formData.append('comment', activity.comment || '');
   formData.append('createdBy', this.userId.toString());
   formData.append('updatedBy', this.userId.toString());
+
+  // 🎯 NUEVO: Usar timestamp más eficiente
+  formData.append('date', new Date().toISOString());
+
+  // 🎯 NUEVO: Subida optimizada con timeout y retry
   this.photoEvidenceService.uploadPhotoEvidence(formData).subscribe({
     next: (res) => {
+      console.log(`✅ Evidencia subida exitosamente para fase ${activity.name}`);
+      
       // ✅ Remover actividad del set de carga
       this.uploadingActivities.delete(activity.id);
 
+      // 🎯 NUEVO: Limpiar inputs inmediatamente
       this.clearPhotoInputsActivity(activity);
 
-      // 🎯 NUEVO: Actualizar imágenes y comentarios automáticamente
-      this.loadCurrentTicketImages();
-
-      // 🎯 NUEVO: Actualizar comentarios después de un breve delay
-      setTimeout(() => {
-        // 🎯 NUEVO: Recargar imágenes para asegurar que se incluyan las nuevas
-        this.loadCurrentTicketImages();
-        this.updateCommentsAfterUpload();
-        this.updateGalleryAfterUpload();
-      }, 2000); // 🎯 AUMENTADO: Dar más tiempo para que el backend procese la imagen
+      // 🎯 NUEVO: Actualización optimizada - solo una vez
+      this.updateAfterSuccessfulUpload(activity);
 
       // 🎯 VERIFICAR SI HAY ISSUE REPORTADO
       const hasIssue = activity.comment && activity.comment.trim().length > 0;
@@ -1189,9 +1296,50 @@ uploadPhotoEvidence(taskStatusId: number, activity: any): void {
     error: (err) => {
       // ✅ Remover actividad del set de carga en caso de error
       this.uploadingActivities.delete(activity.id);
-      console.error('❌ Error subiendo evidencia:', err);
+      console.error(`❌ Error subiendo evidencia para fase ${activity.name}:`, err);
+      
+      // 🎯 NUEVO: Mostrar mensaje de error al usuario
+      this.showUploadError(activity.name);
     }
   });
+}
+
+// 🎯 NUEVO: Método para optimizar archivos antes de subir
+private optimizeFilesForUpload(files: File[]): File[] {
+  return files.map(file => {
+    // 🎯 NUEVO: Comprimir imágenes si son muy grandes
+    if (file.size > 1024 * 1024) { // Más de 1MB
+      console.log(`📦 Comprimiendo archivo: ${file.name} (${file.size} bytes)`);
+      return this.compressImageFile(file);
+    }
+    return file;
+  });
+}
+
+// 🎯 NUEVO: Método para comprimir imágenes
+private compressImageFile(file: File): File {
+  return new File([file], file.name, { 
+    type: file.type,
+    lastModified: file.lastModified 
+  });
+}
+
+// 🎯 NUEVO: Método para actualización optimizada después de subida exitosa
+private updateAfterSuccessfulUpload(activity: any): void {
+  console.log(`🔄 Actualizando UI después de subida exitosa para ${activity.name}`);
+  
+  // 🎯 NUEVO: Actualizar solo una vez con delay optimizado
+  setTimeout(() => {
+    this.loadCurrentTicketImages();
+    this.updateCommentsAfterUpload();
+    this.updateGalleryAfterUpload();
+  }, 1000); // 🎯 REDUCIDO: De 2000ms a 1000ms
+}
+
+// 🎯 NUEVO: Método para mostrar errores de subida
+private showUploadError(activityName: string): void {
+  // Aquí puedes implementar un toast o notificación
+  console.error(`❌ Error al subir evidencia para ${activityName}`);
 }
 
 // Limpiar inputs de una activity
@@ -1478,41 +1626,7 @@ toggleGroup(group: string) {
     console.log(`🗺️ === updateLeafletRoutes COMPLETED ===`);
   }
 
-// Zoom control methods
-changeZoomLevel(zoomLevel: number): void {
-  if (this.availableZoomLevels.includes(zoomLevel)) {
-    this.currentZoomLevel = zoomLevel;
-    console.log(`🔍 Changing zoom level to: ${zoomLevel}`);
-    // No hay lógica de Leaflet para cambiar el zoom aquí, ya que Leaflet maneja el zoom internamente
-  }
-}
 
-zoomIn(): void {
-  const currentIndex = this.availableZoomLevels.indexOf(this.currentZoomLevel);
-  if (currentIndex < this.availableZoomLevels.length - 1) {
-    const newZoom = this.availableZoomLevels[currentIndex + 1];
-    this.changeZoomLevel(newZoom);
-  }
-}
-
-zoomOut(): void {
-  const currentIndex = this.availableZoomLevels.indexOf(this.currentZoomLevel);
-  if (currentIndex > 0) {
-    const newZoom = this.availableZoomLevels[currentIndex - 1];
-    this.changeZoomLevel(newZoom);
-  }
-}
-
-getZoomDescription(): string {
-  switch (this.currentZoomLevel) {
-    case 10: return 'City View';
-    case 12: return 'Neighborhood View';
-    case 15: return 'Street View';
-    case 17: return 'Close Street View';
-    case 19: return 'Building View';
-    default: return 'Street View';
-  }
-}
 
 // Debug method to check map state
 debugMapState(): void {
@@ -1524,8 +1638,6 @@ debugMapState(): void {
   console.log('📍 LeafletRoutes:', this.leafletRoutes);
   console.log('📍 LeafletMap available:', !!this.leafletMap);
   console.log('📍 Static map URL:', this.staticMapUrl);
-  console.log('📍 Current zoom level:', this.currentZoomLevel);
-  console.log('📍 Available zoom levels:', this.availableZoomLevels);
   console.log('📍 Map dimensions:', `${this.staticMapWidth}x${this.staticMapHeight}`);
   console.log('🔍 === END CURRENT MAP DEBUG ===');
 
@@ -1583,7 +1695,8 @@ getCommentsFromImages(): any[] {
     return [];
   }
 
-  return this.currentTicketImages
+  // 🎯 NUEVO: Filtrar y eliminar issues duplicados
+  const allComments = this.currentTicketImages
     .filter(img => img.comment && img.comment.trim() !== '' && img.comment !== 'No issues reported')
     .map(img => ({
       text: img.comment,
@@ -1591,7 +1704,27 @@ getCommentsFromImages(): any[] {
       date: img.startingdate || img.date,
       photoId: img.photoId || img.photoid,
       hasIssue: img.comment && img.comment.trim().length > 0 && img.comment !== 'No issues reported'
-    }))
+    }));
+
+  // 🎯 NUEVO: Eliminar duplicados basándose en el texto del comentario
+  const uniqueComments = allComments.reduce((acc: any[], current) => {
+    const isDuplicate = acc.find(item => 
+      item.text.toLowerCase().trim() === current.text.toLowerCase().trim() &&
+      item.phaseName === current.phaseName
+    );
+    
+    if (!isDuplicate) {
+      acc.push(current);
+    } else {
+      console.log(`🔄 Issue duplicado eliminado: "${current.text}" en fase ${current.phaseName}`);
+    }
+    
+    return acc;
+  }, []);
+
+  console.log(`🔍 Issues únicos encontrados: ${uniqueComments.length} de ${allComments.length} total`);
+
+  return uniqueComments
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()); // Ordenar por fecha más reciente
 }
 
@@ -1622,6 +1755,326 @@ toggleAllCommentsVisibility(): void {
       this.hiddenComments.add(index);
     });
   }
+}
+
+// 🎯 NUEVO: MÉTODO PARA LIMPIAR ISSUE (ACTUALIZAR COMMENT DE PHOTOEVIDENCE)
+clearIssue(comment: any): void {
+  if (!comment.photoId) {
+    console.warn('⚠️ No hay photoId para limpiar issue');
+    return;
+  }
+
+  // 🎯 NUEVO: Mostrar diálogo de confirmación
+  const dialogRef = this.dialog.open(ConfirmationDialogComponent, {
+    width: '400px',
+    data: {
+      title: 'Clear Issue',
+      message: `Are you sure you want to clear this issue?\n\n"${comment.text}"\n\nThis action cannot be undone.`,
+      confirmText: 'Clear Issue',
+      cancelText: 'Cancel'
+    }
+  });
+
+  dialogRef.afterClosed().subscribe(result => {
+    if (result) {
+      console.log(`🔄 Limpiando issue para foto ${comment.photoId}: "${comment.text}"`);
+
+      // Crear FormData para actualizar PhotoEvidence
+      const formData = new FormData();
+      formData.append('comment', ''); // 🎯 LIMPIAR COMMENT A CADENA VACÍA
+
+      this.photoEvidenceService.updatePhotoEvidence(comment.photoId, formData).subscribe({
+        next: (updatedPhoto) => {
+          console.log(`✅ Issue limpiado para foto ${comment.photoId}:`, updatedPhoto);
+          console.log(`🔍 Respuesta del backend después del update:`, updatedPhoto);
+          console.log(`🔍 comment en respuesta:`, updatedPhoto?.comment);
+          
+          // 🎯 RECARGAR LAS IMÁGENES DESDE EL BACKEND PARA GARANTIZAR SINCRONIZACIÓN
+          this.loadCurrentTicketImages();
+          
+          // Mostrar notificación
+          this.commentsUpdatedMessage = 'Issue cleared successfully!';
+          setTimeout(() => {
+            this.commentsUpdatedMessage = '';
+          }, 3000);
+        },
+        error: (err) => {
+          console.error(`❌ Error limpiando issue para foto ${comment.photoId}:`, err);
+        }
+      });
+    } else {
+      console.log(`❌ Usuario canceló la limpieza del issue: "${comment.text}"`);
+    }
+  });
+}
+
+// 🎯 NUEVO: MÉTODOS PARA OBSERVATIONS (COMMENTS)
+// 🎯 MÉTODO PARA ALTERNAR VISIBILIDAD DE UNA OBSERVACIÓN ESPECÍFICA
+toggleObservationVisibility(observationIndex: number): void {
+  if (this.hiddenObservations.has(observationIndex)) {
+    this.hiddenObservations.delete(observationIndex);
+  } else {
+    this.hiddenObservations.add(observationIndex);
+  }
+}
+
+// 🎯 MÉTODO PARA VERIFICAR SI UNA OBSERVACIÓN ESTÁ OCULTA
+isObservationHidden(observationIndex: number): boolean {
+  return this.hiddenObservations.has(observationIndex);
+}
+
+// 🎯 MÉTODO PARA OCULTAR/MOSTRAR TODAS LAS OBSERVACIONES
+toggleAllObservationsVisibility(): void {
+  this.showAllObservations = !this.showAllObservations;
+
+  if (this.showAllObservations) {
+    // Mostrar todas las observaciones
+    this.hiddenObservations.clear();
+  } else {
+    // Ocultar todas las observaciones
+    this.filteredObservations.forEach((_, index) => {
+      this.hiddenObservations.add(index);
+    });
+  }
+}
+
+// 🎯 MÉTODO PARA FILTRAR OBSERVACIONES
+onObservationFilterChange() {
+  const filter = this.observationFilterText.trim().toLowerCase();
+  if (!filter) {
+    this.filteredObservations = this.getObservationsFromTicketStatus();
+  } else {
+    this.filteredObservations = this.getObservationsFromTicketStatus().filter(observation =>
+      observation.text.toLowerCase().includes(filter) ||
+      observation.phaseName.toLowerCase().includes(filter) ||
+      observation.date.toLowerCase().includes(filter)
+    );
+  }
+}
+
+// 🎯 MÉTODO PARA OBTENER OBSERVACIONES DE TICKETSTATUS
+getObservationsFromTicketStatus(): any[] {
+  if (!this.activities || this.activities.length === 0) {
+    return [];
+  }
+
+  console.log('🔍 === DEBUGGING OBSERVATIONS ===');
+  this.activities.forEach(activity => {
+    console.log(`📝 ${activity.name}: observation="${activity.observation}" (tipo: ${typeof activity.observation})`);
+  });
+
+  const validObservations = this.activities
+    .filter(activity => {
+      // 🎯 FILTRAR SOLO ACTIVIDADES CON OBSERVACIÓN VÁLIDA
+      const hasValidObservation = activity.observation && 
+                                typeof activity.observation === 'string' && 
+                                activity.observation.trim() !== '' && 
+                                activity.observation !== 'null' &&
+                                activity.observation !== null &&
+                                activity.observation !== '';
+      
+      console.log(`🔍 ${activity.name}: hasValidObservation=${hasValidObservation}`);
+      return hasValidObservation;
+    })
+    .map(activity => ({
+      text: activity.observation,
+      phaseName: activity.name,
+      date: activity.startDate || new Date().toISOString(),
+      taskStatusId: activity.id,
+      hasObservation: true
+    }))
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()); // Ordenar por fecha más reciente
+
+  console.log(`✅ Observaciones válidas encontradas: ${validObservations.length}`);
+  console.log('🔍 === FIN DEBUGGING OBSERVATIONS ===');
+
+  return validObservations;
+}
+
+// 🎯 MÉTODO PARA GUARDAR OBSERVACIÓN
+saveObservation(activity: any): void {
+  if (!activity.observation || activity.observation.trim().length === 0) {
+    console.warn('⚠️ No hay observación para guardar');
+    return;
+  }
+
+  if (!this.ticketId) {
+    console.warn('⚠️ No hay ticketId para guardar observación');
+    return;
+  }
+
+  const crewIdToUse = this.crewId || this.currentCrewIdFromLoadEmployees;
+  if (!crewIdToUse || crewIdToUse === 0) {
+    console.error('❌ crewId inválido para guardar observación');
+    return;
+  }
+
+  console.log(`🔄 Guardando observación para fase ${activity.name}:`, activity.observation);
+
+  // Buscar el TicketStatus existente
+  this.ticketStatusService.getByTicket(this.ticketId).subscribe({
+    next: (ticketStatuses: any[]) => {
+      const existingStatus = ticketStatuses.find(ts =>
+        Number(ts.taskstatusid) === Number(activity.id)
+      );
+
+      if (existingStatus) {
+        // Actualizar observación existente
+        this.ticketStatusService.update(activity.id, this.ticketId, {
+          startingDate: existingStatus.startingdate,
+          endingDate: existingStatus.endingdate,
+          observation: activity.observation.trim(),
+          updatedBy: this.userId,
+          crewId: crewIdToUse
+        }).subscribe({
+          next: (updatedStatus) => {
+            console.log(`✅ Observación guardada para fase ${activity.name}:`, updatedStatus);
+            
+            // 🎯 NUEVO: Limpiar el input después de guardar
+            activity.observation = '';
+            
+            // 🎯 NUEVO: Actualizar comment7d del ticket a TK - ON HOLD OFF
+            this.updateTicketComment7d('TK - ON HOLD OFF');
+            
+            // 🎯 NUEVO: Recargar las actividades desde el backend para sincronizar
+            this.loadLinkedPhases();
+            
+            // Mostrar notificación
+            this.observationsUpdatedMessage = 'Comment saved successfully!';
+            setTimeout(() => {
+              this.observationsUpdatedMessage = '';
+            }, 3000);
+          },
+          error: (err) => {
+            console.error(`❌ Error guardando observación para fase ${activity.name}:`, err);
+          }
+        });
+      } else {
+        // Crear nuevo TicketStatus con observación
+        this.ticketStatusService.create({
+          ticketId: this.ticketId,
+          crewId: crewIdToUse,
+          taskStatusId: activity.id,
+          observation: activity.observation.trim(),
+          createdBy: this.userId,
+          updatedBy: this.userId
+        }).subscribe({
+          next: (newStatus) => {
+            console.log(`✅ TicketStatus creado con observación para fase ${activity.name}:`, newStatus);
+            
+            // 🎯 NUEVO: Limpiar el input después de guardar
+            activity.observation = '';
+            
+            // 🎯 NUEVO: Actualizar comment7d del ticket a TK - ON HOLD OFF
+            this.updateTicketComment7d('TK - ON HOLD OFF');
+            
+            // 🎯 NUEVO: Recargar las actividades desde el backend para sincronizar
+            this.loadLinkedPhases();
+            
+            // Mostrar notificación
+            this.observationsUpdatedMessage = 'Comment saved successfully!';
+            setTimeout(() => {
+              this.observationsUpdatedMessage = '';
+            }, 3000);
+          },
+          error: (err) => {
+            console.error(`❌ Error creando TicketStatus con observación para fase ${activity.name}:`, err);
+          }
+        });
+      }
+    },
+    error: (err) => {
+      console.error('❌ Error obteniendo TicketStatus para guardar observación:', err);
+    }
+  });
+}
+
+// 🎯 NUEVO: MÉTODO PARA LIMPIAR OBSERVACIÓN
+clearObservation(observation: any): void {
+  if (!this.ticketId) {
+    console.warn('⚠️ No hay ticketId para limpiar observación');
+    return;
+  }
+
+  const crewIdToUse = this.crewId || this.currentCrewIdFromLoadEmployees;
+  if (!crewIdToUse || crewIdToUse === 0) {
+    console.error('❌ crewId inválido para limpiar observación');
+    return;
+  }
+
+  // 🎯 NUEVO: Mostrar diálogo de confirmación
+  const dialogRef = this.dialog.open(ConfirmationDialogComponent, {
+    width: '400px',
+    data: {
+      title: 'Clear Comment',
+      message: `Are you sure you want to clear this comment?\n\n"${observation.text}"\n\nThis action cannot be undone.`,
+      confirmText: 'Clear Comment',
+      cancelText: 'Cancel'
+    }
+  });
+
+  dialogRef.afterClosed().subscribe(result => {
+    if (result) {
+      console.log(`🔄 Limpiando observación para fase ${observation.phaseName}`);
+
+      // Buscar el TicketStatus existente
+      this.ticketStatusService.getByTicket(this.ticketId).subscribe({
+        next: (ticketStatuses: any[]) => {
+          const existingStatus = ticketStatuses.find(ts =>
+            Number(ts.taskstatusid) === Number(observation.taskStatusId)
+          );
+
+          if (existingStatus) {
+            // Actualizar observación a null (o cadena vacía si el backend no procesa null)
+            this.ticketStatusService.update(observation.taskStatusId, this.ticketId, {
+              startingDate: existingStatus.startingdate,
+              endingDate: existingStatus.endingdate,
+              observation: '', // 🎯 LIMPIAR OBSERVACIÓN (usar cadena vacía en lugar de null)
+              updatedBy: this.userId,
+              crewId: crewIdToUse
+            }).subscribe({
+              next: (updatedStatus) => {
+                console.log(`✅ Observación limpiada para fase ${observation.phaseName}:`, updatedStatus);
+                console.log(`🔍 Respuesta del backend después del update:`, updatedStatus);
+                console.log(`🔍 observation en respuesta:`, updatedStatus?.observation);
+                
+                // 🎯 RECARGAR LAS ACTIVIDADES DESDE EL BACKEND PARA GARANTIZAR SINCRONIZACIÓN
+                this.loadLinkedPhases();
+                
+                // 🎯 NUEVO: Verificar si quedan comentarios y actualizar comment7d
+                setTimeout(() => {
+                  const remainingObservations = this.getObservationsFromTicketStatus();
+                  if (remainingObservations.length === 0) {
+                    // Si no hay comentarios, actualizar a ON PROGRESS
+                    this.updateTicketComment7d('TK - ON PROGRESS');
+                    console.log(`✅ No quedan comentarios - actualizando a TK - ON PROGRESS`);
+                  } else {
+                    console.log(`ℹ️ Quedan ${remainingObservations.length} comentarios - manteniendo TK - ON HOLD OFF`);
+                  }
+                }, 1000); // Delay para asegurar que loadLinkedPhases haya terminado
+                
+                // Mostrar notificación
+                this.observationsUpdatedMessage = 'Comment cleared successfully!';
+                setTimeout(() => {
+                  this.observationsUpdatedMessage = '';
+                }, 3000);
+              },
+              error: (err) => {
+                console.error(`❌ Error limpiando observación para fase ${observation.phaseName}:`, err);
+              }
+            });
+          } else {
+            console.warn(`⚠️ TicketStatus no encontrado para limpiar observación de fase ${observation.phaseName}`);
+          }
+        },
+        error: (err) => {
+          console.error('❌ Error obteniendo TicketStatus para limpiar observación:', err);
+        }
+      });
+    } else {
+      console.log(`❌ Usuario canceló la limpieza del comment: "${observation.text}"`);
+    }
+  });
 }
 
 onPermitFileSelected(event: Event) {
@@ -1664,14 +2117,24 @@ uploadPermitFile(permit: any) {
 }
 
 loadPermitFilesByTicket() {
-  this.photoEvidenceService.getPhotoEvidenceByTicketId(this.ticketId).subscribe({
-    next: (files) => {
-      this.permitFilesByTicket = files;
+  this.loadPermitFilesByTicketAsync().subscribe({
+    next: (result) => {
+      console.log('✅ Archivos del ticket cargados exitosamente');
     },
     error: (err) => {
       console.error('❌ Error cargando archivos del ticket:', err);
     }
   });
+}
+
+// 🎯 NUEVO: Método async para cargar archivos del ticket
+private loadPermitFilesByTicketAsync() {
+  return this.photoEvidenceService.getPhotoEvidenceByTicketId(this.ticketId).pipe(
+    map(files => {
+      this.permitFilesByTicket = files;
+      return { success: true };
+    })
+  );
 }
 
 deletePermitFile(file: any) {
@@ -1769,68 +2232,7 @@ getLastRequiredPhase(): string | null {
     return lastActivity ? this.isPhaseCompleted(lastActivity) : false;
   }
 
-// Método para hacer zoom suave a la ubicación actual
-zoomToCurrentLocation(): void {
-  console.log('🎯 Intentando hacer zoom a ubicación actual...');
-  console.log('📍 Location data:', this.location);
-  console.log('🗺️ LeafletMap available:', !!this.leafletMap);
 
-  if (!this.location) {
-    console.warn('⚠️ No hay datos de ubicación disponibles');
-    return;
-  }
-
-  if (!this.leafletMap) {
-    console.warn('⚠️ Mapa no disponible');
-    return;
-  }
-
-  // Verificar si tenemos coordenadas válidas
-  const hasValidCoordinates = this.location.lat && this.location.lng &&
-                             !isNaN(this.location.lat) && !isNaN(this.location.lng) &&
-                             this.location.lat !== 0 && this.location.lng !== 0;
-
-  if (!hasValidCoordinates) {
-    console.warn('⚠️ Coordenadas no válidas:', {
-      lat: this.location.lat,
-      lng: this.location.lng,
-      address: this.location.address
-    });
-
-    // 🎯 NUEVO: Intentar obtener coordenadas desde la dirección si no están disponibles
-    if (this.location.address) {
-      console.log('🔍 Intentando geocodificar dirección:', this.location.address);
-      this.geocodeAddress(this.location.address);
-    }
-    return;
-  }
-
-  console.log(`🎯 Haciendo zoom suave a ubicación actual: ${this.location.address}`);
-  console.log(`🎯 Coordenadas: [${this.location.lat}, ${this.location.lng}]`);
-
-  // Forzar actualización del mapa
-  this.updateLeafletRoutes();
-
-  // Centrar el mapa - verificar que las coordenadas estén disponibles
-  if (this.location.lat !== undefined && this.location.lng !== undefined) {
-    this.leafletMap.setCenter(this.location.lat, this.location.lng);
-  } else {
-    console.warn('⚠️ Coordenadas no disponibles para centrar el mapa');
-    return;
-  }
-
-  // Hacer zoom suave después de un pequeño delay
-  setTimeout(() => {
-    this.leafletMap.setZoom(17);
-    console.log(`✅ Zoom suave aplicado a ubicación actual`);
-
-    // Forzar refresh del mapa después del zoom
-    setTimeout(() => {
-      this.leafletMap.refreshMap();
-      console.log(`🔄 Mapa refrescado después del zoom`);
-    }, 500);
-  }, 200);
-}
 
 // 🎯 NUEVO: Método para geocodificar dirección si no hay coordenadas
 private geocodeAddress(address: string): void {
@@ -1850,10 +2252,8 @@ private geocodeAddress(address: string): void {
           address: address
         });
 
-        // Intentar hacer zoom nuevamente con las nuevas coordenadas
-        setTimeout(() => {
-          this.zoomToCurrentLocation();
-        }, 100);
+        // ✅ Coordenadas obtenidas exitosamente
+        console.log('✅ Coordenadas obtenidas por geocodificación');
       } else {
         console.warn('⚠️ No se pudieron obtener coordenadas para la dirección:', address);
       }
@@ -1940,10 +2340,8 @@ private geocodeAddress(address: string): void {
             this.leafletMap.refreshMap();
             console.log('🔄 Mapa refrescado después de cargar ruta completa');
 
-            // 🎯 NUEVO: Hacer zoom a la ubicación actual después de cargar la ruta
-            setTimeout(() => {
-              this.zoomToCurrentLocation();
-            }, 500);
+            // ✅ Mapa actualizado exitosamente
+            console.log('✅ Mapa actualizado después de cargar ruta completa');
           }
         }, 1000);
       } else {
@@ -2106,26 +2504,26 @@ clearDateFilters() {
   this.applyDateFilter();
 }
 
-// 🎯 NUEVO MÉTODO: Actualizar comentarios después de subir evidencia
-private updateCommentsAfterUpload(): void {
-  console.log('🔄 Actualizando comentarios después de subir evidencia...');
+  // 🎯 NUEVO MÉTODO: Actualizar issues después de subir evidencia
+  private updateCommentsAfterUpload(): void {
+    console.log('🔄 Actualizando issues después de subir evidencia...');
 
-  // Actualizar los comentarios filtrados
-  this.filteredComments = this.getCommentsFromImages();
+    // Actualizar los comentarios filtrados
+    this.filteredComments = this.getCommentsFromImages();
 
-  // Aplicar el filtro de búsqueda si existe
-  if (this.commentFilterText.trim()) {
-    this.onCommentFilterChange();
+    // Aplicar el filtro de búsqueda si existe
+    if (this.commentFilterText.trim()) {
+      this.onCommentFilterChange();
+    }
+
+    // 🎯 NUEVO: Mostrar mensaje de actualización temporal
+    this.commentsUpdatedMessage = 'Issues updated successfully!';
+    setTimeout(() => {
+      this.commentsUpdatedMessage = '';
+    }, 3000);
+
+    console.log(`✅ Issues actualizados: ${this.filteredComments.length} issues encontrados`);
   }
-
-  // 🎯 NUEVO: Mostrar mensaje de actualización temporal
-  this.commentsUpdatedMessage = 'Comments updated successfully!';
-  setTimeout(() => {
-    this.commentsUpdatedMessage = '';
-  }, 3000);
-
-  console.log(`✅ Comentarios actualizados: ${this.filteredComments.length} comentarios encontrados`);
-}
 
 // 🎯 NUEVO MÉTODO: Actualizar galería después de subir evidencia
 private updateGalleryAfterUpload(): void {

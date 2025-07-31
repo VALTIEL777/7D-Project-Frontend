@@ -28,10 +28,8 @@
         </div>
       </div>
       <div class="map-controls">
-        <button mat-stroked-button class="debug-btn" (click)="debugRouteAssignment()" title="Debug route assignment">
-          <mat-icon>bug_report</mat-icon>
-          Debug Route
-        </button>
+        <!-- 🎯 REMOVIDO: Botones de debug que no ayudan al usuario final -->
+        <!-- Los métodos de debug siguen disponibles en la consola del navegador -->
       </div>
     </div>
 
@@ -65,9 +63,13 @@
     </div> -->
   </div>
 
-  <!-- 🔄 Spinner de carga -->
+  <!-- 🔄 Spinner de carga optimizado -->
   <div *ngIf="isLoading" class="loader-container">
     <mat-spinner diameter="50"></mat-spinner>
+    <div class="loading-text">
+      <mat-icon>location_on</mat-icon>
+      <span>Cargando ubicaciones y rutas...</span>
+    </div>
   </div>
 
   <!-- ✅ Contenido visible solo cuando no hay carga -->
@@ -94,8 +96,8 @@
     <div *ngIf="groupedLocations.length === 0" class="no-locations">
       <p class="no-locations-text">
         <mat-icon color="warn">info</mat-icon>
-        <span *ngIf="filterText.trim()">No active locations found matching "{{ filterText }}"</span>
-        <span *ngIf="!filterText.trim()">No active locations (completed or in progress) to display.</span>
+        <span *ngIf="filterText.trim()">No locations found matching "{{ filterText }}"</span>
+        <span *ngIf="!filterText.trim()">No locations available to display.</span>
       </p>
     </div>
 
@@ -117,6 +119,13 @@
                 {{ getLocationStatus(group.locations[0]) }}
               </span>
             </div>
+            <!-- 🎯 TEMPORAL: Indicador de estado pendiente -->
+            <div class="location-status pending" *ngIf="!group.isMultiple && !group.locations[0].completed && !group.locations[0].started">
+              <mat-icon class="status-icon status-pending">schedule</mat-icon>
+              <span class="status-text status-pending">Pending</span>
+            </div>
+            
+            <!-- 🎯 REMOVIDO: Indicador de estado general del grupo (ahora cada minicard tiene su propio indicador) -->
             
             <p class="address"><strong>{{ group.address }}</strong></p>
 
@@ -132,6 +141,24 @@
                 <div class="location-item-content">
                   <p class="job-info" *ngIf="location.job">{{ location.job }}</p>
                   <p class="size-info"><strong>Size:</strong> {{ location.length || 'Not available'}} x {{ location.width || 'Not available' }} ft</p>
+                  
+                  <!-- 🎯 NUEVO: Indicador de estado individual debajo del size -->
+                  <div class="location-item-status" *ngIf="location.completed || location.started">
+                    <mat-icon 
+                      [class.status-completed]="location.completed"
+                      [class.status-started]="location.started && !location.completed"
+                      class="status-icon-small">
+                      {{ getLocationStatusIcon(location) }}
+                    </mat-icon>
+                    <span class="status-text-small">
+                      {{ getLocationStatus(location) }}
+                    </span>
+                  </div>
+                  <!-- 🎯 TEMPORAL: Indicador de estado pendiente debajo del size -->
+                  <div class="location-item-status pending" *ngIf="!location.completed && !location.started">
+                    <mat-icon class="status-icon-small status-pending">schedule</mat-icon>
+                    <span class="status-text-small status-pending">Pending</span>
+                  </div>
                 </div>
                 <div class="location-item-action">
                   <button mat-icon-button class="small-go-btn" (click)="goToCurrent(location)" title="Go to location">
