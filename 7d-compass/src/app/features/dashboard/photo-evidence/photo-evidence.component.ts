@@ -141,6 +141,16 @@ export class PhotoEvidenceComponent extends BaseDashboardComponent implements On
       cell: (ticket: any) => ticket.ticketCode || 'N/A'
     },
     {
+      name: 'address',
+      header: 'Address',
+      cell: (ticket: any) => {
+        if (ticket.addresses && ticket.addresses.length > 0) {
+          return ticket.addresses[0].fullAddress || 'N/A';
+        }
+        return 'N/A';
+      }
+    },
+    {
       name: 'contractUnit',
       header: 'Contract Unit',
       cell: (ticket: any) => ticket.contractUnit?.name || 'N/A'
@@ -160,14 +170,9 @@ export class PhotoEvidenceComponent extends BaseDashboardComponent implements On
       }
     },
     {
-      name: 'address',
-      header: 'Address',
-      cell: (ticket: any) => {
-        if (ticket.addresses && ticket.addresses.length > 0) {
-          return ticket.addresses[0].fullAddress || 'N/A';
-        }
-        return 'N/A';
-      }
+      name: 'comment7d',
+      header: '7D Comment',
+      cell: (ticket: any) => ticket.comment7d || 'N/A'
     },
     {
       name: 'comments',
@@ -205,7 +210,7 @@ export class PhotoEvidenceComponent extends BaseDashboardComponent implements On
 
   // Override text search to include relevant fields
   protected override matchesTextSearch(item: any, searchTerm: string): boolean {
-    const searchableFields = ['incidentName', 'ticketCode', 'incidentId'];
+    const searchableFields = ['incidentName', 'ticketCode', 'incidentId', 'comment7d'];
 
     // Check the main searchable fields
     const mainFieldMatch = searchableFields.some(field => {

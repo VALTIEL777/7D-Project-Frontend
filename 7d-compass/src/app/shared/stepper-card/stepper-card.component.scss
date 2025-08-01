@@ -431,6 +431,19 @@
   }
 }
 
+// Validation table specific styling
+.validation-results {
+  .mat-table {
+    .mat-cell {
+      &.mat-column-field {
+        font-weight: 600;
+        color: #007bff;
+        font-family: monospace;
+      }
+    }
+  }
+}
+
 .value-display {
   padding: 8px 12px;
   background: #f8f9fa;

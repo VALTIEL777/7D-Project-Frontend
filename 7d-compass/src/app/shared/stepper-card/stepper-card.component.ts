@@ -659,12 +659,26 @@ export class StepperCardComponent {
 
             if (response.validation.errors.length > 0) {
               response.validation.errors.forEach(error => {
-                this.validationResults.push({
-                  field: error.field || 'General',
-                  isValid: false,
-                  message: error.message || 'Validation error',
-                  severity: 'error'
-                });
+                // Handle the new error structure where each error has ticketCode and errors array
+                if (error.ticketCode && error.errors && Array.isArray(error.errors)) {
+                  // Create one validation result per error in the errors array
+                  error.errors.forEach((errorMessage: string) => {
+                    this.validationResults.push({
+                      field: error.ticketCode,
+                      isValid: false,
+                      message: errorMessage,
+                      severity: 'error'
+                    });
+                  });
+                } else {
+                  // Fallback for old error structure
+                  this.validationResults.push({
+                    field: error.field || 'General',
+                    isValid: false,
+                    message: error.message || 'Validation error',
+                    severity: 'error'
+                  });
+                }
               });
             }
 
