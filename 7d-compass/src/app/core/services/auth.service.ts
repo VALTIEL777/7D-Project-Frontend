@@ -55,15 +55,27 @@ handleLoginResponse(response: any): void {
     return null;
   }
 
-  logout(): void {
-    if (typeof window !== 'undefined' && window.localStorage) {
-    localStorage.removeItem('token');
-    }
-    // Puedes redirigir o limpiar más cosas si necesitas
-  }
-
   getUserRole(): string {
     // Esto depende de tu backend; si envías el rol en el payload, puedes guardarlo también
     return 'admin'; // ejemplo estático, ajusta si guardas datos reales
   }
+
+  // ✅ Verificar si Remember me está activado
+  isRememberMeActive(): boolean {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      return localStorage.getItem('rememberMe') === 'true';
+    }
+    return false;
+  }
+
+  // ✅ Limpiar Remember me al hacer logout
+  logout(): void {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('userId');
+      localStorage.removeItem('rememberMe'); // ✅ Limpiar Remember me también
+    }
+    // Puedes redirigir o limpiar más cosas si necesitas
+  }
 }
+

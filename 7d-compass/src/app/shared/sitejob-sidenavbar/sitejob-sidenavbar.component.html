@@ -19,7 +19,7 @@
 
 
     <div class="sidebar-footer">
-      <button mat-button color="warn" class="logout-button" routerLink="/logout">
+      <button mat-button color="warn" class="logout-button" (click)="onLogout()">
         <mat-icon>logout</mat-icon>
         <span class="logout-text">Log out</span>
       </button>
