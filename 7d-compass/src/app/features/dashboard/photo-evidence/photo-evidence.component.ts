@@ -103,6 +103,7 @@ interface ColumnDefinition {
   isActionColumn?: boolean;
   sortable?: boolean;
   sortValue?: (element: any) => any;
+  isCustomTemplate?: boolean; // Added for custom template
 }
 
 @Component({
@@ -172,7 +173,8 @@ export class PhotoEvidenceComponent extends BaseDashboardComponent implements On
     {
       name: 'comment7d',
       header: '7D Comment',
-      cell: (ticket: any) => ticket.comment7d || 'N/A'
+      cell: (ticket: any) => ticket.comment7d || 'N/A',
+      isCustomTemplate: true
     },
     {
       name: 'comments',
@@ -795,5 +797,34 @@ export class PhotoEvidenceComponent extends BaseDashboardComponent implements On
     console.log('📄 Page changed to:', page);
     // If you need server-side pagination, you would modify the API call here
     // For now, we'll just update the current page
+  }
+
+  onCommentChange(event: {element: any, newComment: string}): void {
+    const { element, newComment } = event;
+
+    console.log('🔄 Updating comment for ticket:', element.ticketId, 'New comment:', newComment);
+
+    const payload = {
+      comment7d: newComment,
+      updatedBy: 1 // TODO: Get from auth service
+    };
+
+    this.http.put(`${environment.apiUrl}/tickets/${element.ticketId}/comment`, payload).subscribe({
+      next: (response) => {
+        console.log('✅ Comment updated successfully:', response);
+        this.snackBar.open('Comment updated successfully', 'Close', { duration: 3000 });
+
+        // Update the element in the data
+        element.comment7d = newComment;
+        element.commentChanged = false;
+      },
+      error: (error) => {
+        console.error('❌ Error updating comment:', error);
+        this.snackBar.open('Error updating comment', 'Close', { duration: 3000 });
+
+        // Revert the change on error
+        element.commentChanged = true;
+      }
+    });
   }
 }

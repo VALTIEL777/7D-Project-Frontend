@@ -20,6 +20,65 @@
   gap: 8px;
 }
 
+// Comment dropdown styles
+.comment-dropdown-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-width: 200px;
+
+  .comment-dropdown {
+    flex: 1;
+    min-width: 150px;
+
+    ::ng-deep .mat-mdc-form-field {
+      width: 100%;
+
+      .mat-mdc-form-field-infix {
+        padding: 8px 0;
+        min-height: 40px;
+      }
+
+      .mat-mdc-select {
+        font-size: 14px;
+      }
+    }
+  }
+
+  .save-comment-btn {
+    color: #4caf50;
+    background-color: rgba(76, 175, 80, 0.1);
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    min-height: 36px;
+
+    &:hover {
+      background-color: rgba(76, 175, 80, 0.2);
+      transform: scale(1.1);
+    }
+
+    &:disabled {
+      color: #ccc;
+      background-color: rgba(76, 175, 80, 0.05);
+      cursor: not-allowed;
+
+      &:hover {
+        background-color: rgba(76, 175, 80, 0.05);
+        transform: none;
+      }
+    }
+
+    mat-icon {
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+    }
+  }
+}
+
 .mat-icon-button {
   display: inline-flex !important;
   align-items: center !important;

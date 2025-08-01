@@ -16,10 +16,44 @@
         [class.actions-cell]="column.isActionColumn"
       >
         <ng-container *ngIf="!column.isActionColumn; else actions">
- <span *ngIf="!column.isHtml">
-    {{ column.cell(element) }}
-  </span>
-  <span *ngIf="column.isHtml" [innerHTML]="column.cell(element)"></span>        </ng-container>
+          <span *ngIf="!column.isHtml && !column.isCustomTemplate">
+            {{ column.cell(element) }}
+          </span>
+          <span *ngIf="column.isHtml" [innerHTML]="column.cell(element)"></span>
+          <ng-container *ngIf="column.isCustomTemplate">
+            <ng-container [ngSwitch]="column.name">
+              <!-- Custom template for comment7d dropdown -->
+              <ng-container *ngSwitchCase="'comment7d'">
+                <div class="comment-dropdown-container">
+                  <mat-form-field appearance="outline" class="comment-dropdown">
+                    <mat-select
+                      [value]="element.comment7d || ''"
+                      (selectionChange)="onCommentChange($event, element)"
+                      placeholder="Select status">
+                      <mat-option value="TK - LAYOUT">TK - LAYOUT</mat-option>
+                      <mat-option value="TK - ON HOLD OFF">TK - ON HOLD OFF</mat-option>
+                      <mat-option value="TK - CANCELLED">TK - CANCELLED</mat-option>
+                      <mat-option value="TK - ON PROGRESS">TK - ON PROGRESS</mat-option>
+                      <mat-option value="TK - COMPLETED">TK - COMPLETED</mat-option>
+                    </mat-select>
+                  </mat-form-field>
+                  <button
+                    mat-icon-button
+                    class="save-comment-btn"
+                    matTooltip="Save changes"
+                    (click)="saveComment(element)"
+                    [disabled]="!element.commentChanged">
+                    <mat-icon>save</mat-icon>
+                  </button>
+                </div>
+              </ng-container>
+              <!-- Default case for other custom templates -->
+              <ng-container *ngSwitchDefault>
+                {{ column.cell(element) }}
+              </ng-container>
+            </ng-container>
+          </ng-container>
+        </ng-container>
         <ng-template #actions>
           <div class="actions-container">
             <button

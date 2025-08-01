@@ -6,6 +6,9 @@ import { MatIconModule } from '@angular/material/icon';
 import { CommonModule } from '@angular/common';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
+import { MatButtonModule } from '@angular/material/button';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { SafeHtml } from '@angular/platform-browser';
 
 export interface ColumnDefinition {
@@ -13,8 +16,8 @@ export interface ColumnDefinition {
   header: string;
   cell: (element: any) => string | SafeHtml; // ✅ Permitimos ambos tipos
   isActionColumn?: boolean;
-    isHtml?: boolean;
-
+  isHtml?: boolean;
+  isCustomTemplate?: boolean; // New property for custom templates
 }
 
 @Component({
@@ -29,7 +32,10 @@ export interface ColumnDefinition {
     CommonModule,
     MatTableModule,
     MatFormFieldModule,
-    MatInputModule
+    MatInputModule,
+    MatSelectModule,
+    MatButtonModule,
+    MatTooltipModule
   ],
 })
 export class DataTableComponent<T> implements AfterViewInit {
@@ -50,6 +56,7 @@ export class DataTableComponent<T> implements AfterViewInit {
   @Output() view = new EventEmitter<T>();
   @Output() uploadPdf = new EventEmitter<T>();
   @Output() deleteFile = new EventEmitter<T>();
+  @Output() commentChange = new EventEmitter<{element: T, newComment: string}>();
 
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
@@ -83,5 +90,16 @@ export class DataTableComponent<T> implements AfterViewInit {
   ngOnChanges() {
     this.dataSource.data = this.data;
     this.displayedColumns = this.columns.map(c => c.name);
+  }
+
+  onCommentChange(event: any, element: any): void {
+    const newComment = event.value;
+    element.comment7d = newComment;
+    element.commentChanged = true;
+  }
+
+  saveComment(element: any): void {
+    this.commentChange.emit({element, newComment: element.comment7d});
+    element.commentChanged = false;
   }
 }

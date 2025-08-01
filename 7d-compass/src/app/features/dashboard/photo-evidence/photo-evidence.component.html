@@ -22,7 +22,8 @@
           [showViewButton]="true"
           [pageSizeOptions]="[15]"
           [shouldShowViewButton]="shouldShowViewButton"
-          (view)="onTicketSelect($event)">
+          (view)="onTicketSelect($event)"
+          (commentChange)="onCommentChange($event)">
         </app-data-table>
       </app-card-with-button>
     </div>
