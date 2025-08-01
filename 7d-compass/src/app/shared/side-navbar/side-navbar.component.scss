@@ -5,6 +5,12 @@
   width: 100%;
 }
 
+// ✅ Asegurar que el sidenav tenga altura completa
+::ng-deep .mat-sidenav {
+  height: 100vh !important;
+  overflow-y: auto;
+}
+
 .app-sidenav {
   width: 250px;  // Fixed width for sidebar
 
@@ -126,4 +132,41 @@ a.mat-button {
 a.mat-button.active-link {
   background-color: #1976d2;
   color: white;
+}
+
+// Logout section styles - Simplified
+.logout-section {
+  background-color: $white;
+  border-top: 1px solid #eee;
+  padding: 16px;
+  margin-top: 20px;
+
+  .logout-button {
+    width: 100%;
+    justify-content: flex-start;
+    padding: 12px 16px;
+    border-radius: 4px;
+    transition: background-color 0.3s ease;
+
+    &:hover {
+      background-color: rgba(244, 67, 54, 0.1);
+    }
+
+    mat-icon {
+      margin-right: 8px;
+      color: #f44336;
+    }
+
+    span {
+      color: #f44336;
+      font-weight: 500;
+    }
+  }
+}
+
+// ✅ Estilos básicos para el mat-accordion
+.app-sidenav {
+  .mat-accordion {
+    // Estilos básicos
+  }
 }

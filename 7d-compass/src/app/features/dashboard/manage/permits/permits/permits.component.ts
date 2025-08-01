@@ -250,10 +250,9 @@ export class PermitsComponent extends BaseDashboardComponent implements OnInit {
           this.isLoading = false;
           this.snackBar.open(`${this.tableData.length} permits loaded successfully`, 'Close', { duration: 2000 });
           
-          // Cargar archivos de manera diferida para no bloquear la UI
-          setTimeout(() => {
-            this.loadAllPermitFiles();
-          }, 100);
+          // ✅ Cargar archivos inmediatamente después de cargar los permisos
+          console.log('📄 Iniciando carga de archivos para todos los permisos...');
+          this.loadAllPermitFiles();
         },
         error: (err) => {
           console.error('❌ Error loading associated data:', err);
@@ -262,6 +261,9 @@ export class PermitsComponent extends BaseDashboardComponent implements OnInit {
           this.allData = [...this.tableData];
           this.filteredData = [...this.tableData];
           this.snackBar.open('Error loading associations, showing only permits', 'Close', { duration: 3000 });
+          
+          // ✅ Intentar cargar archivos incluso si fallan las asociaciones
+          this.loadAllPermitFiles();
         }
       });
     });
@@ -683,6 +685,17 @@ export class PermitsComponent extends BaseDashboardComponent implements OnInit {
             this.selectedPermitFile = null;
             this.uploadProgress.isUploading = false;
             
+                    // Recargar archivos de TODOS los permisos afectados
+        permits.forEach(p => {
+          this.loadPermitFiles(p.PermitId);
+          // Forzar actualización de la UI después de un breve delay
+          setTimeout(() => {
+            console.log(`🔄 Forzando actualización de UI para permiso ${p.PermitId}`);
+            // Trigger change detection
+            this.loadData();
+          }, 200);
+        });
+
             if (failedUploads === 0) {
               this.snackBar.open(`✅ PDF file uploaded successfully to ${completedUploads} permits`, 'Close', { duration: 4000 });
             } else {
@@ -761,22 +774,29 @@ export class PermitsComponent extends BaseDashboardComponent implements OnInit {
 
 
   loadPermitFiles(permitId: number): void {
+    console.log(`📄 Cargando archivos para permiso ${permitId}...`);
+    
     // Buscar el permiso para obtener sus tickets asociados
     const permit = this.tableData.find(p => p.PermitId === permitId);
     if (!permit) {
+      console.warn(`⚠️ Permiso ${permitId} no encontrado en tableData`);
       return;
     }
 
     // Obtener los ticketIds asociados al permiso
     const ticketIds = permit.tickets?.map((t: any) => t.ticketId || t.ticketid).filter((id: any) => id) || [];
+    console.log(`📄 TicketIds asociados al permiso ${permitId}:`, ticketIds);
 
     if (ticketIds.length === 0) {
+      console.log(`📄 No hay tickets asociados al permiso ${permitId}`);
       this.permitFiles[permitId] = [];
       return;
     }
 
     this.photoEvidenceService.getAllPhotoEvidence().subscribe({
       next: (files) => {
+        console.log(`📄 Archivos totales recibidos: ${files.length}`);
+        
         // Filtrar archivos que pertenezcan a los tickets del permiso y NO estén eliminados
         const permitFiles = files.filter((file: any) => {
           // Excluir archivos eliminados
@@ -784,11 +804,24 @@ export class PermitsComponent extends BaseDashboardComponent implements OnInit {
             return false;
           }
           
-          return ticketIds.includes(file.ticketId) || 
-                 file.comment?.includes(`permiso: ${permit.permitNumber}`);
+          const matchesTicketId = ticketIds.includes(file.ticketId);
+          const matchesComment = file.comment?.includes(`permiso: ${permit.permitNumber}`) ||
+                               file.comment?.includes(`permit: ${permit.permitNumber}`);
+          
+          if (matchesTicketId || matchesComment) {
+            console.log(`📄 Archivo encontrado para permiso ${permitId}:`, file.name);
+          }
+          
+          return matchesTicketId || matchesComment;
         });
         
+        console.log(`📄 Archivos encontrados para permiso ${permitId}: ${permitFiles.length}`);
         this.permitFiles[permitId] = permitFiles;
+        
+        // Forzar detección de cambios para actualizar la UI
+        setTimeout(() => {
+          console.log(`📄 Estado final para permiso ${permitId}: ${this.permitFiles[permitId].length} archivos`);
+        }, 100);
       },
       error: (error) => {
         console.error('❌ Error cargando archivos del permiso:', error);
@@ -940,7 +973,9 @@ export class PermitsComponent extends BaseDashboardComponent implements OnInit {
 
   hasPermitFiles = (permit: any): boolean => {
     const permitId = permit.PermitId;
-    return this.getPermitFilesCount(permitId) > 0;
+    const count = this.getPermitFilesCount(permitId);
+    console.log(`🔍 hasPermitFiles para permiso ${permitId}: ${count} archivos`);
+    return count > 0;
   }
 
   onDeletePermitFile(permit: any): void {
@@ -998,13 +1033,20 @@ export class PermitsComponent extends BaseDashboardComponent implements OnInit {
   }
 
   loadAllPermitFiles(): void {
+    console.log('📄 loadAllPermitFiles iniciado...');
+    
     // Solo cargar archivos si hay permisos
     if (this.tableData.length === 0) {
+      console.log('📄 No hay permisos para cargar archivos');
       return;
     }
     
+    console.log(`📄 Cargando archivos para ${this.tableData.length} permisos...`);
+    
     this.photoEvidenceService.getAllPhotoEvidence().subscribe({
       next: (files) => {
+        console.log(`📄 Archivos totales recibidos: ${files.length}`);
+        
         // Crear un mapa de archivos por ticketId para acceso rápido
         const filesByTicketId = new Map();
         files.forEach(file => {
@@ -1017,9 +1059,12 @@ export class PermitsComponent extends BaseDashboardComponent implements OnInit {
           }
         });
         
+        console.log(`📄 Archivos válidos por ticketId: ${filesByTicketId.size} tickets con archivos`);
+        
         // Procesar permisos en lotes para no bloquear la UI
         const batchSize = 10;
         let currentIndex = 0;
+        let totalFilesFound = 0;
         
         const processBatch = () => {
           const endIndex = Math.min(currentIndex + batchSize, this.tableData.length);
@@ -1040,12 +1085,20 @@ export class PermitsComponent extends BaseDashboardComponent implements OnInit {
             
             // Agregar archivos que mencionen el permiso en el comentario
             files.forEach(file => {
-              if (!file.deletedat && file.comment?.includes(`permiso: ${permit.permitNumber}`)) {
+              if (!file.deletedat && (
+                file.comment?.includes(`permiso: ${permit.permitNumber}`) ||
+                file.comment?.includes(`permit: ${permit.permitNumber}`)
+              )) {
                 permitFiles.push(file);
               }
             });
             
             this.permitFiles[permitId] = permitFiles;
+            totalFilesFound += permitFiles.length;
+            
+            if (permitFiles.length > 0) {
+              console.log(`📄 Permiso ${permitId} (${permit.permitNumber}): ${permitFiles.length} archivos`);
+            }
           }
           
           currentIndex = endIndex;
@@ -1053,6 +1106,15 @@ export class PermitsComponent extends BaseDashboardComponent implements OnInit {
           // Continuar con el siguiente lote si hay más permisos
           if (currentIndex < this.tableData.length) {
             setTimeout(processBatch, 10); // Pequeña pausa para no bloquear la UI
+          } else {
+            // Procesamiento completado
+            console.log(`📄 Carga completada: ${totalFilesFound} archivos encontrados en total`);
+            
+            // Forzar actualización de la UI
+            setTimeout(() => {
+              console.log('🔄 Forzando actualización de UI después de cargar archivos...');
+              this.loadData();
+            }, 100);
           }
         };
         
@@ -1070,6 +1132,26 @@ export class PermitsComponent extends BaseDashboardComponent implements OnInit {
     // TODO: Implement this when auth service is available
     // return this.authService.getCurrentUser()?.id || 1;
     return 1; // Default for now
+  }
+
+  // ✅ Método para debuggear el estado de archivos de un permiso
+  debugPermitFiles(permitId: number): void {
+    console.log(`🔍 Debug archivos para permiso ${permitId}:`);
+    console.log(`  - Archivos en memoria:`, this.permitFiles[permitId]);
+    console.log(`  - Cantidad: ${this.getPermitFilesCount(permitId)}`);
+    console.log(`  - hasPermitFiles: ${this.hasPermitFiles({ PermitId: permitId })}`);
+  }
+
+  // ✅ Método para debuggear todos los permisos
+  debugAllPermitFiles(): void {
+    console.log('🔍 Debug estado de archivos para todos los permisos:');
+    this.tableData.forEach(permit => {
+      const permitId = permit.PermitId;
+      console.log(`  Permiso ${permitId} (${permit.permitNumber}):`);
+      console.log(`    - hasPermitFiles: ${this.hasPermitFiles(permit)}`);
+      console.log(`    - Cantidad archivos: ${this.getPermitFilesCount(permitId)}`);
+      console.log(`    - Archivos:`, this.permitFiles[permitId]);
+    });
   }
 
   // Método para obtener permisos con el mismo permitNumber
