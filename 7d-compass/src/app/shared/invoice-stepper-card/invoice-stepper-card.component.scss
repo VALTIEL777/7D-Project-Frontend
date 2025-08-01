@@ -445,6 +445,64 @@
   font-weight: 500;
 }
 
+// Pagination info styling
+.pagination-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background-color: #e3f2fd;
+  border: 1px solid #2196f3;
+  border-radius: 6px;
+  color: #1976d2;
+  font-size: 14px;
+  margin-bottom: 16px;
+
+  mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+  }
+}
+
+// Paginator styling
+::ng-deep .mat-paginator {
+  background: #f8f9fa;
+  border-top: 1px solid #e9ecef;
+  border-radius: 0 0 8px 8px;
+
+  .mat-paginator-page-size {
+    .mat-paginator-page-size-label {
+      color: #495057;
+      font-weight: 500;
+    }
+
+    .mat-paginator-page-size-select {
+      .mat-form-field-wrapper {
+        padding-bottom: 0;
+      }
+    }
+  }
+
+  .mat-paginator-range-actions {
+    .mat-paginator-range-label {
+      color: #495057;
+      font-weight: 500;
+    }
+
+    .mat-paginator-navigation-previous,
+    .mat-paginator-navigation-next,
+    .mat-paginator-navigation-first,
+    .mat-paginator-navigation-last {
+      color: #007bff;
+
+      &:disabled {
+        color: #6c757d;
+      }
+    }
+  }
+}
+
 // Responsive design
 @media (max-width: 768px) {
   .invoice-stepper-card {

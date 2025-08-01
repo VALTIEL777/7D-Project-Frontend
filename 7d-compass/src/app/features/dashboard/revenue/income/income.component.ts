@@ -176,14 +176,14 @@ export class IncomeComponent implements OnInit, OnDestroy {
       cell: (invoice: any) => invoice.ticketCode,
     },
     {
-      name: 'amountRequested',
-      header: 'Amount Requested',
-      cell: (invoice: any) => `$${invoice.amountRequested}`,
+      name: 'shop',
+      header: 'Shop',
+      cell: (invoice: any) => invoice.shop || '-',
     },
     {
-      name: 'calculatedCost',
-      header: 'Calculated Cost',
-      cell: (invoice: any) => `$${invoice.calculatedCost}`,
+      name: 'amountRequested',
+      header: 'Invoice Amount',
+      cell: (invoice: any) => `$${invoice.amountRequested}`,
     },
     {
       name: 'amountToPay',
@@ -192,20 +192,8 @@ export class IncomeComponent implements OnInit, OnDestroy {
     },
     {
       name: 'amountPaid',
-      header: 'Amount Paid',
+      header: 'Payment Amount',
       cell: (invoice: any) => invoice.amountPaid !== null && invoice.amountPaid !== undefined ? `$${invoice.amountPaid}` : '-',
-    },
-    {
-      name: 'income',
-      header: 'Income',
-      cell: (invoice: any) => {
-        const diff = Number(invoice.amountPaid ?? 0) - Number(invoice.calculatedCost ?? 0);
-        const sign = diff > 0 ? '+' : diff < 0 ? '-' : '';
-        const color = diff > 0 ? 'green' : diff < 0 ? 'red' : 'gray';
-        const html = `<span style="color:${color}; font-weight: bold;">${sign}$${Math.abs(diff)}</span>`;
-        return this.sanitize(html);
-      },
-      isHtml: true,
     },
     {
       name: 'statusPaid',

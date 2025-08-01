@@ -14,6 +14,7 @@ import { MatTableModule } from '@angular/material/table';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { DragDropUploadComponent } from '../drag-drop-upload/drag-drop-upload.component';
 import { HttpClient } from '@angular/common/http';
@@ -22,26 +23,40 @@ import { environment } from '../../../environments/environment';
 
 // API Response Interfaces
 export interface InvoiceAnalyzeResponse {
+  excelType: string;
+  headerRow: number;
   headers: string[];
-  preview: any[][];
+  preview: Array<{
+    contractNumber: string;
+    invoiceNumber: string;
+    ticketCode: string;
+    paylineItemCode: string;
+    [key: string]: any;
+  }>;
   missing: any[];
   indexes: {
     contractNumber: number;
     invoiceNumber: number;
-    status: number;
-    invoiceDateRequested: number;
     ticketCode: number;
-    paylineItemCode: number;
-    actualQuantity: number;
-    itemUnitPrice: number;
+    [key: string]: number;
   };
   inconsistencies: Array<{
     row: number;
     paylineCode: string;
   }>;
+  consistentItems: any[];
+  totalDataRows: number;
+  consistentCount: number;
+  inconsistentCount: number;
+  summary: {
+    total: number;
+    consistent: number;
+    inconsistent: number;
+  };
 }
 
 export interface InvoiceUploadResponse {
+  excelType: string;
   fileUrl: string;
   results: Array<{
     success: boolean;
@@ -59,16 +74,11 @@ export interface InvoiceUploadResponse {
   totalDataRows: number;
   processedRows: number;
   skippedRows: number;
-  missingTickets: string[];
-  missingTicketsCount: number;
-  missingUnits: string[];
-  missingUnitsCount: number;
   summary: {
     total: number;
     successful: number;
     failed: number;
-    missingTickets: number;
-    missingUnits: number;
+    successRate: number;
   };
 }
 
@@ -97,6 +107,7 @@ export interface InvoiceStepperData {
     MatButtonToggleModule,
     MatDialogModule,
     MatTooltipModule,
+    MatPaginatorModule,
     FormsModule,
     ReactiveFormsModule,
     DragDropUploadComponent
@@ -127,6 +138,12 @@ export class InvoiceStepperCardComponent {
   // Display columns for tables
   previewColumns: string[] = [];
   resultsColumns: string[] = ['row', 'ticketCode', 'invoiceNumber', 'paylineConsistent', 'error'];
+
+  // Pagination properties
+  pageSize = 8;
+  pageSizeOptions = [8, 16, 32];
+  currentPage = 0;
+  totalItems = 0;
 
   constructor(
     private dialog: MatDialog,
@@ -188,15 +205,15 @@ export class InvoiceStepperCardComponent {
     const formData = new FormData();
     formData.append('file', this.uploadedFile);
 
-    this.http.post<InvoiceAnalyzeResponse>(`${environment.apiUrl}/invoices/excel/analyze`, formData)
+    this.http.post<InvoiceAnalyzeResponse>(`${environment.apiUrl}/unified/excel/analyze`, formData)
       .subscribe({
         next: (response) => {
           console.log('Analysis response:', response);
           this.analyzedData = response;
 
-          // Set up preview columns (filter out empty, null, undefined, and duplicates)
+          // Set up preview columns from headers
           if (response.headers && response.headers.length > 0) {
-            this.previewColumns = [...new Set(response.headers.filter(h => !!h && typeof h === 'string' && h.trim() !== ''))];
+            this.previewColumns = response.headers.filter(h => !!h && typeof h === 'string' && h.trim() !== '');
           } else {
             this.previewColumns = [];
           }
@@ -228,11 +245,14 @@ export class InvoiceStepperCardComponent {
     const formData = new FormData();
     formData.append('file', this.uploadedFile);
 
-    this.http.post<InvoiceUploadResponse>(`${environment.apiUrl}/invoices/excel/upload`, formData)
+    this.http.post<InvoiceUploadResponse>(`${environment.apiUrl}/unified/excel/upload`, formData)
       .subscribe({
         next: (response) => {
           console.log('Upload response:', response);
           this.uploadResults = response;
+
+          // Reset pagination when new results are loaded
+          this.resetPagination();
 
           this.snackBar.open('Excel upload completed successfully!', 'Close', { duration: 3000 });
           this.stepCompleted.emit({ step: 3, data: { uploadResults: this.uploadResults } });
@@ -244,6 +264,12 @@ export class InvoiceStepperCardComponent {
           this.isStep3Loading = false;
         }
       });
+  }
+
+  // Reset pagination to first page
+  private resetPagination(): void {
+    this.currentPage = 0;
+    this.totalItems = 0;
   }
 
   // Complete process and reset stepper
@@ -325,31 +351,102 @@ export class InvoiceStepperCardComponent {
 
   // Get preview data for table
   getPreviewDataSource(): any[] {
-    if (!this.analyzedData?.preview || !this.analyzedData?.headers) return [];
+    if (!this.analyzedData?.preview) return [];
 
     return this.analyzedData.preview.map((row, index) => {
-      const rowData: any = { index };
-      this.analyzedData!.headers.forEach((header, colIndex) => {
-        rowData[header] = row[colIndex] || '';
-      });
-      return rowData;
+      return {
+        index,
+        ...row
+      };
     });
   }
 
-  // Get results data for table
+  // Get results data for table with pagination
   getResultsDataSource(): any[] {
     if (!this.uploadResults?.results) return [];
-    return this.uploadResults.results.filter(result => this.isFailedResult(result));
+
+    const allResults = this.uploadResults.results.filter(result => this.isFailedResult(result));
+    this.totalItems = allResults.length;
+
+    const startIndex = this.currentPage * this.pageSize;
+    const endIndex = startIndex + this.pageSize;
+
+    return allResults.slice(startIndex, endIndex);
+  }
+
+  // Get paginated results for display (only missing tickets - tickets not found)
+  getPaginatedResults(): any[] {
+    if (!this.uploadResults?.results) return [];
+
+    // Filter only missing tickets (tickets not found in database)
+    const missingTickets = this.uploadResults.results.filter(result =>
+      result.success === false ||
+      result.error?.toLowerCase().includes('not found') ||
+      result.message?.toLowerCase().includes('not found') ||
+      result.data?.error?.toLowerCase().includes('not found')
+    );
+
+    const startIndex = this.currentPage * this.pageSize;
+    const endIndex = startIndex + this.pageSize;
+    const paginatedData = missingTickets.slice(startIndex, endIndex);
+
+    console.log('Upload Results pagination (missing tickets only):', {
+      total: this.uploadResults.results.length,
+      missing: missingTickets.length,
+      page: this.currentPage,
+      pageSize: this.pageSize,
+      startIndex,
+      endIndex,
+      paginatedCount: paginatedData.length
+    });
+
+    // Log missing ticket details for debugging
+    if (missingTickets.length > 0) {
+      console.log('Missing tickets:', missingTickets.map(result => ({
+        row: result.row,
+        ticketCode: result.ticketCode,
+        success: result.success,
+        error: result.error,
+        message: result.message,
+        dataError: result.data?.error
+      })));
+    }
+
+    return paginatedData;
+  }
+
+  // Get total results count (only missing tickets - tickets not found)
+  getTotalResults(): number {
+    if (!this.uploadResults?.results) return 0;
+    return this.uploadResults.results.filter(result =>
+      result.success === false ||
+      result.error?.toLowerCase().includes('not found') ||
+      result.message?.toLowerCase().includes('not found') ||
+      result.data?.error?.toLowerCase().includes('not found')
+    ).length;
+  }
+
+  // Handle page change
+  onPageChange(event: PageEvent): void {
+    console.log('Upload Results page change:', event);
+    this.currentPage = event.pageIndex;
+    this.pageSize = event.pageSize;
+  }
+
+  // Get total failed results count
+  getTotalFailedResults(): number {
+    if (!this.uploadResults?.results) return 0;
+    return this.uploadResults.results.filter(result => this.isFailedResult(result)).length;
   }
 
   // Helper: is row failed
   isFailedResult(result: any): boolean {
-    return result.success === false || !!result.error;
+    return result.success === false || !!result.error || !!result.message || !!result.data?.error;
   }
 
   // Get inconsistency count
   getInconsistencyCount(): number {
-    return this.analyzedData?.inconsistencies?.length || 0;
+    return this.analyzedData?.inconsistentCount || 0;
   }
 
   // Get missing fields count
@@ -367,6 +464,13 @@ export class InvoiceStepperCardComponent {
   getInconsistentResultsCount(): number {
     if (!this.uploadResults?.results) return 0;
     return this.uploadResults.results.filter(result => !result.paylineConsistent).length;
+  }
+
+  // Get success rate percentage
+  getSuccessRate(): number {
+    if (!this.analyzedData?.totalDataRows || this.analyzedData.totalDataRows === 0) return 0;
+    const successRate = (this.analyzedData.consistentCount / this.analyzedData.totalDataRows) * 100;
+    return Math.round(successRate);
   }
 
   // TrackBy function for headers

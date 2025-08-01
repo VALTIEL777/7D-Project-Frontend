@@ -3,6 +3,7 @@ import { DashboardLayoutComponent } from "../../../../shared/dashboard-layout/da
 import { CardWithButtonComponent } from '../../../../shared/card-with-button/card-with-button.component';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatTableModule } from '@angular/material/table';
+import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { CommonModule } from '@angular/common';
 import { MATERIAL_MODULES } from '../../../../material';
 import { DragDropUploadComponent } from '../../../../shared/drag-drop-upload/drag-drop-upload.component';
@@ -35,7 +36,7 @@ interface RTRFilesResponse {
   selector: 'app-rtr-processing',
   imports: [DashboardLayoutComponent,
     DragDropUploadComponent,
-     CardWithButtonComponent, MatTableModule, MatDividerModule, CommonModule, MATERIAL_MODULES, StepperCardComponent],
+     CardWithButtonComponent, MatTableModule, MatDividerModule, MatPaginatorModule, CommonModule, MATERIAL_MODULES, StepperCardComponent],
   templateUrl: './rtr-processing.component.html',
   styleUrl: './rtr-processing.component.scss'
 })
@@ -87,6 +88,16 @@ export class RtrProcessingComponent extends BaseDashboardComponent implements On
   summaryDataSource: any[] = [];
   summaryColumns: string[] = ['metric', 'value', 'percentage'];
 
+  // Pagination properties for Received RTR History
+  receivedPageSize = 4;
+  receivedCurrentPage = 0;
+  receivedTotalItems = 0;
+
+  // Pagination properties for 7D-RTR
+  sentPageSize = 4;
+  sentCurrentPage = 0;
+  sentTotalItems = 0;
+
   constructor(
     private rtrService: RTRService,
     private snackBar: MatSnackBar,
@@ -122,6 +133,9 @@ export class RtrProcessingComponent extends BaseDashboardComponent implements On
           // Update the base component's data arrays with received files for filtering
           this.allData = [...this.receivedRTRs];
           this.filteredData = [...this.allData];
+
+          // Reset pagination after loading data
+          this.resetPagination();
         } else {
           console.error('Failed to load RTR files');
           this.snackBar.open('Failed to load RTR files', 'Close', { duration: 3000 });
@@ -1306,5 +1320,81 @@ export class RtrProcessingComponent extends BaseDashboardComponent implements On
       default:
         return '';
     }
+  }
+
+  // Override applyFilters to work with pagination
+  protected override applyFilters(): void {
+    const text = this.filterService.currentTextSearch?.toLowerCase() || '';
+
+    // Filter received RTRs
+    if (text) {
+      this.receivedRTRs = this.allData.filter((rtr: RTRFile) =>
+        rtr.name.toLowerCase().includes(text) ||
+        rtr.lastModified.toLowerCase().includes(text)
+      );
+    } else {
+      this.receivedRTRs = [...this.allData];
+    }
+
+    // Reset pagination after filtering
+    this.resetPagination();
+  }
+
+  // Pagination methods for Received RTR History
+  getPaginatedReceivedRTRs(): RTRFile[] {
+    if (!this.receivedRTRs || this.receivedRTRs.length === 0) return [];
+
+    const startIndex = this.receivedCurrentPage * this.receivedPageSize;
+    const endIndex = startIndex + this.receivedPageSize;
+
+    console.log('Received RTR pagination:', {
+      total: this.receivedRTRs.length,
+      page: this.receivedCurrentPage,
+      pageSize: this.receivedPageSize,
+      startIndex,
+      endIndex,
+      paginatedCount: this.receivedRTRs.slice(startIndex, endIndex).length
+    });
+
+    return this.receivedRTRs.slice(startIndex, endIndex);
+  }
+
+  onReceivedPageChange(event: PageEvent): void {
+    console.log('Received RTR page change:', event);
+    this.receivedCurrentPage = event.pageIndex;
+    this.receivedPageSize = event.pageSize;
+  }
+
+  // Pagination methods for 7D-RTR
+  getPaginatedSentRTRs(): RTRFile[] {
+    if (!this.sentRTRs || this.sentRTRs.length === 0) return [];
+
+    const startIndex = this.sentCurrentPage * this.sentPageSize;
+    const endIndex = startIndex + this.sentPageSize;
+
+    console.log('Sent RTR pagination:', {
+      total: this.sentRTRs.length,
+      page: this.sentCurrentPage,
+      pageSize: this.sentPageSize,
+      startIndex,
+      endIndex,
+      paginatedCount: this.sentRTRs.slice(startIndex, endIndex).length
+    });
+
+    return this.sentRTRs.slice(startIndex, endIndex);
+  }
+
+  onSentPageChange(event: PageEvent): void {
+    console.log('Sent RTR page change:', event);
+    this.sentCurrentPage = event.pageIndex;
+    this.sentPageSize = event.pageSize;
+  }
+
+  // Reset pagination
+  private resetPagination(): void {
+    this.receivedCurrentPage = 0;
+    this.sentCurrentPage = 0;
+    this.receivedTotalItems = this.receivedRTRs.length;
+    this.sentTotalItems = this.sentRTRs.length;
   }
 }
