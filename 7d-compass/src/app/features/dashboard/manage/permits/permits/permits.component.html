@@ -37,6 +37,13 @@
       </div>
     </div>
 
+    <!-- Debug button -->
+    <div style="margin-bottom: 10px; text-align: center;">
+      <button mat-button color="accent" (click)="debugAllPermitFiles()">
+        Debug Files Status
+      </button>
+    </div>
+
     <!-- Tabla de datos -->
     <app-data-table
       *ngIf="!isLoading"
