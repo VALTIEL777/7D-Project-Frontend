@@ -377,11 +377,11 @@ private loadAllPhasesAsync() {
       let orderedPhaseNames: string[] = [];
 
       if (this.routeCode.includes('SPOTTER')) {
-        orderedPhaseNames = ['Spotting', 'No Parking Signs'];
+        orderedPhaseNames = ['Spotting', 'Install Signs'];
       } else if (this.routeCode.includes('ASPHALT')) {
         orderedPhaseNames = ['Spotting', 'Grind', 'Asphalt', 'Crack Seal', 'Stripping'];
       } else if (this.routeCode.includes('CONCRETE')) {
-        orderedPhaseNames = [ 'Spotting', 'No Parking Signs', 'Sawcut', 'Removal', 'Framing', 'Concrete', 'Pour', 'Clean'];
+        orderedPhaseNames = [ 'Spotting', 'Install Signs', 'Sawcut', 'Removal', 'Framing', 'Concrete', 'Pour', 'Clean'];
       }
 
       // 🧹 Filtrar y ordenar según orderedPhaseNames
