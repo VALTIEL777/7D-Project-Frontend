@@ -72,6 +72,7 @@ export class CrewGenerationComponent implements OnInit {
     'Asphalt',
     'Crack Seal',
     'Stripping',
+    'No Parking Signs',
     'Install Signs',
     // Concrete phases
     'Sawcut',

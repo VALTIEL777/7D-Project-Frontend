@@ -23,7 +23,7 @@ import { ConfirmPhaseDialogComponent } from '../../../shared/confirm-phase-dialo
 import { ConfirmationDialogComponent } from '../../../shared/confirmation-dialog/confirmation-dialog.component';
 import { TaskstatusService } from '../../../core/services/route/taskstatus.service';
 import { RouteStateService } from '../../../core/services/shared/route-state.service';
-import { TicketService } from '../../../core/services/ticket.service';
+import { TicketService, Ticket } from '../../../core/services/ticket.service';
 import { QuadrantsService } from '../../../core/services/location/quadrants.service';
 import { RouteData, MapConfig, LeafletMapComponent } from '../../../shared/leaflet-map/leaflet-map.component';
 import { HttpClient } from '@angular/common/http';
@@ -48,7 +48,6 @@ import { environment } from '../../../../environments/environment';
 export class CurrentComponent {
 
   // Static map properties
-  private readonly GOOGLE_MAPS_API_KEY = 'AIzaSyDwEG-Tyq2kpHc4wznqVvSU0Dj2B_idzlY';
   staticMapUrl: string = '';
   staticMapWidth: number = 600;
   staticMapHeight: number = 400;
@@ -144,6 +143,9 @@ filteredTicketImages: any[] = [];
   };
   @ViewChild(LeafletMapComponent) leafletMap!: LeafletMapComponent;
 
+  // 🎯 NUEVO: Propiedad para almacenar quadrantId
+  private quadrantId: number | null = null;
+
   constructor(
      private crewsService: CrewsService,
         private crewEmployeesService: CrewEmployeesService,
@@ -194,6 +196,13 @@ private loadBasicDataFromStorage(): void {
     this.ticketId = parsedLocation.ticketid || 0;
     this.contractUnitId = Number(parsedLocation.contractunitid) || 0;
     this.isLocationFromStorage = true;
+
+    // 🎯 NUEVO: Cargar quadrantId desde localStorage si existe
+    const savedQuadrantId = localStorage.getItem('currentQuadrantId');
+    if (savedQuadrantId) {
+      this.quadrantId = Number(savedQuadrantId);
+      console.log('🎯 quadrantId cargado desde localStorage:', this.quadrantId);
+    }
 
     // RECONSTRUIR streetFrom y streetTo
     this.location.streetFrom = `${parsedLocation.fromaddressnumber || ''} ${parsedLocation.fromaddressstreet || ''} ${parsedLocation.fromaddresscardinal || ''}`.trim();
@@ -249,7 +258,7 @@ private loadSecondaryData(): void {
   console.log('📦 Cargando datos secundarios...');
   
   if (this.ticketId) {
-    // Cargar supervisor y ticket code en paralelo
+    // Cargar supervisor, ticket code y permit files en paralelo
     forkJoin({
       supervisor: this.loadSupervisorAsync(),
       ticketCode: this.loadTicketCodeAsync(),
@@ -257,6 +266,11 @@ private loadSecondaryData(): void {
     }).subscribe({
       next: (results) => {
         console.log('✅ Datos secundarios cargados exitosamente');
+        
+        // 🎯 NUEVO: Cargar coordenadas después de que se cargue el ticketCode
+        if (this.ticketCode) {
+          this.getTicketCoordinates();
+        }
       },
       error: (error) => {
         console.error('❌ Error cargando datos secundarios:', error);
@@ -363,11 +377,11 @@ private loadAllPhasesAsync() {
       let orderedPhaseNames: string[] = [];
 
       if (this.routeCode.includes('SPOTTER')) {
-        orderedPhaseNames = ['Spotting', 'Install Signs'];
+        orderedPhaseNames = ['Spotting', 'No Parking Signs'];
       } else if (this.routeCode.includes('ASPHALT')) {
         orderedPhaseNames = ['Spotting', 'Grind', 'Asphalt', 'Crack Seal', 'Stripping'];
       } else if (this.routeCode.includes('CONCRETE')) {
-        orderedPhaseNames = [ 'Spotting','Sawcut', 'Removal', 'Framing', 'Concrete', 'Pour', 'Clean'];
+        orderedPhaseNames = [ 'Spotting', 'No Parking Signs', 'Sawcut', 'Removal', 'Framing', 'Concrete', 'Pour', 'Clean'];
       }
 
       // 🧹 Filtrar y ordenar según orderedPhaseNames
@@ -460,12 +474,27 @@ loadSupervisor() {
 private loadSupervisorAsync() {
   return this.ticketService.getTicketById(this.ticketId).pipe(
     map(ticket => {
-      const quadrantId = ticket.quadrantId;
+      // 🎯 MEJORADO: Usar quadrantId guardado o obtener del ticket
+      let quadrantId = this.quadrantId || ticket.quadrantId;
 
       if (!quadrantId) {
-        console.warn('⚠️ No se encontró quadrantId en el ticket');
-        return { success: false };
+        console.warn('⚠️ No se encontró quadrantId en el ticket ni en localStorage');
+        console.log('🔍 Información del ticket:', {
+          ticketId: ticket.ticketId || ticket.ticketid,
+          ticketCode: ticket.ticketCode || ticket.ticketcode,
+          quadrantId: quadrantId
+        });
+        
+        // 🎯 SOLUCIÓN GENÉRICA: Intentar determinar el cuadrante por coordenadas
+        this.findQuadrantByCoordinates();
+        
+        return { success: false, reason: 'No quadrantId found' };
       }
+
+      // 🎯 NUEVO: Guardar quadrantId en localStorage para persistencia
+      this.quadrantId = quadrantId;
+      localStorage.setItem('currentQuadrantId', String(quadrantId));
+      console.log('🎯 quadrantId guardado en localStorage:', quadrantId);
 
       this.quadrantService.getQuadrantById(quadrantId).subscribe(quadrant => {
         const zoneManagerId = quadrant.zoneManagerId;
@@ -484,6 +513,125 @@ private loadSupervisorAsync() {
     })
   );
 }
+
+// �� NUEVO: Método para obtener coordenadas sin usar Google API (como en upcoming)
+private async getTicketCoordinates(): Promise<void> {
+  console.log('🔄 Obteniendo coordenadas del ticket sin usar Google API...');
+  
+  if (!this.ticketCode) {
+    console.warn('⚠️ No hay ticketCode disponible para obtener coordenadas');
+    return;
+  }
+
+  try {
+    const response: any = await firstValueFrom(
+      this.http.get(`${environment.apiUrl}/tickets/coordinates/${this.ticketCode}`)
+    );
+
+    if (response.success && response.data && response.data.addresses && response.data.addresses.length > 0) {
+      // Usar las coordenadas de la primera dirección
+      const firstAddress = response.data.addresses[0];
+      this.location.lat = firstAddress.latitude;
+      this.location.lng = firstAddress.longitude;
+
+      console.log('✅ Coordenadas obtenidas del backend:', {
+        lat: this.location.lat,
+        lng: this.location.lng,
+        ticketCode: this.ticketCode
+      });
+
+      // 🎯 NUEVO: Buscar cuadrante por coordenadas después de obtenerlas
+      this.findQuadrantByCoordinates();
+    } else {
+      console.warn(`❌ No se encontraron coordenadas para el ticket ${this.ticketCode}`);
+    }
+  } catch (err) {
+    console.error(`❌ Error obteniendo coordenadas para el ticket ${this.ticketCode}:`, err);
+  }
+}
+
+// 🎯 NUEVO: Método para encontrar cuadrante por coordenadas
+private findQuadrantByCoordinates(): void {
+  console.log('🔍 Buscando cuadrante por coordenadas del ticket');
+  
+  // Obtener coordenadas del ticket
+  const ticketLat = this.latitude || this.location.lat;
+  const ticketLng = this.longitude || this.location.lng;
+  
+  console.log('📍 Coordenadas del ticket:', { lat: ticketLat, lng: ticketLng });
+  
+  if (!ticketLat || !ticketLng) {
+    console.warn('⚠️ No se encontraron coordenadas en el ticket');
+    return;
+  }
+  
+  this.quadrantService.getAllQuadrants().subscribe({
+    next: (quadrants) => {
+      const matchingQuadrant = this.findQuadrantByLocation(ticketLat, ticketLng, quadrants);
+      
+      if (matchingQuadrant) {
+        console.log(`✅ Cuadrante encontrado por coordenadas:`, matchingQuadrant);
+        const zoneManagerId = matchingQuadrant.zoneManagerId;
+        
+        // 🎯 NUEVO: Guardar quadrantId encontrado
+        this.quadrantId = matchingQuadrant.id;
+        localStorage.setItem('currentQuadrantId', String(this.quadrantId));
+        console.log('🎯 quadrantId encontrado y guardado:', this.quadrantId);
+        
+        if (zoneManagerId) {
+          this.loadSupervisorByZoneManagerId(zoneManagerId);
+        } else {
+          console.warn(`⚠️ No se encontró zoneManagerId en el cuadrante ${matchingQuadrant.name}`);
+        }
+      } else {
+        console.warn(`⚠️ No se encontró cuadrante para las coordenadas (${ticketLat}, ${ticketLng})`);
+      }
+    },
+    error: (err) => {
+      console.error('❌ Error buscando cuadrante por coordenadas:', err);
+    }
+  });
+}
+
+// 🎯 NUEVO: Método para determinar cuadrante basado en coordenadas
+private findQuadrantByLocation(lat: number, lng: number, quadrants: any[]): any | null {
+  console.log(`🔍 Buscando cuadrante para coordenadas (${lat}, ${lng})`);
+  console.log(`📊 Total de cuadrantes disponibles: ${quadrants.length}`);
+  
+  for (const quadrant of quadrants) {
+    const minLat = parseFloat(quadrant.minLatitude);
+    const maxLat = parseFloat(quadrant.maxLatitude);
+    const minLng = parseFloat(quadrant.minLongitude);
+    const maxLng = parseFloat(quadrant.maxLongitude);
+    
+    // Verificar si las coordenadas están dentro del rango del cuadrante
+    if (lat >= minLat && lat <= maxLat && lng >= minLng && lng <= maxLng) {
+      console.log(`✅ Coordenadas (${lat}, ${lng}) están dentro del cuadrante ${quadrant.name}`);
+      console.log(`📐 Rango del cuadrante: Lat(${minLat}-${maxLat}), Lng(${minLng}-${maxLng})`);
+      return quadrant;
+    }
+  }
+  
+  console.log(`❌ No se encontró cuadrante que contenga las coordenadas (${lat}, ${lng})`);
+  return null;
+}
+
+// 🎯 NUEVO: Método para cargar supervisor por zoneManagerId
+private loadSupervisorByZoneManagerId(zoneManagerId: number): void {
+  console.log(`🎯 Cargando supervisor con zoneManagerId: ${zoneManagerId}`);
+  
+  this.peopleService.getPeopleById(zoneManagerId).subscribe({
+    next: (supervisor) => {
+      this.supervisor = supervisor;
+      console.log('✅ Supervisor cargado:', this.supervisor);
+    },
+    error: (err) => {
+      console.error('❌ Error cargando supervisor:', err);
+    }
+  });
+}
+
+
 
 
 
@@ -792,9 +940,11 @@ startPhase(activity: any) {
             const hasIssue = activity.comment && activity.comment.trim().length > 0;
             if (hasIssue) {
               console.log(`⚠️ Issue detectado al iniciar fase ${activity.name}: ${activity.comment}`);
-              this.updateTicketComment7d('TK - ON HOLD OFF');
+              // this.updateTicketComment7d('TK - ON HOLD OFF');
             } else {
               // 🎯 ACTUALIZAR COMMENT7D DEL TICKET A "TK - ON PROGRESS"
+              console.log(`🔄 Llamando a updateTicketComment7d desde startPhase (línea 1) para actividad: ${activity.name}`);
+              console.log(`🔍 Estado actual del quadrantId antes de updateTicketComment7d: ${this.quadrantId} (localStorage: ${localStorage.getItem('currentQuadrantId')})`);
               this.updateTicketComment7d('TK - ON PROGRESS');
             }
 
@@ -834,9 +984,11 @@ startPhase(activity: any) {
             const hasIssue = activity.comment && activity.comment.trim().length > 0;
             if (hasIssue) {
               console.log(`⚠️ Issue detectado al iniciar fase ${activity.name}: ${activity.comment}`);
-              this.updateTicketComment7d('TK - ON HOLD OFF');
+              // this.updateTicketComment7d('TK - ON HOLD OFF');
             } else {
               // 🎯 ACTUALIZAR COMMENT7D DEL TICKET A "TK - ON PROGRESS"
+              console.log(`🔄 Llamando a updateTicketComment7d desde startPhase (línea 2) para actividad: ${activity.name}`);
+              console.log(`🔍 Estado actual del quadrantId antes de updateTicketComment7d: ${this.quadrantId} (localStorage: ${localStorage.getItem('currentQuadrantId')})`);
               this.updateTicketComment7d('TK - ON PROGRESS');
             }
 
@@ -1288,7 +1440,7 @@ uploadPhotoEvidence(taskStatusId: number, activity: any): void {
       const hasIssue = activity.comment && activity.comment.trim().length > 0;
       if (hasIssue) {
         console.log(`⚠️ Issue detectado en fase ${activity.name}: ${activity.comment}`);
-        this.updateTicketComment7d('TK - ON HOLD OFF');
+        // this.updateTicketComment7d('TK - ON HOLD OFF');
       }
 
       this.completePhase(activity);
@@ -1768,9 +1920,9 @@ clearIssue(comment: any): void {
   const dialogRef = this.dialog.open(ConfirmationDialogComponent, {
     width: '400px',
     data: {
-      title: 'Clear Issue',
-      message: `Are you sure you want to clear this issue?\n\n"${comment.text}"\n\nThis action cannot be undone.`,
-      confirmText: 'Clear Issue',
+      title: 'Clear Comment',
+      message: `Are you sure you want to clear this comment?\n\n"${comment.text}"\n\nThis action cannot be undone.`,
+      confirmText: 'Clear Comment',
       cancelText: 'Cancel'
     }
   });
@@ -2006,9 +2158,9 @@ clearObservation(observation: any): void {
   const dialogRef = this.dialog.open(ConfirmationDialogComponent, {
     width: '400px',
     data: {
-      title: 'Clear Comment',
-      message: `Are you sure you want to clear this comment?\n\n"${observation.text}"\n\nThis action cannot be undone.`,
-      confirmText: 'Clear Comment',
+      title: 'Clear Issue',
+      message: `Are you sure you want to clear this issue?\n\n"${observation.text}"\n\nThis action cannot be undone.`,
+      confirmText: 'Clear Issue',
       cancelText: 'Cancel'
     }
   });
@@ -2167,18 +2319,76 @@ updateTicketComment7d(comment: string) {
 
   this.ticketService.getTicketById(this.ticketId).subscribe({
     next: (currentTicket) => {
-      const updatedTicket = {
-        ...currentTicket,
+      console.log(`🔍 Ticket obtenido del backend:`, currentTicket);
+      console.log(`🔍 quadrantId del backend: ${currentTicket.quadrantId} (tipo: ${typeof currentTicket.quadrantId})`);
+      console.log(`🔍 JSON completo del ticket del backend:`, JSON.stringify(currentTicket, null, 2));
+      
+      // 🎯 PRESERVAR EL QUADRANTID DEL ESTADO LOCAL O LOCALSTORAGE
+      let quadrantIdToPreserve: number | undefined = undefined;
+      
+      // Prioridad 1: Estado local del componente
+      if (this.quadrantId !== null && this.quadrantId !== undefined) {
+        quadrantIdToPreserve = this.quadrantId;
+        console.log(`🎯 Usando quadrantId del estado local: ${quadrantIdToPreserve}`);
+      }
+      // Prioridad 2: localStorage
+      else if (localStorage.getItem('currentQuadrantId')) {
+        const storedQuadrantId = Number(localStorage.getItem('currentQuadrantId'));
+        if (!isNaN(storedQuadrantId) && storedQuadrantId !== 0) {
+          quadrantIdToPreserve = storedQuadrantId;
+          console.log(`🎯 Usando quadrantId de localStorage: ${quadrantIdToPreserve}`);
+        }
+      }
+      // Prioridad 3: Valor del ticket actual (solo si no es null)
+      else if (currentTicket.quadrantId !== null && currentTicket.quadrantId !== undefined) {
+        quadrantIdToPreserve = currentTicket.quadrantId;
+        console.log(`🎯 Usando quadrantId del ticket actual: ${quadrantIdToPreserve}`);
+      }
+      
+      console.log(`🎯 Preservando quadrantId: ${quadrantIdToPreserve} (del estado: ${this.quadrantId}, localStorage: ${localStorage.getItem('currentQuadrantId')}, ticket: ${currentTicket.quadrantId})`);
+
+      // 🎯 DEBUGGING ADICIONAL
+      console.log(`🔍 DEBUG - Estado local this.quadrantId: ${this.quadrantId} (tipo: ${typeof this.quadrantId})`);
+      console.log(`🔍 DEBUG - localStorage currentQuadrantId: ${localStorage.getItem('currentQuadrantId')} (tipo: ${typeof localStorage.getItem('currentQuadrantId')})`);
+      console.log(`🔍 DEBUG - Ticket del backend quadrantId: ${currentTicket.quadrantId} (tipo: ${typeof currentTicket.quadrantId})`);
+      console.log(`🔍 DEBUG - Valor final quadrantIdToPreserve: ${quadrantIdToPreserve} (tipo: ${typeof quadrantIdToPreserve})`);
+
+      // 🎯 NUEVO: Crear el objeto updatedTicket sin el spread para evitar incluir quadrantId null
+      const updatedTicket: Ticket = {
+        ticketId: currentTicket.ticketId || currentTicket.ticketid,
+        incidentId: currentTicket.incidentId,
+        contractUnitId: currentTicket.contractUnitId,
+        wayfindingId: currentTicket.wayfindingId || currentTicket.wayfindingid,
+        paymentId: currentTicket.paymentId,
+        mobilizationId: currentTicket.mobilizationId,
+        ticketCode: currentTicket.ticketCode || currentTicket.ticketcode,
+        ticketcode: currentTicket.ticketCode || currentTicket.ticketcode, // Requerido por la interfaz
+        quantity: currentTicket.quantity,
+        daysOutstanding: currentTicket.daysOutstanding,
         comment7d: comment,
+        partnerComment: currentTicket.partnerComment,
+        partnerSupervisorComment: currentTicket.partnerSupervisorComment,
+        contractNumber: currentTicket.contractNumber,
+        amountToPay: currentTicket.amountToPay,
+        ticketType: currentTicket.ticketType,
+        quadrantId: quadrantIdToPreserve, // 🎯 EXPLÍCITAMENTE INCLUIR EL QUADRANTID
         updatedBy: this.userId
       };
+
+      console.log(`📤 Enviando ticket actualizado:`, updatedTicket);
+      console.log(`📤 quadrantId que se envía al backend: ${updatedTicket.quadrantId} (tipo: ${typeof updatedTicket.quadrantId})`);
+      console.log(`📤 JSON completo que se envía:`, JSON.stringify(updatedTicket, null, 2));
 
       this.ticketService.updateTicket(this.ticketId, updatedTicket).subscribe({
         next: (updatedTicketResponse) => {
           console.log(`✅ Comment7d actualizado exitosamente a: ${comment}`);
+          console.log(`✅ Respuesta del backend:`, updatedTicketResponse);
         },
         error: (err) => {
           console.error('❌ Error actualizando comment7d del ticket:', err);
+          console.error('❌ Detalles del error:', err.error);
+          console.error('❌ Status del error:', err.status);
+          console.error('❌ Mensaje del error:', err.message);
         }
       });
     },
@@ -2234,35 +2444,7 @@ getLastRequiredPhase(): string | null {
 
 
 
-// 🎯 NUEVO: Método para geocodificar dirección si no hay coordenadas
-private geocodeAddress(address: string): void {
-  // Usar Google Maps Geocoding API
-  const geocodingUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${this.GOOGLE_MAPS_API_KEY}`;
-
-  this.http.get<any>(geocodingUrl).subscribe({
-    next: (response) => {
-      if (response.results && response.results.length > 0) {
-        const location = response.results[0].geometry.location;
-        this.location.lat = location.lat;
-        this.location.lng = location.lng;
-
-        console.log('✅ Coordenadas obtenidas por geocodificación:', {
-          lat: this.location.lat,
-          lng: this.location.lng,
-          address: address
-        });
-
-        // ✅ Coordenadas obtenidas exitosamente
-        console.log('✅ Coordenadas obtenidas por geocodificación');
-      } else {
-        console.warn('⚠️ No se pudieron obtener coordenadas para la dirección:', address);
-      }
-    },
-    error: (error) => {
-      console.error('❌ Error en geocodificación:', error);
-    }
-  });
-}
+// 🎯 ELIMINADO: Método geocodeAddress que usa Google API - reemplazado por getTicketCoordinates
 
   // Método para cargar la ruta completa como en upcoming
   async loadFullRoute(): Promise<void> {

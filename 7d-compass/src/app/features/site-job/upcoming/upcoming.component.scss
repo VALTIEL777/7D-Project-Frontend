@@ -392,10 +392,10 @@
   transition: background-color 0.3s, box-shadow 0.3s;
 }
 
-.custom-select-button:hover {
-  background-color: #1976d2;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-}
+// .custom-select-button:hover {
+//   background-color: #1976d2;
+//   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+// }
 
 .icon {
   vertical-align: middle;
@@ -424,9 +424,9 @@
   border: 1px solid #e0e0e0;
   transition: box-shadow 0.3s ease;
 
-  &:hover {
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  }
+  // &:hover {
+  //   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  // }
 
   // 🎯 VISTA MÓVIL: Cards principales
   @media (max-width: 767px) {

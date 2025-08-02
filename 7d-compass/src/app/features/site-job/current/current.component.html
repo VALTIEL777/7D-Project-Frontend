@@ -231,7 +231,7 @@
       <button
         *ngIf="isPhaseStarted(activity) && !isPreviousPhaseIncomplete(activity)"
         mat-stroked-button
-        color="accent"
+        color="primary"
         (click)="completePhase(activity)"
         class="action-btn complete-btn"
       >
@@ -299,7 +299,7 @@
             </mat-hint>
           </mat-form-field>
           <mat-form-field appearance="fill" class="evidence-field">
-            <mat-label>Issue</mat-label>
+            <mat-label>Comment</mat-label>
             <input matInput [(ngModel)]="activity.comment" placeholder="Ej. Permiso faltante, entrada bloqueada..." />
           </mat-form-field>
           <button
@@ -331,14 +331,14 @@
       <mat-expansion-panel-header>
         <mat-panel-title>
           <mat-icon style="color: #2196f3; margin-right: 8px;">comment</mat-icon>
-          Add Comment
+          Add Issue
         </mat-panel-title>
       </mat-expansion-panel-header>
       
       <div class="comment-section" style="margin: 16px 0;">
         <div class="comment-input-container" style="display: flex; gap: 12px; align-items: flex-end;">
           <mat-form-field appearance="outline" style="flex: 1;">
-            <mat-label>Comment for {{ activity.name }}</mat-label>
+            <mat-label>Issue for {{ activity.name }}</mat-label>
             <textarea matInput 
                       [(ngModel)]="activity.observation" 
                       placeholder="Add a comment about this phase..."
@@ -364,11 +364,11 @@
 
 <!-- 🎯 Issues -->
 <div class="comments-header">
-  <h3 class="sub-title">Issues</h3>
+  <h3 class="sub-title">Comments</h3>
   <button mat-icon-button
           class="toggle-all-comments-btn"
           (click)="toggleAllCommentsVisibility()"
-          [title]="showAllComments ? 'Hide all issues' : 'Show all issues'">
+          [title]="showAllComments ? 'Hide all comments' : 'Show all comments'">
     <mat-icon>{{ showAllComments ? 'visibility' : 'visibility_off' }}</mat-icon>
   </button>
 </div>
@@ -399,17 +399,17 @@
         <div class="comment-date">
           <mat-icon class="date-icon">schedule</mat-icon>
           <span>{{ comment.date | date:'MMM d, y, h:mm a' }}</span>
-          <button mat-icon-button
+          <!-- <button mat-icon-button
                   class="toggle-comment-btn"
                   (click)="clearIssue(comment)"
                   title="Clear issue">
             <mat-icon>check_circle</mat-icon>
-          </button>
+          </button> -->
         </div>
       </div>
 
       <div class="comment-content">
-        <mat-icon *ngIf="comment.hasIssue" class="issue-icon" color="warn">warning</mat-icon>
+        <mat-icon *ngIf="comment.hasIssue" class="issue-icon" color="warn">info</mat-icon>
         <p class="comment-text">{{ comment.text }}</p>
       </div>
     </div>
@@ -420,10 +420,10 @@
     <p class="no-comments-text">
       <mat-icon color="info">info</mat-icon>
       <span *ngIf="getCommentsFromImages().length === 0">
-        No issues have been reported in photos yet.
+        No comments have been reported in photos yet.
       </span>
       <span *ngIf="getCommentsFromImages().length > 0">
-        No issues match the applied filter.
+        No comments match the applied filter.
       </span>
     </p>
   </div>
@@ -433,11 +433,11 @@
 
 <!-- 🎯 Comments (Observations) -->
 <div class="comments-header">
-  <h3 class="sub-title">Comments</h3>
+  <h3 class="sub-title">Issues</h3>
   <button mat-icon-button
           class="toggle-all-comments-btn"
           (click)="toggleAllObservationsVisibility()"
-          [title]="showAllObservations ? 'Hide all comments' : 'Show all comments'">
+          [title]="showAllObservations ? 'Hide all issues' : 'Show all issues'">
     <mat-icon>{{ showAllObservations ? 'visibility' : 'visibility_off' }}</mat-icon>
   </button>
 </div>
@@ -450,7 +450,7 @@
 
 <div class="comments-section">
   <mat-form-field appearance="outline" style="width: 100%; margin-bottom: 16px;">
-    <mat-label>Search comments</mat-label>
+    <mat-label>Search issues</mat-label>
     <mat-icon matPrefix>search</mat-icon>
     <input matInput [(ngModel)]="observationFilterText" (ngModelChange)="onObservationFilterChange()" placeholder="Search by comment text, phase name, or date">
   </mat-form-field>
@@ -488,10 +488,10 @@
     <p class="no-comments-text">
       <mat-icon color="info">info</mat-icon>
       <span *ngIf="getObservationsFromTicketStatus().length === 0">
-        No comments have been added to phases yet.
+        No issues have been added to phases yet.
       </span>
       <span *ngIf="getObservationsFromTicketStatus().length > 0">
-        No comments match the applied filter.
+        No issues match the applied filter.
       </span>
     </p>
   </div>
