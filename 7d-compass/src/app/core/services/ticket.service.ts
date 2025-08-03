@@ -9,6 +9,7 @@ export interface Ticket {
   incidentId?: number;
   incidentName?: string;
   quadrantId?: number;
+  cuadranteId?: number;
   contractUnitId?: number;
   contractUnitName?: string;
   wayfindingId?: number;

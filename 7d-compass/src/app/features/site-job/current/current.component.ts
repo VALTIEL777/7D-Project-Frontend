@@ -2372,6 +2372,7 @@ updateTicketComment7d(comment: string) {
         amountToPay: currentTicket.amountToPay,
         ticketType: currentTicket.ticketType,
         quadrantId: quadrantIdToPreserve, // 🎯 EXPLÍCITAMENTE INCLUIR EL QUADRANTID
+        cuadranteId: quadrantIdToPreserve,
         updatedBy: this.userId
       };
 
