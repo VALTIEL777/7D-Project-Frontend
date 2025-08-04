@@ -367,11 +367,11 @@ crewDetails: any[] = [];
 
     console.log(`✅ Verificación completada: ${processedCount} ubicaciones procesadas, ${completedCount} completadas`);
 
-    // 🎯 NUEVO: Solo actualizar el mapa si hubo cambios
-    if (completedCount > 0) {
-      console.log('🔄 Actualizando mapa debido a ubicaciones completadas');
-      this.updateLeafletRoutes();
-    }
+            // 🎯 NUEVO: Solo actualizar el mapa si hubo cambios
+        if (completedCount > 0) {
+          console.log('🔄 Actualizando mapa debido a ubicaciones completadas');
+          this.updateLeafletMap();
+        }
 
     // 🎯 NUEVO: Limpiar logs antiguos (más de 5 minutos)
     const now = Date.now();
@@ -465,9 +465,9 @@ crewDetails: any[] = [];
                 to: newState
               });
 
-              // 🎯 NUEVO: Forzar actualización de la UI inmediatamente
-              this.forceUIUpdate();
-            }
+                    // 🎯 NUEVO: Forzar actualización de la UI inmediatamente
+      this.updateLeafletMap();
+    }
 
             resolve();
           });
@@ -844,7 +844,7 @@ crewDetails: any[] = [];
 
       // Actualizar el mapa si hay ubicaciones restantes
       if (this.remainingLocations.length > 0) {
-        this.updateLeafletRoutes();
+        this.updateLeafletMap();
       } else {
         // Si no quedan ubicaciones, limpiar el mapa
         this.leafletRoutes = [];
@@ -884,7 +884,7 @@ crewDetails: any[] = [];
     // Forzar detección de cambios de Angular
     setTimeout(() => {
       // Actualizar el mapa
-      this.updateLeafletRoutes();
+      this.updateLeafletMap();
 
       // Forzar detección de cambios
       if (this.leafletMap) {
@@ -921,22 +921,22 @@ crewDetails: any[] = [];
 
   // 🎯 MÉTODO PÚBLICO PARA MOSTRAR TODAS LAS UBICACIONES (INCLUYENDO COMPLETADAS)
   public showAllHiddenLocations(): void {
-    // 🎯 NUEVO: Mostrar todas las ubicaciones temporalmente
-    this.remainingLocations.forEach(location => {
-      location.completed = false;
-      location.checked = false;
-      location.locked = false;
-      location.started = false;
-      location.assigned = false;
-    });
-    console.log(`👁️ Todas las ubicaciones mostradas temporalmente: ${this.remainingLocations.length}`);
-    this.updateLeafletRoutes();
+          // 🎯 NUEVO: Mostrar todas las ubicaciones temporalmente
+      this.remainingLocations.forEach(location => {
+        location.completed = false;
+        location.checked = false;
+        location.locked = false;
+        location.started = false;
+        location.assigned = false;
+      });
+      console.log(`👁️ Todas las ubicaciones mostradas temporalmente: ${this.remainingLocations.length}`);
+      this.updateLeafletMap();
   }
 
   // 🎯 NUEVO MÉTODO: Mostrar solo ubicaciones activas (Completed e In Progress)
   public showOnlyActiveLocations(): void {
     console.log(`🎯 Mostrando solo ubicaciones activas (Completed e In Progress)`);
-    this.updateLeafletRoutes();
+    this.updateLeafletMap();
   }
 
   // 🎯 NUEVO MÉTODO: Obtener información de ubicaciones visibles
@@ -1288,16 +1288,16 @@ crewDetails: any[] = [];
         this.assignedRouteId = route.routeid;
 
         // Update the map immediately
-        this.updateLeafletRoutes();
+        this.updateLeafletMap();
       }
     } catch (error) {
       // Error handling silently
     }
   }
 
-  // 🎯 OPTIMIZADO: Método para obtener la ruta asignada al crew
+  // �� SIMPLIFIED: Remove all complex route assignment logic and replace with simple approach
   async getAssignedRoute(): Promise<void> {
-    console.log('🚀 Iniciando asignación optimizada de ruta...');
+    console.log('🚀 Getting assigned route with simplified approach...');
 
     try {
       // Get the current crew type and crew ID
@@ -1312,39 +1312,24 @@ crewDetails: any[] = [];
         userId: storedUserId
       });
 
-      // 🎯 NUEVO: Cargar rutas de manera optimizada
+      // 🎯 SIMPLIFIED: Just get routes from API and use the first one
       const allRoutes = await this.loadRoutesOptimized(currentCrewType);
 
       if (allRoutes && allRoutes.length > 0) {
-        // 🎯 NUEVO: Asignar ruta usando lógica optimizada
-        const assignedRoute = this.assignRouteOptimized(allRoutes, currentCrewType, currentCrewId);
+        // 🎯 SIMPLIFIED: Use the first available route
+        this.assignedRoute = allRoutes[0];
+        this.assignedRouteId = this.assignedRoute?.routeid || this.assignedRoute?.routeId;
 
-        // 🎯 NUEVO: Validar optimizedOrder antes de asignar la ruta
-        if (assignedRoute && assignedRoute.optimizedOrder) {
-          this.validateOptimizedOrder(assignedRoute);
-        }
+        console.log('🎯 Assigned route:', {
+          routeId: this.assignedRouteId,
+          routeCode: this.assignedRoute.routecode || this.assignedRoute.routeCode,
+          type: this.assignedRoute.type,
+          hasPolyline: !!(this.assignedRoute.encodedpolyline || this.assignedRoute.encodedPolyline),
+          ticketsCount: this.assignedRoute.tickets?.length || 0
+        });
 
-        // 🎯 NUEVO: Verificar si el componente está siendo destruido antes de asignar
-        if (!this.completionCheckInterval) {
-          console.log('⚠️ Asignación de ruta cancelada - componente en proceso de destrucción');
-          return;
-        }
-
-        this.assignedRoute = assignedRoute;
-        this.assignedRouteId = assignedRoute?.routeid || assignedRoute?.routeId;
-
-        if (assignedRoute) {
-          console.log('🎯 Final assigned route:', {
-            routeId: this.assignedRouteId,
-            routeCode: assignedRoute.routecode || assignedRoute.routeCode,
-            type: assignedRoute.type,
-            hasPolyline: !!(assignedRoute.encodedpolyline || assignedRoute.encodedPolyline),
-            ticketsCount: assignedRoute.tickets?.length || 0,
-            optimizedOrderValid: Array.isArray(assignedRoute.optimizedOrder)
-          });
-        } else {
-          console.warn('❌ No route assigned to crew');
-        }
+        // 🎯 SIMPLIFIED: Update the map directly
+        this.updateLeafletMap();
       } else {
         console.warn('❌ No routes available');
       }
@@ -1353,9 +1338,70 @@ crewDetails: any[] = [];
     }
   }
 
-  // 🎯 NUEVO: Método optimizado para cargar rutas
+  // 🎯 SIMPLIFIED: Remove complex optimizedOrder validation
+  private validateOptimizedOrder(assignedRoute: any): void {
+    // 🎯 SIMPLIFIED: Just ensure it's an array, don't try to parse complex strings
+    if (!Array.isArray(assignedRoute.optimizedOrder)) {
+      assignedRoute.optimizedOrder = [];
+    }
+  }
+
+  // 🎯 SIMPLIFIED: Remove all complex map update methods and replace with one simple method
+  private updateLeafletMap(): void {
+    console.log('🔄 Updating Leaflet map with simplified approach...');
+
+    if (!this.assignedRoute) {
+      console.log('⚠️ No assigned route to display');
+      this.leafletRoutes = [];
+      return;
+    }
+
+    // 🎯 SIMPLIFIED: Just like route generator - convert route to Leaflet format
+    this.leafletRoutes = [{
+      routeId: this.assignedRoute.routeid || this.assignedRoute.routeId,
+      routeCode: this.assignedRoute.routecode || this.assignedRoute.routeCode,
+      type: 'UPCOMING',
+      encodedPolyline: this.assignedRoute.encodedpolyline || this.assignedRoute.encodedPolyline,
+      tickets: (this.assignedRoute.tickets || []).map((ticket: any) => ({
+        ticketId: ticket.ticketId || ticket.ticketid,
+        address: ticket.address,
+        queue: ticket.queue || 0,
+        coordinates: ticket.coordinates // Include coordinates from API
+      }))
+    }];
+
+    // 🎯 SIMPLIFIED: Just update visible routes
+    this.visibleRoutes.clear();
+    const routeId = this.assignedRoute.routeid || this.assignedRoute.routeId;
+    this.visibleRoutes.add(routeId);
+
+    console.log('✅ Leaflet map updated successfully');
+  }
+
+  // 🎯 REMOVED: All complex methods that were causing issues
+  // - createOptimizedLeafletRoutes()
+  // - refreshMapOptimized()
+  // - forceCorrectOrder()
+  // - orderLocationsByRoute()
+  // - All the complex coordinate handling
+
+  // 🎯 SIMPLIFIED: Remove complex coordinate loading
+  private async loadCoordinatesAndRouteOptimized(): Promise<void> {
+    console.log('🔄 Loading coordinates and route with simplified approach...');
+
+    try {
+      // 🎯 SIMPLIFIED: Just get the assigned route, don't try to get coordinates separately
+      await this.getAssignedRoute();
+
+      console.log('✅ Coordinates and route loaded successfully');
+    } catch (error) {
+      console.error('❌ Error loading coordinates and route:', error);
+    }
+  }
+
+  // 🎯 SIMPLIFIED: Add missing loadRoutesOptimized method
   private async loadRoutesOptimized(currentCrewType: string): Promise<any[]> {
-    console.log('🔄 Cargando rutas de manera optimizada...');
+    console.log('🔄 Loading routes with simplified approach...');
 
     // Map crew type to route type
     const crewTypeToRouteType: { [key: string]: string } = {
@@ -1417,134 +1463,95 @@ crewDetails: any[] = [];
     return allRoutes;
   }
 
-  // 🎯 NUEVO: Método optimizado para asignar ruta
-  private assignRouteOptimized(allRoutes: any[], currentCrewType: string, currentCrewId: number): any {
-    console.log('🔄 Asignando ruta de manera optimizada...');
-
-    let assignedRoute = null;
-
-    // Priority 1: Find route with matching tickets for this crew
-    const crewTicketIds = this.remainingLocations.map(loc => (loc as any).ticketid).filter((id: any) => id);
-    console.log('🎫 Crew ticket IDs:', crewTicketIds);
-
-    for (const route of allRoutes) {
-      if (route.tickets && Array.isArray(route.tickets)) {
-        const routeTicketIds = route.tickets.map((ticket: any) => ticket.ticketId || ticket.ticketid).filter((id: any) => id);
-        const matchingTickets = crewTicketIds.filter((id: any) => routeTicketIds.includes(id));
-
-        if (matchingTickets.length > 0) {
-          console.log(`✅ Found route with matching tickets: ${route.routeid || route.routeId} (${matchingTickets.length} matches)`);
-          assignedRoute = route;
-          break;
-        }
-      }
-    }
-
-    // Priority 2: Find route by type matching crew type
-    if (!assignedRoute) {
-      const routeTypeMap: { [key: string]: string } = {
-        'spotting': 'SPOTTER',
-        'concrete': 'CONCRETE',
-        'asphalt': 'ASPHALT',
-        'crack seal': 'ASPHALT',
-        'grind': 'ASPHALT',
-        'stripping': 'ASPHALT',
-        'sawcut': 'CONCRETE',
-        'removal': 'CONCRETE',
-        'framing': 'CONCRETE',
-        'pour': 'CONCRETE',
-        'clean': 'CONCRETE',
-        'install signs': 'SPOTTER'
-      };
-
-      const expectedRouteType = routeTypeMap[currentCrewType?.toLowerCase()] || 'SPOTTER';
-      console.log(`🎯 Looking for route type: ${expectedRouteType}`);
-
-      const matchingRoute = allRoutes.find((route: any) =>
-        route.type === expectedRouteType ||
-        route.routecode?.toUpperCase().includes(expectedRouteType) ||
-        route.routeCode?.toUpperCase().includes(expectedRouteType)
-      );
-
-      if (matchingRoute) {
-        console.log(`✅ Found matching route by type: ${matchingRoute.routeid || matchingRoute.routeId}`);
-        assignedRoute = matchingRoute;
-      }
-    }
-
-    // Priority 3: Find UPCOMING routes
-    if (!assignedRoute) {
-      const upcomingRoute = allRoutes.find((route: any) => route.type === 'UPCOMING');
-      if (upcomingRoute) {
-        console.log(`✅ Found UPCOMING route: ${upcomingRoute.routeid || upcomingRoute.routeId}`);
-        assignedRoute = upcomingRoute;
-      }
-    }
-
-    // Priority 4: Find any route with encoded polyline
-    if (!assignedRoute) {
-      const routeWithPolyline = allRoutes.find((route: any) =>
-        (route.encodedpolyline && route.encodedpolyline.length > 0) ||
-        (route.encodedPolyline && route.encodedPolyline.length > 0)
-      );
-      if (routeWithPolyline) {
-        console.log(`✅ Found route with polyline: ${routeWithPolyline.routeid || routeWithPolyline.routeId}`);
-        assignedRoute = routeWithPolyline;
-      }
-    }
-
-    // Priority 5: Use first available route as fallback
-    if (!assignedRoute && allRoutes.length > 0) {
-      assignedRoute = allRoutes[0];
-      console.log(`⚠️ Using fallback route: ${assignedRoute.routeid || assignedRoute.routeId}`);
-    }
-
-    // Priority 6: Try to get route ID 3 directly (as a last resort)
-    if (!assignedRoute) {
-      try {
-        const route3 = firstValueFrom(this.routeService.getRouteById(3));
-        if (route3) {
-          console.log('✅ Using route ID 3 as last resort');
-          assignedRoute = route3;
-        }
-      } catch (error) {
-        console.warn('⚠️ Could not fetch route ID 3');
-      }
-    }
-
-    return assignedRoute;
+  // 🎯 SIMPLIFIED: Remove complex ticket coordinate loading
+  private async getTicketCoordinates(): Promise<void> {
+    // 🎯 SIMPLIFIED: Don't try to get coordinates separately - they come from the API
+    console.log('✅ Coordinates come from API - no separate loading needed');
   }
 
-  // 🎯 NUEVO: Método para validar optimizedOrder
-  private validateOptimizedOrder(assignedRoute: any): void {
-    try {
-      if (typeof assignedRoute.optimizedOrder === 'string') {
-        // 🎯 NUEVO: Limpiar el string antes de parsear
-        const cleanedOptimizedOrder = assignedRoute.optimizedOrder
-          .replace(/[^\d,\[\]]/g, '') // Remover caracteres no válidos
-          .replace(/,\s*,/g, ',') // Remover comas duplicadas
-          .replace(/^,+|,+$/g, ''); // Remover comas al inicio y final
+  // 🎯 SIMPLIFIED: Add missing formatAddress method
+  private formatAddress(data: any): string {
+    // ✅ Priority 1: Concatenar los cuatro campos específicos
+    const addressnumber = data.addressnumber || '';
+    const addresscardinal = data.addresscardinal || '';
+    const addressstreet = data.addressstreet || '';
+    const addresssuffix = data.addresssuffix || '';
 
-        if (cleanedOptimizedOrder) {
-          assignedRoute.optimizedOrder = JSON.parse(`[${cleanedOptimizedOrder}]`);
-        } else {
-          assignedRoute.optimizedOrder = [];
-        }
-      }
-    } catch (error) {
-      console.error(`❌ Error parsing optimizedOrder for route ${assignedRoute.routeId || assignedRoute.routeid}:`, error);
-      console.error('Raw optimizedOrder value:', assignedRoute.optimizedOrder);
+    // Construir la dirección concatenando los campos
+    let formattedAddress = '';
 
-      // 🎯 NUEVO: Usar el método de manejo de errores de optimización
-      if (this.isOptimizationError(error)) {
-        assignedRoute.optimizedOrder = this.handleOptimizationError(
-          assignedRoute.routeId || assignedRoute.routeid,
-          assignedRoute.optimizedOrder
-        );
-      } else {
-        assignedRoute.optimizedOrder = [];
-      }
+    if (addressnumber && addressnumber.trim() !== '') {
+      formattedAddress += addressnumber.trim();
     }
+
+    if (addresscardinal && addresscardinal.trim() !== '') {
+      formattedAddress += formattedAddress ? ` ${addresscardinal.trim()}` : addresscardinal.trim();
+    }
+
+    if (addressstreet && addressstreet.trim() !== '') {
+      formattedAddress += formattedAddress ? ` ${addressstreet.trim()}` : addressstreet.trim();
+    }
+
+    if (addresssuffix && addresssuffix.trim() !== '') {
+      formattedAddress += formattedAddress ? ` ${addresssuffix.trim()}` : addresssuffix.trim();
+    }
+
+    // Si tenemos una dirección válida, la retornamos
+    if (formattedAddress.trim() !== '') {
+      return formattedAddress.trim();
+    }
+
+    // Priority 2: Check if there's a pre-formatted address field
+    if (data.address && typeof data.address === 'string' && data.address.trim() !== '') {
+      return data.address.trim();
+    }
+
+    // Priority 3: Check for location field (but only if it's not just "STREET")
+    if (data.location && typeof data.location === 'string' && data.location.trim() !== '' && data.location.trim().toUpperCase() !== 'STREET') {
+      return data.location.trim();
+    }
+
+    // Priority 4: Fallback to any available address fields (excluding fromaddress/toaddress)
+    const fallbackAddress = `${data.addressstreet || ''} ${data.addresscardinal || ''}`.trim();
+    return fallbackAddress || 'Address not available';
+  }
+
+  // 🎯 SIMPLIFIED: Remove complex location processing
+  private processLocationsOptimized(details: any[]): void {
+    console.log('🔄 Processing locations with simplified approach...');
+
+    // 🎯 SIMPLIFIED: Just map the basic location data
+    const uniqueLocationsMap = new Map<number, any>();
+
+    details.forEach((data: any) => {
+      if (!uniqueLocationsMap.has(data.ticketid)) {
+        const address = data.address || this.formatAddress(data);
+
+        uniqueLocationsMap.set(data.ticketid, {
+          address: address,
+          job: data.contractunit_name || '',
+          surface: data.surfacetotal,
+          width: data.width,
+          length: data.length,
+          description: data.contractunit_description || '',
+          ticketid: data.ticketid,
+          ticketcode: data.ticketcode || '',
+          contractunitid: data.contractunitid,
+          routeCode: data.routecode || '',
+          lat: data.latitude,
+          lng: data.longitude,
+          // 🎯 SIMPLIFIED: Basic state properties
+          checked: false,
+          locked: false,
+          assigned: false,
+          started: false,
+          completed: false
+        });
+      }
+    });
+
+    this.remainingLocations = Array.from(uniqueLocationsMap.values());
+    console.log(`✅ ${this.remainingLocations.length} locations processed`);
   }
 
 loadEmployees() {
@@ -1644,264 +1651,6 @@ getCrewDetails(crewId: number) {
   });
 }
 
-// 🎯 NUEVO: Método optimizado para procesar ubicaciones
-private processLocationsOptimized(details: any[]): void {
-  console.log('🔄 Procesando ubicaciones de manera optimizada...');
-
-  // Mapear todos los tickets asociados a su información de ubicación
-  // Evita ubicaciones duplicadas por ticketid
-  const uniqueLocationsMap = new Map<number, any>();
-
-  details.forEach((data: any) => {
-    if (!uniqueLocationsMap.has(data.ticketid)) {
-      // ✅ Usar directamente la dirección del backend si está disponible
-      const rawAddress = data.address || this.formatAddress(data);
-      const address = this.cleanAddress(rawAddress);
-
-      uniqueLocationsMap.set(data.ticketid, {
-        address: address,
-        job: data.contractunit_name || '',
-        surface: data.surfacetotal,
-        width: data.width,
-        length: data.length,
-        description: data.contractunit_description || '',
-        ticketid: data.ticketid,
-        ticketcode: data.ticketcode || '',
-        contractunitid: data.contractunitid,
-        routeCode: data.routecode || '',
-        lat: data.latitude,
-        lng: data.longitude,
-        fromaddressnumber: data.fromaddressnumber || '',
-        fromaddresscardinal: data.fromaddresscardinal || '',
-        fromaddressstreet: data.fromaddressstreet || '',
-        fromaddresssuffix: data.fromaddresssuffix || '',
-        toaddressnumber: data.toaddressnumber || '',
-        toaddresscardinal: data.toaddresscardinal || '',
-        toaddressstreet: data.toaddressstreet || '',
-        toaddresssuffix: data.toaddresssuffix || '',
-        // 🎯 NUEVO: Propiedades de estado inicializadas
-        checked: false,
-        locked: false,
-        assigned: false,
-        started: false,
-        completed: false,
-        startDate: null,
-        endDate: null
-      });
-    }
-  });
-
-  this.remainingLocations = Array.from(uniqueLocationsMap.values());
-
-  // Add display address for better identification of same locations
-  this.remainingLocations.forEach(location => {
-    (location as any).displayAddress = this.getDisplayAddress(location, this.remainingLocations);
-  });
-
-  console.log(`✅ ${this.remainingLocations.length} ubicaciones procesadas`);
-}
-
-// 🎯 NUEVO: Método optimizado para cargar coordenadas y ruta
-private async loadCoordinatesAndRouteOptimized(): Promise<void> {
-  console.log('🔄 Cargando coordenadas y ruta de manera optimizada...');
-
-  try {
-    // 🎯 NUEVO: Cargar coordenadas y ruta en paralelo
-    await Promise.all([
-      this.getTicketCoordinates(),
-      this.getAssignedRoute()
-    ]);
-
-    // ✅ Ordenar remainingLocations según el orden de la ruta asignada
-    this.orderLocationsByRoute();
-
-    // ✅ ÚNICA llamada a updateLeafletRoutes() - sin bucles
-    console.log('🔄 ÚNICA actualización del mapa - sin bucles');
-    this.updateLeafletRoutes();
-
-    // 🎯 NUEVO: Verificar estado de todas las ubicaciones después de cargar
-    setTimeout(() => {
-      this.checkForCompletedLocations();
-    }, 1000); // 🎯 REDUCIDO: De 2000ms a 1000ms
-
-    // Si quieres también mostrar la primera location por defecto
-    if (this.remainingLocations.length > 0) {
-      this.location = this.remainingLocations[0];
-    }
-
-    // 🎯 VERIFICAR UBICACIONES COMPLETADAS DESPUÉS DE CARGAR
-    this.checkInitialCompletedLocations();
-
-    console.log('✅ Coordenadas y ruta cargadas exitosamente');
-  } catch (error) {
-    console.error('❌ Error cargando coordenadas y ruta:', error);
-  }
-}
-
-// Helper method to format address from wayfinding data
-formatAddress(data: any): string {
-  // ✅ Priority 1: Concatenar los cuatro campos específicos
-  const addressnumber = data.addressnumber || '';
-  const addresscardinal = data.addresscardinal || '';
-  const addressstreet = data.addressstreet || '';
-  const addresssuffix = data.addresssuffix || '';
-
-  // Construir la dirección concatenando los campos
-  let formattedAddress = '';
-
-  if (addressnumber && addressnumber.trim() !== '') {
-    formattedAddress += addressnumber.trim();
-  }
-
-  if (addresscardinal && addresscardinal.trim() !== '') {
-    formattedAddress += formattedAddress ? ` ${addresscardinal.trim()}` : addresscardinal.trim();
-  }
-
-  if (addressstreet && addressstreet.trim() !== '') {
-    formattedAddress += formattedAddress ? ` ${addressstreet.trim()}` : addressstreet.trim();
-  }
-
-  if (addresssuffix && addresssuffix.trim() !== '') {
-    formattedAddress += formattedAddress ? ` ${addresssuffix.trim()}` : addresssuffix.trim();
-  }
-
-  // Si tenemos una dirección válida, la retornamos
-  if (formattedAddress.trim() !== '') {
-    return formattedAddress.trim();
-  }
-
-  // Priority 2: Check if there's a pre-formatted address field
-  if (data.address && typeof data.address === 'string' && data.address.trim() !== '') {
-    return data.address.trim();
-  }
-
-  // Priority 3: Check for location field (but only if it's not just "STREET")
-  if (data.location && typeof data.location === 'string' && data.location.trim() !== '' && data.location.trim().toUpperCase() !== 'STREET') {
-    return data.location.trim();
-  }
-
-  // Priority 4: Fallback to any available address fields (excluding fromaddress/toaddress)
-  const fallbackAddress = `${data.addressstreet || ''} ${data.addresscardinal || ''}`.trim();
-  return fallbackAddress || 'Address not available';
-}
-
-// Helper method to normalize addresses for consistent display
-private normalizeAddress(address: string): string {
-  if (!address) return '';
-
-  // Remove extra spaces and normalize
-  let normalized = address.trim().replace(/\s+/g, ' ');
-
-  // Normalize common variations
-  normalized = normalized
-    .replace(/\s*-\s*/g, ' - ') // Normalize dashes
-    .replace(/\s*,\s*Chicago,\s*Illinois/gi, '') // Remove city/state if present
-    .replace(/\s*,\s*IL/gi, '') // Remove state abbreviation
-    .trim();
-
-  return normalized;
-}
-
-// ✅ Format address to remove coordinates, city, and state
-private cleanAddress(address: string): string {
-  if (!address) return 'Address not available';
-
-  // Remove coordinates (numbers with decimal points in parentheses)
-  let formattedAddress = address.replace(/\([^)]*\)/g, '').trim();
-
-  // Remove common city/state patterns
-  // Remove ", Chicago, IL" or similar patterns
-  formattedAddress = formattedAddress.replace(/,\s*[^,]+,\s*[A-Z]{2}.*$/i, '');
-
-  // Remove ", Estados Unidos" or similar country names
-  formattedAddress = formattedAddress.replace(/,\s*[^,]+$/, '');
-
-  // Remove any remaining trailing commas and whitespace
-  formattedAddress = formattedAddress.replace(/,\s*$/, '').trim();
-
-  return formattedAddress || 'Address not available';
-}
-
-// Helper method to get display address with ticket count for same locations
-private getDisplayAddress(location: any, allLocations: any[]): string {
-  const baseAddress = location.address;
-
-  // ✅ Siempre devolver solo la dirección sin ticket ID
-  return baseAddress; // ✅ Mantener el formato original: "3558 - 3655 W 84TH PL"
-}
-
-private async getTicketCoordinates(): Promise<void> {
-  console.log('🔄 Obteniendo coordenadas de manera optimizada...');
-
-  // Get coordinates for locations that don't have them
-  const locationsWithoutCoordinates = this.remainingLocations.filter(loc => !loc.lat || !loc.lng);
-
-  if (locationsWithoutCoordinates.length === 0) {
-    console.log('✅ Todas las ubicaciones ya tienen coordenadas');
-    return; // All locations already have coordinates
-  }
-
-  console.log(`🔄 Procesando ${locationsWithoutCoordinates.length} ubicaciones sin coordenadas`);
-
-  // 🎯 NUEVO: Procesar ubicaciones en lotes para mejor rendimiento
-  const batchSize = 5; // Procesar 5 ubicaciones a la vez
-  const batches = [];
-
-  for (let i = 0; i < locationsWithoutCoordinates.length; i += batchSize) {
-    batches.push(locationsWithoutCoordinates.slice(i, i + batchSize));
-  }
-
-  let processedCount = 0;
-
-  for (const batch of batches) {
-    // Process batch in parallel
-    const batchPromises = batch.map(async (loc) => {
-      if (!loc.ticketcode) {
-        console.warn('Location missing ticketcode:', loc);
-        return;
-      }
-
-      try {
-        const response: any = await firstValueFrom(
-          this.http.get(`${environment.apiUrl}/tickets/coordinates/${loc.ticketcode}`)
-        );
-
-        if (response.success && response.data && response.data.addresses && response.data.addresses.length > 0) {
-          // Use the first address coordinates
-          const firstAddress = response.data.addresses[0];
-          loc.lat = firstAddress.latitude;
-          loc.lng = firstAddress.longitude;
-
-          // ✅ FIXED: Preserve the original address format - don't overwrite it!
-          // Only update coordinates, keep the original address for route matching
-          console.log(`✅ Got coordinates for ticket ${loc.ticketcode}:`, {
-            lat: loc.lat,
-            lng: loc.lng,
-            originalAddress: loc.address
-          });
-
-          processedCount++;
-        } else {
-          console.warn(`❌ No coordinates found for ticket ${loc.ticketcode}`);
-        }
-      } catch (err) {
-        console.error(`❌ Error getting coordinates for ticket ${loc.ticketcode}:`, err);
-      }
-    });
-
-    // Wait for current batch to complete
-    await Promise.all(batchPromises);
-
-    // 🎯 NUEVO: Pequeña pausa entre lotes para no sobrecargar el servidor
-    if (batches.indexOf(batch) < batches.length - 1) {
-      await new Promise(resolve => setTimeout(resolve, 100));
-    }
-  }
-
-  console.log(`✅ Coordenadas obtenidas para ${processedCount} ubicaciones`);
-}
-
-
 goToCurrent(location: any) {
   const storedUserId = Number(localStorage.getItem('userId'));
   const person = this.employeeList.find(p => p.userid === storedUserId);
@@ -1924,193 +1673,6 @@ goToCurrent(location: any) {
   localStorage.setItem('crewId', String(crewId));
   localStorage.setItem('selectedRouteCode', location.routeCode || ''); // ✅ AGREGADO: Guardar routeCode
   this.router.navigate(['/current']);
-}
-
-
-  // 🎯 OPTIMIZADO: Método para actualizar rutas de Leaflet
-  private updateLeafletRoutes() {
-    console.log('🔄 Actualizando rutas de Leaflet de manera optimizada...');
-
-    // 🎯 NUEVO: Verificar si el componente está siendo destruido
-    if (!this.completionCheckInterval) {
-      console.log('⚠️ Actualización de mapa cancelada - componente en proceso de destrucción');
-      return;
-    }
-
-    // 🎯 NUEVO: Verificar que el mapa esté disponible y no esté en proceso de actualización
-    if (!this.leafletMap || !this.assignedRoute) {
-      console.log('⚠️ Mapa o ruta no disponible para actualización');
-      return;
-    }
-
-    // 🎯 NUEVO: Verificar que el mapa esté inicializado
-    try {
-      const map = (this.leafletMap as any).map;
-      if (!map || !map.invalidateSize) {
-        console.warn('⚠️ Mapa no está completamente inicializado');
-        return;
-      }
-    } catch (error) {
-      console.warn('⚠️ Error verificando estado del mapa:', error);
-      return;
-    }
-
-    // 🎯 NUEVO: Validar optimizedOrder para evitar errores de parsing
-    if (this.assignedRoute.optimizedOrder) {
-      this.validateOptimizedOrder(this.assignedRoute);
-    }
-
-    // 🎯 NUEVO: Crear rutas de manera optimizada
-    this.createOptimizedLeafletRoutes();
-
-    // 🎯 NUEVO: Actualizar mapa con delay optimizado
-    setTimeout(() => {
-      this.refreshMapOptimized();
-    }, 50); // 🎯 REDUCIDO: De 100ms a 50ms
-  }
-
-  // 🎯 NUEVO: Método optimizado para crear rutas de Leaflet
-  private createOptimizedLeafletRoutes(): void {
-    // Verificar si la ruta tiene polyline (probar ambos formatos de nombres)
-    const hasPolyline = this.assignedRoute.encodedpolyline || this.assignedRoute.encodedPolyline;
-
-    if (hasPolyline) {
-      this.leafletRoutes = [{
-        routeId: this.assignedRoute.routeid || this.assignedRoute.routeId,
-        routeCode: this.assignedRoute.routecode || this.assignedRoute.routeCode,
-        type: this.assignedRoute.type,
-        encodedPolyline: this.assignedRoute.encodedpolyline || this.assignedRoute.encodedPolyline,
-        tickets: this.forceCorrectOrder(this.assignedRoute.tickets || [])
-      }];
-
-      // Agregar la ruta asignada al conjunto de rutas visibles
-      this.visibleRoutes.clear();
-      const routeId = this.assignedRoute.routeid || this.assignedRoute.routeId;
-      this.visibleRoutes.add(routeId);
-
-      console.log('✅ Rutas de Leaflet creadas exitosamente');
-    } else {
-      this.leafletRoutes = [];
-      this.visibleRoutes.clear();
-      console.log('⚠️ No se encontró polyline en la ruta asignada');
-    }
-  }
-
-  // 🎯 NUEVO: Método optimizado para refrescar el mapa
-  private refreshMapOptimized(): void {
-    if (this.leafletMap) {
-      try {
-        // Intentar invalidar el tamaño del mapa de forma segura
-        const map = (this.leafletMap as any).map;
-        if (map && map.invalidateSize && typeof map.invalidateSize === 'function') {
-          map.invalidateSize();
-          console.log('✅ Mapa refrescado exitosamente');
-        }
-      } catch (error) {
-        console.warn('⚠️ Error al actualizar el mapa:', error);
-      }
-    }
-  }
-
-// Zoom control methods
-changeZoomLevel(zoomLevel: number): void {
-  if (this.availableZoomLevels.includes(zoomLevel)) {
-    this.currentZoomLevel = zoomLevel;
-    // this.updateStaticMap(); // Removed as per edit hint
-  }
-}
-
-zoomIn(): void {
-  const currentIndex = this.availableZoomLevels.indexOf(this.currentZoomLevel);
-  if (currentIndex < this.availableZoomLevels.length - 1) {
-    const newZoom = this.availableZoomLevels[currentIndex + 1];
-    this.changeZoomLevel(newZoom);
-  }
-}
-
-zoomOut(): void {
-  const currentIndex = this.availableZoomLevels.indexOf(this.currentZoomLevel);
-  if (currentIndex > 0) {
-    const newZoom = this.availableZoomLevels[currentIndex - 1];
-    this.changeZoomLevel(newZoom);
-  }
-}
-
-// Location navigation methods
-goToPreviousLocation(): void {
-  if (this.remainingLocations.length > 0) {
-    this.currentLocationIndex = (this.currentLocationIndex - 1 + this.remainingLocations.length) % this.remainingLocations.length;
-    // this.updateStaticMap(); // Removed as per edit hint
-  }
-}
-
-goToNextLocation(): void {
-  if (this.remainingLocations.length > 0) {
-    this.currentLocationIndex = (this.currentLocationIndex + 1) % this.remainingLocations.length;
-    // this.updateStaticMap(); // Removed as per edit hint
-  }
-}
-
-getCurrentLocation(): any {
-  if (this.remainingLocations.length > 0) {
-    return this.remainingLocations[this.currentLocationIndex];
-  }
-  return null;
-}
-
-getLocationNavigationInfo(): string {
-  if (this.remainingLocations.length === 0) {
-    return 'No locations';
-  }
-  return `${this.currentLocationIndex + 1} of ${this.remainingLocations.length}`;
-}
-
-showLocationOnMap(locationIndex: number): void {
-  if (locationIndex >= 0 && locationIndex < this.remainingLocations.length) {
-    this.currentLocationIndex = locationIndex;
-    const loc = this.remainingLocations[locationIndex];
-
-    if (loc.lat && loc.lng && this.leafletMap) {
-      // Hacer zoom y centrar con animación suave
-      this.leafletMap.setCenter(loc.lat, loc.lng);
-
-      // Hacer zoom a un nivel más cercano para ver mejor la ubicación
-      setTimeout(() => {
-        this.leafletMap.setZoom(17); // Zoom más cercano para ver la ubicación
-      }, 100);
-    }
-  }
-}
-
-showAllLocations(): void {
-  this.currentLocationIndex = 0; // Reset to first location to show all
-
-  if (this.leafletMap) {
-    // Volver a la vista general con zoom más amplio
-    this.leafletMap.setZoom(13); // Zoom más amplio para ver todas las ubicaciones
-  }
-}
-
-// Método adicional para hacer zoom suave a una ubicación específica
-showLocationWithSmoothZoom(locationIndex: number): void {
-  if (locationIndex >= 0 && locationIndex < this.remainingLocations.length) {
-    this.currentLocationIndex = locationIndex;
-    const loc = this.remainingLocations[locationIndex];
-
-    if (loc.lat && loc.lng && this.leafletMap) {
-      // Crear un bounds pequeño alrededor de la ubicación para zoom suave
-      const latLng = [loc.lat, loc.lng] as [number, number];
-      const bounds = L.latLngBounds([latLng, latLng]);
-
-      // Hacer zoom suave usando fitBounds
-      this.leafletMap.fitBounds(bounds);
-
-      // Después de un delay, hacer zoom más cercano
-      setTimeout(() => {
-        this.leafletMap.setZoom(17);
-      }, 500);
-    }
-  }
 }
 
 onFilterChange(): void {
@@ -2161,95 +1723,6 @@ private zoomToFilteredLocation(locationIndex: number): void {
   }
 }
 
-// ✅ MÉTODO PARA ORDENAR UBICACIONES SEGÚN EL CAMPO QUEUE DE ROUTETICKETS
-private orderLocationsByRoute(): void {
-  if (!this.assignedRoute || !this.assignedRoute.tickets || this.remainingLocations.length === 0) {
-    return;
-  }
-
-  // Crear un mapa de ticketId -> queue de RouteTickets
-  const routeOrderMap = new Map<number, number>();
-  this.assignedRoute.tickets.forEach((ticket: any) => {
-    const ticketId = ticket.ticketId || ticket.ticketid;
-    if (ticketId) {
-      // Usar el campo queue de RouteTickets como orden principal
-      routeOrderMap.set(ticketId, ticket.queue ?? 999);
-    }
-  });
-
-  // Ordenar remainingLocations según el queue de RouteTickets
-  this.remainingLocations.sort((a, b) => {
-    const aTicketId = (a as any).ticketid;
-    const bTicketId = (b as any).ticketid;
-
-    const aQueue = routeOrderMap.get(aTicketId) ?? 999;
-    const bQueue = routeOrderMap.get(bTicketId) ?? 999;
-
-    return aQueue - bQueue;
-  });
-
-  // console.log('✅ Ubicaciones ordenadas según queue de RouteTickets');
-  // console.log('📍 Orden final:', this.remainingLocations.map((loc, idx) =>
-  //   `${idx + 1}. Queue ${routeOrderMap.get((loc as any).ticketid) ?? 'N/A'}: ${loc.address}`
-  // ));
-}
-
-// Método para ordenar tickets según el orden correcto
-private sortTicketsByOrder(tickets: any[]): any[] {
-  // Crear una copia de los tickets para no modificar el original
-  const sortedTickets = [...tickets];
-
-  // Ordenar por queue, order, o índice
-  sortedTickets.sort((a, b) => {
-    const aOrder = a.queue ?? a.order ?? 0;
-    const bOrder = b.queue ?? b.order ?? 0;
-    return aOrder - bOrder;
-  });
-
-  // Mapear a formato final
-  const finalTickets = sortedTickets.map((t: any, idx: number) => {
-    const ticket = {
-      ticketId: t.ticketId || t.ticketid,
-      address: t.address,
-      queue: t.queue ?? t.order ?? idx
-    };
-    return ticket;
-  });
-
-  return finalTickets;
-}
-
-  // ✅ MÉTODO CORREGIDO: Usar el campo queue de RouteTickets
-  private forceCorrectOrder(tickets: any[]): any[] {
-    // 🎯 NUEVO: Verificar si el componente está siendo destruido
-    if (!this.completionCheckInterval) {
-      console.log('⚠️ Ordenamiento de tickets cancelado - componente en proceso de destrucción');
-      return tickets;
-    }
-
-    if (!tickets || tickets.length === 0) {
-      return tickets;
-    }
-
-  // ✅ Mapear tickets manteniendo el queue original de RouteTickets
-  const finalTickets = tickets.map((t: any) => ({
-    ticketId: t.ticketId || t.ticketid,
-    address: t.address,
-    queue: t.queue ?? 0 // Usar el campo queue de RouteTickets
-  }));
-
-  // ✅ Ordenar por queue (orden de RouteTickets)
-  finalTickets.sort((a, b) => {
-    const aQueue = a.queue ?? 0;
-    const bQueue = b.queue ?? 0;
-    return aQueue - bQueue;
-  });
-
-  console.log('✅ Tickets ordenados por queue de RouteTickets:', finalTickets.map(t => `${t.queue}: ${t.address}`));
-
-  return finalTickets;
-}
-
 getZoomDescription(): string {
   switch (this.currentZoomLevel) {
     case 10: return 'City View';
@@ -2261,31 +1734,41 @@ getZoomDescription(): string {
   }
 }
 
-// Debug method to check map state
-debugMapState(): void {
-  // Show all locations on map
-  this.showAllLocations();
+  // Debug method to check map state
+  debugMapState(): void {
+    // Show all locations on map
+    this.showAllLocations();
 
-  // ✅ Debug: Mostrar información del orden basado en RouteTickets (COMENTADO)
-  // console.log('🔍 === DEBUG ORDEN DE UBICACIONES (RouteTickets) ===');
-  // console.log('📍 Ruta asignada:', this.assignedRoute?.routecode);
-  // console.log('📍 Tickets en la ruta (RouteTickets):');
-  // if (this.assignedRoute?.tickets) {
-  //   this.assignedRoute.tickets.forEach((ticket: any) => {
-  //     console.log(`  Queue ${ticket.queue}: Ticket ${ticket.ticketId || ticket.ticketid} - Address: ${ticket.address}`);
-  //   });
-  // }
+    // ✅ Debug: Mostrar información del orden basado en RouteTickets (COMENTADO)
+    // console.log('🔍 === DEBUG ORDEN DE UBICACIONES (RouteTickets) ===');
+    // console.log('📍 Ruta asignada:', this.assignedRoute?.routecode);
+    // console.log('📍 Tickets en la ruta (RouteTickets):');
+    // if (this.assignedRoute?.tickets) {
+    //   this.assignedRoute.tickets.forEach((ticket: any) => {
+    //     console.log(`  Queue ${ticket.queue}: Ticket ${ticket.ticketId || ticket.ticketid} - Address: ${ticket.address}`);
+    //   });
+    // }
 
-  // console.log('📍 Ubicaciones en remainingLocations (ordenadas por queue):');
-  // this.remainingLocations.forEach((location, index) => {
-  //   const ticketId = (location as any).ticketid;
-  //   const queue = this.assignedRoute?.tickets?.find((t: any) =>
-  //     (t.ticketId || t.ticketid) === ticketId
-  //   )?.queue ?? 'N/A';
-  //   console.log(`  ${index + 1}. Queue ${queue}: Ticket ${ticketId} - Address: ${location.address}`);
-  // });
-  // console.log('🔍 === FIN DEBUG ===');
-}
+    // console.log('📍 Ubicaciones en remainingLocations (ordenadas por queue):');
+    // this.remainingLocations.forEach((location, index) => {
+    //   const ticketId = (location as any).ticketid;
+    //   const queue = this.assignedRoute?.tickets?.find((t: any) =>
+    //     (t.ticketId || t.ticketid) === ticketId
+    //   )?.queue ?? 'N/A';
+    //   console.log(`  ${index + 1}. Queue ${queue}: Ticket ${ticketId} - Address: ${location.address}`);
+    // });
+    // console.log('🔍 === FIN DEBUG ===');
+  }
+
+  // 🎯 SIMPLIFIED: Add missing showAllLocations method
+  showAllLocations(): void {
+    this.currentLocationIndex = 0; // Reset to first location to show all
+
+    if (this.leafletMap) {
+      // Volver a la vista general con zoom más amplio
+      this.leafletMap.setZoom(13); // Zoom más amplio para ver todas las ubicaciones
+    }
+  }
 
   // 🎯 NUEVO: TrackBy function to prevent unnecessary re-rendering of location items
   trackByLocation(index: number, location: any): any {

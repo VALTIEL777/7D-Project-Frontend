@@ -32,6 +32,11 @@ interface RouteTicket {
   queue: number;
   quantity: number;
   amountToPay: number;
+  coordinates?: {
+    latitude: number;
+    longitude: number;
+    placeid?: string;
+  };
 }
 
 // Interface for optimization metadata
@@ -1531,6 +1536,30 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     // Combine all routes to create comprehensive map data
     const allRoutes = [...this.spottingRoutes, ...this.concreteRoutes, ...this.asphaltRoutes];
 
+    // Debug coordinate data
+    console.log('🔍 Route Generator - Debugging coordinate data:');
+    allRoutes.forEach((route, routeIndex) => {
+      console.log(`📍 Route ${routeIndex + 1} (${route.type}):`, {
+        routeId: route.routeId,
+        routeCode: route.routeCode,
+        ticketsCount: route.tickets?.length || 0
+      });
+
+      route.tickets?.forEach((ticket, ticketIndex) => {
+        console.log(`  📍 Ticket ${ticketIndex + 1}:`, {
+          ticketId: ticket.ticketId,
+          address: ticket.address,
+          hasCoordinates: !!ticket.coordinates,
+          coordinates: ticket.coordinates,
+          coordinateKeys: ticket.coordinates ? Object.keys(ticket.coordinates) : [],
+          latType: ticket.coordinates?.latitude ? typeof ticket.coordinates.latitude : 'undefined',
+          lngType: ticket.coordinates?.longitude ? typeof ticket.coordinates.longitude : 'undefined',
+          latValue: ticket.coordinates?.latitude,
+          lngValue: ticket.coordinates?.longitude
+        });
+      });
+    });
+
     // Convert routes to Leaflet map format
     this.leafletRoutes = allRoutes.map(route => ({
       routeId: route.routeId,
@@ -1540,7 +1569,8 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
       tickets: route.tickets.map(ticket => ({
         ticketId: ticket.ticketId,
         address: ticket.address,
-        queue: ticket.queue
+        queue: ticket.queue,
+        coordinates: ticket.coordinates // Include coordinates from API
       }))
     }));
 

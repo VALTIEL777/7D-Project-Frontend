@@ -174,6 +174,17 @@ export class RouteHistoryComponent implements OnInit {
               addressCount: route.addressCount,
               ticketsCount: route.tickets?.length || 0
             });
+
+            // Debug ticket coordinates
+            route.tickets?.forEach((ticket, ticketIndex) => {
+              console.log(`  📍 Ticket ${ticketIndex + 1} coordinates:`, {
+                ticketId: ticket.ticketId,
+                address: ticket.address,
+                hasCoordinates: !!ticket.coordinates,
+                coordinates: ticket.coordinates,
+                coordinateKeys: ticket.coordinates ? Object.keys(ticket.coordinates) : []
+              });
+            });
           });
 
           this.routes = response.routes;
@@ -234,7 +245,8 @@ export class RouteHistoryComponent implements OnInit {
       tickets: route.tickets.map(ticket => ({
         ticketId: ticket.ticketId,
         address: ticket.address,
-        queue: ticket.queue
+        queue: ticket.queue,
+        coordinates: ticket.coordinates // Include coordinates from API
       })),
       color: this.getRouteColor(route.type)
     }];
