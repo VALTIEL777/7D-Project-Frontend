@@ -25,6 +25,7 @@ import { environment } from '../../../../environments/environment';
 import * as L from 'leaflet';
 import { TicketStatusService } from '../../../core/services/route/ticketstatus.service';
 import { TaskstatusService } from '../../../core/services/route/taskstatus.service';
+import { TicketService } from '../../../core/services/ticket.service';
 
 
 @Component({
@@ -78,6 +79,7 @@ teamMembers: string[] = []; // Nombres de los demás miembros
 } = {
   address: ''
 };
+ticketCode: string = '';
 
   remainingLocations: {
     address: string;
@@ -140,7 +142,7 @@ crewDetails: any[] = [];
         private skillsService: SkillsService,
         private routeService: RoutesService,
         private router: Router,
-
+        private ticketService: TicketService,
         private http: HttpClient,   // ✅ Still needed for route API calls
         private ticketStatusService: TicketStatusService,  // 🎯 Para verificar estado de fases
         private taskstatusService: TaskstatusService  // 🎯 Para obtener nombres de fases
@@ -149,19 +151,23 @@ crewDetails: any[] = [];
 
   ngOnInit() {
     console.log('🚀 Iniciando carga optimizada del componente upcoming...');
-    
-    // 🎯 NUEVO: Inicializar tracking de usuario
+  
+    // 🎯 Inicializar tracking de usuario
     this.lastCheckedUserId = Number(localStorage.getItem('userId'));
     this.lastCheckedCrewId = this.getCurrentCrewId();
-    
-    // 🎯 NUEVO: Cargar datos críticos en paralelo
+  
+    // 🎯 Cargar datos críticos en paralelo
     this.loadCriticalDataInParallel();
-    
-    // 🎯 NUEVO: Cargar datos secundarios después
+  
+    // 🎯 Cargar datos secundarios después (incluye ticket codes)
     setTimeout(() => {
       this.loadSecondaryData();
+  
+      // ✅ Cargar ticket codes después de datos secundarios
+      this.loadTicketCodesForRemainingLocations();
     }, 50);
   }
+  
 
   // 🎯 NUEVO: Método para cargar datos críticos en paralelo
   private loadCriticalDataInParallel(): void {
@@ -185,6 +191,58 @@ crewDetails: any[] = [];
       }
     });
   }
+  private loadTicketCodesForRemainingLocations(): void {
+    const requests = this.remainingLocations
+      .filter(loc => loc.ticketid != null)
+      .map(loc =>
+        this.ticketService.getTicketById(loc.ticketid!).pipe(
+          map(ticket => {
+            loc.ticketcode = ticket.ticketCode || ticket.ticketcode || '';
+          })
+        )
+      );
+  
+    if (requests.length > 0) {
+      forkJoin(requests).subscribe({
+        next: () => {
+          console.log('✅ Ticket codes actualizados en remainingLocations');
+        },
+        error: (err) => {
+          console.error('❌ Error al cargar ticket codes:', err);
+        }
+      });
+    } else {
+      console.log('⚠️ No hay ubicaciones con ticketid válido para cargar');
+    }
+  }
+  
+
+  // 🎯 NUEVO: Método async para cargar ticket code
+  private loadAllTicketCodesAsync(): void {
+    const observables = this.remainingLocations
+      .filter(loc => !!loc.ticketid)
+      .map(loc =>
+        this.ticketService.getTicketById(loc.ticketid!).pipe(
+          map(ticket => {
+            loc.ticketcode = ticket.ticketCode || ticket.ticketcode || '';
+          })
+        )
+      );
+  
+    if (observables.length > 0) {
+      forkJoin(observables).subscribe({
+        next: () => {
+          console.log('✅ Todos los ticketCodes cargados correctamente');
+        },
+        error: (error) => {
+          console.error('❌ Error cargando ticketCodes:', error);
+        }
+      });
+    } else {
+      console.log('⚠️ No hay ubicaciones con ticketid para cargar ticketCodes');
+    }
+  }
+  
 
   // 🎯 NUEVO: Método para cargar datos secundarios
   private loadSecondaryData(): void {

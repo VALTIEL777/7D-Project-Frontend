@@ -131,6 +131,7 @@
 
             <!-- Si es una ubicación única, mostrar como antes -->
             <div *ngIf="!group.isMultiple">
+              <p class="job-info" *ngIf="group.locations[0].ticketcode">{{ group.locations[0].ticketcode }}</p>
               <p class="job-info" *ngIf="group.locations[0].job">{{ group.locations[0].job }}</p>
               <p class="size-info"><strong>Size:</strong> {{ group.locations[0].length || 'Not available'}} x {{ group.locations[0].width || 'Not available' }} ft</p>
             </div>
@@ -139,6 +140,7 @@
             <div *ngIf="group.isMultiple" class="multiple-locations">
               <div *ngFor="let location of group.locations; let j = index" class="location-item">
                 <div class="location-item-content">
+                  <p class="job-info" *ngIf="location.ticketcode">{{ location.ticketcode }}</p>
                   <p class="job-info" *ngIf="location.job">{{ location.job }}</p>
                   <p class="size-info"><strong>Size:</strong> {{ location.length || 'Not available'}} x {{ location.width || 'Not available' }} ft</p>
                   
