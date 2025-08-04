@@ -155,7 +155,7 @@ crewDetails: any[] = [];
     this.lastCheckedUserId = Number(localStorage.getItem('userId'));
     this.lastCheckedCrewId = this.getCurrentCrewId();
 
-    // 🎯 NUEVO: Cargar datos críticos en paralelo
+    // 🎯 FIXED: Cargar datos críticos en paralelo con orden correcto
     this.loadCriticalDataInParallel();
 
     // 🎯 NUEVO: Cargar datos secundarios después
@@ -164,16 +164,19 @@ crewDetails: any[] = [];
     }, 50);
   }
 
-  // 🎯 NUEVO: Método para cargar datos críticos en paralelo
+  // 🎯 FIXED: Método para cargar datos críticos en paralelo con orden correcto
   private loadCriticalDataInParallel(): void {
-    console.log('⚡ Cargando datos críticos en paralelo...');
+    console.log('⚡ Cargando datos críticos en paralelo con orden correcto...');
 
     // Cargar empleados y configurar listeners en paralelo
     forkJoin({
       employees: this.loadEmployeesAsync()
     }).subscribe({
-      next: (results) => {
+      next: async (results) => {
         console.log('✅ Datos críticos cargados exitosamente');
+
+        // 🎯 FIXED: Primero asignar la ruta, luego cargar detalles del crew
+        await this.initializeRouteAndLocations();
 
         // 🎯 ESCUCHAR CAMBIOS EN EL ESTADO DE COMPLETADO DE UBICACIONES
         this.setupLocationCompletionListener();
@@ -184,6 +187,120 @@ crewDetails: any[] = [];
       error: (error) => {
         console.error('❌ Error cargando datos críticos:', error);
       }
+    });
+  }
+
+  // 🎯 NUEVO: Método para inicializar ruta y ubicaciones en el orden correcto
+  private async initializeRouteAndLocations(): Promise<void> {
+    console.log('🔄 Inicializando ruta y ubicaciones en orden correcto...');
+
+    try {
+      // 🎯 PASO 1: Obtener el crewId del usuario
+      const storedUserId = Number(localStorage.getItem('userId'));
+      const person = this.employeeList.find(p => p.userid === storedUserId);
+      const currentCrewId = person?.crewid;
+
+      if (!currentCrewId) {
+        console.warn('❌ No crew ID found for user');
+        return;
+      }
+
+      // 🎯 PASO 2: Asignar la ruta primero
+      await this.getAssignedRoute();
+
+      // 🎯 PASO 3: Cargar detalles del crew con la ruta ya asignada
+      await this.loadCrewDetailsWithRoute(currentCrewId);
+
+      console.log('✅ Inicialización de ruta y ubicaciones completada');
+    } catch (error) {
+      console.error('❌ Error en inicialización de ruta y ubicaciones:', error);
+    }
+  }
+
+  // 🎯 NUEVO: Método para cargar detalles del crew con ruta ya asignada
+  private async loadCrewDetailsWithRoute(crewId: number): Promise<void> {
+    console.log(`🔄 Cargando detalles del crew ${crewId} con ruta ya asignada...`);
+
+    try {
+      const details = await firstValueFrom(this.crewsService.getCrewDetails(crewId));
+      console.log(`✅ Detalles del crew cargados: ${details.length} registros`);
+      this.crewDetails = details;
+
+      // 🎯 FIXED: Procesar ubicaciones con la ruta ya asignada y queue desde route tickets
+      this.processLocationsWithAssignedRoute(details);
+
+      this.isLoading = false;
+      console.log('✅ Carga de detalles del crew completada');
+    } catch (error) {
+      console.error('❌ Error cargando detalles del crew:', error);
+      this.isLoading = false;
+    }
+  }
+
+  // 🎯 FIXED: Procesar ubicaciones con la ruta ya asignada y queue desde route tickets
+  private processLocationsWithAssignedRoute(details: any[]): void {
+    console.log('🔄 Procesando ubicaciones con ruta ya asignada...');
+
+    // 🎯 FIXED: Get queue information from assigned route tickets
+    const routeTickets = this.assignedRoute?.tickets || [];
+    console.log('🎫 Route tickets for queue mapping:', routeTickets.length);
+
+    // 🎯 SIMPLIFIED: Just map the basic location data
+    const uniqueLocationsMap = new Map<number, any>();
+
+    details.forEach((data: any) => {
+      if (!uniqueLocationsMap.has(data.ticketid)) {
+        const address = data.address || this.formatAddress(data);
+
+        // 🎯 FIXED: Find queue from route tickets
+        const routeTicket = routeTickets.find((rt: any) =>
+          (rt.ticketId || rt.ticketid) === data.ticketid
+        );
+        const queue = routeTicket?.queue || 0;
+
+        console.log(`📍 Location ${data.ticketid}: queue=${queue}, address=${address}`);
+
+        uniqueLocationsMap.set(data.ticketid, {
+          address: address,
+          job: data.contractunit_name || '',
+          surface: data.surfacetotal,
+          width: data.width,
+          length: data.length,
+          description: data.contractunit_description || '',
+          ticketid: data.ticketid,
+          ticketcode: data.ticketcode || '',
+          contractunitid: data.contractunitid,
+          routeCode: data.routecode || '',
+          lat: data.latitude,
+          lng: data.longitude,
+          queue: queue, // 🎯 FIXED: Use queue from route tickets
+          // 🎯 SIMPLIFIED: Basic state properties
+          checked: false,
+          locked: false,
+          assigned: false,
+          started: false,
+          completed: false
+        });
+      }
+    });
+
+    // 🎯 FIXED: Aplicar ordenamiento por queue antes de asignar a remainingLocations
+    const locationsArray = Array.from(uniqueLocationsMap.values());
+
+    // 🎯 FIXED: Ordenar por queue number para evitar mezcla después del refresh
+    const sortedLocations = locationsArray.sort((a, b) => {
+      const queueA = a.queue || 0;
+      const queueB = b.queue || 0;
+      return queueA - queueB;
+    });
+
+    this.remainingLocations = sortedLocations;
+    console.log(`✅ ${this.remainingLocations.length} locations processed and sorted by queue`);
+
+    // 🎯 DEBUG: Log the final order
+    console.log('📋 Final location order:');
+    this.remainingLocations.forEach((loc, index) => {
+      console.log(`  ${index + 1}. Queue ${loc.queue}: ${loc.address}`);
     });
   }
 
@@ -1245,7 +1362,7 @@ crewDetails: any[] = [];
     console.log('🔧 Debug methods exposed to window.debugUpcoming');
   }
 
-  // 🎯 MÉTODO PARA AGRUPAR UBICACIONES POR DIRECCIÓN
+  // �� FIXED: Método para agrupar ubicaciones sin re-ordenar (ya están ordenadas por queue)
   get groupedLocations() {
     // 🎯 TEMPORAL: Mostrar todas las ubicaciones
     const visibleLocations = this.remainingLocations;
@@ -1261,15 +1378,11 @@ crewDetails: any[] = [];
       );
     }
 
-    // 🎯 NUEVO: Ordenar por queue number antes de agrupar
-    const sortedLocations = filteredLocations.sort((a, b) => {
-      const queueA = a.queue || 0;
-      const queueB = b.queue || 0;
-      return queueA - queueB;
-    });
+    // 🎯 FIXED: No re-ordenar las ubicaciones - ya están ordenadas por queue
+    // Las ubicaciones ya vienen ordenadas por queue desde processLocationsWithAssignedRoute
 
     // Agrupar por dirección
-    const grouped = sortedLocations.reduce((groups: any, location) => {
+    const grouped = filteredLocations.reduce((groups: any, location) => {
       const address = location.address;
       if (!groups[address]) {
         groups[address] = [];
@@ -1281,7 +1394,7 @@ crewDetails: any[] = [];
     // Convertir a array de grupos y ordenar por el queue más bajo de cada grupo
     return Object.keys(grouped).map(address => ({
       address: address,
-      locations: grouped[address].sort((a: any, b: any) => (a.queue || 0) - (b.queue || 0)),
+      locations: grouped[address], // 🎯 FIXED: No re-ordenar dentro del grupo - ya están ordenadas
       isMultiple: grouped[address].length > 1
     })).sort((a, b) => {
       const minQueueA = Math.min(...a.locations.map((loc: any) => loc.queue || 0));
@@ -1564,44 +1677,7 @@ crewDetails: any[] = [];
     return fallbackAddress || 'Address not available';
   }
 
-  // 🎯 SIMPLIFIED: Remove complex location processing
-  private processLocationsOptimized(details: any[]): void {
-    console.log('🔄 Processing locations with simplified approach...');
-
-    // 🎯 SIMPLIFIED: Just map the basic location data
-    const uniqueLocationsMap = new Map<number, any>();
-
-    details.forEach((data: any) => {
-      if (!uniqueLocationsMap.has(data.ticketid)) {
-        const address = data.address || this.formatAddress(data);
-
-        uniqueLocationsMap.set(data.ticketid, {
-          address: address,
-          job: data.contractunit_name || '',
-          surface: data.surfacetotal,
-          width: data.width,
-          length: data.length,
-          description: data.contractunit_description || '',
-          ticketid: data.ticketid,
-          ticketcode: data.ticketcode || '',
-          contractunitid: data.contractunitid,
-          routeCode: data.routecode || '',
-          lat: data.latitude,
-          lng: data.longitude,
-          queue: data.queue || 0, // 🎯 NUEVO: Incluir queue para ordenamiento
-          // 🎯 SIMPLIFIED: Basic state properties
-          checked: false,
-          locked: false,
-          assigned: false,
-          started: false,
-          completed: false
-        });
-      }
-    });
-
-    this.remainingLocations = Array.from(uniqueLocationsMap.values());
-    console.log(`✅ ${this.remainingLocations.length} locations processed`);
-  }
+  // 🎯 REMOVED: processLocationsOptimized method - replaced by processLocationsWithAssignedRoute
 
 loadEmployees() {
   this.loadEmployeesAsync().subscribe({
@@ -1679,25 +1755,8 @@ getCrewDetails(crewId: number) {
   this.isLoading = true;
   console.log('🚀 Iniciando carga optimizada de detalles del crew...');
 
-  this.crewsService.getCrewDetails(crewId).subscribe({
-    next: async (details) => {
-      console.log(`✅ Detalles del crew cargados: ${details.length} registros`);
-      this.crewDetails = details;
-
-      // 🎯 NUEVO: Procesar ubicaciones de manera optimizada
-      this.processLocationsOptimized(details);
-
-      // 🎯 NUEVO: Cargar coordenadas y ruta en paralelo
-      await this.loadCoordinatesAndRouteOptimized();
-
-      this.isLoading = false;
-      console.log('✅ Carga de detalles del crew completada');
-    },
-    error: (err) => {
-      console.error('❌ Error cargando detalles del crew:', err);
-      this.isLoading = false;
-    }
-  });
+  // 🎯 FIXED: Usar el nuevo método que maneja la ruta correctamente
+  this.loadCrewDetailsWithRoute(crewId);
 }
 
 goToCurrent(location: any) {
