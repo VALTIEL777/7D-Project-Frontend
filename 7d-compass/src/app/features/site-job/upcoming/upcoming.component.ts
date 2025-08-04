@@ -92,6 +92,7 @@ teamMembers: string[] = []; // Nombres de los demás miembros
     displayAddress?: string; // ✅ AGREGADO: Para mostrar direcciones consistentes
     ticketcode?: string; // ✅ AGREGADO: Incluir ticketcode
     ticketid?: number; // 🎯 NUEVO: Para identificar el ticket
+    queue?: number; // 🎯 NUEVO: Para ordenar por número de cola
     // 🎯 NUEVO: Propiedades para el sistema de checks como en current
     checked?: boolean;
     locked?: boolean;
@@ -1260,8 +1261,15 @@ crewDetails: any[] = [];
       );
     }
 
+    // 🎯 NUEVO: Ordenar por queue number antes de agrupar
+    const sortedLocations = filteredLocations.sort((a, b) => {
+      const queueA = a.queue || 0;
+      const queueB = b.queue || 0;
+      return queueA - queueB;
+    });
+
     // Agrupar por dirección
-    const grouped = filteredLocations.reduce((groups: any, location) => {
+    const grouped = sortedLocations.reduce((groups: any, location) => {
       const address = location.address;
       if (!groups[address]) {
         groups[address] = [];
@@ -1270,12 +1278,16 @@ crewDetails: any[] = [];
       return groups;
     }, {});
 
-    // Convertir a array de grupos
+    // Convertir a array de grupos y ordenar por el queue más bajo de cada grupo
     return Object.keys(grouped).map(address => ({
       address: address,
-      locations: grouped[address],
+      locations: grouped[address].sort((a: any, b: any) => (a.queue || 0) - (b.queue || 0)),
       isMultiple: grouped[address].length > 1
-    }));
+    })).sort((a, b) => {
+      const minQueueA = Math.min(...a.locations.map((loc: any) => loc.queue || 0));
+      const minQueueB = Math.min(...b.locations.map((loc: any) => loc.queue || 0));
+      return minQueueA - minQueueB;
+    });
   }
 
   // Temporary debugging method to force a specific route
@@ -1295,9 +1307,9 @@ crewDetails: any[] = [];
     }
   }
 
-  // �� SIMPLIFIED: Remove all complex route assignment logic and replace with simple approach
+  // 🎯 FIXED: Find the route that's actually assigned to the user's crew
   async getAssignedRoute(): Promise<void> {
-    console.log('🚀 Getting assigned route with simplified approach...');
+    console.log('🚀 Getting assigned route for user crew...');
 
     try {
       // Get the current crew type and crew ID
@@ -1312,15 +1324,51 @@ crewDetails: any[] = [];
         userId: storedUserId
       });
 
-      // 🎯 SIMPLIFIED: Just get routes from API and use the first one
+      if (!currentCrewId) {
+        console.warn('❌ No crew ID found for user');
+        return;
+      }
+
+      // 🎯 FIXED: Get crew details to find the assigned route
+      const crewDetails = await firstValueFrom(this.crewsService.getCrewDetails(currentCrewId));
+
+      if (!crewDetails || crewDetails.length === 0) {
+        console.warn('❌ No crew details found');
+        return;
+      }
+
+      // 🎯 FIXED: Find the route ID assigned to this crew
+      let assignedRouteId = null;
+      let assignedRouteCode = null;
+
+      // Look for route information in crew details
+      for (const detail of crewDetails) {
+        if (detail.routeid || detail.routeId) {
+          assignedRouteId = detail.routeid || detail.routeId;
+          assignedRouteCode = detail.routecode || detail.routeCode;
+          console.log(`✅ Found route assigned to crew ${currentCrewId}:`, { routeId: assignedRouteId, routeCode: assignedRouteCode });
+          break;
+        }
+      }
+
+      if (!assignedRouteId) {
+        console.warn(`❌ No route assigned to crew ${currentCrewId}`);
+        return;
+      }
+
+      // 🎯 FIXED: Get all routes and find the one assigned to this crew
       const allRoutes = await this.loadRoutesOptimized(currentCrewType);
 
-      if (allRoutes && allRoutes.length > 0) {
-        // 🎯 SIMPLIFIED: Use the first available route
-        this.assignedRoute = allRoutes[0];
-        this.assignedRouteId = this.assignedRoute?.routeid || this.assignedRoute?.routeId;
+      // Find the specific route assigned to this crew
+      const assignedRoute = allRoutes.find(route =>
+        (route.routeid || route.routeId) === assignedRouteId
+      );
 
-        console.log('🎯 Assigned route:', {
+      if (assignedRoute) {
+        this.assignedRoute = assignedRoute;
+        this.assignedRouteId = assignedRouteId;
+
+        console.log('🎯 Found assigned route:', {
           routeId: this.assignedRouteId,
           routeCode: this.assignedRoute.routecode || this.assignedRoute.routeCode,
           type: this.assignedRoute.type,
@@ -1328,10 +1376,10 @@ crewDetails: any[] = [];
           ticketsCount: this.assignedRoute.tickets?.length || 0
         });
 
-        // 🎯 SIMPLIFIED: Update the map directly
+        // Update the map with the correct route
         this.updateLeafletMap();
       } else {
-        console.warn('❌ No routes available');
+        console.warn(`❌ Route ${assignedRouteId} not found in available routes`);
       }
     } catch (error) {
       console.error('❌ Error in getAssignedRoute:', error);
@@ -1540,6 +1588,7 @@ crewDetails: any[] = [];
           routeCode: data.routecode || '',
           lat: data.latitude,
           lng: data.longitude,
+          queue: data.queue || 0, // 🎯 NUEVO: Incluir queue para ordenamiento
           // 🎯 SIMPLIFIED: Basic state properties
           checked: false,
           locked: false,
