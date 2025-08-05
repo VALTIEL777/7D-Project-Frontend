@@ -88,6 +88,7 @@ selectedFiles: File[] = [];
 imagePreviews: (string | ArrayBuffer | null)[] = [];
 ticketId: number = 0; // Lo debes asignar al cargar detalles
 ticketCode: string = '';
+partnerSupervisorComment: string = '';
 crewId: number = 0;
 ticketStatusId: number = 0; // Id del estado del ticket asociado (si aplica)
 comment: string = '';
@@ -454,6 +455,7 @@ private loadTicketCodeAsync() {
   return this.ticketService.getTicketById(this.ticketId).pipe(
     map(ticket => {
       this.ticketCode = ticket.ticketCode || ticket.ticketcode || '';
+      this.partnerSupervisorComment = ticket.partnerSupervisorComment || '';
       return { success: true };
     })
   );
@@ -2361,17 +2363,18 @@ updateTicketComment7d(comment: string) {
         wayfindingId: currentTicket.wayfindingId || currentTicket.wayfindingid,
         paymentId: currentTicket.paymentId,
         mobilizationId: currentTicket.mobilizationId,
-        ticketCode: currentTicket.ticketCode || currentTicket.ticketcode,
-        ticketcode: currentTicket.ticketCode || currentTicket.ticketcode, // Requerido por la interfaz
+        ticketCode: currentTicket.ticketCode || currentTicket.ticketcode || 'Not available',
+        // ticketcode: currentTicket.ticketCode || currentTicket.ticketcode, // Requerido por la interfaz
         quantity: currentTicket.quantity,
         daysOutstanding: currentTicket.daysOutstanding,
         comment7d: comment,
-        partnerComment: currentTicket.partnerComment,
+        PeopleGasComment: currentTicket.partnerComment,
+        partnerComment: currentTicket.partnerComment, // ✅ Esta línea es necesaria
         partnerSupervisorComment: currentTicket.partnerSupervisorComment,
         contractNumber: currentTicket.contractNumber,
         amountToPay: currentTicket.amountToPay,
         ticketType: currentTicket.ticketType,
-        quadrantId: quadrantIdToPreserve, // 🎯 EXPLÍCITAMENTE INCLUIR EL QUADRANTID
+        // quadrantId: quadrantIdToPreserve, 
         cuadranteId: quadrantIdToPreserve,
         updatedBy: this.userId
       };

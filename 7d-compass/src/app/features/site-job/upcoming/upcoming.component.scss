@@ -279,14 +279,14 @@
   align-items: center;
   padding: 60px 0;
   gap: 16px;
-  
+
   .loading-text {
     display: flex;
     align-items: center;
     gap: 8px;
     color: #666;
     font-size: 14px;
-    
+
     mat-icon {
       font-size: 18px;
       width: 18px;
@@ -358,16 +358,16 @@
 }
 
 .upload-button {
-  padding: 10px 20px;
-  background-color: #ffffff;
+  padding: 12px 24px;
+  background-color: #e0e0e0;
+  color: #333;
   border: none;
-  color: #005cbb;
   font-weight: bold;
   border-radius: 8px;
   cursor: pointer;
   width: auto;
   margin: 0;
-  transition: all 0.2s ease;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease; // 🎯 OPTIMIZED: Specific transitions instead of 'all'
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
 }
 
@@ -583,8 +583,8 @@
     width: 40px; // 🎯 ANCHO FIJO PARA EL BOTÓN
     display: flex;
     justify-content: center;
-    align-items: flex-start; // 🎯 NUEVO: Alinear al inicio
-    padding-top: 4px; // 🎯 NUEVO: Pequeño padding para alineación
+    align-items: center; // 🎯 FIXED: Center the button vertically
+    padding-top: 0; // 🎯 FIXED: Remove padding that was pushing it down
 
     .small-go-btn {
       width: 32px;
@@ -594,7 +594,7 @@
       color: #005cbb;
       background-color: rgba(0, 92, 187, 0.1);
       border-radius: 50%;
-      transition: all 0.2s ease;
+      transition: transform 0.2s ease, background-color 0.2s ease, color 0.2s ease; // 🎯 OPTIMIZED: Specific transitions instead of 'all'
       flex-shrink: 0; // 🎯 NO PERMITIR QUE SE ENCOJA
 
       &:hover {
@@ -919,7 +919,7 @@
   background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
   color: white;
   border: none;
-  transition: all 0.3s ease;
+  transition: transform 0.3s ease, box-shadow 0.3s ease, background 0.3s ease; // 🎯 OPTIMIZED: Specific transitions instead of 'all'
 
   &:hover {
     background: linear-gradient(135deg, #45a049 0%, #3d8b40 100%);
@@ -936,7 +936,7 @@
   background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
   color: white;
   border: none;
-  transition: all 0.3s ease;
+  transition: transform 0.3s ease, box-shadow 0.3s ease, background 0.3s ease; // 🎯 OPTIMIZED: Specific transitions instead of 'all'
 
   &:hover {
     background: linear-gradient(135deg, #f57c00 0%, #ef6c00 100%);
@@ -964,15 +964,15 @@
     font-size: 18px;
     width: 18px;
     height: 18px;
-    
+
     &.status-completed {
       color: #4caf50; // Verde para completado
     }
-    
+
     &.status-started {
       color: #ff9800; // Naranja para en progreso
     }
-    
+
     &.status-pending {
       color: #9e9e9e; // Gris para pendiente
     }
@@ -980,20 +980,20 @@
 
   .status-text {
     font-weight: 500;
-    
+
     .status-completed & {
       color: #4caf50;
     }
-    
+
     .status-started & {
       color: #ff9800;
     }
-    
+
     &.status-pending {
       color: #9e9e9e; // Gris para pendiente
     }
   }
-  
+
   &.pending {
     background-color: #f0f0f0;
   }
@@ -1015,15 +1015,15 @@
     font-size: 14px;
     width: 14px;
     height: 14px;
-    
+
     &.status-completed {
       color: #4caf50; // Verde para completado
     }
-    
+
     &.status-started {
       color: #ff9800; // Naranja para en progreso
     }
-    
+
     &.status-pending {
       color: #9e9e9e; // Gris para pendiente
     }
@@ -1032,30 +1032,30 @@
   .status-text-small {
     font-weight: 500;
     font-size: 0.7rem;
-    
+
     &.status-completed {
       color: #4caf50;
     }
-    
+
     &.status-started {
       color: #ff9800;
     }
-    
+
     &.status-pending {
       color: #9e9e9e;
     }
   }
-  
+
   &.pending {
     background-color: #f5f5f5;
     border-left-color: #9e9e9e;
   }
-  
+
   &:not(.pending) {
     &.status-completed {
       border-left-color: #4caf50;
     }
-    
+
     &.status-started {
       border-left-color: #ff9800;
     }
@@ -1090,4 +1090,25 @@
       font-size: 0.8rem;
     }
   }
+}
+
+.size-info {
+  font-size: 14px;
+  color: #666;
+  margin: 4px 0;
+}
+
+// 🎯 NUEVO: Ticket code styling
+.ticket-code {
+  font-size: 14px;
+  color: #005cbb;
+  margin: 4px 0;
+  font-weight: 500;
+}
+
+.ticket-code-small {
+  font-size: 12px;
+  color: #005cbb;
+  margin: 2px 0;
+  font-weight: 500;
 }

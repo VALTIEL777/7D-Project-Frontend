@@ -4,7 +4,7 @@
   right: 24px;
   z-index: 1000;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  transition: all 0.3s ease;
+  transition: transform 0.3s ease, box-shadow 0.3s ease; // 🎯 OPTIMIZED: Specific transitions instead of 'all'
 
   &:hover {
     transform: scale(1.1);

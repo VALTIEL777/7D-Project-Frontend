@@ -151,15 +151,15 @@ crewDetails: any[] = [];
 
   ngOnInit() {
     console.log('🚀 Iniciando carga optimizada del componente upcoming...');
-  
-    // 🎯 Inicializar tracking de usuario
+
+    // 🎯 NUEVO: Inicializar tracking de usuario
     this.lastCheckedUserId = Number(localStorage.getItem('userId'));
     this.lastCheckedCrewId = this.getCurrentCrewId();
-  
-    // 🎯 Cargar datos críticos en paralelo
+
+    // 🎯 NUEVO: Cargar datos críticos en paralelo
     this.loadCriticalDataInParallel();
-  
-    // 🎯 Cargar datos secundarios después (incluye ticket codes)
+
+    // 🎯 NUEVO: Cargar datos secundarios después
     setTimeout(() => {
       this.loadSecondaryData();
   
@@ -172,17 +172,17 @@ crewDetails: any[] = [];
   // 🎯 NUEVO: Método para cargar datos críticos en paralelo
   private loadCriticalDataInParallel(): void {
     console.log('⚡ Cargando datos críticos en paralelo...');
-    
+
     // Cargar empleados y configurar listeners en paralelo
     forkJoin({
       employees: this.loadEmployeesAsync()
     }).subscribe({
       next: (results) => {
         console.log('✅ Datos críticos cargados exitosamente');
-        
+
         // 🎯 ESCUCHAR CAMBIOS EN EL ESTADO DE COMPLETADO DE UBICACIONES
         this.setupLocationCompletionListener();
-        
+
         // 🎯 EXPONER MÉTODOS DE DEBUG PARA CONSOLE
         this.exposeDebugMethods();
       },
@@ -247,7 +247,7 @@ crewDetails: any[] = [];
   // 🎯 NUEVO: Método para cargar datos secundarios
   private loadSecondaryData(): void {
     console.log('📦 Cargando datos secundarios...');
-    
+
     // Aquí puedes agregar carga de datos secundarios si es necesario
     console.log('✅ Datos secundarios cargados exitosamente');
   }
@@ -269,40 +269,27 @@ crewDetails: any[] = [];
 
   // 🎯 MÉTODO PARA ESCUCHAR CUANDO SE COMPLETA UNA UBICACIÓN
   private setupLocationCompletionListener(): void {
-    // Verificar cada 30 segundos todas las ubicaciones (reducido de 10 a 30)
+    // 🎯 OPTIMIZED: Back to original frequency since buttons are now isolated
     this.completionCheckInterval = setInterval(() => {
-      this.checkForCompletedLocations();
-    }, 30000);
-
-    // 🎯 NUEVO: Verificar estado inmediatamente al cargar
-    setTimeout(() => {
-      this.checkForCompletedLocations();
-    }, 2000);
-
-    // 🎯 NUEVO: Verificar estado cuando se detecta cambio de usuario o ruta
-    this.setupUserChangeListener();
-  }
-
-  // 🎯 NUEVO: Método para escuchar cambios de usuario o ruta
-  private setupUserChangeListener(): void {
-    // Verificar cambios en localStorage cada 5 segundos
-    setInterval(() => {
-      const currentUserId = Number(localStorage.getItem('userId'));
-      const currentCrewId = this.getCurrentCrewId();
-      
-      // Si cambió el usuario o crew, verificar estado inmediatamente
-      if (this.lastCheckedUserId !== currentUserId || this.lastCheckedCrewId !== currentCrewId) {
-        console.log('🔄 Cambio de usuario o crew detectado, verificando estado...');
-        this.lastCheckedUserId = currentUserId;
-        this.lastCheckedCrewId = currentCrewId;
+      // Only run checks if component is still active
+      if (this.completionCheckInterval) {
         this.checkForCompletedLocations();
       }
-    }, 5000);
+    }, 30000); // 🎯 BACK TO ORIGINAL: 30 seconds since buttons are now stable
 
-    // 🎯 NUEVO: Verificación más frecuente para detectar cambios de estado
-    setInterval(() => {
-      this.checkForCompletedLocations();
-    }, 10000); // Verificar cada 10 segundos
+    // 🎯 OPTIMIZED: Initial check with original delay
+    setTimeout(() => {
+      if (this.completionCheckInterval) {
+        this.checkForCompletedLocations();
+      }
+    }, 5000); // 🎯 BACK TO ORIGINAL: 5 seconds
+  }
+
+  //  NUEVO: Método para obtener crewId actual
+  private getCurrentCrewId(): number | null {
+    const storedUserId = Number(localStorage.getItem('userId'));
+    const person = this.employeeList.find(p => p.userid === storedUserId);
+    return person?.crewid || null;
   }
 
   // 🎯 NUEVO: Propiedades para tracking de cambios
@@ -310,17 +297,10 @@ crewDetails: any[] = [];
   private lastCheckedCrewId: number | null = null;
   private lastCheckTime: number = 0;
 
-  // 🎯 NUEVO: Método para obtener crewId actual
-  private getCurrentCrewId(): number | null {
-    const storedUserId = Number(localStorage.getItem('userId'));
-    const person = this.employeeList.find(p => p.userid === storedUserId);
-    return person?.crewid || null;
-  }
-
   // 🎯 MÉTODO PARA LIMPIAR EL INTERVALO CUANDO SE DESTRUYE EL COMPONENTE
   ngOnDestroy(): void {
     console.log('🔄 Componente upcoming destruyéndose...');
-    
+
     // 🎯 NUEVO: Limpiar intervalo de verificación
     if (this.completionCheckInterval) {
       clearInterval(this.completionCheckInterval);
@@ -330,37 +310,37 @@ crewDetails: any[] = [];
 
     // 🎯 NUEVO: Limpiar estado de verificación
     this.isCheckingLocations = false;
-    
+
     // 🎯 NUEVO: Limpiar logs
     this.lastCompletionLog = {};
-    
+
     // 🎯 NUEVO: Limpiar tracking de usuario
     this.lastCheckedUserId = null;
     this.lastCheckedCrewId = null;
     this.lastCheckTime = 0;
-    
+
     // 🎯 NUEVO: Limpiar rutas para evitar accesos posteriores
     this.leafletRoutes = [];
     this.visibleRoutes.clear();
     this.assignedRoute = null;
-    
+
     console.log('✅ Componente upcoming destruido completamente');
   }
 
-  // 🎯 OPTIMIZADO: Método para verificar ubicaciones completadas
+  // 🎯 OPTIMIZADO: Método para verificar ubicaciones completadas con mejor control de cambios
   private checkForCompletedLocations(): void {
     console.log('🔄 Verificando ubicaciones completadas de manera optimizada...');
-    
+
     // 🎯 NUEVO: Verificar si el componente está siendo destruido
     if (!this.completionCheckInterval) {
       console.log('⚠️ Verificación cancelada - componente en proceso de destrucción');
       return;
     }
 
-    // 🎯 NUEVO: Evitar verificaciones simultáneas (pero permitir si han pasado más de 30 segundos)
+    // 🎯 OPTIMIZED: Back to original throttling since buttons are now isolated
     const now = Date.now();
     const lastCheck = this.lastCheckTime || 0;
-    if (this.isCheckingLocations && (now - lastCheck) < 30000) {
+    if (this.isCheckingLocations && (now - lastCheck) < 30000) { // 🎯 BACK TO ORIGINAL: 30 seconds
       console.log('⚠️ Verificación en progreso, saltando...');
       return;
     }
@@ -394,7 +374,7 @@ crewDetails: any[] = [];
 
     console.log(`🔄 Verificando ${allLocations.length} ubicaciones para crew ${currentCrewId}`);
 
-    // 🎯 NUEVO: Verificar ubicaciones en lotes para mejor rendimiento
+    // 🎯 OPTIMIZED: Verificar ubicaciones en lotes para mejor rendimiento
     this.checkLocationsInBatches(allLocations, currentCrewId);
   }
 
@@ -402,7 +382,7 @@ crewDetails: any[] = [];
   private async checkLocationsInBatches(visibleLocations: any[], currentCrewId: number): Promise<void> {
     const batchSize = 3; // Verificar 3 ubicaciones a la vez
     const batches = [];
-    
+
     for (let i = 0; i < visibleLocations.length; i += batchSize) {
       batches.push(visibleLocations.slice(i, i + batchSize));
     }
@@ -434,7 +414,7 @@ crewDetails: any[] = [];
 
       // Esperar a que el lote actual termine
       await Promise.all(batchPromises);
-      
+
       // 🎯 NUEVO: Pequeña pausa entre lotes para no sobrecargar el servidor
       if (batches.indexOf(batch) < batches.length - 1) {
         await new Promise(resolve => setTimeout(resolve, 200));
@@ -472,11 +452,11 @@ crewDetails: any[] = [];
       this.ticketStatusService.getByTicket(ticketId).subscribe({
         next: (ticketStatuses: any[]) => {
           console.log(`🔍 Verificando ticket ${ticketId} - TicketStatus encontrados:`, ticketStatuses.length);
-          
+
           // 🎯 SOLUCIÓN TEMPORAL: Obtener nombres de fases usando taskstatusid
           this.getPhaseNamesForTicketStatuses(ticketStatuses).then(enhancedTicketStatuses => {
             console.log(`🔍 TicketStatus con nombres de fases para ticket ${ticketId}:`, enhancedTicketStatuses);
-            
+
             let isCompleted = false;
             let isStarted = false;
 
@@ -542,7 +522,7 @@ crewDetails: any[] = [];
                 from: currentState,
                 to: newState
               });
-              
+
               // 🎯 NUEVO: Forzar actualización de la UI inmediatamente
               this.forceUIUpdate();
             }
@@ -566,20 +546,20 @@ crewDetails: any[] = [];
   private markLocationAsCompleted(locationIndex: number, ticketStatuses: any[]): void {
     if (locationIndex >= 0 && locationIndex < this.remainingLocations.length) {
       const location = this.remainingLocations[locationIndex];
-      
+
       // 🎯 NUEVO: Aplicar lógica similar a current.component.ts
       location.checked = true;
       location.locked = true; // Bloquear si está completada
       location.assigned = true;
       location.completed = true;
-      
+
       // 🎯 NUEVO: Obtener fechas de inicio y fin
       const completedStatus = ticketStatuses.find(ts => ts.endingdate);
       if (completedStatus) {
         location.startDate = completedStatus.startingdate;
         location.endDate = completedStatus.endingdate;
       }
-      
+
       console.log(`✅ Ubicación marcada como completada: ${location.address}`);
     }
   }
@@ -588,13 +568,13 @@ crewDetails: any[] = [];
   private markLocationAsPending(locationIndex: number, ticketStatuses: any[]): void {
     if (locationIndex >= 0 && locationIndex < this.remainingLocations.length) {
       const location = this.remainingLocations[locationIndex];
-      
+
       // 🎯 NUEVO: Aplicar lógica similar a current.component.ts
       location.checked = false;
       location.locked = false;
       location.assigned = ticketStatuses.length > 0;
       location.completed = false;
-      
+
       // 🎯 NUEVO: Determinar si está iniciada pero no completada
       const startedStatus = ticketStatuses.find(ts => ts.startingdate && !ts.endingdate);
       if (startedStatus) {
@@ -607,7 +587,7 @@ crewDetails: any[] = [];
         location.startDate = null;
         location.endDate = null;
       }
-      
+
       console.log(`⏳ Ubicación marcada como pendiente: ${location.address}`);
     }
   }
@@ -616,21 +596,21 @@ crewDetails: any[] = [];
   private markLocationAsStarted(locationIndex: number, ticketStatuses: any[]): void {
     if (locationIndex >= 0 && locationIndex < this.remainingLocations.length) {
       const location = this.remainingLocations[locationIndex];
-      
+
       // 🎯 NUEVO: Aplicar lógica para ubicación iniciada
       location.checked = true;
       location.locked = false;
       location.assigned = true;
       location.completed = false;
       location.started = true;
-      
+
       // 🎯 NUEVO: Obtener fecha de inicio
       const startedStatus = ticketStatuses.find(ts => ts.startingdate);
       if (startedStatus) {
         location.startDate = startedStatus.startingdate;
         location.endDate = null;
       }
-      
+
       console.log(`🔄 Ubicación marcada como iniciada: ${location.address}`);
     }
   }
@@ -781,7 +761,7 @@ crewDetails: any[] = [];
 
       // 🎯 NUEVO: No filtrar por crewId específico - mostrar todas las fases completadas
       const isCompleted = hasEndingDate || hasEndingTime || hasCompletedStatus || hasEndDate;
-      
+
       if (isCompleted) {
         console.log(`✅ Fase completada encontrada:`, {
           phaseName: ts.name || ts.taskname || ts.taskName || ts.phasename || ts.phaseName || ts.description,
@@ -806,7 +786,7 @@ crewDetails: any[] = [];
 
       // 🎯 COMPARACIÓN FLEXIBLE: Buscar coincidencias parciales
       let matches = false;
-      
+
       // Comparación exacta
       if (phaseName === crewType) {
         matches = true;
@@ -843,7 +823,7 @@ crewDetails: any[] = [];
 
     const result = !!matchingCompletedPhase;
     console.log(`🎯 Resultado final para ${location.address}: ${result}`);
-    
+
     return result;
   }
 
@@ -944,11 +924,11 @@ crewDetails: any[] = [];
   // 🎯 NUEVO: Método para forzar verificación cuando cambia el usuario
   public forceCheckForUserChange(): void {
     console.log('🔄 Verificación por cambio de usuario iniciada...');
-    
+
     // Resetear estado de verificación
     this.isCheckingLocations = false;
     this.lastCompletionLog = {};
-    
+
     // Forzar verificación inmediata
     setTimeout(() => {
       this.checkForCompletedLocations();
@@ -958,12 +938,12 @@ crewDetails: any[] = [];
   // 🎯 NUEVO: Método para forzar actualización de la UI
   private forceUIUpdate(): void {
     console.log('🔄 Forzando actualización de UI...');
-    
+
     // Forzar detección de cambios de Angular
     setTimeout(() => {
       // Actualizar el mapa
       this.updateLeafletRoutes();
-      
+
       // Forzar detección de cambios
       if (this.leafletMap) {
         try {
@@ -1036,8 +1016,8 @@ crewDetails: any[] = [];
   // 🎯 NUEVO MÉTODO: Detectar si el error está relacionado con reoptimización automática
   private isOptimizationError(error: any): boolean {
     const errorMessage = error?.message || error?.toString() || '';
-    return errorMessage.includes('Unexpected token') && 
-           errorMessage.includes('JSON') && 
+    return errorMessage.includes('Unexpected token') &&
+           errorMessage.includes('JSON') &&
            errorMessage.includes('position');
   }
 
@@ -1046,7 +1026,7 @@ crewDetails: any[] = [];
     console.warn(`⚠️ Detected optimization error for route ${routeId}`);
     console.warn(`🔄 This might be caused by automatic route reoptimization from current component`);
     console.warn(`🔄 Raw optimizedOrder value:`, rawValue);
-    
+
     // 🎯 NUEVO: Intentar recuperar datos válidos del rawValue
     if (typeof rawValue === 'string') {
       const numbers = rawValue.match(/\d+/g);
@@ -1056,7 +1036,7 @@ crewDetails: any[] = [];
         return recoveredOrder;
       }
     }
-    
+
     return [];
   }
 
@@ -1102,7 +1082,7 @@ crewDetails: any[] = [];
   public debugLocationStates(): void {
     console.log('🔍 === LOCATION STATES DEBUG ===');
     console.log('📍 Total Locations:', this.remainingLocations.length);
-    
+
     this.remainingLocations.forEach((location, index) => {
       console.log(`📍 Location ${index + 1}:`, {
         address: location.address,
@@ -1114,11 +1094,11 @@ crewDetails: any[] = [];
         locked: location.locked
       });
     });
-    
+
     const completedCount = this.remainingLocations.filter(loc => loc.completed).length;
     const startedCount = this.remainingLocations.filter(loc => loc.started).length;
     const assignedCount = this.remainingLocations.filter(loc => loc.assigned).length;
-    
+
     console.log('📊 Summary:', {
       completed: completedCount,
       started: startedCount,
@@ -1175,7 +1155,7 @@ crewDetails: any[] = [];
           currentUserId: Number(localStorage.getItem('userId')),
           currentCrewId: this.getCurrentCrewId()
         });
-        
+
         // Verificar cada ubicación individualmente con detalles
         this.remainingLocations.forEach((location, index) => {
           const ticketId = (location as any).ticketid;
@@ -1227,7 +1207,7 @@ crewDetails: any[] = [];
               console.log('📊 TicketStatus encontrados:', ticketStatuses);
               this.getPhaseNamesForTicketStatuses(ticketStatuses).then(enhancedTicketStatuses => {
                 console.log('📊 TicketStatus con nombres de fases:', enhancedTicketStatuses);
-                
+
                 // 🎯 NUEVO: Mostrar todos los nombres de fases disponibles
                 const phaseNames = enhancedTicketStatuses.map(ts => ({
                   name: ts.name || ts.taskname || ts.taskName || ts.phasename || ts.phaseName || ts.description,
@@ -1236,7 +1216,7 @@ crewDetails: any[] = [];
                   status: ts.status
                 }));
                 console.log('📋 Nombres de fases disponibles:', phaseNames);
-                
+
                 const isCompleted = this.isCompletedPhaseMatchingCrewType(enhancedTicketStatuses, location);
                 console.log(`✅ ¿Está completada? ${isCompleted}`);
               });
@@ -1284,10 +1264,10 @@ crewDetails: any[] = [];
                     const hasEndingTime = ts.endingtime;
                     const hasCompletedStatus = ts.status === 'completed' || ts.status === 'COMPLETED';
                     const hasEndDate = ts.enddate;
-                    
+
                     return hasEndingDate || hasEndingTime || hasCompletedStatus || hasEndDate;
                   });
-                  
+
                   if (completedPhases.length > 0) {
                     console.log(`✅ ${location.address} (Ticket: ${ticketId}) - Fases completadas:`, completedPhases.map(ts => ({
                       name: ts.name || ts.taskname || ts.taskName || ts.phasename || ts.phaseName || ts.description,
@@ -1306,12 +1286,12 @@ crewDetails: any[] = [];
       },
       forceSyncForAllUsers: () => {
         console.log('🔄 Forzando sincronización para todos los usuarios...');
-        
+
         // Resetear estado de verificación
         this.isCheckingLocations = false;
         this.lastCompletionLog = {};
         this.lastCheckTime = 0;
-        
+
         // Forzar verificación inmediata
         setTimeout(() => {
           console.log('🔄 Iniciando verificación sin filtro de crew...');
@@ -1376,7 +1356,7 @@ crewDetails: any[] = [];
   // 🎯 OPTIMIZADO: Método para obtener la ruta asignada al crew
   async getAssignedRoute(): Promise<void> {
     console.log('🚀 Iniciando asignación optimizada de ruta...');
-    
+
     try {
       // Get the current crew type and crew ID
       const storedUserId = Number(localStorage.getItem('userId'));
@@ -1434,7 +1414,7 @@ crewDetails: any[] = [];
   // 🎯 NUEVO: Método optimizado para cargar rutas
   private async loadRoutesOptimized(currentCrewType: string): Promise<any[]> {
     console.log('🔄 Cargando rutas de manera optimizada...');
-    
+
     // Map crew type to route type
     const crewTypeToRouteType: { [key: string]: string } = {
       'spotting': 'spotting',
@@ -1498,7 +1478,7 @@ crewDetails: any[] = [];
   // 🎯 NUEVO: Método optimizado para asignar ruta
   private assignRouteOptimized(allRoutes: any[], currentCrewType: string, currentCrewId: number): any {
     console.log('🔄 Asignando ruta de manera optimizada...');
-    
+
     let assignedRoute = null;
 
     // Priority 1: Find route with matching tickets for this crew
@@ -1602,7 +1582,7 @@ crewDetails: any[] = [];
           .replace(/[^\d,\[\]]/g, '') // Remover caracteres no válidos
           .replace(/,\s*,/g, ',') // Remover comas duplicadas
           .replace(/^,+|,+$/g, ''); // Remover comas al inicio y final
-        
+
         if (cleanedOptimizedOrder) {
           assignedRoute.optimizedOrder = JSON.parse(`[${cleanedOptimizedOrder}]`);
         } else {
@@ -1612,11 +1592,11 @@ crewDetails: any[] = [];
     } catch (error) {
       console.error(`❌ Error parsing optimizedOrder for route ${assignedRoute.routeId || assignedRoute.routeid}:`, error);
       console.error('Raw optimizedOrder value:', assignedRoute.optimizedOrder);
-      
+
       // 🎯 NUEVO: Usar el método de manejo de errores de optimización
       if (this.isOptimizationError(error)) {
         assignedRoute.optimizedOrder = this.handleOptimizationError(
-          assignedRoute.routeId || assignedRoute.routeid, 
+          assignedRoute.routeId || assignedRoute.routeid,
           assignedRoute.optimizedOrder
         );
       } else {
@@ -1691,7 +1671,7 @@ private loadEmployeesAsync() {
 
       this.teamLeader = leader?.name || 'N/A';
       this.teamMembers = members;
-      
+
       return { success: true };
     })
   );
@@ -1700,7 +1680,7 @@ private loadEmployeesAsync() {
 getCrewDetails(crewId: number) {
   this.isLoading = true;
   console.log('🚀 Iniciando carga optimizada de detalles del crew...');
-  
+
   this.crewsService.getCrewDetails(crewId).subscribe({
     next: async (details) => {
       console.log(`✅ Detalles del crew cargados: ${details.length} registros`);
@@ -1725,7 +1705,7 @@ getCrewDetails(crewId: number) {
 // 🎯 NUEVO: Método optimizado para procesar ubicaciones
 private processLocationsOptimized(details: any[]): void {
   console.log('🔄 Procesando ubicaciones de manera optimizada...');
-  
+
   // Mapear todos los tickets asociados a su información de ubicación
   // Evita ubicaciones duplicadas por ticketid
   const uniqueLocationsMap = new Map<number, any>();
@@ -1782,7 +1762,7 @@ private processLocationsOptimized(details: any[]): void {
 // 🎯 NUEVO: Método optimizado para cargar coordenadas y ruta
 private async loadCoordinatesAndRouteOptimized(): Promise<void> {
   console.log('🔄 Cargando coordenadas y ruta de manera optimizada...');
-  
+
   try {
     // 🎯 NUEVO: Cargar coordenadas y ruta en paralelo
     await Promise.all([
@@ -1910,7 +1890,7 @@ private getDisplayAddress(location: any, allLocations: any[]): string {
 
 private async getTicketCoordinates(): Promise<void> {
   console.log('🔄 Obteniendo coordenadas de manera optimizada...');
-  
+
   // Get coordinates for locations that don't have them
   const locationsWithoutCoordinates = this.remainingLocations.filter(loc => !loc.lat || !loc.lng);
 
@@ -1924,13 +1904,13 @@ private async getTicketCoordinates(): Promise<void> {
   // 🎯 NUEVO: Procesar ubicaciones en lotes para mejor rendimiento
   const batchSize = 5; // Procesar 5 ubicaciones a la vez
   const batches = [];
-  
+
   for (let i = 0; i < locationsWithoutCoordinates.length; i += batchSize) {
     batches.push(locationsWithoutCoordinates.slice(i, i + batchSize));
   }
 
   let processedCount = 0;
-  
+
   for (const batch of batches) {
     // Process batch in parallel
     const batchPromises = batch.map(async (loc) => {
@@ -1957,7 +1937,7 @@ private async getTicketCoordinates(): Promise<void> {
             lng: loc.lng,
             originalAddress: loc.address
           });
-          
+
           processedCount++;
         } else {
           console.warn(`❌ No coordinates found for ticket ${loc.ticketcode}`);
@@ -1969,7 +1949,7 @@ private async getTicketCoordinates(): Promise<void> {
 
     // Wait for current batch to complete
     await Promise.all(batchPromises);
-    
+
     // 🎯 NUEVO: Pequeña pausa entre lotes para no sobrecargar el servidor
     if (batches.indexOf(batch) < batches.length - 1) {
       await new Promise(resolve => setTimeout(resolve, 100));
@@ -2008,7 +1988,7 @@ goToCurrent(location: any) {
   // 🎯 OPTIMIZADO: Método para actualizar rutas de Leaflet
   private updateLeafletRoutes() {
     console.log('🔄 Actualizando rutas de Leaflet de manera optimizada...');
-    
+
     // 🎯 NUEVO: Verificar si el componente está siendo destruido
     if (!this.completionCheckInterval) {
       console.log('⚠️ Actualización de mapa cancelada - componente en proceso de destrucción');
@@ -2065,7 +2045,7 @@ goToCurrent(location: any) {
       this.visibleRoutes.clear();
       const routeId = this.assignedRoute.routeid || this.assignedRoute.routeId;
       this.visibleRoutes.add(routeId);
-      
+
       console.log('✅ Rutas de Leaflet creadas exitosamente');
     } else {
       this.leafletRoutes = [];
@@ -2364,6 +2344,18 @@ debugMapState(): void {
   // });
   // console.log('🔍 === FIN DEBUG ===');
 }
+
+  // 🎯 NUEVO: TrackBy function to prevent unnecessary re-rendering of location items
+  trackByLocation(index: number, location: any): any {
+    // Use static data that doesn't change (address, ticketid) instead of status data
+    return location.address + '_' + (location.ticketid || index);
+  }
+
+  // 🎯 NUEVO: TrackBy function for groups to prevent unnecessary re-rendering
+  trackByGroup(index: number, group: any): any {
+    // Use static data that doesn't change
+    return group.address + '_' + index;
+  }
 
 }
 

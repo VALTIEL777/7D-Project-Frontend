@@ -17,10 +17,11 @@ export interface Ticket {
   paymentId?: number | null;
   mobilizationId?: number | null;
   ticketCode: string;
-  ticketcode: string;
+  ticketcode?: string;
   quantity: number;
   daysOutstanding: number | null;
   comment7d: string | null;
+  PeopleGasComment?: string | null;
   partnerComment: string | null;
   partnerSupervisorComment: string | null;
   contractNumber: string | null;

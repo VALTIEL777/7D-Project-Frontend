@@ -87,7 +87,7 @@
   border: none !important;
   outline: none !important;
   border-radius: 50%;
-  transition: all 0.3s ease;
+  transition: transform 0.3s ease, background-color 0.3s ease, box-shadow 0.3s ease; // 🎯 OPTIMIZED: Specific transitions instead of 'all'
   width: 44px !important;
   height: 44px !important;
   min-width: 44px !important;

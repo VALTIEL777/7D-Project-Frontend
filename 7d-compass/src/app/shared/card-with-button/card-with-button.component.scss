@@ -99,4 +99,6 @@
 .fab-button.cdk-program-focused {
   box-shadow: none !important;
   outline: none !important;
+  transform: scale(1.05); // 🎯 OPTIMIZED: Add subtle scale effect with specific transition
+  transition: transform 0.2s ease, box-shadow 0.2s ease; // 🎯 OPTIMIZED: Specific transitions
 }
