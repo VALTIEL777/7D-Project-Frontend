@@ -167,13 +167,13 @@ filteredTicketImages: any[] = [];
 
 ngOnInit() {
   console.log('🚀 Iniciando carga optimizada del componente...');
-  
+
   // 👇 Recuperar datos básicos desde localStorage
   this.loadBasicDataFromStorage();
-  
+
   // 🎯 NUEVO: Cargar datos críticos en paralelo
   this.loadCriticalDataInParallel();
-  
+
   // 🎯 NUEVO: Cargar datos secundarios después
   setTimeout(() => {
     this.loadSecondaryData();
@@ -234,7 +234,7 @@ private loadBasicDataFromStorage(): void {
 // 🎯 NUEVO: Método para cargar datos críticos en paralelo
 private loadCriticalDataInParallel(): void {
   console.log('⚡ Cargando datos críticos en paralelo...');
-  
+
   // Cargar empleados y fases en paralelo
   forkJoin({
     employees: this.loadEmployeesAsync(),
@@ -242,7 +242,7 @@ private loadCriticalDataInParallel(): void {
   }).subscribe({
     next: (results) => {
       console.log('✅ Datos críticos cargados exitosamente');
-      
+
       // 🗺️ Cargar ruta completa después de los datos críticos
       if (this.ticketId) {
         this.loadFullRoute();
@@ -257,7 +257,7 @@ private loadCriticalDataInParallel(): void {
 // 🎯 NUEVO: Método para cargar datos secundarios
 private loadSecondaryData(): void {
   console.log('📦 Cargando datos secundarios...');
-  
+
   if (this.ticketId) {
     // Cargar supervisor, ticket code y permit files en paralelo
     forkJoin({
@@ -267,7 +267,7 @@ private loadSecondaryData(): void {
     }).subscribe({
       next: (results) => {
         console.log('✅ Datos secundarios cargados exitosamente');
-        
+
         // 🎯 NUEVO: Cargar coordenadas después de que se cargue el ticketCode
         if (this.ticketCode) {
           this.getTicketCoordinates();
@@ -353,7 +353,7 @@ private loadEmployeesAsync() {
 
       console.log('✅ Team Leader:', this.teamLeader);
       console.log('👥 Team Members:', this.teamMembers);
-      
+
       return { success: true };
     })
   );
@@ -409,7 +409,7 @@ private loadAllPhasesAsync() {
 
       this.filteredActivities = this.activities;
       this.loadLinkedPhases();
-      
+
       return { success: true };
     })
   );
@@ -486,10 +486,10 @@ private loadSupervisorAsync() {
           ticketCode: ticket.ticketCode || ticket.ticketcode,
           quadrantId: quadrantId
         });
-        
+
         // 🎯 SOLUCIÓN GENÉRICA: Intentar determinar el cuadrante por coordenadas
         this.findQuadrantByCoordinates();
-        
+
         return { success: false, reason: 'No quadrantId found' };
       }
 
@@ -519,7 +519,7 @@ private loadSupervisorAsync() {
 // �� NUEVO: Método para obtener coordenadas sin usar Google API (como en upcoming)
 private async getTicketCoordinates(): Promise<void> {
   console.log('🔄 Obteniendo coordenadas del ticket sin usar Google API...');
-  
+
   if (!this.ticketCode) {
     console.warn('⚠️ No hay ticketCode disponible para obtener coordenadas');
     return;
@@ -555,31 +555,31 @@ private async getTicketCoordinates(): Promise<void> {
 // 🎯 NUEVO: Método para encontrar cuadrante por coordenadas
 private findQuadrantByCoordinates(): void {
   console.log('🔍 Buscando cuadrante por coordenadas del ticket');
-  
+
   // Obtener coordenadas del ticket
   const ticketLat = this.latitude || this.location.lat;
   const ticketLng = this.longitude || this.location.lng;
-  
+
   console.log('📍 Coordenadas del ticket:', { lat: ticketLat, lng: ticketLng });
-  
+
   if (!ticketLat || !ticketLng) {
     console.warn('⚠️ No se encontraron coordenadas en el ticket');
     return;
   }
-  
+
   this.quadrantService.getAllQuadrants().subscribe({
     next: (quadrants) => {
       const matchingQuadrant = this.findQuadrantByLocation(ticketLat, ticketLng, quadrants);
-      
+
       if (matchingQuadrant) {
         console.log(`✅ Cuadrante encontrado por coordenadas:`, matchingQuadrant);
         const zoneManagerId = matchingQuadrant.zoneManagerId;
-        
+
         // 🎯 NUEVO: Guardar quadrantId encontrado
         this.quadrantId = matchingQuadrant.id;
         localStorage.setItem('currentQuadrantId', String(this.quadrantId));
         console.log('🎯 quadrantId encontrado y guardado:', this.quadrantId);
-        
+
         if (zoneManagerId) {
           this.loadSupervisorByZoneManagerId(zoneManagerId);
         } else {
@@ -599,13 +599,13 @@ private findQuadrantByCoordinates(): void {
 private findQuadrantByLocation(lat: number, lng: number, quadrants: any[]): any | null {
   console.log(`🔍 Buscando cuadrante para coordenadas (${lat}, ${lng})`);
   console.log(`📊 Total de cuadrantes disponibles: ${quadrants.length}`);
-  
+
   for (const quadrant of quadrants) {
     const minLat = parseFloat(quadrant.minLatitude);
     const maxLat = parseFloat(quadrant.maxLatitude);
     const minLng = parseFloat(quadrant.minLongitude);
     const maxLng = parseFloat(quadrant.maxLongitude);
-    
+
     // Verificar si las coordenadas están dentro del rango del cuadrante
     if (lat >= minLat && lat <= maxLat && lng >= minLng && lng <= maxLng) {
       console.log(`✅ Coordenadas (${lat}, ${lng}) están dentro del cuadrante ${quadrant.name}`);
@@ -613,7 +613,7 @@ private findQuadrantByLocation(lat: number, lng: number, quadrants: any[]): any 
       return quadrant;
     }
   }
-  
+
   console.log(`❌ No se encontró cuadrante que contenga las coordenadas (${lat}, ${lng})`);
   return null;
 }
@@ -621,7 +621,7 @@ private findQuadrantByLocation(lat: number, lng: number, quadrants: any[]): any 
 // 🎯 NUEVO: Método para cargar supervisor por zoneManagerId
 private loadSupervisorByZoneManagerId(zoneManagerId: number): void {
   console.log(`🎯 Cargando supervisor con zoneManagerId: ${zoneManagerId}`);
-  
+
   this.peopleService.getPeopleById(zoneManagerId).subscribe({
     next: (supervisor) => {
       this.supervisor = supervisor;
@@ -1406,7 +1406,7 @@ uploadPhotoEvidence(taskStatusId: number, activity: any): void {
 
   // 🎯 NUEVO: Optimizar FormData - solo enviar datos necesarios
   const formData = new FormData();
-  
+
   // 🎯 NUEVO: Comprimir y optimizar archivos antes de enviar
   const optimizedFiles = this.optimizeFilesForUpload(activity.selectedFiles);
   optimizedFiles.forEach((file: File) => {
@@ -1428,7 +1428,7 @@ uploadPhotoEvidence(taskStatusId: number, activity: any): void {
   this.photoEvidenceService.uploadPhotoEvidence(formData).subscribe({
     next: (res) => {
       console.log(`✅ Evidencia subida exitosamente para fase ${activity.name}`);
-      
+
       // ✅ Remover actividad del set de carga
       this.uploadingActivities.delete(activity.id);
 
@@ -1451,7 +1451,7 @@ uploadPhotoEvidence(taskStatusId: number, activity: any): void {
       // ✅ Remover actividad del set de carga en caso de error
       this.uploadingActivities.delete(activity.id);
       console.error(`❌ Error subiendo evidencia para fase ${activity.name}:`, err);
-      
+
       // 🎯 NUEVO: Mostrar mensaje de error al usuario
       this.showUploadError(activity.name);
     }
@@ -1472,16 +1472,16 @@ private optimizeFilesForUpload(files: File[]): File[] {
 
 // 🎯 NUEVO: Método para comprimir imágenes
 private compressImageFile(file: File): File {
-  return new File([file], file.name, { 
+  return new File([file], file.name, {
     type: file.type,
-    lastModified: file.lastModified 
+    lastModified: file.lastModified
   });
 }
 
 // 🎯 NUEVO: Método para actualización optimizada después de subida exitosa
 private updateAfterSuccessfulUpload(activity: any): void {
   console.log(`🔄 Actualizando UI después de subida exitosa para ${activity.name}`);
-  
+
   // 🎯 NUEVO: Actualizar solo una vez con delay optimizado
   setTimeout(() => {
     this.loadCurrentTicketImages();
@@ -1756,7 +1756,11 @@ toggleGroup(group: string) {
         tickets: [{
           ticketId: this.ticketId,
           address: this.location.address,
-          queue: 0 // Siempre será 0 ya que es la única ubicación
+          queue: 0, // Siempre será 0 ya que es la única ubicación
+          coordinates: {
+            latitude: this.location.lat,
+            longitude: this.location.lng
+          }
         }]
       }];
 
@@ -1862,17 +1866,17 @@ getCommentsFromImages(): any[] {
 
   // 🎯 NUEVO: Eliminar duplicados basándose en el texto del comentario
   const uniqueComments = allComments.reduce((acc: any[], current) => {
-    const isDuplicate = acc.find(item => 
+    const isDuplicate = acc.find(item =>
       item.text.toLowerCase().trim() === current.text.toLowerCase().trim() &&
       item.phaseName === current.phaseName
     );
-    
+
     if (!isDuplicate) {
       acc.push(current);
     } else {
       console.log(`🔄 Issue duplicado eliminado: "${current.text}" en fase ${current.phaseName}`);
     }
-    
+
     return acc;
   }, []);
 
@@ -1942,10 +1946,10 @@ clearIssue(comment: any): void {
           console.log(`✅ Issue limpiado para foto ${comment.photoId}:`, updatedPhoto);
           console.log(`🔍 Respuesta del backend después del update:`, updatedPhoto);
           console.log(`🔍 comment en respuesta:`, updatedPhoto?.comment);
-          
+
           // 🎯 RECARGAR LAS IMÁGENES DESDE EL BACKEND PARA GARANTIZAR SINCRONIZACIÓN
           this.loadCurrentTicketImages();
-          
+
           // Mostrar notificación
           this.commentsUpdatedMessage = 'Issue cleared successfully!';
           setTimeout(() => {
@@ -2020,13 +2024,13 @@ getObservationsFromTicketStatus(): any[] {
   const validObservations = this.activities
     .filter(activity => {
       // 🎯 FILTRAR SOLO ACTIVIDADES CON OBSERVACIÓN VÁLIDA
-      const hasValidObservation = activity.observation && 
-                                typeof activity.observation === 'string' && 
-                                activity.observation.trim() !== '' && 
+      const hasValidObservation = activity.observation &&
+                                typeof activity.observation === 'string' &&
+                                activity.observation.trim() !== '' &&
                                 activity.observation !== 'null' &&
                                 activity.observation !== null &&
                                 activity.observation !== '';
-      
+
       console.log(`🔍 ${activity.name}: hasValidObservation=${hasValidObservation}`);
       return hasValidObservation;
     })
@@ -2083,16 +2087,16 @@ saveObservation(activity: any): void {
         }).subscribe({
           next: (updatedStatus) => {
             console.log(`✅ Observación guardada para fase ${activity.name}:`, updatedStatus);
-            
+
             // 🎯 NUEVO: Limpiar el input después de guardar
             activity.observation = '';
-            
+
             // 🎯 NUEVO: Actualizar comment7d del ticket a TK - ON HOLD OFF
             this.updateTicketComment7d('TK - ON HOLD OFF');
-            
+
             // 🎯 NUEVO: Recargar las actividades desde el backend para sincronizar
             this.loadLinkedPhases();
-            
+
             // Mostrar notificación
             this.observationsUpdatedMessage = 'Comment saved successfully!';
             setTimeout(() => {
@@ -2115,16 +2119,16 @@ saveObservation(activity: any): void {
         }).subscribe({
           next: (newStatus) => {
             console.log(`✅ TicketStatus creado con observación para fase ${activity.name}:`, newStatus);
-            
+
             // 🎯 NUEVO: Limpiar el input después de guardar
             activity.observation = '';
-            
+
             // 🎯 NUEVO: Actualizar comment7d del ticket a TK - ON HOLD OFF
             this.updateTicketComment7d('TK - ON HOLD OFF');
-            
+
             // 🎯 NUEVO: Recargar las actividades desde el backend para sincronizar
             this.loadLinkedPhases();
-            
+
             // Mostrar notificación
             this.observationsUpdatedMessage = 'Comment saved successfully!';
             setTimeout(() => {
@@ -2191,10 +2195,10 @@ clearObservation(observation: any): void {
                 console.log(`✅ Observación limpiada para fase ${observation.phaseName}:`, updatedStatus);
                 console.log(`🔍 Respuesta del backend después del update:`, updatedStatus);
                 console.log(`🔍 observation en respuesta:`, updatedStatus?.observation);
-                
+
                 // 🎯 RECARGAR LAS ACTIVIDADES DESDE EL BACKEND PARA GARANTIZAR SINCRONIZACIÓN
                 this.loadLinkedPhases();
-                
+
                 // 🎯 NUEVO: Verificar si quedan comentarios y actualizar comment7d
                 setTimeout(() => {
                   const remainingObservations = this.getObservationsFromTicketStatus();
@@ -2206,7 +2210,7 @@ clearObservation(observation: any): void {
                     console.log(`ℹ️ Quedan ${remainingObservations.length} comentarios - manteniendo TK - ON HOLD OFF`);
                   }
                 }, 1000); // Delay para asegurar que loadLinkedPhases haya terminado
-                
+
                 // Mostrar notificación
                 this.observationsUpdatedMessage = 'Comment cleared successfully!';
                 setTimeout(() => {
@@ -2324,10 +2328,10 @@ updateTicketComment7d(comment: string) {
       console.log(`🔍 Ticket obtenido del backend:`, currentTicket);
       console.log(`🔍 quadrantId del backend: ${currentTicket.quadrantId} (tipo: ${typeof currentTicket.quadrantId})`);
       console.log(`🔍 JSON completo del ticket del backend:`, JSON.stringify(currentTicket, null, 2));
-      
+
       // 🎯 PRESERVAR EL QUADRANTID DEL ESTADO LOCAL O LOCALSTORAGE
       let quadrantIdToPreserve: number | undefined = undefined;
-      
+
       // Prioridad 1: Estado local del componente
       if (this.quadrantId !== null && this.quadrantId !== undefined) {
         quadrantIdToPreserve = this.quadrantId;
@@ -2346,7 +2350,7 @@ updateTicketComment7d(comment: string) {
         quadrantIdToPreserve = currentTicket.quadrantId;
         console.log(`🎯 Usando quadrantId del ticket actual: ${quadrantIdToPreserve}`);
       }
-      
+
       console.log(`🎯 Preservando quadrantId: ${quadrantIdToPreserve} (del estado: ${this.quadrantId}, localStorage: ${localStorage.getItem('currentQuadrantId')}, ticket: ${currentTicket.quadrantId})`);
 
       // 🎯 DEBUGGING ADICIONAL

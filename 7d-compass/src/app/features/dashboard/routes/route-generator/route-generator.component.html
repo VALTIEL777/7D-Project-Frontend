@@ -1,7 +1,7 @@
 <app-dashboard-layout>
   <div class="full-layout-container">
     <div class="dashboard-container">
-      <div class="dashboard-wrapper">
+      <div class="dashboard-wrapper" cdkDropListGroup>
 
 
         <!-- Top Row: Route Containers and Today's Routes -->
@@ -12,7 +12,7 @@
             <div class="section-title">
               <h4>Spotting Routes</h4>
             </div>
-            <div cdkDropListGroup class="dashboard-grid vertical-list">
+            <div class="dashboard-grid vertical-list">
               <app-card-with-button
                 *ngFor="let route of spottingRoutes"
                 [title]="route.routeCode"
@@ -94,7 +94,7 @@
             <div class="section-title">
               <h4>Concrete Routes</h4>
             </div>
-            <div cdkDropListGroup class="dashboard-grid vertical-list">
+            <div class="dashboard-grid vertical-list">
               <app-card-with-button
                 *ngFor="let route of concreteRoutes"
                 [title]="route.routeCode"
@@ -173,7 +173,7 @@
             <div class="section-title">
               <h4>Asphalt Routes</h4>
             </div>
-            <div cdkDropListGroup class="dashboard-grid vertical-list">
+            <div class="dashboard-grid vertical-list">
               <app-card-with-button
                 *ngFor="let route of asphaltRoutes"
                 [title]="route.routeCode"
@@ -362,7 +362,7 @@
           </app-card-with-button>
         </div>
 
-        <div cdkDropListGroup class="dashboard-grid">
+        <div class="dashboard-grid">
           <!-- Spot Ready Card -->
           <app-card-with-button
             title="Spot Ready"

@@ -26,6 +26,11 @@ export interface RouteData {
     ticketId: number;
     address: string;
     queue: number;
+    coordinates?: {
+      latitude: number;
+      longitude: number;
+      placeid?: string;
+    };
   }>;
   color?: string;
 }
@@ -506,37 +511,128 @@ export class LeafletMapComponent implements OnInit, OnDestroy, AfterViewInit, On
       console.warn(`⚠️ No address for ticket:`, ticket);
       return null;
     }
+
     // Check if this address already has a marker (for duplicate addresses)
     const addressKey = ticket.address.toLowerCase().trim();
     if (processedAddresses.has(addressKey)) {
       return null;
     }
     processedAddresses.add(addressKey);
-    // Try to get coordinates from the polyline waypoints
+
+    // Use coordinates from the ticket data if available
     let markerLocation: [number, number] | null = null;
+
+    // Enhanced coordinate extraction with better debugging
+    if (ticket.coordinates) {
+      console.log(`🔍 Ticket ${ticket.ticketId} coordinates:`, ticket.coordinates);
+
+      // Try different possible coordinate property names
+      let lat = ticket.coordinates.latitude || ticket.coordinates.lat || ticket.coordinates.latitud;
+      let lng = ticket.coordinates.longitude || ticket.coordinates.lng || ticket.coordinates.longitud;
+
+      // Convert to numbers if they're strings
+      if (typeof lat === 'string') lat = parseFloat(lat);
+      if (typeof lng === 'string') lng = parseFloat(lng);
+
+      console.log(`🔍 Extracted lat/lng:`, { lat, lng, latType: typeof lat, lngType: typeof lng });
+
+      if (lat && lng && !isNaN(lat) && !isNaN(lng)) {
+        // Ensure full precision for coordinates
+        const preciseLat = parseFloat(lat.toFixed(8));
+        const preciseLng = parseFloat(lng.toFixed(8));
+
+        markerLocation = [preciseLat, preciseLng];
+        console.log(`✅ Using API coordinates for ticket ${ticket.ticketId}: [${preciseLat}, ${preciseLng}]`);
+        return this.createMarkerWithLocation(ticket, route, index, color, markerLocation, 'API');
+      } else {
+        console.warn(`⚠️ Invalid API coordinates for ticket ${ticket.ticketId}:`, { lat, lng });
+      }
+    } else {
+      console.log(`⚠️ No coordinates object for ticket ${ticket.ticketId}`);
+    }
+
+    // ONLY use polyline coordinates if NO API coordinates are available
     if (route.encodedPolyline) {
       try {
         const coordinates = this.decodePolyline(route.encodedPolyline);
         if (coordinates.length > 0) {
           if (index === 0) {
             markerLocation = coordinates[0];
+            console.log(`🔄 Using first polyline coordinate for ticket ${ticket.ticketId}:`, markerLocation);
+            return this.createMarkerWithLocation(ticket, route, index, color, markerLocation, 'POLYLINE_FIRST');
           } else if (index === route.tickets.length - 1) {
             markerLocation = coordinates[coordinates.length - 1];
+            console.log(`🔄 Using last polyline coordinate for ticket ${ticket.ticketId}:`, markerLocation);
+            return this.createMarkerWithLocation(ticket, route, index, color, markerLocation, 'POLYLINE_LAST');
           } else {
             const progress = index / (route.tickets.length - 1);
             const coordIndex = Math.floor(progress * (coordinates.length - 1));
             markerLocation = coordinates[coordIndex];
+            console.log(`🔄 Using polyline coordinate at index ${coordIndex} for ticket ${ticket.ticketId}:`, markerLocation);
+            return this.createMarkerWithLocation(ticket, route, index, color, markerLocation, 'POLYLINE_PROGRESS');
           }
         }
       } catch (error) {
-        console.error(`Error extracting coordinates for ticket ${ticket.ticketId}:`, error);
+        console.error(`Error extracting polyline coordinates for ticket ${ticket.ticketId}:`, error);
       }
     }
-    if (!markerLocation) {
+
+    // Final fallback to map center
+    markerLocation = this.config.center;
+    console.warn(`⚠️ No coordinates available for ticket ${ticket.ticketId}, using map center:`, markerLocation);
+    return this.createMarkerWithLocation(ticket, route, index, color, markerLocation, 'MAP_CENTER');
+  }
+
+  private createMarkerWithLocation(ticket: any, route: RouteData, index: number, color: string, markerLocation: [number, number], source: string): L.Marker | null {
+    console.log(`🎯 Creating marker for ticket ${ticket.ticketId} at location [${markerLocation[0]}, ${markerLocation[1]}] (source: ${source})`);
+
+    // Validate markerLocation is properly formatted
+    if (!Array.isArray(markerLocation) || markerLocation.length !== 2) {
+      console.error(`❌ Invalid markerLocation for ticket ${ticket.ticketId}:`, markerLocation);
       markerLocation = this.config.center;
     }
-    // Para rutas CURRENT, usar el ticketId como etiqueta, para otras usar queue + 1
-    const markerLabel = route.type === 'CURRENT' ? ticket.ticketId.toString() : (ticket.queue + 1).toString();
+
+    // Validate coordinates are numbers
+    if (typeof markerLocation[0] !== 'number' || typeof markerLocation[1] !== 'number' ||
+        isNaN(markerLocation[0]) || isNaN(markerLocation[1])) {
+      console.error(`❌ Invalid coordinates for ticket ${ticket.ticketId}:`, markerLocation);
+      markerLocation = this.config.center;
+    }
+
+    // Para rutas CURRENT, usar el ticketId como etiqueta, para UPCOMING usar incremento serial por dirección única, para otras usar queue + 1
+    let markerLabel: string = '';
+    if (route.type === 'CURRENT') {
+      markerLabel = ticket.ticketId.toString();
+    } else if (route.type === 'UPCOMING') {
+      // For UPCOMING routes, use serial numbering based on unique addresses
+      // Since tickets with same address are batched, we need to count unique addresses
+      const uniqueAddresses = new Set<string>();
+      let serialNumber = 1;
+
+      for (let i = 0; i < route.tickets.length; i++) {
+        const currentTicket = route.tickets[i];
+        const currentAddress = currentTicket.address?.toLowerCase().trim() || '';
+
+        if (!uniqueAddresses.has(currentAddress)) {
+          uniqueAddresses.add(currentAddress);
+
+          // If this is the current ticket's address, use this serial number
+          if (currentTicket.ticketId === ticket.ticketId) {
+            markerLabel = serialNumber.toString();
+            break;
+          }
+
+          serialNumber++;
+        }
+      }
+
+      // Fallback if not found
+      if (!markerLabel) {
+        markerLabel = (ticket.queue + 1).toString();
+      }
+    } else {
+      markerLabel = (ticket.queue + 1).toString();
+    }
 
     // Para rutas CURRENT, usar icono más grande
     const iconSize = route.type === 'CURRENT' ? 40 : 32;
@@ -548,18 +644,29 @@ export class LeafletMapComponent implements OnInit, OnDestroy, AfterViewInit, On
       iconSize: [iconSize, iconSize],
       iconAnchor: [iconSize / 2, iconSize / 2]
     });
+
     const marker = L.marker(markerLocation, { icon });
     marker.on('click', () => {
       this.markerClick.emit({ ticket, route, index, label: markerLabel });
     });
+
     // Popup personalizado para rutas CURRENT
+    const formatCoordinate = (coord: any): string => {
+      if (typeof coord === 'number' && !isNaN(coord)) {
+        return coord.toFixed(6);
+      }
+      return 'N/A';
+    };
+
     const popupContent = route.type === 'CURRENT' ? `
       <div class="ticket-popup">
         <h4>📍 Current Location</h4>
         <p><strong>Ticket ID:</strong> ${ticket.ticketId}</p>
         <p><strong>Address:</strong> ${ticket.address}</p>
         <p><strong>Route:</strong> ${route.routeCode}</p>
-        <p><strong>Coordinates:</strong> [${markerLocation[0].toFixed(6)}, ${markerLocation[1].toFixed(6)}]</p>
+        <p><strong>Coordinates:</strong> [${formatCoordinate(markerLocation[0])}, ${formatCoordinate(markerLocation[1])}]</p>
+        <p><strong>Source:</strong> ${source}</p>
+        ${ticket.coordinates?.placeid ? `<p><strong>Place ID:</strong> ${ticket.coordinates.placeid}</p>` : ''}
       </div>
     ` : `
       <div class="ticket-popup">
@@ -569,18 +676,15 @@ export class LeafletMapComponent implements OnInit, OnDestroy, AfterViewInit, On
         <p><strong>Type:</strong> ${route.type}</p>
         <p><strong>Ticket ID:</strong> ${ticket.ticketId}</p>
         <p><strong>Queue:</strong> ${ticket.queue + 1}</p>
-        <p><strong>Coordinates:</strong> [${markerLocation[0].toFixed(6)}, ${markerLocation[1].toFixed(6)}]</p>
+        <p><strong>Coordinates:</strong> [${formatCoordinate(markerLocation[0])}, ${formatCoordinate(markerLocation[1])}]</p>
+        <p><strong>Source:</strong> ${source}</p>
+        ${ticket.coordinates?.placeid ? `<p><strong>Place ID:</strong> ${ticket.coordinates.placeid}</p>` : ''}
       </div>
     `;
 
     marker.bindPopup(popupContent);
 
-    console.log(`✅ Marcador creado exitosamente:`, marker);
-    console.log(`✅ Ubicación del marcador:`, markerLocation);
-    console.log(`✅ Etiqueta del marcador:`, markerLabel);
-    console.log(`✅ Tamaño del icono:`, iconSize);
-    console.log(`🗺️ === createMarker COMPLETED ===`);
-
+    console.log(`✅ Marcador creado exitosamente para ticket ${ticket.ticketId} en [${markerLocation[0]}, ${markerLocation[1]}] (source: ${source})`);
     return marker;
   }
 
@@ -596,12 +700,20 @@ export class LeafletMapComponent implements OnInit, OnDestroy, AfterViewInit, On
     marker.on('click', () => {
       this.markerClick.emit({ type, route, location });
     });
+
+    const formatCoordinate = (coord: any): string => {
+      if (typeof coord === 'number' && !isNaN(coord)) {
+        return coord.toFixed(6);
+      }
+      return 'N/A';
+    };
+
     marker.bindPopup(`
       <div class="ticket-popup">
         <h4>${type.charAt(0).toUpperCase() + type.slice(1)} Point</h4>
         <p><strong>Route:</strong> ${route.routeCode}</p>
         <p><strong>Type:</strong> ${route.type}</p>
-        <p><strong>Coordinates:</strong> [${location[0].toFixed(6)}, ${location[1].toFixed(6)}]</p>
+        <p><strong>Coordinates:</strong> [${formatCoordinate(location[0])}, ${formatCoordinate(location[1])}]</p>
       </div>
     `);
     return marker;
@@ -653,23 +765,37 @@ export class LeafletMapComponent implements OnInit, OnDestroy, AfterViewInit, On
 
   // Método de debugging para verificar el estado del mapa
   public debugMapState(): void {
-    console.log('🔍 === LEAFLET MAP DEBUG INFO ===');
-    console.log('📍 Routes:', this.routes);
-    console.log('📍 VisibleRoutes:', this.visibleRoutes);
-    console.log('📍 RouteTypeVisibility:', this.routeTypeVisibility);
-    console.log('📍 ShowMarkers:', this.showMarkers);
-    console.log('📍 ShowPolylines:', this.showPolylines);
-    console.log('📍 Map available:', !!this.map);
-    console.log('📍 RouteLayers count:', this.routeLayers.size);
+    console.log('🗺️ === LEAFLET MAP DEBUG INFO ===');
+    console.log('📍 Routes count:', this.routes.length);
+    console.log('📍 Visible routes:', Array.from(this.visibleRoutes));
+    console.log('📍 Route type visibility:', this.routeTypeVisibility);
+    console.log('📍 Show markers:', this.showMarkers);
+    console.log('📍 Show polylines:', this.showPolylines);
+    console.log('📍 Map center:', this.config.center);
 
-    this.routeLayers.forEach((layer, routeId) => {
-      console.log(`📍 Route ${routeId}:`, {
-        markers: layer.markers.length,
-        polyline: !!layer.polyline,
-        group: !!layer.group
+    // Debug each route
+    this.routes.forEach((route, routeIndex) => {
+      console.log(`📍 Route ${routeIndex + 1}:`, {
+        routeId: route.routeId,
+        routeCode: route.routeCode,
+        type: route.type,
+        ticketsCount: route.tickets?.length || 0,
+        hasEncodedPolyline: !!route.encodedPolyline,
+        polylineLength: route.encodedPolyline?.length || 0
+      });
+
+      // Debug tickets in this route
+      route.tickets?.forEach((ticket, ticketIndex) => {
+        console.log(`  📍 Ticket ${ticketIndex + 1}:`, {
+          ticketId: ticket.ticketId,
+          address: ticket.address,
+          queue: ticket.queue,
+          hasCoordinates: !!ticket.coordinates,
+          coordinates: ticket.coordinates
+        });
       });
     });
 
-    console.log('🔍 === END LEAFLET MAP DEBUG ===');
+    console.log('🗺️ === END LEAFLET MAP DEBUG ===');
   }
 }

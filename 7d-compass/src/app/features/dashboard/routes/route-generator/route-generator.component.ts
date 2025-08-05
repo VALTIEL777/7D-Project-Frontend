@@ -32,6 +32,11 @@ interface RouteTicket {
   queue: number;
   quantity: number;
   amountToPay: number;
+  coordinates?: {
+    latitude: number;
+    longitude: number;
+    placeid?: string;
+  };
 }
 
 // Interface for optimization metadata
@@ -296,6 +301,46 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     this.filterService.textSearch$.subscribe(() => {
       // Force change detection when filter changes
       this.cdr.detectChanges();
+    });
+
+    // Debug: Check route rendering after data loads
+    setTimeout(() => {
+      this.debugRouteRendering();
+    }, 2000);
+  }
+
+  private debugRouteRendering() {
+    console.log('Route rendering debug:', {
+      spottingRoutes: this.spottingRoutes.length,
+      concreteRoutes: this.concreteRoutes.length,
+      asphaltRoutes: this.asphaltRoutes.length,
+      routeContainers: document.querySelectorAll('[data-route-section="true"], [data-route-id]').length,
+      allDropLists: document.querySelectorAll('.cdk-drop-list').length,
+      concreteRoutesData: this.concreteRoutes.map(route => ({
+        routeId: route.routeId,
+        routeCode: route.routeCode,
+        ticketsCount: route.tickets?.length || 0
+      }))
+    });
+
+    // Debug all drop lists in detail
+    const allDropLists = document.querySelectorAll('.cdk-drop-list');
+    console.log('🔍 ALL DROP LISTS DETAILED:', {
+      totalCount: allDropLists.length,
+      lists: Array.from(allDropLists).map((el: any, index: number) => ({
+        index,
+        id: el.id,
+        className: el.className,
+        dataReadySection: el.getAttribute('data-ready-section'),
+        dataRouteSection: el.getAttribute('data-route-section'),
+        dataRouteId: el.getAttribute('data-route-id'),
+        isVisible: el.offsetParent !== null,
+        display: window.getComputedStyle(el).display,
+        visibility: window.getComputedStyle(el).visibility,
+        zIndex: window.getComputedStyle(el).zIndex,
+        position: window.getComputedStyle(el).position,
+        rect: el.getBoundingClientRect()
+      }))
     });
   }
 
@@ -703,6 +748,39 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
 
   // Update the drop method to handle batch moves from ready cards to route cards with type checking
   async drop(event: CdkDragDrop<any[]>) {
+    console.log('🔍 DROP EVENT DEBUG:', {
+      previousContainer: event.previousContainer,
+      container: event.container,
+      previousIndex: event.previousIndex,
+      currentIndex: event.currentIndex,
+      isSameContainer: event.previousContainer === event.container,
+      previousContainerId: event.previousContainer.element?.nativeElement?.id,
+      containerId: event.container.element?.nativeElement?.id,
+      previousContainerData: event.previousContainer.data,
+      containerData: event.container.data
+    });
+
+    // Debug drop targets
+    this.debugDropTargets();
+
+    // Debug concrete routes specifically
+    console.log('🔍 CONCRETE ROUTES DEBUG:', {
+      concreteRoutesCount: this.concreteRoutes.length,
+      concreteRoutes: this.concreteRoutes.map(route => ({
+        routeId: route.routeId,
+        routeCode: route.routeCode,
+        ticketsCount: route.tickets?.length || 0,
+        tickets: route.tickets?.map(ticket => ({
+          ticketId: ticket.ticketId,
+          address: ticket.address
+        })) || []
+      })),
+      concreteReadyCount: this.concreteReadyTickets.length,
+      concreteReadyTickets: this.concreteReadyTickets.map(ticket => ({
+        ticketid: ticket.ticketid,
+        address: ticket.address
+      }))
+    });
     const draggedTicket = event.previousContainer.data[event.previousIndex];
 
     // Batch: find all tickets in the source list with the same address
@@ -719,14 +797,59 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
       const isToReadySection = this.isReadySection(event.container.data);
       const isToRoute = this.isRouteSection(event.container);
 
+      // Debug logging for single ticket move
+      console.log('Single ticket move debug:', {
+        isFromReadySection,
+        isToReadySection,
+        isToRoute,
+        previousContainerData: event.previousContainer.data,
+        containerData: event.container.data,
+        draggedTicket: draggedTicket,
+        availableRoutes: {
+          spottingRoutes: this.spottingRoutes.length,
+          concreteRoutes: this.concreteRoutes.length,
+          asphaltRoutes: this.asphaltRoutes.length
+        },
+        containerComparison: {
+          previousContainer: event.previousContainer,
+          container: event.container,
+          areSame: event.previousContainer === event.container,
+          previousContainerId: event.previousContainer.element?.nativeElement?.id,
+          containerId: event.container.element?.nativeElement?.id
+        }
+      });
+
       if (isFromReadySection && isToReadySection) {
+        // Check if moving between different ready section types
+        const sourceType = this.getReadySectionType(event.previousContainer.data);
+        const destType = this.getReadySectionType(event.container.data);
+
+        if (sourceType !== destType) {
+          this.snackBar.open('Cannot move tickets between different ready section types.', 'Close', {
+            duration: 3000,
+            panelClass: ['error-snackbar']
+          });
+          return;
+        }
+
         await this.handleMoveBetweenReadySections(event, draggedTicket);
-      } else if (isFromReadySection && isToRoute) {
-        // Check if adding this ticket would exceed the 95 location limit
-        const routeId = this.getRouteIdFromDropEvent(event);
-        if (routeId) {
-          const route = this.findRouteByTickets(routeId);
-          if (route && this.wouldExceedLocationLimit(route, [draggedTicket])) {
+                      } else if (isFromReadySection && isToRoute) {
+          // Check type compatibility for ready to route
+          const readyType = this.getReadySectionType(event.previousContainer.data);
+          const routeId = this.getRouteIdFromDropEvent(event);
+
+          if (routeId) {
+            const route = this.findRouteByTickets(routeId);
+            if (route && route.type !== readyType.toUpperCase()) {
+              this.snackBar.open(`Cannot move ${readyType} ready tickets to ${route.type} routes. Only matching types are allowed.`, 'Close', {
+                duration: 4000,
+                panelClass: ['error-snackbar']
+              });
+              return;
+            }
+
+            // Check if adding this ticket would exceed the 95 location limit
+            if (route && this.wouldExceedLocationLimit(route, [draggedTicket])) {
             const currentCount = this.getUniqueLocationCount(route);
             const newAddress = draggedTicket.address?.trim().toLowerCase();
             const existingAddresses = new Set<string>();
@@ -748,6 +871,7 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
         }
         await this.handleMoveFromReadyToRoute(event, draggedTicket);
       } else if (event.previousContainer === event.container) {
+        console.log('Same container detected - reordering within container');
         moveItemInArray(event.container.data, event.previousIndex, event.currentIndex);
         event.container.data.forEach((ticket, index) => {
           ticket.queue = index;
@@ -760,11 +884,44 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
           }
         }
       } else {
+        console.log('Different containers detected - moving between containers');
+
+        // Check if moving between routes
         const isSourceRoute = this.isRouteSection(event.previousContainer);
+        const isDestRoute = this.isRouteSection(event.container);
+
+        if (isSourceRoute && isDestRoute) {
+          // Moving between routes - check if they're the same type
+          const sourceRouteId = this.getRouteIdFromDropEvent({ ...event, container: event.previousContainer });
+          const destRouteId = this.getRouteIdFromDropEvent(event);
+
+          if (sourceRouteId && destRouteId) {
+            const sourceRoute = this.findRouteByTickets(sourceRouteId);
+            const destRoute = this.findRouteByTickets(destRouteId);
+
+            if (sourceRoute && destRoute && sourceRoute.type !== destRoute.type) {
+              this.snackBar.open(`Cannot move tickets between different route types (${sourceRoute.type} → ${destRoute.type}). Only same type routes can exchange tickets.`, 'Close', {
+                duration: 4000,
+                panelClass: ['error-snackbar']
+              });
+              return;
+            }
+          }
+        } else if (isSourceRoute && !isDestRoute) {
+          // Moving from route to ready section - not allowed
+          this.snackBar.open('Cannot move tickets from routes back to ready sections.', 'Close', {
+            duration: 3000,
+            panelClass: ['error-snackbar']
+          });
+          return;
+        }
+
+        // Only prevent empty routes, not ready sections
         if (isSourceRoute && event.previousContainer.data.length === 1) {
           alert('Routes cannot be empty. At least one location must remain.');
           return;
         }
+
         transferArrayItem(
           event.previousContainer.data,
           event.container.data,
@@ -803,14 +960,33 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
         this.snackBar.open('Could not find destination route. Please try again.', 'Close', { duration: 3000, panelClass: ['error-snackbar'] });
         return;
       }
-      // Determine ready section type
+            // Determine ready section type
       let readyType = '';
-      if (sourceList === this.spotReadyTickets) readyType = 'SPOTTER';
-      else if (sourceList === this.asphaltReadyTickets) readyType = 'ASPHALT';
-      else if (sourceList === this.concreteReadyTickets) readyType = 'CONCRETE';
-      else if (batchTickets[0]?.tickettype) readyType = (batchTickets[0].tickettype || '').toUpperCase();
+
+      // Check if sourceList is a filtered version of the ready tickets
+      if (sourceList === this.getFilteredSpotReadyTickets() || sourceList === this.spotReadyTickets) {
+        readyType = 'SPOTTER';
+      } else if (sourceList === this.getFilteredAsphaltReadyTickets() || sourceList === this.asphaltReadyTickets) {
+        readyType = 'ASPHALT';
+      } else if (sourceList === this.getFilteredConcreteReadyTickets() || sourceList === this.concreteReadyTickets) {
+        readyType = 'CONCRETE';
+      } else if (batchTickets[0]?.tickettype) {
+        readyType = (batchTickets[0].tickettype || '').toUpperCase();
+      }
+
+      // Debug logging
+      console.log('Type compatibility check:', {
+        sourceList: sourceList,
+        readyType: readyType,
+        routeType: route.type,
+        routeCode: route.routeCode,
+        batchTicketsLength: batchTickets.length,
+        firstTicketType: batchTickets[0]?.tickettype
+      });
+
       // Route type must match ready type
       if (route.type !== readyType) {
+        console.error('Type mismatch:', { readyType, routeType: route.type });
         this.snackBar.open('Invalid move: You can only drag from a ready card to a matching route type.', 'Close', { duration: 4000, panelClass: ['error-snackbar'] });
         return;
       }
@@ -920,19 +1096,96 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
   }
 
   private isReadySection(data: any[]): boolean {
-    return data === this.filteredSpotReadyTickets ||
-           data === this.filteredConcreteReadyTickets ||
-           data === this.filteredAsphaltReadyTickets;
+    const isSpotReady = data === this.getFilteredSpotReadyTickets() || data === this.spotReadyTickets;
+    const isConcreteReady = data === this.getFilteredConcreteReadyTickets() || data === this.concreteReadyTickets;
+    const isAsphaltReady = data === this.getFilteredAsphaltReadyTickets() || data === this.asphaltReadyTickets;
+
+    // Debug logging
+    console.log('isReadySection debug:', {
+      data,
+      isSpotReady,
+      isConcreteReady,
+      isAsphaltReady,
+      filteredSpotReady: this.getFilteredSpotReadyTickets(),
+      filteredConcreteReady: this.getFilteredConcreteReadyTickets(),
+      filteredAsphaltReady: this.getFilteredAsphaltReadyTickets(),
+      spotReady: this.spotReadyTickets,
+      concreteReady: this.concreteReadyTickets,
+      asphaltReady: this.asphaltReadyTickets
+    });
+
+    return isSpotReady || isConcreteReady || isAsphaltReady;
   }
 
-  private isRouteSection(container: any): boolean {
-    // Check if the container element has the route section attribute
+        private isRouteSection(container: any): boolean {
+    // Check if the container element has the route section attribute or route ID
     const containerElement = container.element?.nativeElement;
-    return containerElement && containerElement.hasAttribute('data-route-section');
+    const hasRouteSection = containerElement && (
+      containerElement.hasAttribute('data-route-section') ||
+      containerElement.getAttribute('data-route-section') === 'true' ||
+      containerElement.hasAttribute('data-route-id')
+    );
+
+    // Debug logging
+    console.log('isRouteSection debug:', {
+      containerElement,
+      hasRouteSection,
+      dataRouteSection: containerElement ? containerElement.getAttribute('data-route-section') : null,
+      dataRouteId: containerElement ? containerElement.getAttribute('data-route-id') : null,
+      hasRouteSectionAttr: containerElement ? containerElement.hasAttribute('data-route-section') : false,
+      hasRouteIdAttr: containerElement ? containerElement.hasAttribute('data-route-id') : false,
+      attributes: containerElement ? Array.from(containerElement.attributes).map((attr: any) => ({ name: attr.name, value: attr.value })) : [],
+      className: containerElement ? containerElement.className : null,
+      id: containerElement ? containerElement.id : null,
+      parentElement: containerElement ? containerElement.parentElement : null,
+      parentClassName: containerElement?.parentElement ? containerElement.parentElement.className : null
+    });
+
+    return hasRouteSection;
   }
 
   private async handleMoveFromReadyToRoute(event: CdkDragDrop<any[]>, draggedTicket: any) {
     try {
+      // Debug: Check what route containers are available in the DOM
+      const routeContainers = document.querySelectorAll('[data-route-section="true"], [data-route-id]');
+      const allDropLists = document.querySelectorAll('.cdk-drop-list');
+      console.log('Available route containers in DOM:', {
+        count: routeContainers.length,
+        containers: Array.from(routeContainers).map((el: any) => ({
+          id: el.id,
+          className: el.className,
+          dataRouteId: el.getAttribute('data-route-id'),
+          dataRouteSection: el.getAttribute('data-route-section'),
+          isVisible: el.offsetParent !== null,
+          display: window.getComputedStyle(el).display,
+          visibility: window.getComputedStyle(el).visibility
+        }))
+      });
+      console.log('All drop lists in DOM:', {
+        count: allDropLists.length,
+        lists: Array.from(allDropLists).map((el: any) => ({
+          id: el.id,
+          className: el.className,
+          dataReadySection: el.getAttribute('data-ready-section'),
+          dataRouteSection: el.getAttribute('data-route-section'),
+          dataRouteId: el.getAttribute('data-route-id'),
+          isVisible: el.offsetParent !== null,
+          display: window.getComputedStyle(el).display
+        }))
+      });
+      console.log('All drop lists in DOM:', {
+        count: allDropLists.length,
+        lists: Array.from(allDropLists).map((el: any) => ({
+          id: el.id,
+          className: el.className,
+          dataReadySection: el.getAttribute('data-ready-section'),
+          dataRouteSection: el.getAttribute('data-route-section'),
+          dataRouteId: el.getAttribute('data-route-id'),
+          isVisible: el.offsetParent !== null,
+          display: window.getComputedStyle(el).display
+        }))
+      });
+
       const routeId = this.getRouteIdFromDropEvent(event);
       if (!routeId) {
         console.error('Could not find route ID from drop event');
@@ -970,17 +1223,17 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
       const ticketToRemove = event.previousContainer.data[event.previousIndex];
       if (ticketToRemove) {
         // Find and remove from the original array
-        if (event.previousContainer.data === this.filteredSpotReadyTickets) {
+        if (event.previousContainer.data === this.getFilteredSpotReadyTickets() || event.previousContainer.data === this.spotReadyTickets) {
           const originalIndex = this.spotReadyTickets.findIndex(t => t.ticketid === ticketToRemove.ticketid);
           if (originalIndex !== -1) {
             this.spotReadyTickets.splice(originalIndex, 1);
           }
-        } else if (event.previousContainer.data === this.filteredAsphaltReadyTickets) {
+        } else if (event.previousContainer.data === this.getFilteredAsphaltReadyTickets() || event.previousContainer.data === this.asphaltReadyTickets) {
           const originalIndex = this.asphaltReadyTickets.findIndex(t => t.ticketid === ticketToRemove.ticketid);
           if (originalIndex !== -1) {
             this.asphaltReadyTickets.splice(originalIndex, 1);
           }
-        } else if (event.previousContainer.data === this.filteredConcreteReadyTickets) {
+        } else if (event.previousContainer.data === this.getFilteredConcreteReadyTickets() || event.previousContainer.data === this.concreteReadyTickets) {
           const originalIndex = this.concreteReadyTickets.findIndex(t => t.ticketid === ticketToRemove.ticketid);
           if (originalIndex !== -1) {
             this.concreteReadyTickets.splice(originalIndex, 1);
@@ -1035,17 +1288,17 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     const ticketToMove = event.previousContainer.data[event.previousIndex];
     if (ticketToMove) {
       // Remove from original source array
-      if (event.previousContainer.data === this.filteredSpotReadyTickets) {
+      if (event.previousContainer.data === this.getFilteredSpotReadyTickets() || event.previousContainer.data === this.spotReadyTickets) {
         const originalIndex = this.spotReadyTickets.findIndex(t => t.ticketid === ticketToMove.ticketid);
         if (originalIndex !== -1) {
           this.spotReadyTickets.splice(originalIndex, 1);
         }
-      } else if (event.previousContainer.data === this.filteredAsphaltReadyTickets) {
+      } else if (event.previousContainer.data === this.getFilteredAsphaltReadyTickets() || event.previousContainer.data === this.asphaltReadyTickets) {
         const originalIndex = this.asphaltReadyTickets.findIndex(t => t.ticketid === ticketToMove.ticketid);
         if (originalIndex !== -1) {
           this.asphaltReadyTickets.splice(originalIndex, 1);
         }
-      } else if (event.previousContainer.data === this.filteredConcreteReadyTickets) {
+      } else if (event.previousContainer.data === this.getFilteredConcreteReadyTickets() || event.previousContainer.data === this.concreteReadyTickets) {
         const originalIndex = this.concreteReadyTickets.findIndex(t => t.ticketid === ticketToMove.ticketid);
         if (originalIndex !== -1) {
           this.concreteReadyTickets.splice(originalIndex, 1);
@@ -1053,11 +1306,11 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
       }
 
       // Add to original destination array
-      if (event.container.data === this.filteredSpotReadyTickets) {
+      if (event.container.data === this.getFilteredSpotReadyTickets() || event.container.data === this.spotReadyTickets) {
         this.spotReadyTickets.push(ticketToMove);
-      } else if (event.container.data === this.filteredAsphaltReadyTickets) {
+      } else if (event.container.data === this.getFilteredAsphaltReadyTickets() || event.container.data === this.asphaltReadyTickets) {
         this.asphaltReadyTickets.push(ticketToMove);
-      } else if (event.container.data === this.filteredConcreteReadyTickets) {
+      } else if (event.container.data === this.getFilteredConcreteReadyTickets() || event.container.data === this.concreteReadyTickets) {
         this.concreteReadyTickets.push(ticketToMove);
       }
     }
@@ -1065,15 +1318,15 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
 
   private getReadySectionType(data: any[]): string {
     // Check if this is a ready section by comparing with filtered arrays
-    if (data === this.filteredSpotReadyTickets) {
+    if (data === this.getFilteredSpotReadyTickets() || data === this.spotReadyTickets) {
       return 'spot';
     }
 
-    if (data === this.filteredAsphaltReadyTickets) {
+    if (data === this.getFilteredAsphaltReadyTickets() || data === this.asphaltReadyTickets) {
       return 'asphalt';
     }
 
-    if (data === this.filteredConcreteReadyTickets) {
+    if (data === this.getFilteredConcreteReadyTickets() || data === this.concreteReadyTickets) {
       return 'concrete';
     }
 
@@ -1531,6 +1784,30 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     // Combine all routes to create comprehensive map data
     const allRoutes = [...this.spottingRoutes, ...this.concreteRoutes, ...this.asphaltRoutes];
 
+    // Debug coordinate data
+    console.log('🔍 Route Generator - Debugging coordinate data:');
+    allRoutes.forEach((route, routeIndex) => {
+      console.log(`📍 Route ${routeIndex + 1} (${route.type}):`, {
+        routeId: route.routeId,
+        routeCode: route.routeCode,
+        ticketsCount: route.tickets?.length || 0
+      });
+
+      route.tickets?.forEach((ticket, ticketIndex) => {
+        console.log(`  📍 Ticket ${ticketIndex + 1}:`, {
+          ticketId: ticket.ticketId,
+          address: ticket.address,
+          hasCoordinates: !!ticket.coordinates,
+          coordinates: ticket.coordinates,
+          coordinateKeys: ticket.coordinates ? Object.keys(ticket.coordinates) : [],
+          latType: ticket.coordinates?.latitude ? typeof ticket.coordinates.latitude : 'undefined',
+          lngType: ticket.coordinates?.longitude ? typeof ticket.coordinates.longitude : 'undefined',
+          latValue: ticket.coordinates?.latitude,
+          lngValue: ticket.coordinates?.longitude
+        });
+      });
+    });
+
     // Convert routes to Leaflet map format
     this.leafletRoutes = allRoutes.map(route => ({
       routeId: route.routeId,
@@ -1540,7 +1817,8 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
       tickets: route.tickets.map(ticket => ({
         ticketId: ticket.ticketId,
         address: ticket.address,
-        queue: ticket.queue
+        queue: ticket.queue,
+        coordinates: ticket.coordinates // Include coordinates from API
       }))
     }));
 
@@ -1846,5 +2124,36 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
         this.leafletMapComponent.refreshMap();
       }, 100);
     }
+  }
+
+  // Debug method to check drop targets during drag
+  private debugDropTargets() {
+    console.log('🔍 DROP TARGETS DEBUG:', {
+      timestamp: new Date().toISOString(),
+      routeContainers: document.querySelectorAll('[data-route-section="true"]').length,
+      readyContainers: document.querySelectorAll('[data-ready-section="true"]').length,
+      allDropLists: document.querySelectorAll('.cdk-drop-list').length,
+      routeContainersDetails: Array.from(document.querySelectorAll('[data-route-section="true"]')).map((el: any) => ({
+        id: el.id,
+        routeId: el.getAttribute('data-route-id'),
+        isVisible: el.offsetParent !== null,
+        rect: el.getBoundingClientRect(),
+        style: {
+          display: window.getComputedStyle(el).display,
+          visibility: window.getComputedStyle(el).visibility,
+          zIndex: window.getComputedStyle(el).zIndex,
+          position: window.getComputedStyle(el).position
+        }
+      })),
+      allDropListsDetails: Array.from(document.querySelectorAll('.cdk-drop-list')).map((el: any) => ({
+        id: el.id,
+        className: el.className,
+        dataReadySection: el.getAttribute('data-ready-section'),
+        dataRouteSection: el.getAttribute('data-route-section'),
+        dataRouteId: el.getAttribute('data-route-id'),
+        isVisible: el.offsetParent !== null,
+        rect: el.getBoundingClientRect()
+      }))
+    });
   }
 }
