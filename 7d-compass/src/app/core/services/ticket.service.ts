@@ -88,10 +88,15 @@ export class TicketService {
     return this.http.put<Ticket>(`${this.baseUrl}/${id}`, ticket);
   }
 
+  updateTicketB(id: number, ticket: Ticket): Observable<Ticket> {
+    return this.http.put<Ticket>(`${this.baseUrl}/${id}`, ticket);
+  }
+
   // Delete ticket by ID
   deleteTicket(id: number): Observable<DeleteResponse> {
     return this.http.delete<DeleteResponse>(`${this.baseUrl}/${id}`);
   }
+
 
   // Get payment and invoice info for tickets
   getPaymentInvoiceInfo(): Observable<PaymentInvoiceInfoResponse> {

@@ -2387,7 +2387,7 @@ updateTicketComment7d(comment: string) {
       console.log(`📤 quadrantId que se envía al backend: ${updatedTicket.quadrantId} (tipo: ${typeof updatedTicket.quadrantId})`);
       console.log(`📤 JSON completo que se envía:`, JSON.stringify(updatedTicket, null, 2));
 
-      this.ticketService.updateTicket(this.ticketId, updatedTicket).subscribe({
+      this.ticketService.updateTicketB(this.ticketId, updatedTicket).subscribe({
         next: (updatedTicketResponse) => {
           console.log(`✅ Comment7d actualizado exitosamente a: ${comment}`);
           console.log(`✅ Respuesta del backend:`, updatedTicketResponse);
