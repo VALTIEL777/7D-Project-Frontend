@@ -1571,7 +1571,55 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     try {
       this.snackBar.open(`Completing route ${route.routeCode}...`, 'Close', { duration: 3000 });
 
-      const endpoint = `${environment.apiUrl}/route-optimization/route/${route.routeId}/complete`;
+      // Debug logging
+      console.log('🔍 Completing route:', {
+        routeId: route.routeId,
+        routeCode: route.routeCode,
+        routeType: route.type,
+        routeTypeUpperCase: route.type?.toUpperCase()
+      });
+
+      // Use the correct endpoint based on route type
+      let endpoint: string;
+      let routeType = route.type?.toUpperCase();
+
+      // Fallback: If route type is not available or unknown, try to determine from routeCode
+      if (!routeType || !['SPOTTER', 'CONCRETE', 'ASPHALT'].includes(routeType)) {
+        console.log('⚠️ Route type not found or unknown, trying to determine from routeCode:', route.routeCode);
+
+        const routeCode = route.routeCode?.toUpperCase() || '';
+        if (routeCode.includes('SPOTTER')) {
+          routeType = 'SPOTTER';
+        } else if (routeCode.includes('CONCRETE')) {
+          routeType = 'CONCRETE';
+        } else if (routeCode.includes('ASPHALT')) {
+          routeType = 'ASPHALT';
+        } else {
+          // Default to SPOTTER if we can't determine
+          routeType = 'SPOTTER';
+          console.log('⚠️ Could not determine route type from routeCode, defaulting to SPOTTER');
+        }
+
+        console.log('🎯 Determined route type from routeCode:', routeType);
+      }
+
+      switch (routeType) {
+        case 'SPOTTER':
+          endpoint = `${environment.apiUrl}/route-optimization/route/${route.routeId}/complete-spotting`;
+          break;
+        case 'CONCRETE':
+          endpoint = `${environment.apiUrl}/route-optimization/route/${route.routeId}/complete-concrete`;
+          break;
+        case 'ASPHALT':
+          endpoint = `${environment.apiUrl}/route-optimization/route/${route.routeId}/complete-asphalt`;
+          break;
+        default:
+          console.error('❌ Unknown route type:', routeType, 'for route:', route);
+          throw new Error(`Unknown route type: ${routeType || 'undefined'}`);
+      }
+
+      console.log('🔗 Using endpoint:', endpoint);
+
       await this.http.post(endpoint, {}).toPromise();
 
       // Immediately remove the route from visible routes and update map
@@ -1588,7 +1636,13 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
 
       this.snackBar.open(`Route ${route.routeCode} has been completed successfully!`, 'Close', { duration: 5000 });
     } catch (error) {
-      console.error(`Error completing route ${route.routeCode}:`, error);
+      console.error(`❌ Error completing route ${route.routeCode}:`, error);
+      console.error('🔍 Error details:', {
+        routeId: route.routeId,
+        routeCode: route.routeCode,
+        routeType: route.type,
+        error: error
+      });
       this.snackBar.open(`Error completing route ${route.routeCode}. Please try again.`, 'Close', { duration: 5000 });
     }
   }
