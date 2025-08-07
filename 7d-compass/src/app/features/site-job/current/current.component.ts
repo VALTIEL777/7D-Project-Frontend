@@ -73,6 +73,10 @@ location: {
   fullAddress?: string;
   streetFrom?: string;
   streetTo?: string;
+  fromaddressnumber?: string;
+  fromaddressstreet?: string;
+  toaddressstreet?: string;
+  toaddressnumber?: string;
   fromAddressFull?: string;
   toAddressFull?: string;
 } = {
@@ -117,6 +121,8 @@ hiddenComments: Set<number> = new Set(); // Controla qué comentarios están ocu
 showAllComments: boolean = true; // Controla si todos los comentarios están visibles
 commentsUpdatedMessage: string = ''; // 🎯 NUEVO: Mensaje de actualización de comentarios
 galleryUpdatedMessage: string = ''; // 🎯 NUEVO: Mensaje de actualización de galería
+
+public orderedPhaseNames: string[] = [];
 
 // 🎯 NUEVO: Propiedades para la sección de comments (observations)
 filteredObservations: any[] = [];
@@ -673,33 +679,36 @@ this.permits = details.reduce((acc: { id: number; number: string }[], d: any) =>
 }, []);
 
 
-      // 🗺️ Solo cargar ubicación por defecto si no viene del localStorage
-      if (details.length > 0 && !this.isLocationFromStorage) {
-        const data = details[0];
+if (details.length > 0) {
+  const data = details[0];
 
-        // Concatenar dirección completa y partes
-       this.location.streetFrom = `${data.fromaddressnumber} ${data.fromaddressstreet} ${data.fromaddresscardinal}`.trim();
-       this.location.streetTo = `${data.toaddressnumber} ${data.toaddressstreet} ${data.toaddresscardinal}`.trim();
-       this.location.fullAddress = `${this.location.streetFrom} → ${this.location.streetTo}`;
+  const localStorageHasEmptyAddress =
+    !this.location.fromaddressnumber ||
+    !this.location.fromaddressstreet ||
+    !this.location.toaddressnumber ||
+    !this.location.toaddressstreet;
 
-       // Agrega este log para verificar
-        console.log('streetFrom:', this.location.streetFrom);
-        console.log('streetTo:', this.location.streetTo);
+  if (!this.isLocationFromStorage || localStorageHasEmptyAddress) {
+    this.location.streetFrom = `${data.fromaddressnumber} ${data.fromaddressstreet} ${data.fromaddresscardinal || ''}`.trim();
+    this.location.streetTo = `${data.toaddressnumber} ${data.toaddressstreet} ${data.toaddresscardinal || ''}`.trim();
+    this.location.fullAddress = `${this.location.streetFrom} → ${this.location.streetTo}`;
 
-        this.location.address = `${data.fromaddressstreet} ${data.toaddressstreet} ${data.fromaddresscardinal}`;  // ${data.fromaddresssuffix}
-        this.location.job = data.contractunit_name;
-        this.location.surface = data.surfacetotal;
-        this.location.description = data.contractunit_description;
-        this.location.width = data.width;
-        this.location.length = data.length;
+    this.location.address = data.location || ''; // Puedes ajustar si prefieres mostrar algo más
+    this.location.job = data.contractunit_name;
+    this.location.surface = data.surfacetotal;
+    this.location.description = data.contractunit_description;
+    this.location.width = data.width;
+    this.location.length = data.length;
 
-        console.log('📍 Dirección por defecto del backend:', this.location.address);
-        console.log('📝 Descripción asignada:', this.location.description);
-        console.log('📍 Dirección completa:', this.location.fullAddress);
+    console.log('📍 Dirección actualizada desde backend:', this.location.fullAddress);
+    console.log('📝 Descripción:', this.location.description);
+  } else {
+    console.log('📍 Dirección preservada desde localStorage:', this.location.fullAddress);
+  }
 
-        // 🗺️ Cargar la ruta completa como en upcoming
-        this.loadFullRoute();
-      } else if (this.isLocationFromStorage) {
+  // 🗺️ Cargar ruta completa después de establecer la dirección
+  this.loadFullRoute();
+} else if (this.isLocationFromStorage) {
         console.log('📍 Dirección seleccionada manualmente:', this.location);
         console.log('📝 Descripción desde localStorage:', this.location.description);
 
@@ -1654,7 +1663,7 @@ loadCurrentTicketImages() {
                 return {
                   url: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjRmNGY0Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkltYWdlbiBubyBkaXNwb25pYmxlPC90ZXh0Pjwvc3ZnPg==',
                   name: e.name || 'Error al cargar',
-                  comment: 'Error al cargar la imagen',
+                  comment: '',
                   startingdate: ts?.startingdate,
                   endingdate: ts?.endingdate,
                   date: e.date,
@@ -1733,6 +1742,16 @@ groupImagesByName(images: any[]): { [key: string]: any[] } {
 toggleGroup(group: string) {
   this.openedGroups[group] = !this.openedGroups[group];
 }
+
+getOrderedGroupedImages(): { key: string, value: any[] }[] {
+  const grouped = this.groupImagesByName(this.filteredTicketImages);
+  return this.orderedPhaseNames.map(phase => ({
+    key: phase,
+    value: grouped[phase] || []
+  }));
+  
+}
+
 
 // Map methods
   private updateLeafletRoutes() {
