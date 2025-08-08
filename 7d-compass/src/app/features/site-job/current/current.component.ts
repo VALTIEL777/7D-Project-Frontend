@@ -1749,7 +1749,7 @@ getOrderedGroupedImages(): { key: string, value: any[] }[] {
     key: phase,
     value: grouped[phase] || []
   }));
-  
+
 }
 
 
@@ -2397,7 +2397,7 @@ updateTicketComment7d(comment: string) {
         contractNumber: currentTicket.contractNumber,
         amountToPay: currentTicket.amountToPay,
         ticketType: currentTicket.ticketType,
-        // quadrantId: quadrantIdToPreserve, 
+        // quadrantId: quadrantIdToPreserve,
         cuadranteId: quadrantIdToPreserve,
         updatedBy: this.userId
       };

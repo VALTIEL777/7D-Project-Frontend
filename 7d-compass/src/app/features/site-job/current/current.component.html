@@ -48,7 +48,6 @@
   <li><strong>Task:</strong> {{ crewType || 'Not available' }}</li>
   <li><strong>Street From:</strong> {{ location.streetFrom || 'Not available' }}</li>
   <li> <strong>Street To:</strong> {{ location.streetTo || 'Not available' }}</li>
-  <li> <strong>Street To:</strong> {{ location.streetTo || 'Not available' }}</li>
 </ul>
 
 
@@ -314,7 +313,7 @@
             <mat-spinner *ngIf="isUploading(activity)" diameter="20" class="upload-spinner"></mat-spinner>
             <span>{{ isUploading(activity) ? 'Uploading...' : 'Upload evidence' }}</span>
           </button>
-          
+
           <!-- 🎯 NUEVO: Indicador de progreso detallado -->
           <div *ngIf="isUploading(activity)" class="upload-progress" style="margin-top: 8px;">
             <mat-progress-bar mode="indeterminate" color="accent"></mat-progress-bar>
@@ -326,7 +325,7 @@
         </mat-card>
       </div>
     </mat-expansion-panel>
-    
+
     <!-- 🎯 NUEVO: Campo de comentario en expansion panel -->
     <mat-expansion-panel>
       <mat-expansion-panel-header>
@@ -335,21 +334,21 @@
           Add Issue
         </mat-panel-title>
       </mat-expansion-panel-header>
-      
+
       <div class="comment-section" style="margin: 16px 0;">
         <div class="comment-input-container" style="display: flex; gap: 12px; align-items: flex-end;">
           <mat-form-field appearance="outline" style="flex: 1;">
             <mat-label>Issue for {{ activity.name }}</mat-label>
-            <textarea matInput 
-                      [(ngModel)]="activity.observation" 
+            <textarea matInput
+                      [(ngModel)]="activity.observation"
                       placeholder="Add a comment about this phase..."
                       rows="2"
                       maxlength="500"></textarea>
             <mat-hint>{{ (activity.observation || '').length }}/500</mat-hint>
           </mat-form-field>
-          
-          <button mat-raised-button 
-                  color="primary" 
+
+          <button mat-raised-button
+                  color="primary"
                   (click)="saveObservation(activity)"
                   [disabled]="!activity.observation || activity.observation.trim().length === 0"
                   style="height: 40px;">
@@ -357,7 +356,7 @@
             <span style="margin-left: 4px;">Send</span>
           </button>
         </div>
-        
+
       </div>
     </mat-expansion-panel>
   </div>
