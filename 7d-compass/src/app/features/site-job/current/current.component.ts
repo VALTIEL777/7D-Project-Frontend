@@ -680,7 +680,8 @@ this.permits = details.reduce((acc: { id: number; number: string }[], d: any) =>
 
 
 if (details.length > 0) {
-  const data = details[0];
+  // Prefer the detail that matches the current ticketId
+  const data = details.find((d: any) => d.ticketid === this.ticketId) || details[0];
 
   const localStorageHasEmptyAddress =
     !this.location.fromaddressnumber ||
@@ -689,11 +690,11 @@ if (details.length > 0) {
     !this.location.toaddressstreet;
 
   if (!this.isLocationFromStorage || localStorageHasEmptyAddress) {
-    this.location.streetFrom = `${data.fromaddressnumber} ${data.fromaddressstreet} ${data.fromaddresscardinal || ''}`.trim();
-    this.location.streetTo = `${data.toaddressnumber} ${data.toaddressstreet} ${data.toaddresscardinal || ''}`.trim();
+    this.location.streetFrom = `${data.fromaddressnumber ?? ''} ${data.fromaddressstreet ?? ''} ${data.fromaddresscardinal || ''}`.trim();
+    this.location.streetTo = `${data.toaddressnumber ?? ''} ${data.toaddressstreet ?? ''} ${data.toaddresscardinal || ''}`.trim();
     this.location.fullAddress = `${this.location.streetFrom} → ${this.location.streetTo}`;
 
-    this.location.address = data.location || ''; // Puedes ajustar si prefieres mostrar algo más
+    this.location.address = data.location || '';
     this.location.job = data.contractunit_name;
     this.location.surface = data.surfacetotal;
     this.location.description = data.contractunit_description;
@@ -1749,7 +1750,7 @@ getOrderedGroupedImages(): { key: string, value: any[] }[] {
     key: phase,
     value: grouped[phase] || []
   }));
-  
+
 }
 
 
@@ -2397,7 +2398,7 @@ updateTicketComment7d(comment: string) {
         contractNumber: currentTicket.contractNumber,
         amountToPay: currentTicket.amountToPay,
         ticketType: currentTicket.ticketType,
-        // quadrantId: quadrantIdToPreserve, 
+        // quadrantId: quadrantIdToPreserve,
         cuadranteId: quadrantIdToPreserve,
         updatedBy: this.userId
       };
