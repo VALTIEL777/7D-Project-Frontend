@@ -388,7 +388,7 @@ private loadAllPhasesAsync() {
       } else if (this.routeCode.includes('ASPHALT')) {
         orderedPhaseNames = ['Spotting', 'Grind', 'Asphalt', 'Crack Seal', 'Stripping'];
       } else if (this.routeCode.includes('CONCRETE')) {
-        orderedPhaseNames = [ 'Spotting', 'Install Signs', 'No Parking Signs', 'Sawcut', 'Removal', 'Framing', 'Concrete', 'Pour', 'Clean'];
+        orderedPhaseNames = [ 'Spotting', 'Install Signs', 'Sawcut', 'Removal', 'Framing', 'Concrete', 'Pour', 'Clean'];
       }
 
       // 🧹 Filtrar y ordenar según orderedPhaseNames
