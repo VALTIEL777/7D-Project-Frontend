@@ -163,12 +163,12 @@ crewDetails: any[] = [];
     // 🎯 NUEVO: Cargar datos secundarios después
     setTimeout(() => {
       this.loadSecondaryData();
-  
+
       // ✅ Cargar ticket codes después de datos secundarios
       this.loadTicketCodesForRemainingLocations();
     }, 50);
   }
-  
+
 
   // 🎯 FIXED: Método para cargar datos críticos en paralelo con orden correcto
   private loadCriticalDataInParallel(): void {
@@ -205,7 +205,7 @@ crewDetails: any[] = [];
           })
         )
       );
-  
+
     if (requests.length > 0) {
       forkJoin(requests).subscribe({
         next: () => {
@@ -219,7 +219,7 @@ crewDetails: any[] = [];
       console.log('⚠️ No hay ubicaciones con ticketid válido para cargar');
     }
   }
-  
+
 
   // 🎯 NUEVO: Método async para cargar ticket code
   private loadAllTicketCodesAsync(): void {
@@ -232,7 +232,7 @@ crewDetails: any[] = [];
           })
         )
       );
-  
+
     if (observables.length > 0) {
       forkJoin(observables).subscribe({
         next: () => {
@@ -246,7 +246,7 @@ crewDetails: any[] = [];
       console.log('⚠️ No hay ubicaciones con ticketid para cargar ticketCodes');
     }
   }
-  
+
 
   // 🎯 NUEVO: Método para inicializar ruta y ubicaciones en el orden correcto
   private async initializeRouteAndLocations(): Promise<void> {
@@ -311,10 +311,8 @@ crewDetails: any[] = [];
         const address = data.address || this.formatAddress(data);
 
         // 🎯 FIXED: Find queue from route tickets
-        const routeTicket = routeTickets.find((rt: any) =>
-          (rt.ticketId || rt.ticketid) === data.ticketid
-        );
-        const queue = routeTicket?.queue || 0;
+        const routeTicket = routeTickets.find((rt: any) => Number(rt.ticketId || rt.ticketid) === Number(data.ticketid));
+        const queue = Number(routeTicket?.queue ?? 0);
 
         console.log(`📍 Location ${data.ticketid}: queue=${queue}, address=${address}`);
 
@@ -331,7 +329,7 @@ crewDetails: any[] = [];
           routeCode: data.routecode || '',
           lat: data.latitude,
           lng: data.longitude,
-          queue: queue, // 🎯 FIXED: Use queue from route tickets
+          queue: queue, // 🎯 FIXED: Use numeric queue from route tickets
           // 🎯 SIMPLIFIED: Basic state properties
           checked: false,
           locked: false,
@@ -346,11 +344,7 @@ crewDetails: any[] = [];
     const locationsArray = Array.from(uniqueLocationsMap.values());
 
     // 🎯 FIXED: Ordenar por queue number para evitar mezcla después del refresh
-    const sortedLocations = locationsArray.sort((a, b) => {
-      const queueA = a.queue || 0;
-      const queueB = b.queue || 0;
-      return queueA - queueB;
-    });
+    const sortedLocations = locationsArray.sort((a, b) => (Number(a.queue || 0)) - (Number(b.queue || 0)));
 
     this.remainingLocations = sortedLocations;
     console.log(`✅ ${this.remainingLocations.length} locations processed and sorted by queue`);
@@ -358,7 +352,7 @@ crewDetails: any[] = [];
     // 🎯 DEBUG: Log the final order
     console.log('📋 Final location order:');
     this.remainingLocations.forEach((loc, index) => {
-      console.log(`  ${index + 1}. Queue ${loc.queue}: ${loc.address}`);
+      console.log(`  ${index + 1}. Queue ${Number(loc.queue || 0)}: ${loc.address}`);
     });
   }
 
@@ -855,7 +849,7 @@ crewDetails: any[] = [];
     // Obtener el crewType y crewId actual
     const storedUserId = Number(localStorage.getItem('userId'));
     const person = this.employeeList.find(p => p.userid === storedUserId);
-    const currentCrewType = person?.type || this.crewType;
+    const currentCrewType = this.canonicalizeCrewType(person?.type || this.crewType);
     const currentCrewId = person?.crewid;
 
     console.log(`🔍 Verificando crew type matching para ${location.address}:`, {
@@ -898,7 +892,7 @@ crewDetails: any[] = [];
     // Verificar si alguna fase completada coincide con el crew type (comparación más flexible)
     const matchingCompletedPhase = completedPhases.find(ts => {
       const phaseName = (ts.name || ts.taskname || ts.taskName || ts.phasename || ts.phaseName || ts.description || '').toLowerCase();
-      const crewType = currentCrewType?.toLowerCase() || '';
+      const crewType = this.canonicalizeCrewType(currentCrewType);
 
       console.log(`🔍 Comparando fase: "${phaseName}" con crew type: "${crewType}"`);
 
@@ -935,6 +929,11 @@ crewDetails: any[] = [];
         matches = true;
         console.log(`✅ Coincidencia parcial (clean): "${phaseName}" contiene "clean"`);
       }
+      // Comparación con "No Parking Signs" vs sign-related phases
+      else if (crewType === 'no parking signs' && (phaseName.includes('sign') || phaseName.includes('no parking'))) {
+        matches = true;
+        console.log(`✅ Coincidencia parcial (no parking signs): "${phaseName}" contiene "sign" o "no parking"`);
+      }
 
       return matches;
     });
@@ -947,13 +946,13 @@ crewDetails: any[] = [];
 
   // 🎯 MÉTODO PARA VERIFICAR SI EL CREW TYPE ES VÁLIDO
   private isValidCrewType(crewType: string): boolean {
-    const validCrewTypes = [
-      'spotting', 'install signs', 'grind', 'asphalt', 'crack seal', 'stripping',
+    const validCrewTypes = new Set([
+      'spotting', 'install signs', 'no parking signs', 'grind', 'asphalt', 'crack seal', 'stripping',
       'sawcut', 'removal', 'framing', 'concrete', 'pour', 'clean'
-    ];
+    ]);
 
-    const normalizedCrewType = crewType?.toLowerCase() || '';
-    return validCrewTypes.includes(normalizedCrewType);
+    const normalizedCrewType = this.canonicalizeCrewType(crewType);
+    return validCrewTypes.has(normalizedCrewType);
   }
 
   // 🎯 MÉTODO ALTERNATIVO: VERIFICAR SI TODAS LAS FASES OBLIGATORIAS ESTÁN COMPLETADAS
@@ -1090,7 +1089,7 @@ crewDetails: any[] = [];
   // 🎯 MÉTODO PÚBLICO PARA OBTENER TODOS LOS CREW TYPES VÁLIDOS
   public getValidCrewTypes(): string[] {
     return [
-      'Spotting', 'Install Signs', 'Grind', 'Asphalt', 'Crack Seal', 'Stripping',
+      'Spotting', 'Install Signs', 'No Parking Signs', 'Grind', 'Asphalt', 'Crack Seal', 'Stripping',
       'Sawcut', 'Removal', 'Framing', 'Concrete', 'Pour', 'Clean'
     ];
   }
@@ -1486,7 +1485,7 @@ crewDetails: any[] = [];
       // Get the current crew type and crew ID
       const storedUserId = Number(localStorage.getItem('userId'));
       const person = this.employeeList.find(p => p.userid === storedUserId);
-      const currentCrewType = person?.type || this.crewType;
+      const currentCrewType = this.canonicalizeCrewType(person?.type || this.crewType);
       const currentCrewId = person?.crewid;
 
       console.log('🔍 Route Assignment Debug:', {
@@ -1531,13 +1530,20 @@ crewDetails: any[] = [];
       const allRoutes = await this.loadRoutesOptimized(currentCrewType);
 
       // Find the specific route assigned to this crew
-      const assignedRoute = allRoutes.find(route =>
-        (route.routeid || route.routeId) === assignedRouteId
-      );
+      const targetId = Number(assignedRouteId);
+      let assignedRoute = allRoutes.find(route => Number(route.routeid || route.routeId) === targetId);
+
+      // Fallback: try by routeCode if ID fails (case-insensitive)
+      if (!assignedRoute && assignedRouteCode) {
+        const targetCode = String(assignedRouteCode).toUpperCase();
+        assignedRoute = allRoutes.find(route =>
+          String(route.routecode || route.routeCode || '').toUpperCase() === targetCode
+        );
+      }
 
       if (assignedRoute) {
         this.assignedRoute = assignedRoute;
-        this.assignedRouteId = assignedRouteId;
+        this.assignedRouteId = Number(assignedRoute.routeid || assignedRoute.routeId) || targetId;
 
         console.log('🎯 Found assigned route:', {
           routeId: this.assignedRouteId,
@@ -1550,7 +1556,26 @@ crewDetails: any[] = [];
         // Update the map with the correct route
         this.updateLeafletMap();
       } else {
-        console.warn(`❌ Route ${assignedRouteId} not found in available routes`);
+        console.warn(`❌ Route ${assignedRouteId} not found in available routes - trying all route types as fallback`);
+        // Fallback: fetch all routes across types and try again
+        const allTypesRoutes = await this.loadAllRoutesFallback();
+        let fallbackRoute = allTypesRoutes.find(route => Number(route.routeid || route.routeId) === targetId);
+        if (!fallbackRoute && assignedRouteCode) {
+          const targetCode = String(assignedRouteCode).toUpperCase();
+          fallbackRoute = allTypesRoutes.find(route => String(route.routecode || route.routeCode || '').toUpperCase() === targetCode);
+        }
+        if (fallbackRoute) {
+          this.assignedRoute = fallbackRoute;
+          this.assignedRouteId = Number(fallbackRoute.routeid || fallbackRoute.routeId) || targetId;
+          console.log('🎯 Found assigned route with fallback:', {
+            routeId: this.assignedRouteId,
+            routeCode: this.assignedRoute.routecode || this.assignedRoute.routeCode,
+            ticketsCount: this.assignedRoute.tickets?.length || 0
+          });
+          this.updateLeafletMap();
+        } else {
+          console.warn(`❌ Route ${assignedRouteId} not found even after fallback`);
+        }
       }
     } catch (error) {
       console.error('❌ Error in getAssignedRoute:', error);
@@ -1635,10 +1660,11 @@ crewDetails: any[] = [];
       'framing': 'concrete',
       'pour': 'concrete',
       'clean': 'concrete',
-      'install signs': 'spotting'
+      'install signs': 'spotting',
+      'no parking signs': 'concrete'
     };
 
-    const routeType = crewTypeToRouteType[currentCrewType?.toLowerCase()] || 'spotting';
+    const routeType = crewTypeToRouteType[this.canonicalizeCrewType(currentCrewType)] || 'spotting';
     console.log('🎯 Mapped route type:', routeType, 'for crew type:', currentCrewType);
 
     let allRoutes: any[] = [];
@@ -1946,6 +1972,49 @@ getZoomDescription(): string {
   trackByGroup(index: number, group: any): any {
     // Use static data that doesn't change
     return group.address + '_' + index;
+  }
+
+  private normalizeCrewType(raw: string): string {
+    return (raw || '')
+      .toLowerCase()
+      .replace(/[-_]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  private canonicalizeCrewType(raw: string): string {
+    const n = this.normalizeCrewType(raw);
+    // Canonical mappings for common variants
+    if (['no parking', 'no parking sign', 'no parking signs', 'install no parking signs'].includes(n)) {
+      return 'no parking signs';
+    }
+    if (['install sign', 'install signs', 'signs'].includes(n)) {
+      return 'install signs';
+    }
+    return n;
+  }
+
+  // Fallback loader to fetch all types regardless of crew type
+  private async loadAllRoutesFallback(): Promise<any[]> {
+    try {
+      const [spottingRoutes, concreteRoutes, asphaltRoutes] = await Promise.all([
+        firstValueFrom(this.http.get<any>(`${environment.apiUrl}/routes/spotting`)),
+        firstValueFrom(this.http.get<any>(`${environment.apiUrl}/routes/concrete`)),
+        firstValueFrom(this.http.get<any>(`${environment.apiUrl}/routes/asphalt`))
+      ]);
+
+      const allRoutes = [
+        ...(spottingRoutes?.routes || []),
+        ...(concreteRoutes?.routes || []),
+        ...(asphaltRoutes?.routes || [])
+      ];
+
+      console.log(`✅ Fallback loaded ${allRoutes.length} routes across all types`);
+      return allRoutes;
+    } catch (error) {
+      console.error('❌ Error fetching routes in fallback:', error);
+      return [];
+    }
   }
 
 }

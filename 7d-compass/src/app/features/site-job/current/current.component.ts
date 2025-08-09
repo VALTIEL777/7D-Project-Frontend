@@ -388,7 +388,7 @@ private loadAllPhasesAsync() {
       } else if (this.routeCode.includes('ASPHALT')) {
         orderedPhaseNames = ['Spotting', 'Grind', 'Asphalt', 'Crack Seal', 'Stripping'];
       } else if (this.routeCode.includes('CONCRETE')) {
-        orderedPhaseNames = [ 'Spotting', 'Install Signs', 'Sawcut', 'Removal', 'Framing', 'Concrete', 'Pour', 'Clean'];
+        orderedPhaseNames = [ 'Spotting', 'Install Signs', 'No Parking Signs', 'Sawcut', 'Removal', 'Framing', 'Concrete', 'Pour', 'Clean'];
       }
 
       // 🧹 Filtrar y ordenar según orderedPhaseNames
@@ -1749,7 +1749,7 @@ getOrderedGroupedImages(): { key: string, value: any[] }[] {
     key: phase,
     value: grouped[phase] || []
   }));
-  
+
 }
 
 
@@ -2397,7 +2397,7 @@ updateTicketComment7d(comment: string) {
         contractNumber: currentTicket.contractNumber,
         amountToPay: currentTicket.amountToPay,
         ticketType: currentTicket.ticketType,
-        // quadrantId: quadrantIdToPreserve, 
+        // quadrantId: quadrantIdToPreserve,
         cuadranteId: quadrantIdToPreserve,
         updatedBy: this.userId
       };
