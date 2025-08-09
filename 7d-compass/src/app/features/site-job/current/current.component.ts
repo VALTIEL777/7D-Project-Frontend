@@ -139,6 +139,8 @@ filterDateTo: Date | null = null;
 filteredTicketImages: any[] = [];
 
   leafletRoutes: RouteData[] = [];
+  // Store the full assigned route once loaded to resync local data
+  assignedRoute: any = null;
   visibleRoutes: Set<number> = new Set();
   mapConfig: MapConfig = {
     center: [41.8781, -87.6298], // Chicago
@@ -261,30 +263,39 @@ private loadCriticalDataInParallel(): void {
 }
 
 // 🎯 NUEVO: Método para cargar datos secundarios
-private loadSecondaryData(): void {
-  console.log('📦 Cargando datos secundarios...');
+  private loadSecondaryData(): void {
+    console.log('📦 Cargando datos secundarios...');
 
-  if (this.ticketId) {
-    // Cargar supervisor, ticket code y permit files en paralelo
-    forkJoin({
-      supervisor: this.loadSupervisorAsync(),
-      ticketCode: this.loadTicketCodeAsync(),
-      permitFiles: this.loadPermitFilesByTicketAsync()
-    }).subscribe({
-      next: (results) => {
-        console.log('✅ Datos secundarios cargados exitosamente');
+    if (this.ticketId) {
+      // Cargar supervisor, ticket code y permit files en paralelo
+      forkJoin({
+        supervisor: this.loadSupervisorAsync(),
+        ticketCode: this.loadTicketCodeAsync(),
+        permitFiles: this.loadPermitFilesByTicketAsync()
+      }).subscribe({
+        next: (results) => {
+          console.log('✅ Datos secundarios cargados exitosamente');
 
-        // 🎯 NUEVO: Cargar coordenadas después de que se cargue el ticketCode
-        if (this.ticketCode) {
-          this.getTicketCoordinates();
+          // 🎯 NUEVO: Cargar coordenadas después de que se cargue el ticketCode
+          if (this.ticketCode) {
+            this.getTicketCoordinates();
+          }
+
+          // 🎯 NUEVO: Si ya tenemos assignedRoute, re-sincronizar datos del ticket
+          if (this.assignedRoute && this.ticketId) {
+            const rt = (this.assignedRoute.tickets || []).find((t: any) => Number(t.ticketId || t.ticketid) === Number(this.ticketId));
+            if (rt) {
+              this.location.address = rt.address || this.location.address;
+              this.ticketCode = rt.ticketCode || rt.ticketcode || this.ticketCode;
+            }
+          }
+        },
+        error: (error) => {
+          console.error('❌ Error cargando datos secundarios:', error);
         }
-      },
-      error: (error) => {
-        console.error('❌ Error cargando datos secundarios:', error);
-      }
-    });
+      });
+    }
   }
-}
 
 
 
@@ -680,46 +691,30 @@ this.permits = details.reduce((acc: { id: number; number: string }[], d: any) =>
 
 
 if (details.length > 0) {
-  const data = details[0];
+  // Use the record that matches the current ticketId; fallback to first if not found
+  const data = details.find((d: any) => Number(d.ticketid) === Number(this.ticketId)) || details[0];
 
-  const localStorageHasEmptyAddress =
-    !this.location.fromaddressnumber ||
-    !this.location.fromaddressstreet ||
-    !this.location.toaddressnumber ||
-    !this.location.toaddressstreet;
+  // Always derive streetFrom/streetTo from authoritative crew details for the current ticket
+  this.location.streetFrom = `${data.fromaddressnumber || ''} ${data.fromaddressstreet || ''} ${data.fromaddresscardinal || ''}`.trim();
+  this.location.streetTo = `${data.toaddressnumber || ''} ${data.toaddressstreet || ''} ${data.toaddresscardinal || ''}`.trim();
+  this.location.fullAddress = `${this.location.streetFrom} → ${this.location.streetTo}`;
 
-  if (!this.isLocationFromStorage || localStorageHasEmptyAddress) {
-    this.location.streetFrom = `${data.fromaddressnumber} ${data.fromaddressstreet} ${data.fromaddresscardinal || ''}`.trim();
-    this.location.streetTo = `${data.toaddressnumber} ${data.toaddressstreet} ${data.toaddresscardinal || ''}`.trim();
-    this.location.fullAddress = `${this.location.streetFrom} → ${this.location.streetTo}`;
+  this.location.address = data.location || this.location.address;
+  this.location.job = data.contractunit_name;
+  this.location.surface = data.surfacetotal;
+  this.location.description = data.contractunit_description;
+  this.location.width = data.width;
+  this.location.length = data.length;
 
-    this.location.address = data.location || ''; // Puedes ajustar si prefieres mostrar algo más
-    this.location.job = data.contractunit_name;
-    this.location.surface = data.surfacetotal;
-    this.location.description = data.contractunit_description;
-    this.location.width = data.width;
-    this.location.length = data.length;
-
-    console.log('📍 Dirección actualizada desde backend:', this.location.fullAddress);
-    console.log('📝 Descripción:', this.location.description);
-  } else {
-    console.log('📍 Dirección preservada desde localStorage:', this.location.fullAddress);
-  }
-
-  // 🗺️ Cargar ruta completa después de establecer la dirección
-  this.loadFullRoute();
+  console.log('📍 Dirección actualizada desde backend:', this.location.fullAddress);
+  console.log('📝 Descripción:', this.location.description);
 } else if (this.isLocationFromStorage) {
-        console.log('📍 Dirección seleccionada manualmente:', this.location);
-        console.log('📝 Descripción desde localStorage:', this.location.description);
+  console.log('📍 Dirección seleccionada manualmente:', this.location);
+  console.log('📝 Descripción desde localStorage:', this.location.description);
+}
 
-        // 🗺️ Cargar la ruta completa como en upcoming
-        this.loadFullRoute();
-      }
-
-              // 🗺️ Cargar ruta completa después de cargar la ubicación
-        setTimeout(() => {
-          this.loadFullRoute();
-        }, 500);
+// 🗺️ Cargar ruta completa después de establecer la dirección
+this.loadFullRoute();
     },
     error: (err) => {
       console.error('❌ Error obteniendo detalles del crew', err);
@@ -2511,6 +2506,22 @@ getLastRequiredPhase(): string | null {
           hasPolyline: !!(assignedRoute.encodedpolyline || assignedRoute.encodedPolyline),
           ticketsCount: assignedRoute.tickets?.length || 0
         });
+
+        // ✅ Save assignedRoute for later reference
+        this.assignedRoute = assignedRoute;
+
+        // ✅ Resync localStorage-derived location data from the authoritative route ticket
+        const rt = (assignedRoute.tickets || []).find((t: any) => Number(t.ticketId || t.ticketid) === Number(this.ticketId));
+        if (rt) {
+          // Prefer route-provided fields
+          this.location.address = rt.address || this.location.address;
+          this.ticketCode = rt.ticketCode || rt.ticketcode || this.ticketCode;
+          // If coordinates are present, set them
+          if (rt.coordinates) {
+            this.latitude = rt.coordinates.lat || this.latitude;
+            this.longitude = rt.coordinates.lng || this.longitude;
+          }
+        }
 
         // ✅ Determinar el tipo correcto basado en routeCode
         let routeType = 'SPOTTER'; // fallback
