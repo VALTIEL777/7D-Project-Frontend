@@ -87,6 +87,7 @@ crewDetails: any[] = [];
 crewType: string = '';
 routeCode: string = '';
 contractUnitId: number = 0;
+routeId: number = 0;
 userId: number = 0;
 selectedFiles: File[] = [];
 imagePreviews: (string | ArrayBuffer | null)[] = [];
@@ -229,6 +230,11 @@ private loadBasicDataFromStorage(): void {
   const savedRouteCode = localStorage.getItem('selectedRouteCode');
   if (savedRouteCode) {
     this.routeCode = savedRouteCode;
+  }
+  const savedRouteId = Number(localStorage.getItem('selectedRouteId'));
+  if (savedRouteId && savedRouteId !== 0) {
+    this.routeId = savedRouteId;
+    console.log('🛣️ routeId cargado desde localStorage:', this.routeId);
   }
 
   // Configurar filtros de fecha
@@ -2471,34 +2477,49 @@ getLastRequiredPhase(): string | null {
   // Método para cargar la ruta completa como en upcoming
   async loadFullRoute(): Promise<void> {
     try {
-      console.log('🗺️ Cargando ruta completa para el ticket:', this.ticketId);
-
+      console.log('🗺️ Cargando ruta completa. ticketId:', this.ticketId, 'routeId:', this.routeId);
+  
       // Obtener todas las rutas disponibles
       const spottingRoutesResponse = await firstValueFrom(this.http.get<any>(`${environment.apiUrl}/routes/spotting`));
       const concreteRoutesResponse = await firstValueFrom(this.http.get<any>(`${environment.apiUrl}/routes/concrete`));
       const asphaltRoutesResponse = await firstValueFrom(this.http.get<any>(`${environment.apiUrl}/routes/asphalt`));
-
+  
       // Combinar todas las rutas
       const allRoutes = [
         ...(spottingRoutesResponse?.routes || []),
         ...(concreteRoutesResponse?.routes || []),
         ...(asphaltRoutesResponse?.routes || [])
       ];
-
-      // Buscar la ruta que contiene el ticket actual
+  
       let assignedRoute = null;
-      for (const route of allRoutes) {
-        if (route.tickets && Array.isArray(route.tickets)) {
-          const routeTicketIds = route.tickets.map((ticket: any) => ticket.ticketId || ticket.ticketid).filter((id: any) => id);
-          if (routeTicketIds.includes(this.ticketId)) {
-            assignedRoute = route;
-            break;
+  
+      // 🔹 1) Buscar primero por routeId si existe
+      if (this.routeId && this.routeId !== 0) {
+        assignedRoute = allRoutes.find(route =>
+          Number(route.routeid || route.routeId) === this.routeId
+        );
+        if (assignedRoute) {
+          console.log('✅ Ruta encontrada por routeId:', this.routeId);
+        }
+      }
+  
+      // 🔹 2) Si no encontró por routeId, buscar por ticketId
+      if (!assignedRoute && this.ticketId) {
+        for (const route of allRoutes) {
+          if (route.tickets && Array.isArray(route.tickets)) {
+            const routeTicketIds = route.tickets
+              .map((ticket: any) => ticket.ticketId || ticket.ticketid)
+              .filter((id: any) => id);
+            if (routeTicketIds.includes(this.ticketId)) {
+              assignedRoute = route;
+              console.log('✅ Ruta encontrada por ticketId:', this.ticketId);
+              break;
+            }
           }
         }
       }
-
+  
       if (assignedRoute) {
-        console.log('✅ Ruta encontrada:', assignedRoute.routeid || assignedRoute.routeId);
         console.log('🔍 Detalles de la ruta:', {
           routeId: assignedRoute.routeid || assignedRoute.routeId,
           routeCode: assignedRoute.routecode || assignedRoute.routeCode,
@@ -2506,79 +2527,62 @@ getLastRequiredPhase(): string | null {
           hasPolyline: !!(assignedRoute.encodedpolyline || assignedRoute.encodedPolyline),
           ticketsCount: assignedRoute.tickets?.length || 0
         });
-
-        // ✅ Save assignedRoute for later reference
+  
+        // Guardar en propiedad local
         this.assignedRoute = assignedRoute;
-
-        // ✅ Resync localStorage-derived location data from the authoritative route ticket
-        const rt = (assignedRoute.tickets || []).find((t: any) => Number(t.ticketId || t.ticketid) === Number(this.ticketId));
+  
+        // Sincronizar datos desde el ticket dentro de la ruta
+        const rt = (assignedRoute.tickets || []).find((t: any) =>
+          Number(t.ticketId || t.ticketid) === Number(this.ticketId)
+        );
         if (rt) {
-          // Prefer route-provided fields
           this.location.address = rt.address || this.location.address;
           this.ticketCode = rt.ticketCode || rt.ticketcode || this.ticketCode;
-          // If coordinates are present, set them
           if (rt.coordinates) {
             this.latitude = rt.coordinates.lat || this.latitude;
             this.longitude = rt.coordinates.lng || this.longitude;
           }
         }
-
-        // ✅ Determinar el tipo correcto basado en routeCode
-        let routeType = 'SPOTTER'; // fallback
-        if (assignedRoute.routecode || assignedRoute.routeCode) {
-          const routeCode = (assignedRoute.routecode || assignedRoute.routeCode).toUpperCase();
-          if (routeCode.includes('ASPHALT')) {
-            routeType = 'ASPHALT';
-          } else if (routeCode.includes('CONCRETE')) {
-            routeType = 'CONCRETE';
-          } else if (routeCode.includes('SPOTTER')) {
-            routeType = 'SPOTTER';
-          }
-        }
-
-        console.log('🎯 Tipo de ruta determinado:', routeType);
-
-        // Crear la ruta para Leaflet como en upcoming
-        const routeId = assignedRoute.routeid || assignedRoute.routeId;
+  
+        // Determinar tipo de ruta
+        let routeType = 'SPOTTER';
+        const rc = (assignedRoute.routecode || assignedRoute.routeCode || '').toUpperCase();
+        if (rc.includes('ASPHALT')) routeType = 'ASPHALT';
+        else if (rc.includes('CONCRETE')) routeType = 'CONCRETE';
+        else if (rc.includes('SPOTTER')) routeType = 'SPOTTER';
+  
+        // Crear estructura para Leaflet
+        const rId = assignedRoute.routeid || assignedRoute.routeId;
         this.leafletRoutes = [{
-          routeId: routeId,
+          routeId: rId,
           routeCode: assignedRoute.routecode || assignedRoute.routeCode || 'CURRENT',
           type: routeType,
           encodedPolyline: assignedRoute.encodedpolyline || assignedRoute.encodedPolyline || '',
           tickets: assignedRoute.tickets || []
         }];
-
-        // ✅ Agregar la ruta al visibleRoutes para que se muestre
-        this.visibleRoutes = new Set([routeId]);
-
-        console.log('🗺️ Ruta completa cargada:', this.leafletRoutes);
-        console.log('✅ VisibleRoutes actualizado:', this.visibleRoutes);
-
-        // Actualizar el mapa sin hacer zoom automático
+  
+        // Agregar a visibles
+        this.visibleRoutes = new Set([rId]);
+  
+        // Refrescar mapa
         setTimeout(() => {
           if (this.leafletMap) {
             this.leafletMap.refreshMap();
             console.log('🔄 Mapa refrescado después de cargar ruta completa');
-
-            // ✅ Mapa actualizado exitosamente
-            console.log('✅ Mapa actualizado después de cargar ruta completa');
           }
         }, 1000);
+  
       } else {
-        console.warn('⚠️ No se encontró ruta para el ticket:', this.ticketId);
-        console.log('🔍 Buscando en todas las rutas disponibles...');
-        allRoutes.forEach((route, index) => {
-          console.log(`  ${index + 1}. Route ${route.routeid || route.routeId}: ${route.tickets?.length || 0} tickets`);
-        });
-        // Fallback: mostrar solo la ubicación actual
+        console.warn('⚠️ No se encontró ruta ni por routeId ni por ticketId.');
         this.updateLeafletRoutes();
       }
+  
     } catch (error) {
       console.error('❌ Error cargando ruta completa:', error);
-      // Fallback: mostrar solo la ubicación actual
       this.updateLeafletRoutes();
     }
   }
+  
 
 // Helper method to get current date in local timezone
 private getCurrentDateString(): string {

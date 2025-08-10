@@ -1604,7 +1604,7 @@ crewDetails: any[] = [];
     this.leafletRoutes = [{
       routeId: this.assignedRoute.routeid || this.assignedRoute.routeId,
       routeCode: this.assignedRoute.routecode || this.assignedRoute.routeCode,
-      type: 'UPCOMING',
+      type: this.assignedRoute.type,
       encodedPolyline: this.assignedRoute.encodedpolyline || this.assignedRoute.encodedPolyline,
       tickets: (this.assignedRoute.tickets || []).map((ticket: any) => ({
         ticketId: ticket.ticketId || ticket.ticketid,
@@ -1864,6 +1864,7 @@ goToCurrent(location: any) {
   localStorage.setItem('selectedLocation', JSON.stringify(locationToSave));
   localStorage.setItem('crewId', String(crewId));
   localStorage.setItem('selectedRouteCode', location.routeCode || ''); // ✅ AGREGADO: Guardar routeCode
+  localStorage.setItem('selectedRouteId', String(location.routeId || location.routeid || 0)); // ✅ guardar routeId
   this.router.navigate(['/current']);
 }
 
