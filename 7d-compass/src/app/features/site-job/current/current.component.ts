@@ -2476,7 +2476,20 @@ getLastRequiredPhase(): string | null {
 // Método para cargar la ruta completa como en upcoming
 async loadFullRoute(): Promise<void> {
   try {
-    console.log('🗺️ Cargando ruta completa. ticketId:', this.ticketId, 'routeId:', this.routeId);
+    console.log('🗺️ Cargando ruta completa. ticketId:', this.ticketId, 'routeId inicial:', this.routeId);
+
+    // 🔹 0️⃣ Obtener routeId real desde CrewDetails (si no lo tienes o quieres forzar actualización)
+    if (!this.routeId || this.routeId === 0) {
+      try {
+        const crewDetails = await firstValueFrom(this.http.get<any>(`${environment.apiUrl}/crews/${this.crewId}`));
+        if (crewDetails?.routeid) {
+          this.routeId = Number(crewDetails.routeid);
+          console.log('📌 routeId obtenido de getCrewDetailsById:', this.routeId);
+        }
+      } catch (err) {
+        console.warn('⚠️ No se pudo obtener routeId desde getCrewDetailsById', err);
+      }
+    }
 
     // 1️⃣ Obtener todas las rutas disponibles
     const spottingRoutesResponse = await firstValueFrom(this.http.get<any>(`${environment.apiUrl}/routes/spotting`));
@@ -2583,6 +2596,7 @@ async loadFullRoute(): Promise<void> {
     this.updateLeafletRoutes();
   }
 }
+
 
   
 
