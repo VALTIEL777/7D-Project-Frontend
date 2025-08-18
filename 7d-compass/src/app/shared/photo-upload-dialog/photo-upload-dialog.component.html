@@ -1,0 +1,34 @@
+<h2 mat-dialog-title>Upload Photo Evidence</h2>
+
+<mat-dialog-content>
+  <button mat-raised-button color="primary" (click)="fileInput.click()">
+    <mat-icon>camera_enhance</mat-icon>
+    Take photo
+  </button>
+  <input #fileInput type="file" accept="image/*" capture="environment" hidden multiple (change)="onFileSelected($event)" />
+
+  <div class="preview-container" *ngFor="let preview of previews; let i = index">
+    <img [src]="preview" alt="Preview" class="preview-img" />
+    <button mat-icon-button color="warn" (click)="removeImage(i)">
+      <mat-icon>close</mat-icon>
+    </button>
+  </div>
+
+  <mat-form-field appearance="fill" class="evidence-field">
+    <mat-label>Photo Name</mat-label>
+    <input matInput [(ngModel)]="name" placeholder="Ej. Foto de zona de trabajo" />
+  </mat-form-field>
+
+  <mat-form-field appearance="fill" class="evidence-field">
+    <mat-label>Comment</mat-label>
+    <input matInput [(ngModel)]="comment" placeholder="Ej. Permiso faltante, entrada bloqueada..." />
+  </mat-form-field>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button (click)="cancel()">Cancel</button>
+  <button mat-raised-button color="accent" (click)="save()" [disabled]="selectedFiles.length === 0">
+    <mat-icon>cloud_upload</mat-icon>
+    Upload
+  </button>
+</mat-dialog-actions>

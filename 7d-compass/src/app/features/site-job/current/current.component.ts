@@ -174,20 +174,28 @@ filteredTicketImages: any[] = [];
 
   private isLocationFromStorage = false;
 
-ngOnInit() {
-  console.log('🚀 Iniciando carga optimizada del componente...');
-
-  // 👇 Recuperar datos básicos desde localStorage
-  this.loadBasicDataFromStorage();
-
-  // 🎯 NUEVO: Cargar datos críticos en paralelo
-  this.loadCriticalDataInParallel();
-
-  // 🎯 NUEVO: Cargar datos secundarios después
-  setTimeout(() => {
-    this.loadSecondaryData();
-  }, 50);
-}
+  ngOnInit() {
+    console.log('🚀 Iniciando carga optimizada del componente...');
+  
+    // 👇 Recuperar datos básicos desde localStorage
+    this.loadBasicDataFromStorage();
+  
+    // 🎯 Cargar ruta completa si hay routeId o ticketId
+    if ((this.routeId && this.routeId !== 0) || (this.ticketId && this.ticketId !== 0)) {
+      this.loadFullRoute();
+    } else {
+      console.warn('⚠️ No hay routeId ni ticketId para cargar la ruta.');
+    }
+  
+    // 🎯 NUEVO: Cargar datos críticos en paralelo
+    this.loadCriticalDataInParallel();
+  
+    // 🎯 NUEVO: Cargar datos secundarios después
+    setTimeout(() => {
+      this.loadSecondaryData();
+    }, 50);
+  }
+  
 
 // 🎯 NUEVO: Método para cargar datos básicos desde localStorage
 private loadBasicDataFromStorage(): void {
@@ -2451,8 +2459,8 @@ getLastRequiredPhase(): string | null {
 
   // 🎯 MÉTODO PARA VERIFICAR SI UNA FASE DEBE ACTUALIZAR EL TICKET A COMPLETED
   shouldUpdateTicketToCompleted(activityName: string): boolean {
-    // Solo Crack Seal y Clean actualizan el ticket a COMPLETED
-    return activityName === 'Crack Seal' || activityName === 'Clean';
+    // Solo Crack Seal actualizan el ticket a COMPLETED
+    return activityName === 'Crack Seal';
   }
 
   // 🎯 MÉTODO PARA VERIFICAR SI SE COMPLETÓ LA ÚLTIMA FASE OBLIGATORIA (DEPRECATED)
