@@ -50,6 +50,8 @@ export class DataTableComponent<T> implements AfterViewInit {
   @Input() pageSizeOptions: number[] = [15, 20, 25];
   @Input() hasFiles: (element: T) => boolean = () => false;
   @Input() shouldShowViewButton: (element: T) => boolean = () => true;
+  @Input() getViewButtonColor: (element: T) => string = () => 'primary';
+  @Input() getViewButtonTooltip: (element: T) => string = () => 'Show Photos';
 
   @Output() edit = new EventEmitter<T>();
   @Output() delete = new EventEmitter<T>();

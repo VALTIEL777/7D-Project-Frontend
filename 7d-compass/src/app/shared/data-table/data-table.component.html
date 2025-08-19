@@ -78,8 +78,9 @@
              <button
       *ngIf="showViewButton && column.name === 'show' && shouldShowViewButton(element)"
   mat-icon-button
+  [color]="getViewButtonColor(element)"
   class="show-button"
-  matTooltip="Show Photos"
+  [matTooltip]="getViewButtonTooltip(element)"
   (click)="view.emit(element)">
     <mat-icon>visibility</mat-icon>
     </button>

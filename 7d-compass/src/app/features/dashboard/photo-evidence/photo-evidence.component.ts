@@ -122,6 +122,9 @@ interface ColumnDefinition {
 })
 export class PhotoEvidenceComponent extends BaseDashboardComponent implements OnInit {
   loading = false;
+  loadingPhotos = false; // New property for photo loading state
+  uploadingPhoto = false; // New property for photo upload state
+  deletingPhoto = false; // New property for photo delete state
   error: string | null = null;
   galleryData: Incident[] = [];
   selectedTicket: Ticket | null = null;
@@ -368,13 +371,31 @@ export class PhotoEvidenceComponent extends BaseDashboardComponent implements On
 
   async onTicketSelect(ticket: Ticket): Promise<void> {
     this.selectedTicket = ticket;
-    const rawPhotos = this.getAllPhotosFromTicket(ticket);
-    console.log('Selected ticket:', ticket);
-    console.log('Raw photos found:', rawPhotos.length);
+    this.loadingPhotos = true; // Start loading photos
+    console.log('🔄 Starting to load photos for ticket:', ticket.ticketCode);
+    
+    try {
+      // Get all photos from the ticket (including empty phases)
+      const rawPhotos = this.getAllPhotosFromTicket(ticket);
+      console.log('Selected ticket:', ticket);
+      console.log('Raw photos found:', rawPhotos.length);
 
-    // Load photo blobs and create object URLs
-    this.selectedPhotos = await this.loadPhotoBlobs(rawPhotos);
-    console.log('Photos loaded with blobs:', this.selectedPhotos.length);
+      // Load photo blobs and create object URLs
+      this.selectedPhotos = await this.loadPhotoBlobs(rawPhotos);
+      console.log('Photos loaded with blobs:', this.selectedPhotos.length);
+      
+      // Add a small delay to ensure UI updates are processed
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      console.log('✅ Photos loading completed for ticket:', ticket.ticketCode);
+      
+    } catch (error) {
+      console.error('Error loading photos:', error);
+      this.error = 'Error loading photos. Please try again.';
+    } finally {
+      this.loadingPhotos = false; // Stop loading photos
+      console.log('🔄 Loading state set to false for ticket:', ticket.ticketCode);
+    }
   }
 
   private getAllPhotosFromTicket(ticket: Ticket): PhotoEvidence[] {
@@ -511,7 +532,24 @@ export class PhotoEvidenceComponent extends BaseDashboardComponent implements On
   }
 
   shouldShowViewButton = (ticket: any): boolean => {
-    return this.hasPhotos(ticket);
+    // Show view button for any ticket that has task statuses (phases)
+    // This allows users to upload photos even when there are no existing photos
+    return ticket.taskStatuses && ticket.taskStatuses.length > 0;
+  }
+
+  getViewButtonColor = (ticket: any): string => {
+    // Return 'accent' (green) if ticket has photos, 'primary' (blue) if no photos
+    return this.hasPhotos(ticket) ? 'accent' : 'primary';
+  }
+
+  getViewButtonTooltip = (ticket: any): string => {
+    // Return descriptive tooltip based on photo status
+    if (this.hasPhotos(ticket)) {
+      const photoCount = this.getPhotoCount(ticket);
+      return `View Photos (${photoCount} photo${photoCount !== 1 ? 's' : ''} available)`;
+    } else {
+      return 'View Photos (No photos yet - Click to upload)';
+    }
   }
 
   getPhotosByPhase(): { phaseName: string; photos: PhotoEvidence[] }[] {
@@ -533,6 +571,87 @@ export class PhotoEvidenceComponent extends BaseDashboardComponent implements On
         photos: phaseGroups[phaseName]
       }))
       .sort((a, b) => a.phaseName.localeCompare(b.phaseName));
+  }
+
+  // Computed property for phases - only recalculate when needed
+  get allPhases(): { phaseName: string; photos: PhotoEvidence[] }[] {
+    if (!this.selectedTicket || this.loadingPhotos) {
+      console.log('🔄 allPhases getter: returning empty array (loadingPhotos:', this.loadingPhotos, ')');
+      return [];
+    }
+
+    // Define the custom phase order
+    const phaseOrder = [
+      'Spotting',
+      'No Parking Signs',
+      'Sawcut',
+      'Removal',
+      'Framing',
+      'Pour',
+      'Clean',
+      'Steel Plate Pickup',
+      'Grind',
+      'Asphalt',
+      'Crack Seal',
+      'Stripping',
+      'Install Signs'
+    ];
+
+    // Get all phases from the ticket, even if they have no photos
+    const phases = this.selectedTicket.taskStatuses.map(taskStatus => {
+      // Find photos for this phase
+      const phasePhotos = this.selectedPhotos.filter(photo => 
+        photo.taskStatusName === taskStatus.name
+      );
+
+      return {
+        phaseName: taskStatus.name,
+        photos: phasePhotos
+      };
+    });
+
+    // Sort phases by custom order instead of alphabetically
+    const sortedPhases = phases.sort((a, b) => {
+      const aIndex = phaseOrder.indexOf(a.phaseName);
+      const bIndex = phaseOrder.indexOf(b.phaseName);
+      
+      // If both phases are in the defined order, sort by their position
+      if (aIndex !== -1 && bIndex !== -1) {
+        return aIndex - bIndex;
+      }
+      
+      // If only one phase is in the defined order, prioritize it
+      if (aIndex !== -1) return -1;
+      if (bIndex !== -1) return 1;
+      
+      // If neither phase is in the defined order, sort alphabetically
+      return a.phaseName.localeCompare(b.phaseName);
+    });
+    
+    console.log('📊 allPhases getter: returning', sortedPhases.length, 'phases in custom order');
+    return sortedPhases;
+  }
+
+  // Keep the old method for backward compatibility
+  getAllPhases(): { phaseName: string; photos: PhotoEvidence[] }[] {
+    return this.allPhases;
+  }
+
+  // Check if we should show the no phases message
+  get shouldShowNoPhases(): boolean {
+    const result = !this.loadingPhotos && !!this.selectedTicket && 
+           (!this.selectedTicket.taskStatuses || this.selectedTicket.taskStatuses.length === 0);
+    console.log('🔍 shouldShowNoPhases:', result, '(loadingPhotos:', this.loadingPhotos, ')');
+    return result;
+  }
+
+  // Check if we should show the no photos message
+  get shouldShowNoPhotos(): boolean {
+    const result = !this.loadingPhotos && !!this.selectedTicket && 
+           !!this.selectedTicket.taskStatuses && this.selectedTicket.taskStatuses.length > 0 &&
+           this.allPhases.every(phase => phase.photos.length === 0);
+    console.log('🔍 shouldShowNoPhotos:', result, '(loadingPhotos:', this.loadingPhotos, ')');
+    return result;
   }
 
   getTaskStatusId(phaseName: string): number {
@@ -578,6 +697,8 @@ export class PhotoEvidenceComponent extends BaseDashboardComponent implements On
   private uploadPhoto(file: File, taskStatusId: number, comment: string = ''): void {
     if (!this.selectedTicket) return;
 
+    this.uploadingPhoto = true; // Start upload loading
+
     const formData = new FormData();
     formData.append('ticketStatusId', taskStatusId.toString());
     formData.append('ticketId', this.selectedTicket.ticketId.toString());
@@ -595,10 +716,12 @@ export class PhotoEvidenceComponent extends BaseDashboardComponent implements On
 
         // Refresh the current ticket's photos immediately
         this.refreshCurrentTicketPhotos();
+        this.uploadingPhoto = false; // Stop upload loading
       },
       error: (error) => {
         console.error('❌ Error uploading photo:', error);
         this.snackBar.open('Error uploading photo', 'Close', { duration: 3000 });
+        this.uploadingPhoto = false; // Stop upload loading on error
       }
     });
   }
@@ -659,6 +782,8 @@ export class PhotoEvidenceComponent extends BaseDashboardComponent implements On
 
     dialogRef.afterClosed().subscribe(confirmed => {
       if (confirmed) {
+        this.deletingPhoto = true; // Start delete loading
+        
         this.http.delete(`${environment.apiUrl}/photoevidence/${photo.photoId}`).subscribe({
           next: () => {
             console.log('✅ Photo deleted successfully');
@@ -666,10 +791,12 @@ export class PhotoEvidenceComponent extends BaseDashboardComponent implements On
 
             // Refresh the current ticket's photos immediately
             this.refreshCurrentTicketPhotos();
+            this.deletingPhoto = false; // Stop delete loading
           },
           error: (error) => {
             console.error('❌ Error deleting photo:', error);
             this.snackBar.open('Error deleting photo', 'Close', { duration: 3000 });
+            this.deletingPhoto = false; // Stop delete loading on error
           }
         });
       }
@@ -691,7 +818,7 @@ export class PhotoEvidenceComponent extends BaseDashboardComponent implements On
           if (updatedTicket) {
             // Update the selected ticket with fresh data
             this.selectedTicket = updatedTicket;
-            // Reload photos for the updated ticket
+            // Reload photos for the updated ticket (this will handle its own loading state)
             this.onTicketSelect(updatedTicket);
           }
         }

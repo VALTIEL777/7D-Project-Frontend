@@ -173,13 +173,36 @@ mat-paginator {
 }
 
 .show-button {
-  color: #2196f3; // azul
   border: none !important;
-  background-color: rgba(33, 150, 243, 0.1);
+  transition: transform 0.3s ease, background-color 0.3s ease;
 
   &:hover {
-    background-color: rgba(33, 150, 243, 0.2);
     transform: scale(1.1);
+  }
+
+  // Custom colors for different states
+  &.mat-accent {
+    background-color: rgba(76, 175, 80, 0.1); // Green background for tickets with photos
+    
+    &:hover {
+      background-color: rgba(76, 175, 80, 0.2);
+    }
+
+    mat-icon {
+      color: #4caf50 !important; // Green icon
+    }
+  }
+
+  &.mat-primary {
+    background-color: rgba(33, 150, 243, 0.1); // Blue background for tickets without photos
+    
+    &:hover {
+      background-color: rgba(33, 150, 243, 0.2);
+    }
+
+    mat-icon {
+      color: #2196f3 !important; // Blue icon
+    }
   }
 }
 
