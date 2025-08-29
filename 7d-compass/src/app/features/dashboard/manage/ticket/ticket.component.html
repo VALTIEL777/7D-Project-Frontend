@@ -4,9 +4,42 @@
       [title]="'Ticket Management'"
       [data]="filteredTicketData"
       [columns]="columns"
-      [pageSizeOptions]="[5, 10, 20]"
+      [pageSizeOptions]="[15, 20, 25]"
       (edit)="onEdit($event)"
       (delete)="onDelete($event)">
     </app-data-table>
   </app-card-with-button>
 </app-dashboard-layout>
+
+<app-fab-button
+  title="Add Ticket"
+  icon="confirmation_number"
+  tooltip="Create new ticket"
+  dialogTitle="Create New Ticket"
+  [fields]="[
+    { name: 'ticketCode', label: 'Ticket Code', type: 'text', required: true },
+    { name: 'incidentId', label: 'Incident ID', type: 'number', required: false },
+    { name: 'quadrantId', label: 'Quadrant ID', type: 'number', required: false },
+    { name: 'contractUnitId', label: 'Contract Unit ID', type: 'number', required: false },
+    { name: 'wayfindingId', label: 'Wayfinding ID', type: 'number', required: false },
+    { name: 'quantity', label: 'Quantity', type: 'number', required: true },
+    { name: 'daysOutstanding', label: 'Days Outstanding', type: 'number', required: false },
+    { name: 'comment7d', label: 'Status', type: 'select', required: true, options: [
+      { value: 'TK - CANCELLED', label: 'TK - CANCELLED' },
+      { value: 'TK - COMPLETED', label: 'TK - COMPLETED' },
+      { value: 'NEEDS PERMISION EXTENDED', label: 'NEEDS PERMISION EXTENDED' },
+      { value: 'ON HOLD OFF', label: 'ON HOLD OFF' },
+      { value: 'ON PROGRESS', label: 'ON PROGRESS' },
+      { value: 'ON SCHEDULE', label: 'ON SCHEDULE' },
+      { value: 'DIGGER APPLAY', label: 'DIGGER APPLAY' },
+      { value: 'HMA- ON PROGRESS', label: 'HMA- ON PROGRESS' }
+    ]},
+    { name: 'partnerComment', label: 'Partner Comment', type: 'textarea', required: false },
+    { name: 'partnerSupervisorComment', label: 'Partner Supervisor Comment', type: 'textarea', required: false },
+    { name: 'contractNumber', label: 'Contract Number', type: 'text', required: false },
+    { name: 'amountToPay', label: 'Amount to Pay', type: 'number', required: false },
+    { name: 'ticketType', label: 'Ticket Type', type: 'text', required: true }
+  ]"
+  [excludedFields]="['ticketId', 'paymentId', 'mobilizationId', 'createdAt', 'updatedAt', 'createdBy', 'updatedBy', 'deletedAt']"
+  (itemCreated)="onCreateTicket($event)">
+</app-fab-button>

@@ -1,45 +1,63 @@
 <app-dashboard-layout>
-    <div class="grid-container">
-  <div class="card card-1">
-    <app-card-with-button title="Route History" [showEyeButton]="false">
-      <app-data-table
-  [title]="'Route'"
-  [data]="routeData"
-  [columns]="routeColumns"
-  (edit)="onEditRoute($event)"
-  (delete)="onDeleteRoute($event)">
-  >
-</app-data-table>
-    </app-card-with-button>
-  </div>
+  <div class="grid-container">
+    <div class="card card-table">
+      <app-card-with-button title="Route History" [showEyeButton]="false">
+        <div *ngIf="loading" class="loading-container">
+          <div class="loading-spinner"></div>
+          <p>Loading routes...</p>
+        </div>
 
-  <div class="card card-2">
-    <app-card-with-button title="Spotter Route History" [showEyeButton]="false">
-<app-data-table
-  [title]="'Spotter'"
-  [data]="spotterData"
-  [columns]="spotterColumns"
-  (edit)="onEditSpotter($event)"
-  (delete)="onDeleteSpotter($event)">
-  >
-</app-data-table>    </app-card-with-button>
-  </div>
+        <div *ngIf="error" class="error-container">
+          <p class="error-message">{{ error }}</p>
+          <button mat-button (click)="loadRoutes()">Retry</button>
+        </div>
 
- <div class="card card-map">
-  <app-card-with-button title="Route" [showEyeButton]="false">
-    <div class="map-wrapper">
-      <iframe
-        loading="lazy"
-        allowfullscreen
-        referrerpolicy="no-referrer-when-downgrade"
-        src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d95224.76413019876!2d-87.74697493920664!3d41.83339250000001!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x880e2cbb3f55be6b%3A0x8e52c3db17f0d26!2sChicago%2C%20IL%2C%20USA!5e0!3m2!1sen!2smx!4v1718131500000!5m2!1sen!2smx"
-        class="map-frame">
-      </iframe>
+        <app-data-table
+          *ngIf="!loading && !error"
+          [title]="'Routes'"
+          [data]="filteredRoutes"
+          [columns]="routeColumns"
+          [showEditButton]="false"
+          [showDeleteButton]="false"
+          [showViewButton]="true"
+          (view)="onRouteSelect($event)">
+        </app-data-table>
+      </app-card-with-button>
     </div>
-  </app-card-with-button>
-</div>
 
+    <div class="card card-map">
+      <app-card-with-button title="Route Map" [showEyeButton]="false">
+        <div *ngIf="!selectedRoute" class="no-route-selected">
+          <mat-icon>map</mat-icon>
+          <p>Select a route from the table to view it on the map</p>
+        </div>
 
-</div>
+        <div *ngIf="selectedRoute" class="route-info">
+          <div class="route-header">
+            <h3>{{ selectedRoute.routeCode }}</h3>
+            <span class="route-type">{{ selectedRoute.type }}</span>
+          </div>
+          <div class="route-details">
+            <div class="detail-item">
+              <span class="label">Addresses:</span>
+              <span class="value">{{ selectedRoute.addressCount }}</span>
+            </div>
+          </div>
+        </div>
 
+        <app-leaflet-map
+          *ngIf="selectedRoute"
+          #leafletMap
+          [routes]="leafletRoutes"
+          [config]="mapConfig"
+          [showMarkers]="true"
+          [showPolylines]="true"
+          [height]="'100%'"
+          [width]="'100%'"
+          [visibleRoutes]="visibleRoutes"
+          class="map-container">
+        </app-leaflet-map>
+      </app-card-with-button>
+    </div>
+  </div>
 </app-dashboard-layout>

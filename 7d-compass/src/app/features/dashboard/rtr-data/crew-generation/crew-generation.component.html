@@ -1,0 +1,244 @@
+<app-dashboard-layout>
+  <app-card-with-button title="Crew Generation" [showEyeButton]="false">
+    <form [formGroup]="form" (ngSubmit)="save()">
+
+      <!-- CREW & EMPLOYEE SELECTION CARD -->
+      <mat-card class="section-card">
+        <mat-card-content>
+          <h2>Crew Details</h2>
+          <div class="form-row">
+            <mat-form-field appearance="outline" style="width: 200px; margin-right: 16px;">
+              <mat-label>Type</mat-label>
+              <input
+                type="text"
+                matInput
+                [formControl]="typeControl"
+                [matAutocomplete]="autoType"
+                placeholder="Select or type type"
+              />
+              <mat-autocomplete #autoType="matAutocomplete" (optionSelected)="onTypeSelected($event.option.value)">
+                <mat-option *ngFor="let type of filteredTypes | async" [value]="type">
+                  {{ type }}
+                </mat-option>
+              </mat-autocomplete>
+              <mat-error *ngIf="form.get('type')?.hasError('required')">
+                Type is required
+              </mat-error>
+            </mat-form-field>
+            <!-- <mat-form-field appearance="outline" style="width: 150px;">
+              <mat-label>Worked Hours</mat-label>
+              <input matInput type="number" formControlName="workedhours" min="1" max="12" required (input)="limitWorkedHours($event)" />
+              <mat-error *ngIf="form.get('workedhours')?.hasError('required')">
+                Worked hours is required
+              </mat-error>
+              <mat-error *ngIf="form.get('workedhours')?.hasError('min')">
+                Must be greater than 0
+              </mat-error>
+              <mat-error *ngIf="form.get('workedhours')?.hasError('max')">
+                Cannot exceed 12 hours
+              </mat-error>
+            </mat-form-field> -->
+          </div>
+
+          <h2>Team Members</h2>
+          <div class="form-row">
+            <mat-form-field appearance="outline" style="width: 300px;">
+              <mat-label>Employee Name</mat-label>
+              <mat-autocomplete #auto="matAutocomplete" [displayWith]="displayEmployee" (optionSelected)="onEmployeeSelected($event.option.value)">
+                <mat-option *ngFor="let employee of filteredEmployees | async" [value]="employee">
+                  <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                    <span>{{ employee.name }}</span>
+                    <span class="employee-available">
+                      Available
+                    </span>
+                  </div>
+                </mat-option>
+              </mat-autocomplete>
+              <input type="text" matInput [formControl]="employeeControl" [matAutocomplete]="auto" placeholder="Select or type employee name" />
+              <mat-error *ngIf="form.get('selectedEmployee')?.hasError('required')">
+                Employee is required
+              </mat-error>
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>Skills</mat-label>
+              <mat-select formControlName="selectedSkills" multiple>
+                <mat-option *ngFor="let skill of skillList" [value]="skill">
+                  <mat-icon class="mr-2" aria-hidden="false" [attr.aria-label]="skill + ' icon'">
+                    {{ skillIcons[skill] }}
+                  </mat-icon>
+                  {{ skill }}
+                </mat-option>
+              </mat-select>
+              <mat-error *ngIf="form.get('selectedSkills')?.hasError('required')">
+                Please select at least one skill
+              </mat-error>
+            </mat-form-field>
+            <mat-slide-toggle color="accent" formControlName="isLeader">Mark as Leader</mat-slide-toggle>
+            <button mat-mini-fab color="primary" (click)="addEmployee()" type="button">
+              <mat-icon>add</mat-icon>
+            </button>
+          </div>
+          
+          <!-- ✅ NUEVA SECCIÓN: Información sobre empleados disponibles -->
+          <div class="employee-stats">
+            <small>
+              📊 Available Employees: {{ getAvailableEmployees().length }} | 
+              Assigned Employees: {{ getAssignedEmployees().length }}
+            </small>
+          </div>
+          <div *ngIf="employeeDataa?.length" class="custom-list">
+            <div *ngFor="let emp of employeeDataa" class="custom-list-item">
+              <span>{{ emp.name }}</span>
+              <button mat-icon-button color="warn" (click)="onDeleteEmployee(emp)" aria-label="Remove">
+                <mat-icon>cancel</mat-icon>
+              </button>
+            </div>
+          </div>
+          <app-data-table [title]="'Team'" [data]="employeeDataa || []" [columns]="employeecolumns" (edit)="onEditEmployee($event)" (delete)="onDeleteEmployee($event)"></app-data-table>
+        </mat-card-content>
+      </mat-card>
+
+      <!-- MATERIALS SELECTION CARD -->
+      <mat-card class="section-card">
+        <mat-card-content>
+          <h2>Materials</h2>
+          <div class="form-row">
+            <mat-form-field appearance="outline">
+              <mat-label>Material</mat-label>
+              <input
+                type="text"
+                matInput
+                [formControl]="materialControl"
+                [matAutocomplete]="autoMaterial"
+                placeholder="Select or type material"
+              />
+              <mat-autocomplete #autoMaterial="matAutocomplete" [displayWith]="displayMaterial" (optionSelected)="onMaterialAutoSelected($event.option.value)">
+                <mat-option *ngFor="let option of filteredMaterials | async" [value]="option">
+                  {{ option.viewValue }}
+                </mat-option>
+              </mat-autocomplete>
+              <mat-error *ngIf="form.get('newMaterialName')?.hasError('required')">
+                Material is required
+              </mat-error>
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>Unit</mat-label>
+              <input matInput [value]="selectedMaterialUnit" />
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>Quantity</mat-label>
+              <input matInput type="number" formControlName="newMaterialQuantity" max="12" (input)="limitMaterialQuantity($event)" />
+              <mat-error *ngIf="form.get('newMaterialQuantity')?.hasError('min')">
+                Quantity must be greater than 0
+              </mat-error>
+              <mat-error *ngIf="form.get('newMaterialQuantity')?.hasError('max')">
+                Quantity must be 12 or less
+              </mat-error>
+            </mat-form-field>
+            <button mat-mini-fab color="primary" (click)="addMaterial()" type="button">
+              <mat-icon>add</mat-icon>
+            </button>
+          </div>
+          <div *ngIf="materialDataa?.length" class="custom-list">
+            <div *ngFor="let mat of materialDataa" class="custom-list-item">
+              <span>{{ mat.name }} ({{ mat.quantity }})</span>
+              <button mat-icon-button color="warn" (click)="onDeleteMaterial(mat)" aria-label="Remove">
+                <mat-icon>cancel</mat-icon>
+              </button>
+            </div>
+          </div>
+          <app-data-table [title]="'Materials'" [data]="materialDataa" [columns]="materialColumns" (edit)="onEditMaterial($event)" (delete)="onDeleteMaterial($event)"></app-data-table>
+        </mat-card-content>
+      </mat-card>
+
+      <!-- EQUIPMENT SELECTION CARD -->
+      <mat-card class="section-card">
+        <mat-card-content>
+          <h2>Equipment</h2>
+          <div class="form-row">
+            <mat-form-field appearance="outline">
+              <mat-label>Equipment</mat-label>
+              <input
+                type="text"
+                matInput
+                [formControl]="equipmentControl"
+                [matAutocomplete]="autoEquipment"
+                placeholder="Select or type equipment"
+              />
+              <mat-autocomplete #autoEquipment="matAutocomplete" [displayWith]="displayEquipment" (optionSelected)="onEquipmentAutoSelected($event.option.value)">
+                <mat-option *ngFor="let eq of filteredEquipments | async" [value]="eq">
+                  {{ eq.viewValue }}
+                </mat-option>
+              </mat-autocomplete>
+              <mat-error *ngIf="form.get('newEquipmentName')?.hasError('required')">
+                Equipment is required
+              </mat-error>
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>Supplier</mat-label>
+              <input matInput [value]="selectedEquipmentSupplier" />
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>Quantity</mat-label>
+              <input matInput type="number" formControlName="newEquipmentQuantity" max="12" (input)="limitEquipmentQuantity($event)" />
+              <mat-error *ngIf="form.get('newEquipmentQuantity')?.hasError('min')">
+                Quantity must be greater than 0
+              </mat-error>
+              <mat-error *ngIf="form.get('newEquipmentQuantity')?.hasError('max')">
+                Quantity must be 12 or less
+              </mat-error>
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>Hours Lent</mat-label>
+              <mat-select formControlName="newEquipmentHoursLent">
+                <mat-option *ngFor="let hour of [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24]" [value]="hour">
+                  {{ hour }} hours
+                </mat-option>
+              </mat-select>
+            </mat-form-field>
+            <button mat-mini-fab color="primary" (click)="addEquipment()" type="button">
+              <mat-icon>add</mat-icon>
+            </button>
+          </div>
+          <div *ngIf="equipmentDataa?.length" class="custom-list">
+            <div *ngFor="let eq of equipmentDataa" class="custom-list-item">
+              <span>{{ eq.name }} ({{ eq.quantity }})</span>
+              <button mat-icon-button color="warn" (click)="onDeleteEquipment(eq)" aria-label="Remove">
+                <mat-icon>cancel</mat-icon>
+              </button>
+            </div>
+          </div>
+          <app-data-table [title]="'Equipment'" [data]="equipmentDataa" [columns]="equipmentColumns" (edit)="onEditEquipment($event)" (delete)="onDeleteEquipment($event)"></app-data-table>
+        </mat-card-content>
+      </mat-card>
+
+      <!-- ROUTE SELECTION CARD -->
+      <mat-card class="section-card">
+        <mat-card-content>
+          <h2>Route</h2>
+          <mat-form-field appearance="outline" style="width: 100%;">
+            <mat-label>Route</mat-label>
+            <mat-select formControlName="route" required>
+              <mat-option *ngFor="let route of routes" [value]="route.routeid">
+                {{ route.routecode }}
+              </mat-option>
+            </mat-select>
+            <!-- <mat-error *ngIf="form.get('route')?.hasError('required')">
+              Route is required
+            </mat-error> -->
+          </mat-form-field>
+        </mat-card-content>
+      </mat-card>
+
+      <!-- SUBMIT BUTTON -->
+      <div class="submit-btn" style="text-align: center;">
+        <button mat-flat-button color="primary" type="submit" [disabled]="isLoading">
+          <ng-container *ngIf="!isLoading; else loadingTemplate">Save</ng-container>
+          <ng-template #loadingTemplate>
+            <mat-progress-spinner diameter="20" mode="indeterminate" color="accent" strokeWidth="3" style="vertical-align: middle;"></mat-progress-spinner>
+          </ng-template>
+        </button>
+      </div>
+    </form>
+  </app-card-with-button>
+</app-dashboard-layout>

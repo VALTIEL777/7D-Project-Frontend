@@ -1,7 +1,6 @@
 import { Injectable } from '@angular/core';
 import { CanActivate, ActivatedRouteSnapshot, RouterStateSnapshot, Router } from '@angular/router';
 import { AuthService } from '../services/auth.service';
-import { ToastrService } from 'ngx-toastr';
 
 @Injectable({
   providedIn: 'root'
@@ -10,8 +9,7 @@ export class AuthGuard implements CanActivate {
 
   constructor(
     private authService: AuthService,
-    private router: Router,
-    private toastr: ToastrService
+    private router: Router
   ) {}
 
   canActivate(route: ActivatedRouteSnapshot, state: RouterStateSnapshot): boolean {
@@ -20,7 +18,6 @@ export class AuthGuard implements CanActivate {
     const requiredRole = route.data?.['role'];
 
     if (!isLoggedIn) {
-      this.toastr.error('Acceso denegado: usuario no autenticado', 'Error');
       this.router.navigate(['/']);
       return false;
     }
@@ -29,7 +26,6 @@ export class AuthGuard implements CanActivate {
       return true;
     }
 
-    this.toastr.warning('Acceso denegado: rol insuficiente', 'Aviso');
     this.router.navigate(['/']);
     return false;
   }

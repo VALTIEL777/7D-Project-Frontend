@@ -99,8 +99,6 @@ export class SearchBarComponent {
   openDialog(selected: any): void {
     if (!selected) return;
 
-    console.log('Opening dialog with:', selected); // Debug log
-
     const dialogRef = this.dialog.open(SearchDialogComponent, {
       width: '600px',
       data: {
@@ -112,7 +110,6 @@ export class SearchBarComponent {
 
     dialogRef.afterClosed().subscribe(result => {
       if (result) {
-        console.log('Dialog closed with result:', result);
         this.lastSelectedItem = result;
         this.searchControl.setValue(this.displayFn(result), { emitEvent: false });
       }

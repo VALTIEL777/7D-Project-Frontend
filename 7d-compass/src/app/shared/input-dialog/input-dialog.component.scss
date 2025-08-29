@@ -1,0 +1,20 @@
+.input-dialog {
+  min-width: 400px;
+  max-width: 500px;
+
+  .dialog-message {
+    margin-bottom: 1rem;
+    color: #666;
+    font-size: 14px;
+  }
+
+  .full-width {
+    width: 100%;
+  }
+
+  mat-dialog-actions {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #eee;
+  }
+}

@@ -1,40 +1,195 @@
 <app-sitejob-sidenavbar [teamLeader]="teamLeader" [teamMembers]="teamMembers">
-  
-  <app-sitejob-layout></app-sitejob-layout>
 
-  <!-- 🔄 Spinner de carga -->
+  <!-- Header con título y controles -->
+  <div class="header-section">
+    <h2 class="section-title">Upcoming Locations</h2>
+    <div class="map-controls">
+    </div>
+  </div>
+
+  <!-- Mapa estático -->
+  <div class="map-section">
+    <div class="map-header">
+      <div class="map-title-section">
+        <h3 class="map-title">Locations Map</h3>
+        <div *ngIf="filterText.trim()" class="filter-indicator">
+          <mat-icon>filter_list</mat-icon>
+          <span>Filtered: {{ groupedLocations.length }} groups</span>
+        </div>
+        <div *ngIf="!filterText.trim() && remainingLocations.length > 1" class="route-info">
+          <mat-icon>directions</mat-icon>
+          <span *ngIf="assignedRoute">
+            {{ isUsingStreetRoutes ? 'Assigned route follows streets' : 'Assigned route (straight lines)' }}
+            <span class="route-details">({{ assignedRoute.routecode }})</span>
+          </span>
+          <span *ngIf="!assignedRoute">
+            {{ isUsingStreetRoutes ? 'Routes follow streets' : 'Straight line routes' }}
+          </span>
+        </div>
+      </div>
+      <div class="map-controls">
+        <!-- 🎯 REMOVIDO: Botones de debug que no ayudan al usuario final -->
+        <!-- Los métodos de debug siguen disponibles en la consola del navegador -->
+      </div>
+    </div>
+
+    <div class="map-container">
+      <app-leaflet-map
+        [routes]="leafletRoutes"
+        [config]="mapConfig"
+        [showMarkers]="true"
+        [showPolylines]="true"
+        [height]="staticMapHeight + 'px'"
+        [width]="'100%'"
+        [visibleRoutes]="visibleRoutes"
+        [routeTypeVisibility]="routeTypeVisibility">
+      </app-leaflet-map>
+    </div>
+
+    <!-- Zoom level selector -->
+    <!-- <div class="zoom-selector">
+      <span class="zoom-label">Zoom Level:</span>
+      <div class="zoom-buttons">
+        <button
+          *ngFor="let zoom of availableZoomLevels"
+          mat-stroked-button
+          [class.active]="currentZoomLevel === zoom"
+          (click)="changeZoomLevel(zoom)"
+          class="zoom-btn"
+        >
+          {{ zoom }}
+        </button>
+      </div>
+    </div> -->
+  </div>
+
+  <!-- 🔄 Spinner de carga optimizado -->
   <div *ngIf="isLoading" class="loader-container">
     <mat-spinner diameter="50"></mat-spinner>
+    <div class="loading-text">
+      <mat-icon>location_on</mat-icon>
+      <span>Cargando ubicaciones y rutas...</span>
+    </div>
   </div>
 
   <!-- ✅ Contenido visible solo cuando no hay carga -->
   <div *ngIf="!isLoading" class="content-wrapper">
-    <h2 class="section-title">Remaining Locations</h2>
-
     <!-- 🔍 Campo de búsqueda -->
     <mat-form-field appearance="outline" style="width: 100%; margin-bottom: 16px;">
       <mat-label>Search location</mat-label>
       <mat-icon matPrefix>search</mat-icon>
-      <input matInput [(ngModel)]="filterText" placeholder="Search by address or job type">
+      <input matInput [(ngModel)]="filterText" (ngModelChange)="onFilterChange()" placeholder="Search by address or job type">
     </mat-form-field>
 
-    <!-- ❌ Mostrar mensaje si no hay resultados -->
-    <div *ngIf="filteredLocations.length === 0" class="no-locations">
-      <p class="no-locations-text">
-        <mat-icon color="warn">info</mat-icon>
-        There is no route assigned yet.
+    <!-- 🎯 NUEVO: Indicador de ubicaciones visibles -->
+    <div *ngIf="!isLoading && remainingLocations.length > 0" class="locations-info">
+      <p class="locations-info-text">
+        <mat-icon>visibility</mat-icon>
+        <span>Showing {{ getVisibleLocationsInfo().visible }} of {{ getVisibleLocationsInfo().total }} locations</span>
+        <span class="locations-breakdown">
+          ({{ getVisibleLocationsInfo().completed }} completed, {{ getVisibleLocationsInfo().inProgress }} in progress)
+        </span>
       </p>
     </div>
 
-    <!-- 📍 Lista filtrada -->
-    <div *ngFor="let location of filteredLocations" class="location-card">
-      <div class="address-container">
-        <p class="address"><strong>{{ location.address }}</strong></p>
-        <button mat-raised-button class="custom-select-button" (click)="goToCurrent(location)">
-          <mat-icon class="icon">place</mat-icon>Go to location
-        </button>
+    <!-- ❌ Mostrar mensaje si no hay resultados -->
+    <div *ngIf="groupedLocations.length === 0" class="no-locations">
+      <p class="no-locations-text">
+        <mat-icon color="warn">info</mat-icon>
+        <span *ngIf="filterText.trim()">No locations found matching "{{ filterText }}"</span>
+        <span *ngIf="!filterText.trim()">No locations available to display.</span>
+      </p>
+    </div>
+
+    <!-- 📍 Lista filtrada agrupada -->
+    <div class="locations-list">
+      <div *ngFor="let group of groupedLocations; let i = index; trackBy: trackByGroup" class="location-card">
+        <div class="location-header">
+          <div class="location-number">{{ i + 1 }}</div>
+          <div class="location-info">
+            <!-- 🎯 NUEVO: Indicador de estado de la ubicación -->
+            <div class="location-status" *ngIf="!group.isMultiple && (group.locations[0].completed || group.locations[0].started)">
+              <mat-icon
+                [class.status-completed]="group.locations[0].completed"
+                [class.status-started]="group.locations[0].started && !group.locations[0].completed"
+                class="status-icon">
+                {{ getLocationStatusIcon(group.locations[0]) }}
+              </mat-icon>
+              <span class="status-text">
+                {{ getLocationStatus(group.locations[0]) }}
+              </span>
+            </div>
+            <!-- 🎯 TEMPORAL: Indicador de estado pendiente -->
+            <div class="location-status pending" *ngIf="!group.isMultiple && !group.locations[0].completed && !group.locations[0].started">
+              <mat-icon class="status-icon status-pending">schedule</mat-icon>
+              <span class="status-text status-pending">Pending</span>
+            </div>
+
+            <!-- 🎯 REMOVIDO: Indicador de estado general del grupo (ahora cada minicard tiene su propio indicador) -->
+
+            <p class="address"><strong>{{ group.address }}</strong></p>
+
+            <!-- 🎯 NUEVO: Ticket code display -->
+            <p class="ticket-code" *ngIf="!group.isMultiple && group.locations[0].ticketcode">
+              <strong>Ticket:</strong> {{ group.locations[0].ticketcode }}
+            </p>
+
+            <!-- Si es una ubicación única, mostrar como antes -->
+            <div *ngIf="!group.isMultiple">
+              <!-- <p class="job-info" *ngIf="group.locations[0].ticketcode">{{ group.locations[0].ticketcode }}</p> -->
+              <p class="job-info" *ngIf="group.locations[0].job">{{ group.locations[0].job }}</p>
+              <p class="size-info"><strong>Size:</strong> {{ group.locations[0].length || 'Not available'}} x {{ group.locations[0].width || 'Not available' }} ft</p>
+            </div>
+
+            <!-- Si hay múltiples ubicaciones, mostrar lista -->
+            <div *ngIf="group.isMultiple" class="multiple-locations">
+              <div *ngFor="let location of group.locations; let j = index; trackBy: trackByLocation" class="location-item">
+                <div class="location-item-content">
+                  <!-- <p class="job-info" *ngIf="location.ticketcode">{{ location.ticketcode }}</p> -->
+                  <p class="job-info" *ngIf="location.job">{{ location.job }}</p>
+                  <p class="size-info"><strong>Size:</strong> {{ location.length || 'Not available'}} x {{ location.width || 'Not available' }} ft</p>
+
+                  <!-- 🎯 NUEVO: Ticket code for individual locations -->
+                  <p class="ticket-code-small" *ngIf="location.ticketcode">
+                    <strong>Ticket:</strong> {{ location.ticketcode }}
+                  </p>
+
+                  <!-- 🎯 NUEVO: Indicador de estado individual debajo del size -->
+                  <div class="location-item-status" *ngIf="location.completed || location.started">
+                    <mat-icon
+                      [class.status-completed]="location.completed"
+                      [class.status-started]="location.started && !location.completed"
+                      class="status-icon-small">
+                      {{ getLocationStatusIcon(location) }}
+                    </mat-icon>
+                    <span class="status-text-small">
+                      {{ getLocationStatus(location) }}
+                    </span>
+                  </div>
+                  <!-- 🎯 TEMPORAL: Indicador de estado pendiente debajo del size -->
+                  <div class="location-item-status pending" *ngIf="!location.completed && !location.started">
+                    <mat-icon class="status-icon-small status-pending">schedule</mat-icon>
+                    <span class="status-text-small status-pending">Pending</span>
+                  </div>
+                </div>
+                <!-- 🎯 ISOLATED: Button separated from status-dependent content -->
+                <div class="location-item-action">
+                  <button mat-icon-button class="small-go-btn" (click)="goToCurrent(location)" title="Go to location">
+                    <mat-icon class="icon">place</mat-icon>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 🎯 ISOLATED: Main button separated from status-dependent content -->
+        <div class="location-actions" *ngIf="!group.isMultiple">
+          <button mat-raised-button class="custom-select-button" (click)="goToCurrent(group.locations[0])">
+            <mat-icon class="icon">place</mat-icon>Go to location
+          </button>
+        </div>
       </div>
-      <hr class="divider" />
     </div>
   </div>
 

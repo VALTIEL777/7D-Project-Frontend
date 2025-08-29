@@ -20,6 +20,65 @@
   gap: 8px;
 }
 
+// Comment dropdown styles
+.comment-dropdown-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-width: 200px;
+
+  .comment-dropdown {
+    flex: 1;
+    min-width: 150px;
+
+    ::ng-deep .mat-mdc-form-field {
+      width: 100%;
+
+      .mat-mdc-form-field-infix {
+        padding: 8px 0;
+        min-height: 40px;
+      }
+
+      .mat-mdc-select {
+        font-size: 14px;
+      }
+    }
+  }
+
+  .save-comment-btn {
+    color: #4caf50;
+    background-color: rgba(76, 175, 80, 0.1);
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    min-height: 36px;
+
+    &:hover {
+      background-color: rgba(76, 175, 80, 0.2);
+      transform: scale(1.1);
+    }
+
+    &:disabled {
+      color: #ccc;
+      background-color: rgba(76, 175, 80, 0.05);
+      cursor: not-allowed;
+
+      &:hover {
+        background-color: rgba(76, 175, 80, 0.05);
+        transform: none;
+      }
+    }
+
+    mat-icon {
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+    }
+  }
+}
+
 .mat-icon-button {
   display: inline-flex !important;
   align-items: center !important;
@@ -28,7 +87,7 @@
   border: none !important;
   outline: none !important;
   border-radius: 50%;
-  transition: all 0.3s ease;
+  transition: transform 0.3s ease, background-color 0.3s ease, box-shadow 0.3s ease; // 🎯 OPTIMIZED: Specific transitions instead of 'all'
   width: 44px !important;
   height: 44px !important;
   min-width: 44px !important;
@@ -114,12 +173,68 @@ mat-paginator {
 }
 
 .show-button {
-  color: #2196f3; // azul
   border: none !important;
-  background-color: rgba(33, 150, 243, 0.1);
+  transition: transform 0.3s ease, background-color 0.3s ease;
 
   &:hover {
-    background-color: rgba(33, 150, 243, 0.2);
+    transform: scale(1.1);
+  }
+
+  // Custom colors for different states
+  &.mat-accent {
+    background-color: rgba(76, 175, 80, 0.1); // Green background for tickets with photos
+    
+    &:hover {
+      background-color: rgba(76, 175, 80, 0.2);
+    }
+
+    mat-icon {
+      color: #4caf50 !important; // Green icon
+    }
+  }
+
+  &.mat-primary {
+    background-color: rgba(33, 150, 243, 0.1); // Blue background for tickets without photos
+    
+    &:hover {
+      background-color: rgba(33, 150, 243, 0.2);
+    }
+
+    mat-icon {
+      color: #2196f3 !important; // Blue icon
+    }
+  }
+}
+
+.upload-button {
+  color: #9c27b0; // morado
+  border: none !important;
+  background-color: rgba(156, 39, 176, 0.1);
+
+  &:hover {
+    background-color: rgba(156, 39, 176, 0.2);
+    transform: scale(1.1);
+  }
+
+  &:disabled {
+    color: #ccc !important;
+    background-color: rgba(156, 39, 176, 0.05) !important;
+    cursor: not-allowed !important;
+
+    &:hover {
+      background-color: rgba(156, 39, 176, 0.05) !important;
+      transform: none !important;
+    }
+  }
+}
+
+.delete-file-button {
+  color: #ff5722; // naranja rojizo
+  border: none !important;
+  background-color: rgba(255, 87, 34, 0.1);
+
+  &:hover {
+    background-color: rgba(255, 87, 34, 0.2);
     transform: scale(1.1);
   }
 }

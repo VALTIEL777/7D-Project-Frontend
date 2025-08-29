@@ -168,7 +168,7 @@ export class TitleBarComponent {
     const routeMap: Record<string, string> = {
       '/overview': 'Overview',
       '/rtr-processing': 'RTR Processing',
-      '/misc-generation': 'Misc Generation',
+      '/crew-generation': 'Crew Generation',
       '/report-center': 'Report Center',
       '/files-permits': 'Files & Permits',
       '/route-generator': 'Route Generator',
@@ -348,26 +348,30 @@ export class TitleBarComponent {
   }
 
   changeProfilePicture() {
-    console.log('Change Profile Picture clicked');
+    // Removed debug log
   }
 
   editUserInfo() {
-    console.log('Edit User Info clicked');
+    // Removed debug log
   }
 
   logout() {
-    console.log('Log Out clicked');
+    // Removed debug log
   }
 
   isMobile: boolean = false;
 
   ngOnInit() {
-    this.checkScreenSize();
-    window.addEventListener('resize', () => this.checkScreenSize());
+    if (typeof window !== 'undefined') {
+      this.checkScreenSize();
+      window.addEventListener('resize', () => this.checkScreenSize());
+    }
   }
 
   checkScreenSize() {
-    this.isMobile = window.innerWidth < 768;
+    if (typeof window !== 'undefined') {
+      this.isMobile = window.innerWidth < 768;
+    }
   }
 
   toggleFilterBar() {

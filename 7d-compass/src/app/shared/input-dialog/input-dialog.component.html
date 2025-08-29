@@ -1,0 +1,31 @@
+<div class="input-dialog">
+  <h2 mat-dialog-title>{{ data.title }}</h2>
+
+  <mat-dialog-content>
+    <p class="dialog-message">{{ data.message }}</p>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>{{ data.inputLabel }}</mat-label>
+      <textarea
+        matInput
+        [(ngModel)]="inputValue"
+        [placeholder]="data.inputPlaceholder"
+        rows="3"
+        [required]="data.required || false">
+      </textarea>
+    </mat-form-field>
+  </mat-dialog-content>
+
+  <mat-dialog-actions align="end">
+    <button mat-button (click)="onCancel()">
+      {{ data.cancelText || 'Cancel' }}
+    </button>
+    <button
+      mat-raised-button
+      color="primary"
+      (click)="onConfirm()"
+      [disabled]="(data.required || false) && !inputValue.trim()">
+      {{ data.confirmText || 'Confirm' }}
+    </button>
+  </mat-dialog-actions>
+</div>

@@ -18,28 +18,8 @@
 </ng-template>
 
 
-      <div class="photo-section">
-  <mat-icon class="icon">camera_enhance</mat-icon>
-
-  <!-- Input oculto que abre la cámara -->
-  <input
-    type="file"
-    accept="image/*"
-    capture="environment"
-    hidden
-    #cameraInput
-    (change)="onFileSelected($event)"
-  />
-
-  <!-- Botón visible que lanza el input -->
-  <button mat-raised-button color="warn" (click)="cameraInput.click()">
-    Take attendance photo
-  </button>
-</div>
-
-
     <div class="sidebar-footer">
-      <button mat-button color="warn" class="logout-button" routerLink="/logout">
+      <button mat-button color="warn" class="logout-button" (click)="onLogout()">
         <mat-icon>logout</mat-icon>
         <span class="logout-text">Log out</span>
       </button>

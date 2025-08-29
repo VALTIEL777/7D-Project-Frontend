@@ -14,6 +14,7 @@ import {MatSelectModule} from '@angular/material/select';
 import {MatFormFieldModule} from '@angular/material/form-field';
 import {MatCheckboxModule} from '@angular/material/checkbox';
 import { Router, NavigationEnd } from '@angular/router';
+import { AuthService } from '../../core/services/auth.service';
 
 @Component({
   selector: 'app-side-navbar',
@@ -45,7 +46,10 @@ export class SideNavbarComponent {
 
   @ViewChild('sidenav') sidenav!: MatSidenav;
 
-  constructor(private router: Router) {
+  constructor(
+    private router: Router,
+    private authService: AuthService
+  ) {
     this.router.events.subscribe(event => {
       if (event instanceof NavigationEnd) {
         this.currentRoute = event.urlAfterRedirects;
@@ -61,8 +65,10 @@ export class SideNavbarComponent {
   }
 
   checkScreenSize() {
+    if (typeof window !== 'undefined') {
     this.isMobile = window.innerWidth <= 768;
     if (!this.isMobile) this.isSidenavOpen = false;
+    }
   }
 
   isExpanded(routes: string[]): boolean {
@@ -82,5 +88,17 @@ export class SideNavbarComponent {
       this.isSidenavOpen = false;
       this.sidenav.close();
     }
+  }
+
+  onLogout(): void {
+    console.log('🚪 Logging out from side navbar...');
+    
+    // ✅ Llamar al método logout del AuthService
+    this.authService.logout();
+    
+    // ✅ Redirigir al login
+    this.router.navigate(['/logout']);
+    
+    console.log('✅ Logout completed, redirected to login');
   }
 }

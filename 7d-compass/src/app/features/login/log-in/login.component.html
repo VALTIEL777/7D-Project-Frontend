@@ -9,13 +9,13 @@
 
       <form [formGroup]="loginForm" (ngSubmit)="login()">
         <mat-form-field appearance="outline" class="full-width">
-          <mat-label>Email o Usuario</mat-label>
-          <input matInput formControlName="identifier" placeholder="Email o usuario" />
+          <mat-label>Email or Username</mat-label>
+          <input matInput formControlName="identifier" placeholder="Email or Username" />
           <mat-error *ngIf="loginForm.get('identifier')?.hasError('required')">
-            Campo requerido
+            Field required
           </mat-error>
           <mat-error *ngIf="loginForm.get('identifier')?.hasError('minlength')">
-            Mínimo 3 caracteres
+            Minimum 3 characters
           </mat-error>
         </mat-form-field>
 
@@ -23,16 +23,16 @@
           <mat-label>Password</mat-label>
           <input matInput type="password" formControlName="password" placeholder="Password" />
           <mat-error *ngIf="loginForm.get('password')?.hasError('required')">
-            Campo requerido
+            Field required
           </mat-error>
           <mat-error *ngIf="loginForm.get('password')?.hasError('minlength')">
-            Mínimo 3 caracteres
+            Minimum 3 characters
           </mat-error>
         </mat-form-field>
 
         <div class="options">
-          <mat-checkbox>Remember me</mat-checkbox>
-          <a (click)="redirectToForgotPassword()" style="cursor: pointer;">Forgot Password?</a>
+          <mat-checkbox formControlName="rememberMe">Remember me</mat-checkbox>
+          <!-- <a (click)="redirectToForgotPassword()" style="cursor: pointer;">Forgot Password?</a> -->
         </div>
 
         <button mat-raised-button color="primary" type="submit" class="full-width" [disabled]="isLoading || loginForm.invalid">

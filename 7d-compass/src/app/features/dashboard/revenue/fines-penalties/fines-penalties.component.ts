@@ -7,154 +7,132 @@ import { CommonModule } from '@angular/common';
 import { MATERIAL_MODULES } from '../../../../material';
 import { BaseDashboardComponent } from '../../../../shared/base-dashboard.component';
 import { FilterService } from '../../../../core/services/filter.service';
+import { TicketService } from '../../../../core/services/ticket.service';
+import { forkJoin } from 'rxjs';
+import { FinesService } from '../../../../core/services/payments/fines.service';
+import { WayfindingService } from '../../../../core/services/location/wayfinding.service';
 
 @Component({
   selector: 'app-fines-penalties',
-  imports: [DashboardLayoutComponent, CardWithButtonComponent, MatTableModule, MatDividerModule, CommonModule, MATERIAL_MODULES, ],
+  imports: [
+    DashboardLayoutComponent,
+    CardWithButtonComponent,
+    MatTableModule,
+    MatDividerModule,
+    CommonModule,
+    MATERIAL_MODULES,
+  ],
   templateUrl: './fines-penalties.component.html',
   styleUrl: './fines-penalties.component.scss'
 })
 export class FinesPenaltiesComponent extends BaseDashboardComponent implements OnInit {
 
+  Fine_table: any[] = [];
+  evidence: File | null = null;
 
-Fine_table = [
-  {
-    location: '2354123',
-    ticket: 'TK-263',
-    fine: '123112',
-    amount: '300',
-    status: 'Paid',
-    description: 'Did not retrive all no parking sings',
+  constructor(
+    filterService: FilterService,
+    private finesService: FinesService,
+    private wayfindingService: WayfindingService,
+    private ticketService: TicketService
+  ) {
+    super(filterService);
   }
-];
 
-
-fines = [
-  {
-    location: '2354123',
-    ticket: 'TK-263',
-    fine: '123112',
-    amount: '300',
-    status: 'Paid',
-    description: 'Did not retrive all no parking sings',
-  },
-  {
-    location: '7845129',
-    ticket: 'TK-263',
-    fine: '981244',
-    amount: '150',
-    status: 'Unpaid',
-    description: 'parked in a no-parking zone near hospital',
-  },
-  {
-    location: '4567890',
-    ticket: 'TK-263',
-    fine: '674512',
-    amount: '500',
-    status: 'Paid',
-    description: 'ran a red light at downtown intersection',
-  },
-  {
-    location: '8921453',
-    ticket: 'TK-263',
-    fine: '128790',
-    amount: '75',
-    status: 'Unpaid',
-    description: 'expired parking meter violation',
-  },
-  {
-    location: '3498765',
-    ticket: 'TK-263',
-    fine: '347891',
-    amount: '200',
-    status: 'Pending',
-    description: 'blocking fire hydrant in residential area',
-  },
-  {
-    location: '1212938',
-    ticket: 'TK-263',
-    fine: '998123',
-    amount: '100',
-    status: 'Paid',
-    description: 'illegal U-turn on main avenue',
-  },
-  {
-    location: '2387465',
-    ticket: 'TK-263',
-    fine: '763241',
-    amount: '275',
-    status: 'Unpaid',
-    description: 'failed to yield at crosswalk',
-  },
-].map(f => ({ ...f, evidence: null }));
-
-constructor(filterService: FilterService) {
-  super(filterService);
-}
-
-override ngOnInit() {
-  super.ngOnInit();
-  this.loadData();
-}
+  override ngOnInit() {
+    super.ngOnInit();
+    this.loadData();
+  }
 
 protected override loadData(): void {
-  // Initialize data for filtering
-  this.allData = [...this.fines];
-  this.filteredData = [...this.allData];
-}
+  forkJoin({
+    fines: this.finesService.getAllFines(),
+    tickets: this.ticketService.getAllTickets(),
+    wayfinding: this.wayfindingService.getAllWayfinding()
+  }).subscribe({
+    next: ({ fines, tickets, wayfinding }) => {
+      console.log('✅ Fines:', fines);
+      console.log('✅ Tickets:', tickets);
+      console.log('✅ Wayfinding:', wayfinding);
 
-// Override text search to include fine fields
-protected override matchesTextSearch(item: any, searchTerm: string): boolean {
-  const searchableFields = ['location', 'ticket', 'fine', 'status', 'description'];
+      this.Fine_table = fines.map(fine => {
+        const ticket = tickets.find(
+          t => (t.ticketid || t.ticketId) === fine.ticketid
+        );
+        console.log(`🔎 Ticket encontrado para fine ${fine.finenumber}:`, ticket);
 
-  return searchableFields.some(field => {
-    const value = this.getNestedValue(item, field);
-    if (value) {
-      return String(value).toLowerCase().includes(searchTerm);
-    }
-    return false;
+        const wayfindingInfo = wayfinding.find(
+          w => (w.wayfindingid || w.wayfindingId) === (ticket?.wayfindingid || ticket?.wayfindingId)
+        );
+        console.log('🔎 Wayfinding encontrado:', wayfindingInfo);
+
+        const locationText = wayfindingInfo
+          ? `${wayfindingInfo.fromaddressstreet || ''} ${wayfindingInfo.toaddressstreet || ''} ${wayfindingInfo.fromaddresscardinal || ''}`.trim()
+          : 'Unknown';
+
+        const fineDate = fine.finedate
+          ? new Date(fine.finedate).toLocaleDateString()
+          : 'unknown date';
+
+        return {
+          location: locationText,
+          ticket: ticket?.ticketcode || ticket?.ticketCode || `TK-${fine.ticketid || 'N/A'}`,
+          fine: fine.finenumber || 'N/A',
+          amount: fine.amount || '0.00',
+          status: fine.status || 'Unknown',
+          description: `Fine issued on ${fineDate} - ${fine.status}`,
+          evidence: fine.fineurl || null
+        };
+      });
+
+      this.allData = [...this.Fine_table];
+      this.filteredData = [...this.allData];
+
+      console.log('✅ Fine_table cargada:', this.Fine_table);
+    },
+    error: (err) => console.error('❌ Error cargando datos de Fines:', err)
   });
 }
 
-// Getter for filtered fines data
-get filteredFinesData() {
-  return this.filteredData;
-}
 
-  evidence: File | null = null;
+
+
+  // ✅ Filtro para la barra de búsqueda (BaseDashboardComponent)
+  protected override matchesTextSearch(item: any, searchTerm: string): boolean {
+    const searchableFields = ['location', 'ticket', 'fine', 'status', 'description'];
+    return searchableFields.some(field => {
+      const value = this.getNestedValue(item, field);
+      return value ? String(value).toLowerCase().includes(searchTerm) : false;
+    });
+  }
+
+  get filteredFinesData() {
+    return this.filteredData;
+  }
 
   @ViewChild('fileInput') fileInput!: ElementRef<HTMLInputElement>;
 
   triggerFileUpload(index: number) {
-  const fileInput = document.getElementById(`fileInput-${index}`) as HTMLInputElement;
-  fileInput?.click();
-}
-
-onFileSelected(event: Event, fine: any) {
-  const input = event.target as HTMLInputElement;
-  const file = input.files?.[0];
-
-  if (file) {
-    fine.evidence = file;
-    console.log(`Evidencia subida para ${fine.fine}:`, file.name);
+    const fileInput = document.getElementById(`fileInput-${index}`) as HTMLInputElement;
+    fileInput?.click();
   }
-}
 
-downloadEvidence(fine: any) {
-  if (!fine.evidence) return;
+  onFileSelected(event: Event, fine: any) {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (file) {
+      fine.evidence = file;
+      console.log(`Evidencia subida para ${fine.fine}:`, file.name);
+    }
+  }
 
-  const url = URL.createObjectURL(fine.evidence);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = fine.evidence.name;
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
-// Legacy filter method - now handled by BaseDashboardComponent
-applyFilter(event: Event) {
-  // This method is now handled by the BaseDashboardComponent filtering system
-  // The filter bar in the title bar will handle all filtering automatically
-}
-
+  downloadEvidence(fine: any) {
+    if (!fine.evidence) return;
+    const url = URL.createObjectURL(fine.evidence);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fine.evidence.name;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
 }

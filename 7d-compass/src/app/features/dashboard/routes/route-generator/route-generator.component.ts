@@ -1,4 +1,4 @@
-import { Component, HostListener, OnInit, ViewChild, TemplateRef, ElementRef } from '@angular/core';
+import { Component, HostListener, OnInit, ViewChild, TemplateRef, ElementRef, ChangeDetectorRef } from '@angular/core';
 import { DashboardLayoutComponent } from "../../../../shared/dashboard-layout/dashboard-layout.component";
 import { CardWithButtonComponent } from "../../../../shared/card-with-button/card-with-button.component";
 import { MatTableModule } from "@angular/material/table";
@@ -20,6 +20,7 @@ import { BaseDashboardComponent } from '../../../../shared/base-dashboard.compon
 import { FilterService } from '../../../../core/services/filter.service';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../../environments/environment';
+import { LeafletMapComponent, RouteData, MapConfig } from '../../../../shared/leaflet-map/leaflet-map.component';
 
 import * as polyline from '@mapbox/polyline';
 
@@ -31,6 +32,11 @@ interface RouteTicket {
   queue: number;
   quantity: number;
   amountToPay: number;
+  coordinates?: {
+    latitude: number;
+    longitude: number;
+    placeid?: string;
+  };
 }
 
 // Interface for optimization metadata
@@ -164,18 +170,14 @@ interface TicketsWithIssuesResponse {
     MatSelectModule,
     MatProgressSpinnerModule,
     MatSnackBarModule,
-    LoadingSpinnerComponent
+    LoadingSpinnerComponent,
+    LeafletMapComponent
   ],
   templateUrl: './route-generator.component.html',
   styleUrl: './route-generator.component.scss'
 })
 export class RouteGeneratorComponent extends BaseDashboardComponent implements OnInit {
   isMobile: boolean = false;
-
-  // Static map properties
-  private readonly GOOGLE_MAPS_API_KEY = 'AIzaSyDwEG-Tyq2kpHc4wznqVvSU0Dj2B_idzlY';
-
-
 
   // API data properties
   spottingRoutes: Route[] = [];
@@ -207,11 +209,16 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
   ticketsWithIssues: TicketWithIssue[] = [];
   isLoadingTicketsWithIssues = false;
 
-  // Static map properties (replacing interactive map)
-  staticMapUrl: string = '';
-  staticMapWidth: number = 400;
-  staticMapHeight: number = 600;
-  showNoRoutesOverlay: boolean = false;
+  // Leaflet map properties
+  mapConfig: MapConfig = {
+    center: [41.8781, -87.6298], // Chicago coordinates
+    zoom: 11,
+    minZoom: 8,
+    maxZoom: 18,
+    tileLayer: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    attribution: '© OpenStreetMap contributors'
+  };
+  leafletRoutes: RouteData[] = [];
 
   // Route visibility controls
   showSpottingRoutes: boolean = true;
@@ -221,6 +228,14 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
   // Individual route visibility controls
   visibleRoutes: Set<number> = new Set();
 
+  // Computed property for route type visibility to ensure proper change detection
+  get routeTypeVisibility() {
+    return {
+      'SPOTTER': this.showSpottingRoutes,
+      'CONCRETE': this.showConcreteRoutes,
+      'ASPHALT': this.showAsphaltRoutes
+    };
+  }
 
 
   displayedColumns: string[] = [
@@ -236,12 +251,27 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
   private initialAsphaltRoutes: Route[] = [];
 
   @ViewChild('generateRouteDialog') generateRouteDialog!: TemplateRef<any>;
+  @ViewChild('leafletMap') leafletMapComponent!: LeafletMapComponent;
+
+  // Add per-route and spot ready filters
+  routeTicketFilters: { [routeId: number]: string } = {};
+  spotReadyFilter: string = '';
+
+  // Add filters for Asphalt Ready and Concrete Ready cards
+  asphaltReadyFilter: string = '';
+  concreteReadyFilter: string = '';
+
+
+
+  // Add a loading state for batch add (optional)
+  isBatchAddingTickets: boolean = false;
 
   constructor(
     filterService: FilterService,
     private http: HttpClient,
     private dialog: MatDialog,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    private cdr: ChangeDetectorRef
   ) {
     super(filterService);
     this.checkMobile();
@@ -262,16 +292,63 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     this.loadConcreteReadyTickets();
     this.loadTicketsWithIssues();
 
-    // Generate static map after initial data load
+    // Generate Leaflet map after initial data load
     setTimeout(() => {
-      this.updateStaticMap();
+      this.updateLeafletMap();
     }, 1000);
+
+    // Subscribe to filter changes to trigger change detection
+    this.filterService.textSearch$.subscribe(() => {
+      // Force change detection when filter changes
+      this.cdr.detectChanges();
+    });
+
+    // Debug: Check route rendering after data loads
+    setTimeout(() => {
+      this.debugRouteRendering();
+    }, 2000);
+  }
+
+  private debugRouteRendering() {
+    console.log('Route rendering debug:', {
+      spottingRoutes: this.spottingRoutes.length,
+      concreteRoutes: this.concreteRoutes.length,
+      asphaltRoutes: this.asphaltRoutes.length,
+      routeContainers: document.querySelectorAll('[data-route-section="true"], [data-route-id]').length,
+      allDropLists: document.querySelectorAll('.cdk-drop-list').length,
+      concreteRoutesData: this.concreteRoutes.map(route => ({
+        routeId: route.routeId,
+        routeCode: route.routeCode,
+        ticketsCount: route.tickets?.length || 0
+      }))
+    });
+
+    // Debug all drop lists in detail
+    const allDropLists = document.querySelectorAll('.cdk-drop-list');
+    console.log('🔍 ALL DROP LISTS DETAILED:', {
+      totalCount: allDropLists.length,
+      lists: Array.from(allDropLists).map((el: any, index: number) => ({
+        index,
+        id: el.id,
+        className: el.className,
+        dataReadySection: el.getAttribute('data-ready-section'),
+        dataRouteSection: el.getAttribute('data-route-section'),
+        dataRouteId: el.getAttribute('data-route-id'),
+        isVisible: el.offsetParent !== null,
+        display: window.getComputedStyle(el).display,
+        visibility: window.getComputedStyle(el).visibility,
+        zIndex: window.getComputedStyle(el).zIndex,
+        position: window.getComputedStyle(el).position,
+        rect: el.getBoundingClientRect()
+      }))
+    });
   }
 
   // Initialize visible routes when data is loaded
   private initializeVisibleRoutes() {
     this.visibleRoutes.clear();
     const allRoutes = [...this.spottingRoutes, ...this.concreteRoutes, ...this.asphaltRoutes];
+
     allRoutes.forEach(route => {
       // Only add routes that match the current type visibility settings
       const typeVisible = (route.type === 'SPOTTER' && this.showSpottingRoutes) ||
@@ -282,6 +359,37 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
         this.visibleRoutes.add(route.routeId);
       }
     });
+  }
+
+  private updateVisibleRoutes() {
+    // Only update visible routes if this is the initial load (visibleRoutes is empty)
+    // or if we're toggling type visibility (not individual route visibility)
+    // FIX: Do not auto-populate visibleRoutes when empty; let empty mean 'show nothing'.
+    // This prevents the reset when all are untapped.
+    // No action needed if visibleRoutes is empty.
+    if (this.visibleRoutes.size === 0) {
+      // Do nothing: show nothing if all are untapped
+      return;
+    }
+    // Otherwise, preserve existing visible routes (no-op)
+  }
+
+  private updateTypeVisibility() {
+    const allRoutes = [...this.spottingRoutes, ...this.concreteRoutes, ...this.asphaltRoutes];
+    // Clear and rebuild visible routes based on type visibility
+    this.visibleRoutes.clear();
+
+    allRoutes.forEach((route: any) => {
+      // Check if route type is visible
+      const typeVisible = (route.type === 'SPOTTER' && this.showSpottingRoutes) ||
+                         (route.type === 'CONCRETE' && this.showConcreteRoutes) ||
+                         (route.type === 'ASPHALT' && this.showAsphaltRoutes);
+
+      if (typeVisible) {
+        this.visibleRoutes.add(route.routeId);
+      }
+    });
+    this.updateLeafletMap();
   }
 
   protected override loadData(): void {
@@ -351,7 +459,9 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
   }
 
   checkMobile() {
+    if (typeof window !== 'undefined') {
     this.isMobile = window.innerWidth <= 768;
+    }
   }
 
   updateDisplayedColumns() {
@@ -457,8 +567,51 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     });
   }
 
+  // Filter tickets in a route by the filter for that route
+  getFilteredRouteTickets(route: Route): RouteTicket[] {
+    const filter = (this.routeTicketFilters[route.routeId] || '').toLowerCase().trim();
+    if (!filter) return route.tickets;
+    return route.tickets.filter(ticket => ticket.address && ticket.address.toLowerCase().includes(filter));
+  }
 
+  // Filter spot ready tickets by the spotReadyFilter
+  getFilteredSpotReadyTickets(): ReadyTicket[] {
+    let filteredTickets = this.spotReadyTickets;
 
+    // Apply text filter
+    const textFilter = this.spotReadyFilter.toLowerCase().trim();
+    if (textFilter) {
+      filteredTickets = filteredTickets.filter(ticket => ticket.address && ticket.address.toLowerCase().includes(textFilter));
+    }
+
+    return filteredTickets;
+  }
+
+  // Filter asphalt ready tickets by the asphaltReadyFilter
+  getFilteredAsphaltReadyTickets(): ReadyTicket[] {
+    let filteredTickets = this.asphaltReadyTickets;
+
+    // Apply text filter
+    const textFilter = this.asphaltReadyFilter.toLowerCase().trim();
+    if (textFilter) {
+      filteredTickets = filteredTickets.filter(ticket => ticket.address && ticket.address.toLowerCase().includes(textFilter));
+    }
+
+    return filteredTickets;
+  }
+
+  // Filter concrete ready tickets by the concreteReadyFilter
+  getFilteredConcreteReadyTickets(): ReadyTicket[] {
+    let filteredTickets = this.concreteReadyTickets;
+
+    // Apply text filter
+    const textFilter = this.concreteReadyFilter.toLowerCase().trim();
+    if (textFilter) {
+      filteredTickets = filteredTickets.filter(ticket => ticket.address && ticket.address.toLowerCase().includes(textFilter));
+    }
+
+    return filteredTickets;
+  }
 
 
   // Load spotting routes from API
@@ -466,28 +619,13 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     this.isLoadingSpottingRoutes = true;
     this.http.get<RoutesResponse>(`${environment.apiUrl}/routes/spotting`).subscribe({
       next: (response) => {
-        console.log('Spotting routes API response:', response);
-        console.log('Number of routes received:', response.routes?.length || 0);
-
-        // Debug each route's polyline
-        if (response.routes && response.routes.length > 0) {
-          response.routes.forEach((route, index) => {
-            console.log(`Route ${index + 1} (${route.routeCode}):`);
-            console.log(`  - Route ID: ${route.routeId}`);
-            console.log(`  - Type: ${route.type}`);
-            console.log(`  - Polyline length: ${route.encodedPolyline?.length || 0}`);
-            console.log(`  - Polyline preview: ${route.encodedPolyline?.substring(0, 50) || 'N/A'}...`);
-            console.log(`  - Tickets count: ${route.tickets?.length || 0}`);
-          });
-        }
-
         this.spottingRoutes = response.routes || [];
         this.initialSpottingRoutes = [...this.spottingRoutes];
         this.isLoadingSpottingRoutes = false;
 
         this.loadData(); // Refresh filtered data
         this.initializeVisibleRoutes(); // Initialize visible routes
-        this.updateStaticMap(); // Update static map
+        this.updateLeafletMap(); // Update Leaflet map
       },
       error: (error) => {
         console.error('Error loading spotting routes:', error);
@@ -496,7 +634,7 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
         this.spottingRoutes = [];
         this.initialSpottingRoutes = [...this.spottingRoutes];
         this.loadData(); // Refresh filtered data
-        this.updateStaticMap(); // Update static map
+        this.updateLeafletMap(); // Update Leaflet map
       }
     });
   }
@@ -506,28 +644,13 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     this.isLoadingConcreteRoutes = true;
     this.http.get<RoutesResponse>(`${environment.apiUrl}/routes/concrete`).subscribe({
       next: (response) => {
-        console.log('Concrete routes API response:', response);
-        console.log('Number of concrete routes received:', response.routes?.length || 0);
-
-        // Debug each route's polyline
-        if (response.routes && response.routes.length > 0) {
-          response.routes.forEach((route, index) => {
-            console.log(`Concrete Route ${index + 1} (${route.routeCode}):`);
-            console.log(`  - Route ID: ${route.routeId}`);
-            console.log(`  - Type: ${route.type}`);
-            console.log(`  - Polyline length: ${route.encodedPolyline?.length || 0}`);
-            console.log(`  - Polyline preview: ${route.encodedPolyline?.substring(0, 50) || 'N/A'}...`);
-            console.log(`  - Tickets count: ${route.tickets?.length || 0}`);
-          });
-        }
-
         this.concreteRoutes = response.routes || [];
         this.initialConcreteRoutes = [...this.concreteRoutes];
         this.isLoadingConcreteRoutes = false;
 
         this.loadData(); // Refresh filtered data
         this.initializeVisibleRoutes(); // Initialize visible routes
-        this.updateStaticMap(); // Update static map
+        this.updateLeafletMap(); // Update Leaflet map
       },
       error: (error) => {
         console.error('Error loading concrete routes:', error);
@@ -536,7 +659,7 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
         this.concreteRoutes = [];
         this.initialConcreteRoutes = [...this.concreteRoutes];
         this.loadData(); // Refresh filtered data
-        this.updateStaticMap(); // Update static map
+        this.updateLeafletMap(); // Update Leaflet map
       }
     });
   }
@@ -546,28 +669,13 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     this.isLoadingAsphaltRoutes = true;
     this.http.get<RoutesResponse>(`${environment.apiUrl}/routes/asphalt`).subscribe({
       next: (response) => {
-        console.log('Asphalt routes API response:', response);
-        console.log('Number of asphalt routes received:', response.routes?.length || 0);
-
-        // Debug each route's polyline
-        if (response.routes && response.routes.length > 0) {
-          response.routes.forEach((route, index) => {
-            console.log(`Asphalt Route ${index + 1} (${route.routeCode}):`);
-            console.log(`  - Route ID: ${route.routeId}`);
-            console.log(`  - Type: ${route.type}`);
-            console.log(`  - Polyline length: ${route.encodedPolyline?.length || 0}`);
-            console.log(`  - Polyline preview: ${route.encodedPolyline?.substring(0, 50) || 'N/A'}...`);
-            console.log(`  - Tickets count: ${route.tickets?.length || 0}`);
-          });
-        }
-
         this.asphaltRoutes = response.routes || [];
         this.initialAsphaltRoutes = [...this.asphaltRoutes];
         this.isLoadingAsphaltRoutes = false;
 
         this.loadData(); // Refresh filtered data
         this.initializeVisibleRoutes(); // Initialize visible routes
-        this.updateStaticMap(); // Update static map
+        this.updateLeafletMap(); // Update Leaflet map
       },
       error: (error) => {
         console.error('Error loading asphalt routes:', error);
@@ -576,7 +684,7 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
         this.asphaltRoutes = [];
         this.initialAsphaltRoutes = [...this.asphaltRoutes];
         this.loadData(); // Refresh filtered data
-        this.updateStaticMap(); // Update static map
+        this.updateLeafletMap(); // Update Leaflet map
       }
     });
   }
@@ -586,9 +694,7 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     this.isLoadingSpotReady = true;
     this.http.get<ReadyTicketsResponse>(`${environment.apiUrl}/routes/tickets-ready/spotting`).subscribe({
       next: (response) => {
-        console.log('Spot ready tickets response:', response);
         this.spotReadyTickets = response.tickets;
-        console.log('Spot ready tickets array:', this.spotReadyTickets);
         this.isLoadingSpotReady = false;
         this.loadData(); // Refresh filtered data
       },
@@ -640,144 +746,446 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     });
   }
 
+  // Update the drop method to handle batch moves from ready cards to route cards with type checking
   async drop(event: CdkDragDrop<any[]>) {
-    console.log('=== DROP EVENT TRIGGERED ===');
-    console.log('Event:', event);
-    console.log('Previous container:', event.previousContainer);
-    console.log('Current container:', event.container);
-    console.log('Previous index:', event.previousIndex);
-    console.log('Current index:', event.currentIndex);
-    console.log('Previous container data:', event.previousContainer.data);
-    console.log('Current container data:', event.container.data);
+    console.log('🔍 DROP EVENT DEBUG:', {
+      previousContainer: event.previousContainer,
+      container: event.container,
+      previousIndex: event.previousIndex,
+      currentIndex: event.currentIndex,
+      isSameContainer: event.previousContainer === event.container,
+      previousContainerId: event.previousContainer.element?.nativeElement?.id,
+      containerId: event.container.element?.nativeElement?.id,
+      previousContainerData: event.previousContainer.data,
+      containerData: event.container.data
+    });
 
+    // Debug drop targets
+    this.debugDropTargets();
+
+    // Debug concrete routes specifically
+    console.log('🔍 CONCRETE ROUTES DEBUG:', {
+      concreteRoutesCount: this.concreteRoutes.length,
+      concreteRoutes: this.concreteRoutes.map(route => ({
+        routeId: route.routeId,
+        routeCode: route.routeCode,
+        ticketsCount: route.tickets?.length || 0,
+        tickets: route.tickets?.map(ticket => ({
+          ticketId: ticket.ticketId,
+          address: ticket.address
+        })) || []
+      })),
+      concreteReadyCount: this.concreteReadyTickets.length,
+      concreteReadyTickets: this.concreteReadyTickets.map(ticket => ({
+        ticketid: ticket.ticketid,
+        address: ticket.address
+      }))
+    });
     const draggedTicket = event.previousContainer.data[event.previousIndex];
-    console.log('Dragged ticket:', draggedTicket);
 
-    // Check if we're moving between ready sections
-    const isFromReadySection = this.isReadySection(event.previousContainer.data);
-    const isToReadySection = this.isReadySection(event.container.data);
-    const isToRoute = this.isRouteSection(event.container);
+    // Batch: find all tickets in the source list with the same address
+    const addressKey = (draggedTicket.address || '').toLowerCase().trim();
+    const sourceList = event.previousContainer.data;
+    const batchTickets = sourceList.filter(
+      t => (t.address || '').toLowerCase().trim() === addressKey
+    );
 
-    console.log('Is from ready section:', isFromReadySection);
-    console.log('Is to ready section:', isToReadySection);
-    console.log('Is to route:', isToRoute);
-    console.log('Previous container data type:', typeof event.previousContainer.data);
-    console.log('Current container element:', event.container.element);
+    // If only one ticket matches, fallback to normal logic
+    if (batchTickets.length === 1) {
+      // Check if we're moving between ready sections
+      const isFromReadySection = this.isReadySection(event.previousContainer.data);
+      const isToReadySection = this.isReadySection(event.container.data);
+      const isToRoute = this.isRouteSection(event.container);
 
-    if (isFromReadySection && isToReadySection) {
-      console.log('Scenario 2: Moving between ready sections');
-      // Scenario 2: Moving between ready sections
-      await this.handleMoveBetweenReadySections(event, draggedTicket);
-    } else if (isFromReadySection && isToRoute) {
-      console.log('Scenario 3: Moving from ready section to route');
-      // Scenario 3: Moving from ready section to route
-      await this.handleMoveFromReadyToRoute(event, draggedTicket);
-    } else if (event.previousContainer === event.container) {
-      console.log('Scenario 1: Reordering within the same container');
-      // Scenario 1: Reordering within the same route
-      moveItemInArray(event.container.data, event.previousIndex, event.currentIndex);
-
-      // Update queue numbers for the reordered tickets
-      event.container.data.forEach((ticket, index) => {
-        ticket.queue = index;
+      // Debug logging for single ticket move
+      console.log('Single ticket move debug:', {
+        isFromReadySection,
+        isToReadySection,
+        isToRoute,
+        previousContainerData: event.previousContainer.data,
+        containerData: event.container.data,
+        draggedTicket: draggedTicket,
+        availableRoutes: {
+          spottingRoutes: this.spottingRoutes.length,
+          concreteRoutes: this.concreteRoutes.length,
+          asphaltRoutes: this.asphaltRoutes.length
+        },
+        containerComparison: {
+          previousContainer: event.previousContainer,
+          container: event.container,
+          areSame: event.previousContainer === event.container,
+          previousContainerId: event.previousContainer.element?.nativeElement?.id,
+          containerId: event.container.element?.nativeElement?.id
+        }
       });
 
-      // Find the route that contains this container
-      const routeId = this.getRouteIdFromDropEvent(event);
-      if (routeId) {
-        const route = this.findRouteByTickets(routeId);
-        if (route) {
-          await this.handleReorderWithinRoute(route, event.container.data);
-        }
-      }
-    } else {
-      console.log('Scenario 4: Moving between routes');
-      // Scenario 4: Moving between routes
-      const isSourceRoute = this.isRouteSection(event.previousContainer);
+      if (isFromReadySection && isToReadySection) {
+        // Check if moving between different ready section types
+        const sourceType = this.getReadySectionType(event.previousContainer.data);
+        const destType = this.getReadySectionType(event.container.data);
 
-      if (isSourceRoute && event.previousContainer.data.length === 1) {
-        alert('Routes cannot be empty. At least one location must remain.');
+        if (sourceType !== destType) {
+          this.snackBar.open('Cannot move tickets between different ready section types.', 'Close', {
+            duration: 3000,
+            panelClass: ['error-snackbar']
+          });
+          return;
+        }
+
+        await this.handleMoveBetweenReadySections(event, draggedTicket);
+                      } else if (isFromReadySection && isToRoute) {
+          // Check type compatibility for ready to route
+          const readyType = this.getReadySectionType(event.previousContainer.data);
+          const routeId = this.getRouteIdFromDropEvent(event);
+
+          if (routeId) {
+            const route = this.findRouteByTickets(routeId);
+            if (route && route.type !== readyType.toUpperCase()) {
+              this.snackBar.open(`Cannot move ${readyType} ready tickets to ${route.type} routes. Only matching types are allowed.`, 'Close', {
+                duration: 4000,
+                panelClass: ['error-snackbar']
+              });
+              return;
+            }
+
+            // Check if adding this ticket would exceed the 95 location limit
+            if (route && this.wouldExceedLocationLimit(route, [draggedTicket])) {
+            const currentCount = this.getUniqueLocationCount(route);
+            const newAddress = draggedTicket.address?.trim().toLowerCase();
+            const existingAddresses = new Set<string>();
+            route.tickets.forEach(ticket => {
+              if (ticket.address) {
+                existingAddresses.add(ticket.address.trim().toLowerCase());
+              }
+            });
+            const isNewAddress = newAddress && !existingAddresses.has(newAddress);
+            const totalAfterAdd = currentCount + (isNewAddress ? 1 : 0);
+
+            this.snackBar.open(
+              `Cannot add ticket to route ${route.routeCode}. Adding this location would exceed the 95 location limit (${currentCount} current + ${isNewAddress ? 1 : 0} new = ${totalAfterAdd} total).`,
+              'Close',
+              { duration: 6000, panelClass: ['error-snackbar'] }
+            );
+            return;
+          }
+        }
+        await this.handleMoveFromReadyToRoute(event, draggedTicket);
+      } else if (event.previousContainer === event.container) {
+        console.log('Same container detected - reordering within container');
+        moveItemInArray(event.container.data, event.previousIndex, event.currentIndex);
+        event.container.data.forEach((ticket, index) => {
+          ticket.queue = index;
+        });
+        const routeId = this.getRouteIdFromDropEvent(event);
+        if (routeId) {
+          const route = this.findRouteByTickets(routeId);
+          if (route) {
+            await this.handleReorderWithinRoute(route, event.container.data);
+          }
+        }
+      } else {
+        console.log('Different containers detected - moving between containers');
+
+        // Check if moving between routes
+        const isSourceRoute = this.isRouteSection(event.previousContainer);
+        const isDestRoute = this.isRouteSection(event.container);
+
+        if (isSourceRoute && isDestRoute) {
+          // Moving between routes - check if they're the same type
+          const sourceRouteId = this.getRouteIdFromDropEvent({ ...event, container: event.previousContainer });
+          const destRouteId = this.getRouteIdFromDropEvent(event);
+
+          if (sourceRouteId && destRouteId) {
+            const sourceRoute = this.findRouteByTickets(sourceRouteId);
+            const destRoute = this.findRouteByTickets(destRouteId);
+
+            if (sourceRoute && destRoute && sourceRoute.type !== destRoute.type) {
+              this.snackBar.open(`Cannot move tickets between different route types (${sourceRoute.type} → ${destRoute.type}). Only same type routes can exchange tickets.`, 'Close', {
+                duration: 4000,
+                panelClass: ['error-snackbar']
+              });
+              return;
+            }
+          }
+        } else if (isSourceRoute && !isDestRoute) {
+          // Moving from route to ready section - not allowed
+          this.snackBar.open('Cannot move tickets from routes back to ready sections.', 'Close', {
+            duration: 3000,
+            panelClass: ['error-snackbar']
+          });
+          return;
+        }
+
+        // Only prevent empty routes, not ready sections
+        if (isSourceRoute && event.previousContainer.data.length === 1) {
+          alert('Routes cannot be empty. At least one location must remain.');
+          return;
+        }
+
+        transferArrayItem(
+          event.previousContainer.data,
+          event.container.data,
+          event.previousIndex,
+          event.currentIndex,
+        );
+        if (event.previousContainer.data.length > 0) {
+          event.previousContainer.data.forEach((ticket, index) => {
+            ticket.queue = index;
+          });
+        }
+        event.container.data.forEach((ticket, index) => {
+          ticket.queue = index;
+        });
+        await this.handleMoveBetweenRoutes(event, draggedTicket);
+      }
+      this.spottingRoutes = [...this.spottingRoutes];
+      this.concreteRoutes = [...this.concreteRoutes];
+      this.asphaltRoutes = [...this.asphaltRoutes];
+      this.forceMapUpdate();
+      return;
+    }
+
+    // Batch move logic
+    const isFromReadySection = this.isReadySection(event.previousContainer.data);
+    const isToRoute = this.isRouteSection(event.container);
+    if (isFromReadySection && isToRoute) {
+      // Type compatibility check
+      const routeId = this.getRouteIdFromDropEvent(event);
+      if (routeId == null) {
+        this.snackBar.open('Could not find destination route. Please try again.', 'Close', { duration: 3000, panelClass: ['error-snackbar'] });
+        return;
+      }
+      const route = this.findRouteByTickets(routeId);
+      if (!route) {
+        this.snackBar.open('Could not find destination route. Please try again.', 'Close', { duration: 3000, panelClass: ['error-snackbar'] });
+        return;
+      }
+            // Determine ready section type
+      let readyType = '';
+
+      // Check if sourceList is a filtered version of the ready tickets
+      if (sourceList === this.getFilteredSpotReadyTickets() || sourceList === this.spotReadyTickets) {
+        readyType = 'SPOTTER';
+      } else if (sourceList === this.getFilteredAsphaltReadyTickets() || sourceList === this.asphaltReadyTickets) {
+        readyType = 'ASPHALT';
+      } else if (sourceList === this.getFilteredConcreteReadyTickets() || sourceList === this.concreteReadyTickets) {
+        readyType = 'CONCRETE';
+      } else if (batchTickets[0]?.tickettype) {
+        readyType = (batchTickets[0].tickettype || '').toUpperCase();
+      }
+
+      // Debug logging
+      console.log('Type compatibility check:', {
+        sourceList: sourceList,
+        readyType: readyType,
+        routeType: route.type,
+        routeCode: route.routeCode,
+        batchTicketsLength: batchTickets.length,
+        firstTicketType: batchTickets[0]?.tickettype
+      });
+
+      // Route type must match ready type
+      if (route.type !== readyType) {
+        console.error('Type mismatch:', { readyType, routeType: route.type });
+        this.snackBar.open('Invalid move: You can only drag from a ready card to a matching route type.', 'Close', { duration: 4000, panelClass: ['error-snackbar'] });
         return;
       }
 
-      transferArrayItem(
-        event.previousContainer.data,
-        event.container.data,
-        event.previousIndex,
-        event.currentIndex,
-      );
-
-      // Update queue numbers for both source and destination containers
-      if (event.previousContainer.data.length > 0) {
-        event.previousContainer.data.forEach((ticket, index) => {
-          ticket.queue = index;
+      // Check if adding these tickets would exceed the 95 location limit
+      if (this.wouldExceedLocationLimit(route, batchTickets)) {
+        const currentCount = this.getUniqueLocationCount(route);
+        const newUniqueAddresses = new Set<string>();
+        batchTickets.forEach(ticket => {
+          if (ticket.address) {
+            newUniqueAddresses.add(ticket.address.trim().toLowerCase());
+          }
         });
+        const existingAddresses = new Set<string>();
+        route.tickets.forEach(ticket => {
+          if (ticket.address) {
+            existingAddresses.add(ticket.address.trim().toLowerCase());
+          }
+        });
+        let trulyNewAddresses = 0;
+        newUniqueAddresses.forEach(address => {
+          if (!existingAddresses.has(address)) {
+            trulyNewAddresses++;
+          }
+        });
+        const totalAfterAdd = currentCount + trulyNewAddresses;
+
+        this.snackBar.open(
+          `Cannot add tickets to route ${route.routeCode}. Adding ${trulyNewAddresses} new locations would exceed the 95 location limit (${currentCount} current + ${trulyNewAddresses} new = ${totalAfterAdd} total).`,
+          'Close',
+          { duration: 6000, panelClass: ['error-snackbar'] }
+        );
+        return;
       }
-
-      event.container.data.forEach((ticket, index) => {
-        ticket.queue = index;
-      });
-
-      // Handle the API calls for moving between routes
-      await this.handleMoveBetweenRoutes(event, draggedTicket);
+      // Sequentially move all batch tickets
+      this.isBatchAddingTickets = true;
+      for (const t of batchTickets) {
+        try {
+          await this.handleMoveFromReadyToRoute(event, t);
+        } catch (err) {
+          console.error('Error adding ticket to route:', t, err);
+          this.snackBar.open(`Failed to add ticket ${t.ticketcode || t.ticketCode || t.ticketId}`, 'Close', { duration: 3000, panelClass: ['error-snackbar'] });
+        }
+      }
+      this.isBatchAddingTickets = false;
+      this.spottingRoutes = [...this.spottingRoutes];
+      this.concreteRoutes = [...this.concreteRoutes];
+      this.asphaltRoutes = [...this.asphaltRoutes];
+      this.forceMapUpdate();
+      return;
     }
 
-    // Force Angular to detect changes by reassigning the arrays
+    // Remove all batchTickets from the source list
+    for (const t of batchTickets) {
+      const idx = sourceList.indexOf(t);
+      if (idx !== -1) {
+        sourceList.splice(idx, 1);
+      }
+    }
+
+    // Insert all batchTickets into the destination list at the drop index
+    const destList = event.container.data;
+    let insertIndex = event.currentIndex;
+    for (const t of batchTickets) {
+      destList.splice(insertIndex, 0, t);
+      insertIndex++;
+    }
+
+    // Update queue numbers for both lists
+    if (sourceList.length > 0) {
+      sourceList.forEach((ticket, index) => {
+        ticket.queue = index;
+      });
+    }
+    destList.forEach((ticket, index) => {
+      ticket.queue = index;
+    });
+
+    // If moving between routes, call handleMoveBetweenRoutes for each ticket
+    const isSourceRoute = this.isRouteSection(event.previousContainer);
+    const isDestRoute = this.isRouteSection(event.container);
+    if (isSourceRoute && isDestRoute && event.previousContainer !== event.container) {
+      for (const t of batchTickets) {
+        await this.handleMoveBetweenRoutes(event, t);
+      }
+    } else if (isSourceRoute && !isDestRoute) {
+      // Moving from route to ready section (if supported)
+      // (implement if needed)
+    } else if (!isSourceRoute && isDestRoute) {
+      // Moving from ready section to route
+      for (const t of batchTickets) {
+        await this.handleMoveFromReadyToRoute(event, t);
+      }
+    }
+
     this.spottingRoutes = [...this.spottingRoutes];
     this.concreteRoutes = [...this.concreteRoutes];
     this.asphaltRoutes = [...this.asphaltRoutes];
-    console.log('=== DROP EVENT COMPLETED ===');
+    this.forceMapUpdate();
   }
 
   private getRouteIdFromDropEvent(event: CdkDragDrop<any[]>): number | null {
     // Get route ID from the container element's data attribute
     const containerElement = event.container.element.nativeElement;
     const routeId = containerElement.getAttribute('data-route-id');
-    console.log('=== GET ROUTE ID FROM DROP EVENT ===');
-    console.log('Container element:', containerElement);
-    console.log('Route ID attribute:', routeId);
-    console.log('Parsed route ID:', routeId ? parseInt(routeId, 10) : null);
-    console.log('====================================');
     return routeId ? parseInt(routeId, 10) : null;
   }
 
   private isReadySection(data: any[]): boolean {
-    console.log('=== IS READY SECTION CHECK ===');
-    console.log('Data to check:', data);
-    console.log('Filtered spot ready tickets:', this.filteredSpotReadyTickets);
-    console.log('Filtered concrete ready tickets:', this.filteredConcreteReadyTickets);
-    console.log('Filtered asphalt ready tickets:', this.filteredAsphaltReadyTickets);
-    console.log('Is filtered spot ready:', data === this.filteredSpotReadyTickets);
-    console.log('Is filtered concrete ready:', data === this.filteredConcreteReadyTickets);
-    console.log('Is filtered asphalt ready:', data === this.filteredAsphaltReadyTickets);
-    const result = data === this.filteredSpotReadyTickets ||
-           data === this.filteredConcreteReadyTickets ||
-           data === this.filteredAsphaltReadyTickets;
-    console.log('Final result:', result);
-    console.log('==============================');
-    return result;
+    const isSpotReady = data === this.getFilteredSpotReadyTickets() || data === this.spotReadyTickets;
+    const isConcreteReady = data === this.getFilteredConcreteReadyTickets() || data === this.concreteReadyTickets;
+    const isAsphaltReady = data === this.getFilteredAsphaltReadyTickets() || data === this.asphaltReadyTickets;
+
+    // Debug logging
+    console.log('isReadySection debug:', {
+      data,
+      isSpotReady,
+      isConcreteReady,
+      isAsphaltReady,
+      filteredSpotReady: this.getFilteredSpotReadyTickets(),
+      filteredConcreteReady: this.getFilteredConcreteReadyTickets(),
+      filteredAsphaltReady: this.getFilteredAsphaltReadyTickets(),
+      spotReady: this.spotReadyTickets,
+      concreteReady: this.concreteReadyTickets,
+      asphaltReady: this.asphaltReadyTickets
+    });
+
+    return isSpotReady || isConcreteReady || isAsphaltReady;
   }
 
-  private isRouteSection(container: any): boolean {
-    // Check if the container element has the route section attribute
+        private isRouteSection(container: any): boolean {
+    // Check if the container element has the route section attribute or route ID
     const containerElement = container.element?.nativeElement;
-    console.log('=== IS ROUTE SECTION CHECK ===');
-    console.log('Container:', container);
-    console.log('Container element:', containerElement);
-    console.log('Has data-route-section attribute:', containerElement && containerElement.hasAttribute('data-route-section'));
-    const result = containerElement && containerElement.hasAttribute('data-route-section');
-    console.log('Final result:', result);
-    console.log('=============================');
-    return result;
+    const hasRouteSection = containerElement && (
+      containerElement.hasAttribute('data-route-section') ||
+      containerElement.getAttribute('data-route-section') === 'true' ||
+      containerElement.hasAttribute('data-route-id')
+    );
+
+    // Debug logging
+    console.log('isRouteSection debug:', {
+      containerElement,
+      hasRouteSection,
+      dataRouteSection: containerElement ? containerElement.getAttribute('data-route-section') : null,
+      dataRouteId: containerElement ? containerElement.getAttribute('data-route-id') : null,
+      hasRouteSectionAttr: containerElement ? containerElement.hasAttribute('data-route-section') : false,
+      hasRouteIdAttr: containerElement ? containerElement.hasAttribute('data-route-id') : false,
+      attributes: containerElement ? Array.from(containerElement.attributes).map((attr: any) => ({ name: attr.name, value: attr.value })) : [],
+      className: containerElement ? containerElement.className : null,
+      id: containerElement ? containerElement.id : null,
+      parentElement: containerElement ? containerElement.parentElement : null,
+      parentClassName: containerElement?.parentElement ? containerElement.parentElement.className : null
+    });
+
+    return hasRouteSection;
   }
 
   private async handleMoveFromReadyToRoute(event: CdkDragDrop<any[]>, draggedTicket: any) {
-    console.log('=== HANDLE MOVE FROM READY TO ROUTE ===');
-    console.log('Dragged ticket:', draggedTicket);
-    console.log('Previous container data:', event.previousContainer.data);
-    console.log('Current container data:', event.container.data);
-
     try {
+      // Debug: Check what route containers are available in the DOM
+      const routeContainers = document.querySelectorAll('[data-route-section="true"], [data-route-id]');
+      const allDropLists = document.querySelectorAll('.cdk-drop-list');
+      console.log('Available route containers in DOM:', {
+        count: routeContainers.length,
+        containers: Array.from(routeContainers).map((el: any) => ({
+          id: el.id,
+          className: el.className,
+          dataRouteId: el.getAttribute('data-route-id'),
+          dataRouteSection: el.getAttribute('data-route-section'),
+          isVisible: el.offsetParent !== null,
+          display: window.getComputedStyle(el).display,
+          visibility: window.getComputedStyle(el).visibility
+        }))
+      });
+      console.log('All drop lists in DOM:', {
+        count: allDropLists.length,
+        lists: Array.from(allDropLists).map((el: any) => ({
+          id: el.id,
+          className: el.className,
+          dataReadySection: el.getAttribute('data-ready-section'),
+          dataRouteSection: el.getAttribute('data-route-section'),
+          dataRouteId: el.getAttribute('data-route-id'),
+          isVisible: el.offsetParent !== null,
+          display: window.getComputedStyle(el).display
+        }))
+      });
+      console.log('All drop lists in DOM:', {
+        count: allDropLists.length,
+        lists: Array.from(allDropLists).map((el: any) => ({
+          id: el.id,
+          className: el.className,
+          dataReadySection: el.getAttribute('data-ready-section'),
+          dataRouteSection: el.getAttribute('data-route-section'),
+          dataRouteId: el.getAttribute('data-route-id'),
+          isVisible: el.offsetParent !== null,
+          display: window.getComputedStyle(el).display
+        }))
+      });
+
       const routeId = this.getRouteIdFromDropEvent(event);
       if (!routeId) {
         console.error('Could not find route ID from drop event');
@@ -796,19 +1204,11 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
       // Extract ticket ID from the ready ticket
       const ticketId = draggedTicket.ticketid || draggedTicket.ticketId;
 
-      console.log('=== MOVE FROM READY TO ROUTE DEBUG ===');
-      console.log('Dragged ticket object:', draggedTicket);
-      console.log('Ticket ID extracted:', ticketId);
-      console.log('Destination route:', destinationRoute);
-      console.log('======================================');
-
       if (!ticketId) {
         console.error('Could not find ticket ID in dragged ticket:', draggedTicket);
         alert('Could not find ticket ID. Please try again.');
         return;
       }
-
-      console.log(`Adding ticket ${ticketId} to route ${destinationRoute.routeCode}`);
 
       // Show loading message
       this.snackBar.open(`Adding ticket to route ${destinationRoute.routeCode}...`, 'Close', { duration: 2000 });
@@ -823,17 +1223,17 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
       const ticketToRemove = event.previousContainer.data[event.previousIndex];
       if (ticketToRemove) {
         // Find and remove from the original array
-        if (event.previousContainer.data === this.filteredSpotReadyTickets) {
+        if (event.previousContainer.data === this.getFilteredSpotReadyTickets() || event.previousContainer.data === this.spotReadyTickets) {
           const originalIndex = this.spotReadyTickets.findIndex(t => t.ticketid === ticketToRemove.ticketid);
           if (originalIndex !== -1) {
             this.spotReadyTickets.splice(originalIndex, 1);
           }
-        } else if (event.previousContainer.data === this.filteredAsphaltReadyTickets) {
+        } else if (event.previousContainer.data === this.getFilteredAsphaltReadyTickets() || event.previousContainer.data === this.asphaltReadyTickets) {
           const originalIndex = this.asphaltReadyTickets.findIndex(t => t.ticketid === ticketToRemove.ticketid);
           if (originalIndex !== -1) {
             this.asphaltReadyTickets.splice(originalIndex, 1);
           }
-        } else if (event.previousContainer.data === this.filteredConcreteReadyTickets) {
+        } else if (event.previousContainer.data === this.getFilteredConcreteReadyTickets() || event.previousContainer.data === this.concreteReadyTickets) {
           const originalIndex = this.concreteReadyTickets.findIndex(t => t.ticketid === ticketToRemove.ticketid);
           if (originalIndex !== -1) {
             this.concreteReadyTickets.splice(originalIndex, 1);
@@ -844,7 +1244,9 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
       // Refresh the data to get the updated route with the new ticket
       this.refreshAllDataAndCache();
 
-      console.log(`Successfully added ticket ${ticketId} to route ${destinationRoute.routeCode}`);
+      // Force immediate map update
+      this.forceMapUpdate();
+
       this.snackBar.open(`Successfully added ticket to route ${destinationRoute.routeCode}!`, 'Close', { duration: 3000 });
     } catch (error: any) {
       console.error('Error moving ticket from ready section to route:', error);
@@ -867,25 +1269,14 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
   }
 
   private async handleMoveBetweenReadySections(event: CdkDragDrop<any[]>, draggedTicket: any) {
-    console.log('=== HANDLE MOVE BETWEEN READY SECTIONS ===');
-    console.log('Dragged ticket:', draggedTicket);
-    console.log('Previous container data:', event.previousContainer.data);
-    console.log('Current container data:', event.container.data);
-
     // Determine the source and destination ready sections
     const sourceSection = this.getReadySectionType(event.previousContainer.data);
     const destSection = this.getReadySectionType(event.container.data);
 
-    console.log('Source section:', sourceSection);
-    console.log('Destination section:', destSection);
-
     // Check restrictions
     if (sourceSection === 'spot' && (destSection === 'asphalt' || destSection === 'concrete')) {
-      console.log('✅ Allowed: Spot Ready → Asphalt Ready or Concrete Ready');
     } else if (sourceSection === 'concrete' && destSection === 'asphalt') {
-      console.log('✅ Allowed: Concrete Ready → Asphalt Ready');
     } else {
-      console.log('❌ Restricted move detected');
       this.snackBar.open('This move is not allowed. Please check the restrictions.', 'Close', {
         duration: 3000,
         panelClass: ['error-snackbar']
@@ -897,17 +1288,17 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     const ticketToMove = event.previousContainer.data[event.previousIndex];
     if (ticketToMove) {
       // Remove from original source array
-      if (event.previousContainer.data === this.filteredSpotReadyTickets) {
+      if (event.previousContainer.data === this.getFilteredSpotReadyTickets() || event.previousContainer.data === this.spotReadyTickets) {
         const originalIndex = this.spotReadyTickets.findIndex(t => t.ticketid === ticketToMove.ticketid);
         if (originalIndex !== -1) {
           this.spotReadyTickets.splice(originalIndex, 1);
         }
-      } else if (event.previousContainer.data === this.filteredAsphaltReadyTickets) {
+      } else if (event.previousContainer.data === this.getFilteredAsphaltReadyTickets() || event.previousContainer.data === this.asphaltReadyTickets) {
         const originalIndex = this.asphaltReadyTickets.findIndex(t => t.ticketid === ticketToMove.ticketid);
         if (originalIndex !== -1) {
           this.asphaltReadyTickets.splice(originalIndex, 1);
         }
-      } else if (event.previousContainer.data === this.filteredConcreteReadyTickets) {
+      } else if (event.previousContainer.data === this.getFilteredConcreteReadyTickets() || event.previousContainer.data === this.concreteReadyTickets) {
         const originalIndex = this.concreteReadyTickets.findIndex(t => t.ticketid === ticketToMove.ticketid);
         if (originalIndex !== -1) {
           this.concreteReadyTickets.splice(originalIndex, 1);
@@ -915,51 +1306,40 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
       }
 
       // Add to original destination array
-      if (event.container.data === this.filteredSpotReadyTickets) {
+      if (event.container.data === this.getFilteredSpotReadyTickets() || event.container.data === this.spotReadyTickets) {
         this.spotReadyTickets.push(ticketToMove);
-      } else if (event.container.data === this.filteredAsphaltReadyTickets) {
+      } else if (event.container.data === this.getFilteredAsphaltReadyTickets() || event.container.data === this.asphaltReadyTickets) {
         this.asphaltReadyTickets.push(ticketToMove);
-      } else if (event.container.data === this.filteredConcreteReadyTickets) {
+      } else if (event.container.data === this.getFilteredConcreteReadyTickets() || event.container.data === this.concreteReadyTickets) {
         this.concreteReadyTickets.push(ticketToMove);
       }
     }
-
-    console.log('=== MOVE BETWEEN READY SECTIONS COMPLETED ===');
   }
 
   private getReadySectionType(data: any[]): string {
-    console.log('=== GET READY SECTION TYPE ===');
-    console.log('Data:', data);
-
     // Check if this is a ready section by comparing with filtered arrays
-    if (data === this.filteredSpotReadyTickets) {
-      console.log('Section type: spot');
+    if (data === this.getFilteredSpotReadyTickets() || data === this.spotReadyTickets) {
       return 'spot';
     }
 
-    if (data === this.filteredAsphaltReadyTickets) {
-      console.log('Section type: asphalt');
+    if (data === this.getFilteredAsphaltReadyTickets() || data === this.asphaltReadyTickets) {
       return 'asphalt';
     }
 
-    if (data === this.filteredConcreteReadyTickets) {
-      console.log('Section type: concrete');
+    if (data === this.getFilteredConcreteReadyTickets() || data === this.concreteReadyTickets) {
       return 'concrete';
     }
 
     // Fallback: Check if this is a ready section by looking at the first item's properties
     if (data.length > 0) {
       const firstItem = data[0];
-      console.log('First item:', firstItem);
 
       // Check if it's a ready ticket with category
       if (firstItem.type === 'ready-ticket') {
-        console.log('Section type:', firstItem.category);
         return firstItem.category;
       }
     }
 
-    console.log('Section type: unknown');
     return 'unknown';
   }
 
@@ -970,11 +1350,20 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
 
   private async handleReorderWithinRoute(route: Route, tickets: any[]): Promise<void> {
     try {
-      // Update queue numbers locally without reoptimizing
-      console.log(`Reordered tickets within route ${route.routeCode} - reoptimization will be done manually`);
+      // Build the updates array
+      const updates = tickets.map((ticket, index) => ({
+        ticketId: ticket.ticketId,
+        queue: index
+      }));
+      // Use a placeholder for updatedBy (replace with real user ID if available)
+      const updatedBy = 1;
+      const endpoint = `${environment.apiUrl}/routetickets/${route.routeId}/batch-queue`;
+      const body = { updates, updatedBy };
+      await this.http.put(endpoint, body).toPromise();
+      this.snackBar.open('Ticket order saved!', 'Close', { duration: 2000 });
     } catch (error) {
-      console.error('Error reordering tickets within route:', error);
-      alert('Error reordering tickets. Please try again.');
+      console.error('Error saving ticket order:', error);
+      this.snackBar.open('Failed to save ticket order', 'Close', { duration: 4000, panelClass: ['error-snackbar'] });
     }
   }
 
@@ -1009,7 +1398,6 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
 
         // Note: Reoptimization will be done manually via the route buttons
 
-        console.log(`Moved ticket ${ticketId} from route ${sourceRoute.routeCode} to ${destinationRoute.routeCode}`);
       }
     } catch (error) {
       console.error('Error moving ticket between routes:', error);
@@ -1026,16 +1414,8 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     const endpoint = `${environment.apiUrl}/route-optimization/route/${routeId}/add-tickets`;
     const requestBody = { ticketIds };
 
-    console.log('=== ADD TICKETS TO ROUTE DEBUG ===');
-    console.log('Endpoint:', endpoint);
-    console.log('Route ID:', routeId);
-    console.log('Ticket IDs:', ticketIds);
-    console.log('Request body:', JSON.stringify(requestBody, null, 2));
-    console.log('==================================');
-
     try {
       const response = await this.http.post(endpoint, requestBody).toPromise();
-      console.log('Add tickets response:', response);
     } catch (error: any) {
       console.error('=== ADD TICKETS ERROR DEBUG ===');
       console.error('Error object:', error);
@@ -1079,7 +1459,57 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
 
   // Helper method to check if route has too many locations for reoptimization
   isRouteTooLargeForReoptimization(route: Route): boolean {
-    return this.getUniqueLocationCount(route) > 25;
+    return this.getUniqueLocationCount(route) > 95;
+  }
+
+    // Helper method to check if adding tickets would exceed the 95 location limit
+  private wouldExceedLocationLimit(route: Route, ticketsToAdd: any[]): boolean {
+    const currentUniqueLocations = this.getUniqueLocationCount(route);
+
+    // Get unique addresses from tickets to add
+    const newAddresses = new Set<string>();
+    ticketsToAdd.forEach(ticket => {
+      if (ticket.address) {
+        newAddresses.add(ticket.address.trim().toLowerCase());
+      }
+    });
+
+    // Check if any of the new addresses already exist in the route
+    const existingAddresses = new Set<string>();
+    route.tickets.forEach(ticket => {
+      if (ticket.address) {
+        existingAddresses.add(ticket.address.trim().toLowerCase());
+      }
+    });
+
+    // Count only truly new unique addresses
+    let newUniqueAddresses = 0;
+    newAddresses.forEach(address => {
+      if (!existingAddresses.has(address)) {
+        newUniqueAddresses++;
+      }
+    });
+
+    const totalUniqueLocations = currentUniqueLocations + newUniqueAddresses;
+    return totalUniqueLocations > 95;
+  }
+
+  // Helper method to check if a route is approaching the location limit (for UI warnings)
+  isRouteApproachingLimit(route: Route): boolean {
+    const currentCount = this.getUniqueLocationCount(route);
+    return currentCount >= 90; // Warning when 90 or more locations
+  }
+
+  // Helper method to get the location count display text with color coding
+  getLocationCountDisplay(route: Route): { text: string; color: string } {
+    const count = this.getUniqueLocationCount(route);
+    if (count > 95) {
+      return { text: `${count}/95`, color: '#f44336' }; // Red for over limit
+    } else if (count >= 90) {
+      return { text: `${count}/95`, color: '#ff9800' }; // Orange for approaching limit
+    } else {
+      return { text: `${count}/95`, color: '#4caf50' }; // Green for safe
+    }
   }
 
     // Cancel route
@@ -1093,8 +1523,32 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     try {
       this.snackBar.open(`Cancelling route ${route.routeCode}...`, 'Close', { duration: 3000 });
 
-      const endpoint = `${environment.apiUrl}/route-optimization/route/${route.routeId}/cancel`;
+      // Use the correct endpoint based on route type
+      let endpoint: string;
+      switch (route.type) {
+        case 'SPOTTER':
+          endpoint = `${environment.apiUrl}/route-optimization/route/${route.routeId}/cancel-spotting`;
+          break;
+        case 'CONCRETE':
+          endpoint = `${environment.apiUrl}/route-optimization/route/${route.routeId}/cancel-concrete`;
+          break;
+        case 'ASPHALT':
+          endpoint = `${environment.apiUrl}/route-optimization/route/${route.routeId}/cancel-asphalt`;
+          break;
+        default:
+          throw new Error(`Unknown route type: ${route.type}`);
+      }
+
       await this.http.post(endpoint, {}).toPromise();
+
+      // Immediately remove the route from visible routes and update map
+      this.visibleRoutes.delete(route.routeId);
+
+      // Remove the route from the local arrays
+      this.removeRouteFromLocalArrays(route.routeId);
+
+      // Force immediate map update
+      this.forceMapUpdate();
 
       // Refresh the specific route data
       this.refreshAllDataAndCache();
@@ -1117,15 +1571,78 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     try {
       this.snackBar.open(`Completing route ${route.routeCode}...`, 'Close', { duration: 3000 });
 
-      const endpoint = `${environment.apiUrl}/route-optimization/route/${route.routeId}/complete`;
+      // Debug logging
+      console.log('🔍 Completing route:', {
+        routeId: route.routeId,
+        routeCode: route.routeCode,
+        routeType: route.type,
+        routeTypeUpperCase: route.type?.toUpperCase()
+      });
+
+      // Use the correct endpoint based on route type
+      let endpoint: string;
+      let routeType = route.type?.toUpperCase();
+
+      // Fallback: If route type is not available or unknown, try to determine from routeCode
+      if (!routeType || !['SPOTTER', 'CONCRETE', 'ASPHALT'].includes(routeType)) {
+        console.log('⚠️ Route type not found or unknown, trying to determine from routeCode:', route.routeCode);
+
+        const routeCode = route.routeCode?.toUpperCase() || '';
+        if (routeCode.includes('SPOTTER')) {
+          routeType = 'SPOTTER';
+        } else if (routeCode.includes('CONCRETE')) {
+          routeType = 'CONCRETE';
+        } else if (routeCode.includes('ASPHALT')) {
+          routeType = 'ASPHALT';
+        } else {
+          // Default to SPOTTER if we can't determine
+          routeType = 'SPOTTER';
+          console.log('⚠️ Could not determine route type from routeCode, defaulting to SPOTTER');
+        }
+
+        console.log('🎯 Determined route type from routeCode:', routeType);
+      }
+
+      switch (routeType) {
+        case 'SPOTTER':
+          endpoint = `${environment.apiUrl}/route-optimization/route/${route.routeId}/complete-spotting`;
+          break;
+        case 'CONCRETE':
+          endpoint = `${environment.apiUrl}/route-optimization/route/${route.routeId}/complete-concrete`;
+          break;
+        case 'ASPHALT':
+          endpoint = `${environment.apiUrl}/route-optimization/route/${route.routeId}/complete-asphalt`;
+          break;
+        default:
+          console.error('❌ Unknown route type:', routeType, 'for route:', route);
+          throw new Error(`Unknown route type: ${routeType || 'undefined'}`);
+      }
+
+      console.log('🔗 Using endpoint:', endpoint);
+
       await this.http.post(endpoint, {}).toPromise();
+
+      // Immediately remove the route from visible routes and update map
+      this.visibleRoutes.delete(route.routeId);
+
+      // Remove the route from the local arrays
+      this.removeRouteFromLocalArrays(route.routeId);
+
+      // Force immediate map update
+      this.forceMapUpdate();
 
       // Refresh the specific route data
       this.refreshAllDataAndCache();
 
       this.snackBar.open(`Route ${route.routeCode} has been completed successfully!`, 'Close', { duration: 5000 });
     } catch (error) {
-      console.error(`Error completing route ${route.routeCode}:`, error);
+      console.error(`❌ Error completing route ${route.routeCode}:`, error);
+      console.error('🔍 Error details:', {
+        routeId: route.routeId,
+        routeCode: route.routeCode,
+        routeType: route.type,
+        error: error
+      });
       this.snackBar.open(`Error completing route ${route.routeCode}. Please try again.`, 'Close', { duration: 5000 });
     }
   }
@@ -1136,7 +1653,7 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     if (this.isRouteTooLargeForReoptimization(route)) {
       const locationCount = this.getUniqueLocationCount(route);
       this.snackBar.open(
-        `Cannot reoptimize route ${route.routeCode}. It has ${locationCount} unique locations (maximum 25 allowed).`,
+        `Cannot reoptimize route ${route.routeCode}. It has ${locationCount} unique locations (maximum 95 allowed).`,
         'Close',
         { duration: 5000, panelClass: ['error-snackbar'] }
       );
@@ -1155,6 +1672,9 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
       this.snackBar.open(`Reoptimizing route ${route.routeCode}...`, 'Close', { duration: 3000 });
 
       await this.reoptimizeRoute(route.routeId);
+
+      // Force immediate map update
+      this.forceMapUpdate();
 
       // Refresh the specific route data
       this.refreshAllDataAndCache();
@@ -1178,6 +1698,8 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
   closeGenerateRouteDialog() {
     if (this.dialogRef) {
       this.dialogRef.close();
+      // Reset form after dialog closes
+      this.newRouteType = '';
     }
   }
 
@@ -1223,14 +1745,6 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
       return;
     }
 
-    console.log('=== ROUTE GENERATION DEBUG ===');
-    console.log('Route type:', this.newRouteType);
-    console.log('Ready tickets:', readyTickets);
-    console.log('Ticket IDs:', ticketIds);
-    console.log('Ready tickets count:', readyTickets.length);
-    console.log('Valid ticket IDs count:', ticketIds.length);
-    console.log('==============================');
-
     // Use the optimize-single endpoint from your backend
     const endpoint = `${environment.apiUrl}/route-optimization/optimize-single`;
 
@@ -1260,16 +1774,9 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
       }
     };
 
-    console.log('=== API REQUEST DEBUG ===');
-    console.log('Endpoint:', endpoint);
-    console.log('Request body:', JSON.stringify(requestBody, null, 2));
-    console.log('========================');
-
     // Test if endpoint is reachable first
-    console.log('Testing endpoint reachability...');
     this.http.get(`${environment.apiUrl}/route-optimization/status`).subscribe({
       next: (statusResponse) => {
-        console.log('API status check successful:', statusResponse);
         this.makeOptimizationRequest(endpoint, requestBody);
       },
       error: (statusError) => {
@@ -1281,13 +1788,14 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
   }
 
   private makeOptimizationRequest(endpoint: string, requestBody: any) {
-    console.log('Making optimization request...');
     this.http.post(endpoint, requestBody).subscribe({
       next: (response) => {
-        console.log('Route generation successful:', response);
         this.isGeneratingRoute = false;
         this.closeGenerateRouteDialog();
         this.snackBar.open('Route generation completed successfully!', 'Close', { duration: 5000 });
+
+        // Force immediate map update
+        this.forceMapUpdate();
 
         // Refresh the routes data
         this.refreshAllDataAndCache();
@@ -1323,295 +1831,70 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
         }
       }
     });
-
-    // Reset form
-    this.newRouteType = '';
   }
 
-  // Generate static map for route visualization
-  generateStaticMap(): void {
-    // Combine all routes to create a comprehensive static map
+  // Generate Leaflet map data for route visualization
+  updateLeafletMap(): void {
+    // Combine all routes to create comprehensive map data
     const allRoutes = [...this.spottingRoutes, ...this.concreteRoutes, ...this.asphaltRoutes];
 
-    if (allRoutes.length === 0) {
-      // Show Chicago map with "No Active Routes" label when no routes are available
-      this.staticMapUrl = this.generateChicagoMapWithLabel();
-      this.showNoRoutesOverlay = true;
-      console.log('No routes available - showing Chicago map with label');
-      return;
-    }
-
-    // Build static map URL using the new approach
-    this.staticMapUrl = this.buildStaticMapUrl();
-
-    // Reset the no routes overlay flag since we have routes
-    this.showNoRoutesOverlay = false;
-  }
-
-  // New method to build static map URL with better polyline handling
-  buildStaticMapUrl(): string {
-    const baseUrl = 'https://maps.googleapis.com/maps/api/staticmap';
-    const size = `size=${this.staticMapWidth}x${this.staticMapHeight}`;
-    const mapType = 'maptype=roadmap';
-    const scale = 'scale=2'; // High DPI for better quality
-
-    const paths: string[] = [];
-    const markers: string[] = [];
-    const allWaypoints: string[] = [];
-
-    console.log('=== BUILDING STATIC MAP URL ===');
-
-    // Process spotting routes
-    if (this.showSpottingRoutes) {
-      this.filteredSpottingRoutes.forEach((route, index) => {
-        // Check if this specific route is visible
-        if (!this.visibleRoutes.has(route.routeId)) {
-          console.log(`Skipping spotting route ${route.routeCode} - not visible`);
-          return;
-        }
-        console.log(`Processing spotting route ${index + 1}: ${route.routeCode}`);
-
-        if (route.encodedPolyline && route.encodedPolyline.trim() !== '') {
-          console.log(`  - Polyline length: ${route.encodedPolyline.length}`);
-          console.log(`  - Polyline preview: ${route.encodedPolyline.substring(0, 50)}...`);
-
-          // Validate polyline
-          try {
-            const decoded = polyline.decode(route.encodedPolyline);
-            console.log(`  - Decoded points: ${decoded.length}`);
-
-                      if (decoded.length >= 3) {
-              // For circular routes (start and end at enterprise), check if there are meaningful waypoints
-              const firstPoint = decoded[0];
-              const lastPoint = decoded[decoded.length - 1];
-              const midPoint = decoded[Math.floor(decoded.length / 2)];
-
-              // Check distance from start to middle point (should be meaningful for circular routes)
-              const distanceToMid = Math.sqrt(
-                Math.pow(midPoint[0] - firstPoint[0], 2) +
-                Math.pow(midPoint[1] - firstPoint[1], 2)
-              );
-
-              console.log(`  - Distance from start to middle point: ${distanceToMid}`);
-              console.log(`  - Total points in polyline: ${decoded.length}`);
-
-              if (distanceToMid > 0.001) { // Minimum distance threshold for meaningful route
-                // Use different shades of red-orange for each route
-                const redShades = ['0xFF0000', '0xFF4500', '0xFF6347', '0xFF7F50', '0xFF8C00', '0xFFA500', '0xFFB347', '0xFFD700'];
-                const colorIndex = paths.length % redShades.length;
-                const routeColor = redShades[colorIndex];
-
-                paths.push(`path=color:${routeColor}|weight:5|enc:${route.encodedPolyline}`);
-                console.log(`  - ✅ Added polyline path (circular route with waypoints) - Color: ${routeColor}`);
-              } else {
-                console.log(`  - ❌ Polyline has no meaningful waypoints, skipping`);
-              }
-            } else {
-              console.log(`  - ❌ Insufficient points in polyline (need at least 3 for circular route)`);
-            }
-          } catch (error) {
-            console.error(`  - ❌ Error decoding polyline:`, error);
-          }
-        }
-
-        // Add markers for tickets
-        if (route.tickets && route.tickets.length > 0) {
-          route.tickets.forEach((ticket: RouteTicket) => {
-            if (ticket.address && !allWaypoints.includes(ticket.address)) {
-              allWaypoints.push(ticket.address);
-              // Use single character labels to avoid display issues with 2+ digits
-              const label = this.getMarkerLabel(allWaypoints.length);
-              markers.push(`markers=color:red|label:${label}|${encodeURIComponent(ticket.address)}`);
-            }
-          });
-        }
+    // Debug coordinate data
+    console.log('🔍 Route Generator - Debugging coordinate data:');
+    allRoutes.forEach((route, routeIndex) => {
+      console.log(`📍 Route ${routeIndex + 1} (${route.type}):`, {
+        routeId: route.routeId,
+        routeCode: route.routeCode,
+        ticketsCount: route.tickets?.length || 0
       });
-    }
 
-    // Process concrete routes
-    if (this.showConcreteRoutes) {
-      this.filteredConcreteRoutes.forEach((route, index) => {
-        // Check if this specific route is visible
-        if (!this.visibleRoutes.has(route.routeId)) {
-          console.log(`Skipping concrete route ${route.routeCode} - not visible`);
-          return;
-        }
-        console.log(`Processing concrete route ${index + 1}: ${route.routeCode}`);
-
-        if (route.encodedPolyline && route.encodedPolyline.trim() !== '') {
-          console.log(`  - Polyline length: ${route.encodedPolyline.length}`);
-
-          try {
-            const decoded = polyline.decode(route.encodedPolyline);
-            console.log(`  - Decoded points: ${decoded.length}`);
-
-                      if (decoded.length >= 3) {
-              // For circular routes (start and end at enterprise), check if there are meaningful waypoints
-              const firstPoint = decoded[0];
-              const lastPoint = decoded[decoded.length - 1];
-              const midPoint = decoded[Math.floor(decoded.length / 2)];
-
-              // Check distance from start to middle point (should be meaningful for circular routes)
-              const distanceToMid = Math.sqrt(
-                Math.pow(midPoint[0] - firstPoint[0], 2) +
-                Math.pow(midPoint[1] - firstPoint[1], 2)
-              );
-
-              console.log(`  - Distance from start to middle point: ${distanceToMid}`);
-              console.log(`  - Total points in polyline: ${decoded.length}`);
-
-              if (distanceToMid > 0.001) { // Minimum distance threshold for meaningful route
-                // Use different shades of blue-purple for each route
-                const blueShades = ['0x4A90E2', '0x1E90FF', '0x4169E1', '0x7B68EE', '0x9370DB', '0x8A2BE2', '0x9400D3', '0x800080'];
-                const colorIndex = paths.length % blueShades.length;
-                const routeColor = blueShades[colorIndex];
-
-                paths.push(`path=color:${routeColor}|weight:5|enc:${route.encodedPolyline}`);
-                console.log(`  - ✅ Added polyline path (circular route with waypoints) - Color: ${routeColor}`);
-              } else {
-                console.log(`  - ❌ Polyline has no meaningful waypoints, skipping`);
-              }
-            } else {
-              console.log(`  - ❌ Insufficient points in polyline (need at least 3 for circular route)`);
-            }
-          } catch (error) {
-            console.error(`  - ❌ Error decoding polyline:`, error);
-          }
-        }
-
-        // Add markers for tickets
-        if (route.tickets && route.tickets.length > 0) {
-          route.tickets.forEach((ticket: RouteTicket) => {
-            if (ticket.address && !allWaypoints.includes(ticket.address)) {
-              allWaypoints.push(ticket.address);
-              // Use single character labels to avoid display issues with 2+ digits
-              const label = this.getMarkerLabel(allWaypoints.length);
-              markers.push(`markers=color:red|label:${label}|${encodeURIComponent(ticket.address)}`);
-            }
-          });
-        }
+      route.tickets?.forEach((ticket, ticketIndex) => {
+        console.log(`  📍 Ticket ${ticketIndex + 1}:`, {
+          ticketId: ticket.ticketId,
+          address: ticket.address,
+          hasCoordinates: !!ticket.coordinates,
+          coordinates: ticket.coordinates,
+          coordinateKeys: ticket.coordinates ? Object.keys(ticket.coordinates) : [],
+          latType: ticket.coordinates?.latitude ? typeof ticket.coordinates.latitude : 'undefined',
+          lngType: ticket.coordinates?.longitude ? typeof ticket.coordinates.longitude : 'undefined',
+          latValue: ticket.coordinates?.latitude,
+          lngValue: ticket.coordinates?.longitude
+        });
       });
-    }
+    });
 
-    // Process asphalt routes
-    if (this.showAsphaltRoutes) {
-      this.filteredAsphaltRoutes.forEach((route, index) => {
-        // Check if this specific route is visible
-        if (!this.visibleRoutes.has(route.routeId)) {
-          console.log(`Skipping asphalt route ${route.routeCode} - not visible`);
-          return;
-        }
-        console.log(`Processing asphalt route ${index + 1}: ${route.routeCode}`);
+    // Convert routes to Leaflet map format
+    this.leafletRoutes = allRoutes.map(route => ({
+      routeId: route.routeId,
+      routeCode: route.routeCode,
+      type: route.type,
+      encodedPolyline: route.encodedPolyline,
+      tickets: route.tickets.map(ticket => ({
+        ticketId: ticket.ticketId,
+        address: ticket.address,
+        queue: ticket.queue,
+        coordinates: ticket.coordinates // Include coordinates from API
+      }))
+    }));
 
-        if (route.encodedPolyline && route.encodedPolyline.trim() !== '') {
-          console.log(`  - Polyline length: ${route.encodedPolyline.length}`);
-
-          try {
-            const decoded = polyline.decode(route.encodedPolyline);
-            console.log(`  - Decoded points: ${decoded.length}`);
-
-                      if (decoded.length >= 3) {
-              // For circular routes (start and end at enterprise), check if there are meaningful waypoints
-              const firstPoint = decoded[0];
-              const lastPoint = decoded[decoded.length - 1];
-              const midPoint = decoded[Math.floor(decoded.length / 2)];
-
-              // Check distance from start to middle point (should be meaningful for circular routes)
-              const distanceToMid = Math.sqrt(
-                Math.pow(midPoint[0] - firstPoint[0], 2) +
-                Math.pow(midPoint[1] - firstPoint[1], 2)
-              );
-
-              console.log(`  - Distance from start to middle point: ${distanceToMid}`);
-              console.log(`  - Total points in polyline: ${decoded.length}`);
-
-              if (distanceToMid > 0.001) { // Minimum distance threshold for meaningful route
-                // Use different shades of green-yellow for each route
-                const greenShades = ['0x32CD32', '0x228B22', '0x00FF00', '0x90EE90', '0xADFF2F', '0xFFFF00', '0xFFD700', '0xFFA500'];
-                const colorIndex = paths.length % greenShades.length;
-                const routeColor = greenShades[colorIndex];
-
-                paths.push(`path=color:${routeColor}|weight:5|enc:${route.encodedPolyline}`);
-                console.log(`  - ✅ Added polyline path (circular route with waypoints) - Color: ${routeColor}`);
-              } else {
-                console.log(`  - ❌ Polyline has no meaningful waypoints, skipping`);
-              }
-            } else {
-              console.log(`  - ❌ Insufficient points in polyline (need at least 3 for circular route)`);
-            }
-          } catch (error) {
-            console.error(`  - ❌ Error decoding polyline:`, error);
-          }
-        }
-
-        // Add markers for tickets
-        if (route.tickets && route.tickets.length > 0) {
-          route.tickets.forEach((ticket: RouteTicket) => {
-            if (ticket.address && !allWaypoints.includes(ticket.address)) {
-              allWaypoints.push(ticket.address);
-              // Use single character labels to avoid display issues with 2+ digits
-              const label = this.getMarkerLabel(allWaypoints.length);
-              markers.push(`markers=color:red|label:${label}|${encodeURIComponent(ticket.address)}`);
-            }
-          });
-        }
-      });
-    }
-
-    console.log(`Total paths to render: ${paths.length}`);
-
-    // Build the URL
-    const urlParts = [
-      baseUrl,
-      size,
-      mapType,
-      scale,
-      ...markers.slice(0, 15), // Limit markers to avoid URL length issues
-      ...paths.slice(0, 5), // Limit paths to avoid URL length issues
-      `key=${this.GOOGLE_MAPS_API_KEY}`
-    ];
-
-    // Add center and zoom
-    if (allWaypoints.length > 0) {
-      urlParts.push(`center=${encodeURIComponent(allWaypoints[0])}`);
-    } else {
-      urlParts.push('center=Chicago,IL');
-    }
-    urlParts.push('zoom=11');
-
-    const url = `${baseUrl}?${urlParts.join('&')}`;
-
-    console.log('Generated URL length:', url.length);
-    console.log('URL preview:', url.substring(0, 200) + '...');
-
-    if (url.length > 8000) {
-      console.warn('WARNING: URL is very long and may not work properly');
-    }
-
-    return url;
+    // Remove: if (this.visibleRoutes.size === 0) { ... add all ... }
+    // Instead, just update visible routes based on current settings
+    this.updateVisibleRoutes();
   }
 
-    // Generate Chicago map with "No Active Routes" label
-  private generateChicagoMapWithLabel(): string {
-    let mapUrl = `https://maps.googleapis.com/maps/api/staticmap?`;
-    mapUrl += `size=${this.staticMapWidth}x${this.staticMapHeight}`;
-    mapUrl += `&scale=2`; // High DPI for better quality
-    mapUrl += `&maptype=roadmap`;
-    mapUrl += `&key=${this.GOOGLE_MAPS_API_KEY}`;
-    mapUrl += `&center=Chicago,IL`; // Center on Chicago
-    mapUrl += `&zoom=11`; // Zoom level to show Chicago area
-
-    // Add a subtle marker in the center of Chicago
-    mapUrl += `&markers=color:gray|label:•|Chicago,IL`;
-
-    console.log('Generated Chicago map URL:', mapUrl);
-    return mapUrl;
+  // Leaflet map event handlers
+  onMarkerClick(event: any) {
+    // Handle marker click events
   }
 
-  // Update static map when data changes
-  updateStaticMap(): void {
-    this.generateStaticMap();
+  onRouteClick(route: RouteData) {
+    // Handle route click events
   }
+
+  onMapClick(latlng: any) {
+    // Handle map click events
+  }
+
+
 
   // Format address to remove coordinates, city, and state
   formatAddress(address: string): string {
@@ -1633,6 +1916,87 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     return formattedAddress || 'Address not available';
   }
 
+  // Format expiration date for tickets
+  formatExpirationDate(ticket: any): string {
+    // Check if ticket has an explicit expiration date field
+    if (ticket.expirationDate) {
+      return this.formatDate(ticket.expirationDate);
+    }
+
+    // Check if ticket has an expiry date field
+    if (ticket.expiryDate) {
+      return this.formatDate(ticket.expiryDate);
+    }
+
+    // Check if ticket has a validUntil field
+    if (ticket.validUntil) {
+      return this.formatDate(ticket.validUntil);
+    }
+
+    // If no explicit expiration date, calculate based on creation date + standard period
+    // Assuming 30 days from creation as default expiration
+    if (ticket.createdat || ticket.createdAt) {
+      const createdDate = new Date(ticket.createdat || ticket.createdAt);
+      const expirationDate = new Date(createdDate);
+      expirationDate.setDate(expirationDate.getDate() + 30); // 30 days from creation
+      return this.formatDate(expirationDate.toISOString());
+    }
+
+    return 'No expiration date';
+  }
+
+  // Helper method to format dates consistently
+  private formatDate(dateString: string): string {
+    if (!dateString) return 'Invalid date';
+
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return 'Invalid date';
+
+      // Format as MM/DD/YYYY
+      return date.toLocaleDateString('en-US', {
+        month: '2-digit',
+        day: '2-digit',
+        year: 'numeric'
+      });
+    } catch (error) {
+      return 'Invalid date';
+    }
+  }
+
+  // Check if a ticket is expired or expiring soon
+  isTicketExpiredOrExpiringSoon(ticket: any): { isExpired: boolean; isExpiringSoon: boolean; daysLeft: number } {
+    let expirationDate: Date | null = null;
+
+    // Try to get expiration date from various possible fields
+    if (ticket.expirationDate) {
+      expirationDate = new Date(ticket.expirationDate);
+    } else if (ticket.expiryDate) {
+      expirationDate = new Date(ticket.expiryDate);
+    } else if (ticket.validUntil) {
+      expirationDate = new Date(ticket.validUntil);
+    } else if (ticket.createdat || ticket.createdAt) {
+      // Calculate expiration date (30 days from creation)
+      const createdDate = new Date(ticket.createdat || ticket.createdAt);
+      expirationDate = new Date(createdDate);
+      expirationDate.setDate(expirationDate.getDate() + 30);
+    }
+
+    if (!expirationDate || isNaN(expirationDate.getTime())) {
+      return { isExpired: false, isExpiringSoon: false, daysLeft: -1 };
+    }
+
+    const now = new Date();
+    const timeDiff = expirationDate.getTime() - now.getTime();
+    const daysLeft = Math.ceil(timeDiff / (1000 * 3600 * 24));
+
+    return {
+      isExpired: daysLeft < 0,
+      isExpiringSoon: daysLeft >= 0 && daysLeft <= 7, // Expiring within 7 days
+      daysLeft: daysLeft
+    };
+  }
+
 
 
     // Helper method to create simple path from waypoints
@@ -1641,10 +2005,6 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
       return null; // Need at least 2 points to create a path
     }
 
-    console.log(`Creating simple path for ${tickets.length} waypoints`);
-
-    // Create a simple polyline by connecting waypoints in order
-    // This is a fallback when the backend doesn't provide proper polylines
     try {
       const coordinates: [number, number][] = [];
 
@@ -1661,8 +2021,6 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
       // Encode the polyline
       const encodedPolyline = polyline.encode(coordinates);
 
-      console.log(`Created simple polyline with ${coordinates.length} points`);
-
       return {
         polyline: encodedPolyline,
         color: color,
@@ -1675,20 +2033,23 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     }
   }
 
-  // Toggle route visibility methods
+    // Toggle route visibility methods
   toggleSpottingRoutes() {
     this.showSpottingRoutes = !this.showSpottingRoutes;
-    this.updateStaticMap();
+    this.updateTypeVisibility();
+    this.forceMapUpdate();
   }
 
   toggleConcreteRoutes() {
     this.showConcreteRoutes = !this.showConcreteRoutes;
-    this.updateStaticMap();
+    this.updateTypeVisibility();
+    this.forceMapUpdate();
   }
 
   toggleAsphaltRoutes() {
     this.showAsphaltRoutes = !this.showAsphaltRoutes;
-    this.updateStaticMap();
+    this.updateTypeVisibility();
+    this.forceMapUpdate();
   }
 
   // Toggle individual route visibility
@@ -1698,10 +2059,12 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     } else {
       this.visibleRoutes.add(routeId);
     }
-    this.updateStaticMap();
+
+    this.updateLeafletMap();
+    this.forceMapUpdate();
   }
 
-  // Check if a specific route is visible
+  // Check if a specific route is visible on the map (for polylines)
   isRouteVisible(routeId: number): boolean {
     // Check if the route type is visible
     const route = this.findRouteById(routeId);
@@ -1716,6 +2079,11 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
 
     // Check individual route visibility
     return this.visibleRoutes.has(routeId);
+  }
+
+  // Check if a route should be displayed in the routes section (always show)
+  isRouteDisplayed(routeId: number): boolean {
+    return true; // Always show routes in the routes section
   }
 
   // Helper method to find route by ID
@@ -1735,19 +2103,6 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
         return '#228B22'; // Dark green
       default:
         return '#666666'; // Gray
-    }
-  }
-
-  // Get marker label that works with Google Static Maps API
-  private getMarkerLabel(index: number): string {
-    // Use letters for better visibility with Google Static Maps API
-    if (index <= 26) {
-      return String.fromCharCode(64 + index); // A-Z (65-90 in ASCII)
-    } else if (index <= 52) {
-      return String.fromCharCode(96 + (index - 26)); // a-z (97-122 in ASCII)
-    } else {
-      // For more than 52 markers, use numbers but limit to single digit
-      return (index % 9 + 1).toString(); // 1-9, then repeat
     }
   }
 
@@ -1796,6 +2151,63 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     this.loadAsphaltReadyTickets();
     this.loadConcreteReadyTickets();
     this.loadTicketsWithIssues();
-    this.updateStaticMap(); // Update static map after refresh
+    this.updateLeafletMap(); // Update Leaflet map after refresh
+  }
+
+  // Remove route from local arrays immediately
+  private removeRouteFromLocalArrays(routeId: number) {
+    this.spottingRoutes = this.spottingRoutes.filter(route => route.routeId !== routeId);
+    this.concreteRoutes = this.concreteRoutes.filter(route => route.routeId !== routeId);
+    this.asphaltRoutes = this.asphaltRoutes.filter(route => route.routeId !== routeId);
+
+    // Update the leaflet routes array
+    this.leafletRoutes = this.leafletRoutes.filter(route => route.routeId !== routeId);
+
+    // Force immediate map update to remove the cancelled route
+    this.forceMapUpdate();
+  }
+
+  // Force immediate map update
+  private forceMapUpdate() {
+    // Update the leaflet routes data
+    this.updateLeafletMap();
+
+    // Force the map component to refresh if available
+    if (this.leafletMapComponent) {
+      setTimeout(() => {
+        this.leafletMapComponent.refreshMap();
+      }, 100);
+    }
+  }
+
+  // Debug method to check drop targets during drag
+  private debugDropTargets() {
+    console.log('🔍 DROP TARGETS DEBUG:', {
+      timestamp: new Date().toISOString(),
+      routeContainers: document.querySelectorAll('[data-route-section="true"]').length,
+      readyContainers: document.querySelectorAll('[data-ready-section="true"]').length,
+      allDropLists: document.querySelectorAll('.cdk-drop-list').length,
+      routeContainersDetails: Array.from(document.querySelectorAll('[data-route-section="true"]')).map((el: any) => ({
+        id: el.id,
+        routeId: el.getAttribute('data-route-id'),
+        isVisible: el.offsetParent !== null,
+        rect: el.getBoundingClientRect(),
+        style: {
+          display: window.getComputedStyle(el).display,
+          visibility: window.getComputedStyle(el).visibility,
+          zIndex: window.getComputedStyle(el).zIndex,
+          position: window.getComputedStyle(el).position
+        }
+      })),
+      allDropListsDetails: Array.from(document.querySelectorAll('.cdk-drop-list')).map((el: any) => ({
+        id: el.id,
+        className: el.className,
+        dataReadySection: el.getAttribute('data-ready-section'),
+        dataRouteSection: el.getAttribute('data-route-section'),
+        dataRouteId: el.getAttribute('data-route-id'),
+        isVisible: el.offsetParent !== null,
+        rect: el.getBoundingClientRect()
+      }))
+    });
   }
 }

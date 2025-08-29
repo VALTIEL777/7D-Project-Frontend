@@ -1,223 +1,129 @@
-import { Component } from '@angular/core';
-import { DashboardLayoutComponent } from "../../../../shared/dashboard-layout/dashboard-layout.component";
+import { Component, OnInit, OnDestroy } from '@angular/core';
+import { DashboardLayoutComponent } from '../../../../shared/dashboard-layout/dashboard-layout.component';
 import { DataTableComponent } from '../../../../shared/data-table/data-table.component';
 import { CardWithButtonComponent } from '../../../../shared/card-with-button/card-with-button.component';
 import { ConfirmationDialogComponent } from '../../../../shared/confirmation-dialog/confirmation-dialog.component';
 import { SearchDialogComponent } from '../../../../shared/search-dialog/search-dialog.component';
+import { forkJoin } from 'rxjs';
 import { MatDialog } from '@angular/material/dialog';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { ColumnDefinition } from '../../../../shared/data-table/data-table.component';
-
-
-
-// interface ColumnDefinition {
-//   name: string;
-//   header: string;
-//   cell: (element: any) => string | SafeHtml; // ✅ Acepta ambos
-//   isActionColumn?: boolean;
-//   isHtml?: boolean; 
-// }
-
+import { InvoiceStepperCardComponent, InvoiceStepperData } from '../../../../shared/invoice-stepper-card/invoice-stepper-card.component';
+import { TicketService, PaymentInvoiceInfo } from '../../../../core/services/ticket.service';
+import { FilterService } from '../../../../core/services/filter.service';
+import { Subscription } from 'rxjs';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'app-income',
-  imports: [DashboardLayoutComponent, DataTableComponent,CardWithButtonComponent],
+  imports: [
+    DashboardLayoutComponent,
+    DataTableComponent,
+    CardWithButtonComponent,
+    InvoiceStepperCardComponent,
+    MatProgressSpinnerModule,
+    CommonModule,
+  ],
   templateUrl: './income.component.html',
-  styleUrl: './income.component.scss'
+  styleUrl: './income.component.scss',
 })
-export class IncomeComponent {
-  constructor(private dialog: MatDialog,
-    private sanitizer: DomSanitizer
-   ) {}
-     sanitize(html: string): SafeHtml {
+export class IncomeComponent implements OnInit, OnDestroy {
+  filterSubscription: Subscription = new Subscription();
+  filteredInvoiceData: any[] = [];
+
+  constructor(
+    private dialog: MatDialog,
+    private sanitizer: DomSanitizer,
+    private ticketService: TicketService,
+    private filterService: FilterService
+  ) {}
+  sanitize(html: string): SafeHtml {
     return this.sanitizer.bypassSecurityTrustHtml(html);
   }
 
+  totalIncome: number = 0;
+  stepperData: InvoiceStepperData = {};
+  invoiceData: any[] = [];
+  isLoading: boolean = true;
 
-  ticketColumns: ColumnDefinition[] = [
-  {
-    name: 'ticketnum',
-    header: 'Ticket',
-    cell: (ticket: any) => `TK-${ticket.ticketnum}`
-  },
-   {
-    name: 'crew',
-    header: 'Crew',
-    cell: (ticket: any) => ticket.crew
-  },
-  {
-    name: 'startdate',
-    header: 'Start Date',
-    cell: (ticket: any) => ticket.startdate
-  },
-  {
-    name: 'enddate',
-    header: 'End Date',
-    cell: (ticket: any) => ticket.enddate
-  },
-  {
-    name: 'mcost',
-    header: 'Material Cost',
-    cell: (ticket: any) => `$${ticket.mcost}`
-  },
-  {
-    name: 'wcost',
-    header: 'Work Cost',
-    cell: (ticket: any) => `$${ticket.wcost}`
-  },
-  {
-    name: 'ecost',
-    header: 'Equipment Cost',
-    cell: (ticket: any) => `$${ticket.ecost}`
-  },
-  {
-    name: 'total',
-    header: 'Total',
-    cell: (ticket: any) => `$${ticket.total}`
-  },
-  {
-    name: 'actions',
-    header: 'Actions',
-    cell: () => '',
-    isActionColumn: true
+  ngOnInit(): void {
+    this.fetchInvoiceData();
+    this.filterSubscription.add(
+      this.filterService.textSearch$.subscribe(() => this.applyFilters())
+    );
+    this.filterSubscription.add(
+      this.filterService.dateRange$.subscribe(() => this.applyFilters())
+    );
   }
-];
-ticketData = [
-   {
-    ticketnum: 17,
-    crew: 'Team A',
-    startdate: '05/06/2025',
-    enddate: '05/26/2025',
-    mcost: 266,
-    wcost: 266,
-    ecost: 266,
-    total: ''
-  },
-  {
-    ticketnum: 18,
-    crew: 'Team B',
-    startdate: '05/06/2025',
-    enddate: '05/26/2025',
-    mcost: 356,
-    wcost: 348,
-    ecost: 834,
-    total: ''
-  },
-   {
-    ticketnum: 19,
-    crew: 'Team C',
-    startdate: '05/07/2025',
-    enddate: '05/27/2025',
-    mcost: 275,
-    wcost: 310,
-    ecost: 290,
-    total: ''
-  },
-  {
-    ticketnum: 20,
-    crew: 'Team A',
-    startdate: '05/08/2025',
-    enddate: '05/28/2025',
-    mcost: 260,
-    wcost: 305,
-    ecost: 275,
-    total: ''
-  },
-  {
-    ticketnum: 21,
-    crew: 'Team D',
-    startdate: '05/09/2025',
-    enddate: '05/29/2025',
-    mcost: 312,
-    wcost: 298,
-    ecost: 410,
-    total: ''
-  },
-  {
-    ticketnum: 22,
-    crew: 'Team B',
-    startdate: '05/10/2025',
-    enddate: '05/30/2025',
-    mcost: 330,
-    wcost: 289,
-    ecost: 390,
-    total: ''
-  },
-  {
-    ticketnum: 23,
-    crew: 'Team E',
-    startdate: '05/11/2025',
-    enddate: '05/31/2025',
-    mcost: 299,
-    wcost: 320,
-    ecost: 360,
-    total: ''
-  },
-  {
-    ticketnum: 24,
-    crew: 'Team C',
-    startdate: '05/12/2025',
-    enddate: '06/01/2025',
-    mcost: 310,
-    wcost: 310,
-    ecost: 310,
-    total: ''
+
+  ngOnDestroy(): void {
+    this.filterSubscription.unsubscribe();
   }
-];
-totalGeneral: number = 0;
-    totalIncome: number = 0;
 
- ngOnInit(): void {
-  // Calcular total general de tickets
-  this.totalGeneral = 0;
-  this.ticketData.forEach(ticket => {
-    const m = Number(ticket.mcost) || 0;
-    const w = Number(ticket.wcost) || 0;
-    const e = Number(ticket.ecost) || 0;
+  fetchInvoiceData(): void {
+    this.ticketService.getPaymentInvoiceInfo().subscribe({
+      next: (response) => {
+        if (response.success && Array.isArray(response.data)) {
+          this.invoiceData = response.data.map((invoice) => {
+            const diff = Number(invoice.amountPaid ?? 0) - Number(invoice.calculatedCost ?? 0);
+            return {
+              ...invoice,
+              income: `${diff > 0 ? '+' : diff < 0 ? '-' : ''}$${Math.abs(diff)}`,
+            };
+          });
+          this.totalIncome = this.invoiceData.reduce((sum, invoice) => {
+            const diff = Number(invoice.amountPaid ?? 0) - Number(invoice.calculatedCost ?? 0);
+            return sum + diff;
+          }, 0);
+          this.applyFilters();
+        } else {
+          this.invoiceData = [];
+          this.filteredInvoiceData = [];
+          this.totalIncome = 0;
+        }
+      },
+      error: (err) => {
+        this.invoiceData = [];
+        this.filteredInvoiceData = [];
+        this.totalIncome = 0;
+      }
+    });
+  }
 
-    const totalTicket = m + w + e;
-    ticket.total = totalTicket.toString();
-    this.totalGeneral += totalTicket;
-  });
-
-  // Sincronizar "total" con "our"
-  this.invoiceData = this.invoiceData.map(invoice => {
-    const matchedTicket = this.ticketData.find(t => t.ticketnum === invoice.ticketnum);
-    if (matchedTicket) {
-      invoice.our = Number(matchedTicket.total); // Asegura que se pase como número
-    }
-    const diff = invoice.invoiceweb - invoice.our;
-    invoice.income = `${diff > 0 ? '+' : diff < 0 ? '-' : ''}$${Math.abs(diff)}`;
-    this.totalIncome += diff;
-    return invoice;
-  });
-}
-
-
+  applyFilters(): void {
+    const text = this.filterService.currentTextSearch?.toLowerCase() || '';
+    // Date range filter stub (implement as needed)
+    // const dateRange = this.filterService.currentDateRange;
+    this.filteredInvoiceData = this.invoiceData.filter(invoice =>
+      invoice.ticketCode?.toLowerCase().includes(text) ||
+      invoice.invoiceNumber?.toLowerCase().includes(text)
+    );
+  }
 
   onEditTicket(ticket: any): void {
     const dialogRef = this.dialog.open(SearchDialogComponent, {
       width: '500px',
       data: {
-        title: `Ticket: #${ticket.ticketnum}`,
+        title: `Invoice: #${ticket.invoiceNumber}`,
         data: { ...ticket },
-        excludedFields: []
-      }
+        excludedFields: [],
+      },
     });
 
-    dialogRef.afterClosed().subscribe(result => {
+    dialogRef.afterClosed().subscribe((result: any) => {
       if (result) {
-        const index = this.ticketData.findIndex(t => t.ticketnum === ticket.ticketnum);
+        const index = this.invoiceData.findIndex(
+          (t) => t.invoiceNumber === ticket.invoiceNumber
+        );
         if (index !== -1) {
           const updated = {
-            ...this.ticketData[index],
-            ...result
+            ...this.invoiceData[index],
+            ...result,
           };
-          // Recalcular total
-          updated.total = (Number(updated.mcost || 0) + Number(updated.wcost || 0) + Number(updated.ecost || 0)).toString();
-          this.ticketData[index] = updated;
+          this.invoiceData[index] = updated;
 
-          console.log('Ticket actualizado:', updated);
+          console.log('Invoice updated:', updated);
         }
       }
     });
@@ -229,134 +135,70 @@ totalGeneral: number = 0;
       disableClose: true,
       panelClass: 'confirmation-dialog',
       data: {
-        title: 'Eliminar Ticket',
-        message: `¿Estás seguro de eliminar el ticket #${ticket.ticketnum}? Esta acción no se puede deshacer.`,
-        confirmText: 'Eliminar',
-        cancelText: 'Cancelar'
-      }
+        title: 'Delete Invoice',
+        message: `Are you sure you want to delete invoice #${ticket.invoiceNumber}? This action cannot be undone.`,
+        confirmText: 'Delete',
+        cancelText: 'Cancel',
+      },
     });
 
-    dialogRef.afterClosed().subscribe(confirmed => {
+    dialogRef.afterClosed().subscribe((confirmed: boolean) => {
       if (confirmed) {
-        this.ticketData = this.ticketData.filter(t => t.ticketnum !== ticket.ticketnum);
-        console.log('Ticket eliminado:', ticket);
+        this.invoiceData = this.invoiceData.filter(
+          (t) => t.invoiceNumber !== ticket.invoiceNumber
+        );
+        console.log('Invoice deleted:', ticket);
       }
     });
+  }
+
+  // Stepper event handlers
+  onStepCompleted(event: { step: number; data: any }) {
+    console.log(`Step ${event.step} completed:`, event.data);
+    this.stepperData = { ...this.stepperData, ...event.data };
+  }
+
+  onProcessCompleted(data: InvoiceStepperData) {
+    console.log('Invoice processing completed:', data);
+    // You can add logic here to refresh the invoice data or show success message
   }
 
   invoiceColumns: ColumnDefinition[] = [
-  {
-    name: 'ticketnum',
-    header: 'Ticket',
-    cell: (ticket: any) => `TK-${ticket.ticketnum}`
-  },
-  {
-    name: 'startdate',
-    header: 'Start Date',
-    cell: (ticket: any) => ticket.startdate
-  },
-  {
-    name: 'enddate',
-    header: 'End Date',
-    cell: (ticket: any) => ticket.enddate
-  },
-  {
-    name: 'our',
-    header: 'Our calculation',
-    cell: (ticket: any) => `$${ticket.our}`
-  },
-  {
-    name: 'invoiceweb',
-    header: 'Invoice by web',
-    cell: (ticket: any) => `$${ticket.invoiceweb}`
-  },
-  {
-  name: 'income',
-  header: 'Income',
-  cell: (ticket: any) => {
-  const diff = Number(ticket.invoiceweb) - Number(ticket.our);
-  const sign = diff > 0 ? '+' : diff < 0 ? '-' : '';
-  const color = diff > 0 ? 'green' : diff < 0 ? 'red' : 'gray';
-  const html = `<span style="color:${color}; font-weight: bold;">${sign}$${Math.abs(diff)}</span>`;
-  return this.sanitize(html); // 👈 sanitización aquí
-},
-isHtml: true
-},
-
-  
-  {
-    name: 'actions',
-    header: 'Actions',
-    cell: () => '',
-    isActionColumn: true
-  }
-];
-invoiceData = [
-   {
-    ticketnum: 17,
-    startdate: '05/06/2025',
-    enddate: '05/26/2025',
-    our: 266,
-    invoiceweb: 266,
-    income: ''
-  },
-  {
-    ticketnum: 18,
-    startdate: '05/06/2025',
-    enddate: '05/26/2025',
-    our: 265,
-    invoiceweb: 1538,
-    income:''
-  },
-   {
-    ticketnum: 19,
-    startdate: '05/07/2025',
-    enddate: '05/27/2025',
-    our: 270,
-    invoiceweb: 7270,
-    income: ''
-  },
-  {
-    ticketnum: 20,
-    startdate: '05/08/2025',
-    enddate: '05/28/2025',
-    our: 268,
-    invoiceweb: 269,
-    income: ''
-  },
-  {
-    ticketnum: 21,
-    startdate: '05/09/2025',
-    enddate: '05/29/2025',
-    our: 271,
-    invoiceweb: 271,
-    income: ''
-  },
-  {
-    ticketnum: 22,
-    startdate: '05/10/2025',
-    enddate: '05/30/2025',
-    our: 273,
-    invoiceweb: 272,
-    income: ''
-  },
-  {
-    ticketnum: 23,
-    startdate: '05/11/2025',
-    enddate: '05/31/2025',
-    our: 274,
-    invoiceweb: 274,
-    income: ''
-  },
-  {
-    ticketnum: 24,
-    startdate: '05/12/2025',
-    enddate: '06/01/2025',
-    our: 2789,
-    invoiceweb: 7788,
-    income: ''
-  }
-];
-
-
+    // Remove paymentNumber column since it's not in the API response
+    {
+      name: 'invoiceNumber',
+      header: 'Invoice #',
+      cell: (invoice: any) => invoice.invoiceNumber,
+    },
+    {
+      name: 'ticketCode',
+      header: 'Ticket',
+      cell: (invoice: any) => invoice.ticketCode,
+    },
+    {
+      name: 'shop',
+      header: 'Shop',
+      cell: (invoice: any) => invoice.shop || '-',
+    },
+    {
+      name: 'amountRequested',
+      header: 'Invoice Amount',
+      cell: (invoice: any) => `$${invoice.amountRequested}`,
+    },
+    {
+      name: 'amountToPay',
+      header: 'Amount to Pay',
+      cell: (invoice: any) => `$${invoice.amountToPay}`,
+    },
+    {
+      name: 'amountPaid',
+      header: 'Payment Amount',
+      cell: (invoice: any) => invoice.amountPaid !== null && invoice.amountPaid !== undefined ? `$${invoice.amountPaid}` : '-',
+    },
+    {
+      name: 'statusPaid',
+      header: 'Status',
+      cell: (invoice: any) => invoice.statusPaid || '-',
+    },
+  ];
 }

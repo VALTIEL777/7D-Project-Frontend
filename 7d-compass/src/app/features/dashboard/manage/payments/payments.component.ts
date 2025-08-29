@@ -9,6 +9,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { PaymentsService, Payment } from '../../../../core/services/payments/payments.service';
 import { BaseDashboardComponent } from '../../../../shared/base-dashboard.component';
 import { FilterService } from '../../../../core/services/filter.service';
+import { FabButtonComponent } from '../../../../shared/fab-button/fab-button.component';
 
 interface ColumnDefinition {
   name: string;
@@ -24,6 +25,7 @@ interface ColumnDefinition {
     DashboardLayoutComponent,
     CardWithButtonComponent,
     DataTableComponent,
+    FabButtonComponent,
   ],
   templateUrl: './payments.component.html',
   styleUrl: './payments.component.scss'
@@ -214,6 +216,34 @@ export class PaymentsComponent extends BaseDashboardComponent implements OnInit 
             this.snackBar.open('Error deleting payment', 'Close', { duration: 3000 });
           }
         });
+      }
+    });
+  }
+
+  onCreatePayment(newPayment: any): void {
+    const paymentToCreate = {
+      ...newPayment,
+      createdBy: this.getCurrentUserId(),
+      updatedBy: this.getCurrentUserId()
+    };
+
+    this.paymentsService.createPayment(paymentToCreate).subscribe({
+      next: (response) => {
+        // Fetch the full created payment to get all fields
+        this.paymentsService.getPaymentById(response.checkId).subscribe({
+          next: (createdPayment) => {
+            this.tableData = [...this.tableData, createdPayment];
+            this.allData = [...this.tableData];
+            this.applyFilters();
+            console.log('Payment created:', createdPayment);
+          },
+          error: (err) => {
+            console.error('Error fetching created payment:', err);
+          }
+        });
+      },
+      error: (err) => {
+        console.error('Error creating payment:', err);
       }
     });
   }

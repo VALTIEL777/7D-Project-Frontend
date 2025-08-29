@@ -105,122 +105,20 @@
 /* Map container and iframe fill their container fully */
 .map-container {
   position: relative;
-  width: 100%;
-  height: auto;
-  min-height: 400px;
+  width: 100% !important;
+  height: 100vh !important;
   border-radius: 8px;
   overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
+  box-sizing: border-box;
 }
 
 .static-map {
   position: relative;
   width: 100%;
   height: 100%;
-
-  .map-image {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-    border-radius: 8px;
-  }
-
-  .map-overlay {
-    position: absolute;
-    bottom: 8px;
-    left: 8px;
-    background: rgba(0, 0, 0, 0.7);
-    color: white;
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-size: 12px;
-
-    .map-info {
-      margin: 0;
-    }
-  }
-
-  .no-routes-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(255, 255, 255, 0.95);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
-
-    .no-routes-message {
-      text-align: center;
-      padding: 20px;
-      border-radius: 8px;
-      background: white;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-      max-width: 300px;
-
-      mat-icon {
-        font-size: 48px;
-        width: 48px;
-        height: 48px;
-        color: #ccc;
-        margin-bottom: 16px;
-      }
-
-      h3 {
-        margin: 0 0 8px 0;
-        color: #333;
-        font-size: 18px;
-        font-weight: 600;
-      }
-
-      p {
-        margin: 0;
-        color: #666;
-        font-size: 14px;
-        line-height: 1.4;
-      }
-    }
-  }
-
-  .map-legend {
-    position: absolute;
-    top: 8px;
-    left: 8px;
-    background: rgba(255, 255, 255, 0.95);
-    padding: 8px 12px;
-    border-radius: 6px;
-    font-size: 11px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    z-index: 1000;
-
-    .legend-item {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      margin-bottom: 4px;
-
-      &:last-child {
-        margin-bottom: 0;
-      }
-
-      .legend-color {
-        width: 12px;
-        height: 3px;
-        border-radius: 1px;
-        flex-shrink: 0;
-      }
-
-      span {
-        color: #333;
-        font-weight: 500;
-        white-space: nowrap;
-      }
-    }
-  }
 }
 
 .map-loading {
@@ -229,55 +127,8 @@
   align-items: center;
   justify-content: center;
   height: 100%;
-  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  background: #f5f7fa;
   border-radius: 8px;
-
-  p {
-    margin-top: 16px;
-    color: #666;
-    font-size: 14px;
-  }
-}
-
-.map-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-  border-radius: 8px;
-
-  mat-icon {
-    font-size: 48px;
-    width: 48px;
-    height: 48px;
-    color: #ccc;
-    margin-bottom: 16px;
-  }
-
-  p {
-    color: #666;
-    font-size: 14px;
-    margin: 0;
-  }
-}
-
-.map-controls {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  z-index: 1000;
-
-  .hide-map-btn {
-    background: rgba(255, 255, 255, 0.9);
-    border-radius: 50%;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-
-    &:hover {
-      background: rgba(255, 255, 255, 1);
-    }
-  }
 }
 
 .extra-cards-row {
@@ -485,6 +336,8 @@ app-card-with-button .route-list-container {
   height: 100%;
   display: flex;
   flex-direction: column;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 // Route visibility controls
@@ -712,32 +565,88 @@ mat-dialog-actions {
   gap: 20px;
   margin-bottom: 30px;
   width: 100%;
+  height: 100vh; // Set explicit height for top row
+  box-sizing: border-box;
 
   @media (max-width: 768px) {
     flex-direction: column;
     gap: 16px;
+    height: auto; // Auto height on mobile
   }
 }
 
 .routes-section {
   flex: 1;
   width: 50%;
+  height: 100%; // Take full height
+  overflow-y: auto; // Allow scrolling if content overflows
 
   @media (max-width: 768px) {
     width: 100%;
     flex: 1 1 100%;
+    height: auto;
   }
 }
 
 .todays-routes-card {
   flex: 1;
   width: 50%;
-  height: auto; // Auto height to match map content
+  height: 100vh; // Set explicit height for the card
+  display: flex !important;
+  flex-direction: column !important;
 
   @media (max-width: 768px) {
     width: 100%;
     flex: 1 1 100%;
-    height: auto; // Auto height on mobile too
+    height: 70vh; // Reduced height on mobile
+  }
+
+  // Ensure the card content takes full height
+  ::ng-deep .card-content {
+    flex-grow: 1 !important;
+    height: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    padding: 16px !important;
+    box-sizing: border-box !important;
+  }
+
+  // Route controls should be compact
+  .route-controls {
+    flex-shrink: 0; // Don't shrink
+    margin-bottom: 12px;
+  }
+
+  .individual-route-controls {
+    flex-shrink: 0; // Don't shrink
+    margin-bottom: 12px;
+  }
+
+  // Map container should take remaining space
+  .map-container {
+    flex: 1 !important; // Take all remaining space
+    width: 100% !important;
+    height: auto !important; // Let flex handle height
+    min-height: 400px !important; // Minimum height
+    border-radius: 8px;
+    overflow: hidden;
+    display: flex;
+    align-items: stretch; // Stretch to fill
+    justify-content: stretch;
+    box-sizing: border-box;
+    position: relative;
+
+    @media (max-width: 768px) {
+      min-height: 300px !important;
+    }
+  }
+
+  // Ensure Leaflet map fills container
+  app-leaflet-map {
+    width: 100% !important;
+    height: 100% !important;
+    display: block !important;
+    flex: 1 !important;
   }
 }
 
@@ -912,4 +821,91 @@ mat-dialog-actions {
 .success-feedback {
   background-color: #4caf50 !important;
   color: white !important;
+}
+
+/* Ensure Leaflet map takes full width */
+app-leaflet-map {
+  width: 100% !important;
+  display: block !important;
+}
+
+// Increase the height of the ready card tables
+.route-list-container[data-ready-section="true"] {
+  min-height: 220px; // Show at least 5 locations
+  max-height: 350px;
+  padding: 12px 8px;
+  overflow-y: auto;
+}
+
+.route-list-container[data-route-section="true"] {
+  min-height: 220px;
+  max-height: 350px;
+  padding: 12px 8px;
+  overflow-y: auto;
+}
+
+// Location count indicator styling
+.location-count {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background-color: rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  white-space: nowrap;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background-color: rgba(0, 0, 0, 0.1);
+  }
+}
+
+// Expiration date styling
+.expiration-date {
+  font-size: 11px;
+  margin: 2px 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+
+  .expiration-label {
+    font-weight: 600;
+    color: #666;
+  }
+
+  .days-left {
+    color: #4caf50;
+    font-weight: 500;
+  }
+
+  .expired-text {
+    color: #f44336;
+    font-weight: 600;
+    text-transform: uppercase;
+  }
+
+  // Expired state
+  &.expired {
+    color: #f44336;
+    font-weight: 600;
+
+    .expiration-label {
+      color: #f44336;
+    }
+  }
+
+  // Expiring soon state (within 7 days)
+  &.expiring-soon {
+    color: #ff9800;
+    font-weight: 600;
+
+    .expiration-label {
+      color: #ff9800;
+    }
+
+    .days-left {
+      color: #ff9800;
+    }
+  }
 }

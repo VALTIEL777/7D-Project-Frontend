@@ -1,98 +1,532 @@
 <app-sitejob-sidenavbar [teamLeader]="teamLeader" [teamMembers]="teamMembers">
-
-<app-sitejob-layout></app-sitejob-layout>
-
 <div class="content-wrapper">
 <!-- Ya tienes el layout y tabs fuera -->
 <h2 class="section-title">Current Location - {{ location.address }}</h2>
 
+<!-- 🗺️ Mapa estático -->
+<div class="map-section">
+  <div class="map-header">
+    <h3 class="map-title">Location Map</h3>
+  </div>
+
+  <div class="map-container">
+    <app-leaflet-map
+      [routes]="leafletRoutes"
+      [config]="mapConfig"
+      [showMarkers]="true"
+      [showPolylines]="true"
+      [visibleRoutes]="visibleRoutes"
+      [height]="staticMapHeight + 'px'"
+      [width]="'100%'">
+    </app-leaflet-map>
+  </div>
+
+  <!-- Zoom level selector -->
+  <!-- <div class="zoom-selector">
+    <span class="zoom-label">Zoom Level:</span>
+    <div class="zoom-buttons">
+      <button
+        *ngFor="let zoom of availableZoomLevels"
+        mat-stroked-button
+        [class.active]="currentZoomLevel === zoom"
+        (click)="changeZoomLevel(zoom)"
+        class="zoom-btn"
+      >
+        {{ zoom }}
+      </button>
+    </div>
+  </div> -->
+</div>
+
 <!-- General Info -->
 <h3 class="sub-title">General Info</h3>
 <ul class="info-list">
-  <li><strong>Job:</strong> {{ location.job }}</li>
-  <li><strong>Description:</strong>  {{ location.description || 'No description available' }} </li>
-  <li><strong>Size:</strong> {{ location.width }} x {{ location.length }} m</li>
-  <li><strong>Crew type:</strong> {{ crewType }}</li>
+  <li><strong>Ticket Code:</strong> {{ ticketCode || 'Not available' }}</li>
+  <li><strong>Job:</strong> {{ location.job || 'Not available' }}</li>
+  <!-- <li><strong>Description:</strong>  {{ location.description || 'No description available' }} </li> -->
+  <li><strong>Size:</strong> {{ location.length || 'Not available'}} x {{ location.width || 'Not available' }} ft</li>
+  <li><strong>Task:</strong> {{ crewType || 'Not available' }}</li>
+  <li><strong>Street From:</strong> {{ location.streetFrom || 'Not available' }}</li>
+  <li> <strong>Street To:</strong> {{ location.streetTo || 'Not available' }}</li>
+  <li> <strong>Notes S:</strong> {{ partnerSupervisorComment || 'Not available' }}</li>
 </ul>
 
 
-<!-- Activities -->
+
+<h3 class="sub-title">Gallery</h3>
+
+<!-- 🎯 NUEVO: Notificación de actualización de galería -->
+<div *ngIf="galleryUpdatedMessage" class="update-notification" style="background-color: #2196f3; color: white; padding: 8px 16px; border-radius: 4px; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+  <mat-icon style="color: white;">photo_library</mat-icon>
+  <span>{{ galleryUpdatedMessage }}</span>
+</div>
+
+<!-- Date filter now inside the Gallery section -->
+<div class="date-filter" style="display: flex; gap: 16px; align-items: center; margin-bottom: 16px;">
+  <mat-form-field appearance="outline">
+    <mat-label>From</mat-label>
+    <input matInput [matDatepicker]="pickerFrom" [(ngModel)]="filterDateFrom">
+    <mat-datepicker-toggle matSuffix [for]="pickerFrom"></mat-datepicker-toggle>
+    <mat-datepicker #pickerFrom></mat-datepicker>
+  </mat-form-field>
+  <mat-form-field appearance="outline">
+    <mat-label>Until</mat-label>
+    <input matInput [matDatepicker]="pickerTo" [(ngModel)]="filterDateTo">
+    <mat-datepicker-toggle matSuffix [for]="pickerTo"></mat-datepicker-toggle>
+    <mat-datepicker #pickerTo></mat-datepicker>
+  </mat-form-field>
+  <button mat-raised-button color="primary" (click)="applyDateFilter()">Filter</button>
+</div>
+<!-- 📸 SHOW CURRENT TICKET PHOTOS -->
+<div class="gallery">
+<div class="photo-comment" *ngIf="filteredTicketImages && filteredTicketImages.length > 0">
+  <ng-container *ngIf="groupImagesByName(filteredTicketImages) as groupedImages">
+    <mat-accordion>
+      <mat-expansion-panel>
+        <mat-expansion-panel-header>
+          <mat-panel-title>
+            <mat-icon class="calendar-icon">image</mat-icon>
+            Current Ticket Images ({{ filteredTicketImages.length }} total)
+          </mat-panel-title>
+        </mat-expansion-panel-header>
+
+        <div *ngFor="let groupName of (groupedImages | keyvalue)">
+          <button mat-button class="group-button" (click)="toggleGroup(groupName.key)">
+            {{ openedGroups[groupName.key] ? 'Hide' : 'Show' }} {{ groupName.key }} ({{ groupName.value.length }})
+          </button>
+          <div class="images-container" *ngIf="openedGroups[groupName.key]">
+            <div *ngFor="let img of groupName.value" class="photo-item">
+              <p class="photo-name">{{ img.name }}</p>
+
+              <!-- Image container with loading indicator -->
+              <div class="image-container">
+                <!-- Error indicator with retry button -->
+                <div *ngIf="img.error" class="image-error">
+                  <mat-icon color="warn">error</mat-icon>
+                  <p>Error loading image</p>
+                  <button mat-stroked-button color="primary" (click)="retryImageLoad(img)">
+                    <mat-icon>refresh</mat-icon>
+                    Retry
+                  </button>
+                </div>
+
+                <!-- Show image if it's an image -->
+                <img *ngIf="!isPdfFile(img.url)"
+                     [src]="img.url"
+                     [alt]="img.name"
+                     class="location-image"
+                     (error)="onImageError($event, img)" />
+
+                <!-- Show PDF if it's a PDF -->
+                <div *ngIf="isPdfFile(img.url)" class="pdf-container">
+                  <mat-icon class="pdf-icon">picture_as_pdf</mat-icon>
+                  <p class="pdf-name">{{ getFileNameFromUrl(img.url) }}</p>
+                  <div class="pdf-actions">
+                    <button mat-stroked-button color="primary" (click)="openPdfInNewWindow(img.photoId || img.photoid, getFileNameFromUrl(img.url))">
+                      <mat-icon>open_in_new</mat-icon>
+                      View PDF
+                    </button>
+                    <button mat-stroked-button color="accent" (click)="downloadFile(img.photoId || img.photoid, getFileNameFromUrl(img.url))">
+                      <mat-icon>download</mat-icon>
+                      Download
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <p class="photo-date" *ngIf="img.startingdate">
+                <mat-icon class="calendar-icon">calendar_today</mat-icon>
+                <strong>Start:</strong> {{ img.startingdate | date:'MMM d, y, h:mm a' }}
+              </p>
+              <p class="photo-date" *ngIf="img.endingdate">
+                <mat-icon class="calendar-icon">calendar_today</mat-icon>
+                <strong>End:</strong> {{ img.endingdate | date:'MMM d, y, h:mm a' }}
+              </p>
+              <p class="photo-comment-text">{{ img.comment || 'No issues reported' }}</p>
+            </div>
+          </div>
+        </div>
+      </mat-expansion-panel>
+    </mat-accordion>
+  </ng-container>
+</div>
+</div>
+<!-- Show message if there are no current ticket photos -->
+<div *ngIf="filteredTicketImages.length === 0" class="no-images">
+  <p class="no-images-text">
+    <mat-icon color="warn">info</mat-icon>
+    <span *ngIf="currentTicketImages.length === 0">
+      No images have been uploaded for this ticket yet.
+    </span>
+    <span *ngIf="currentTicketImages.length > 0">
+      No images match the applied date filters.
+    </span>
+  </p>
+</div>
+
+<!-- ✅ ACTIVITIES + PHOTO EVIDENCE UNIDOS -->
+
 <h3 class="sub-title">Activities</h3>
-<ul class="info-list">
-  <li *ngFor="let activity of activities">
+<div class="activities-container">
+  <mat-form-field appearance="outline" style="width: 100%; margin-bottom: 16px;">
+    <mat-label>Search activity</mat-label>
+    <mat-icon matPrefix>search</mat-icon>
+    <input matInput [(ngModel)]="activityFilterText" (ngModelChange)="onActivityFilterChange()" placeholder="Search by phase name">
+  </mat-form-field>
+  <div *ngFor="let activity of filteredActivities; let i = index" class="activity-item">
+    <div class="activity-header">
+      <div class="activity-status">
+        <!-- Estado: No asignada -->
+        <mat-icon *ngIf="!activity.assigned" class="status-icon not-assigned" title="Not assigned">
+          radio_button_unchecked
+        </mat-icon>
 
-    <mat-checkbox [(ngModel)]="activity.checked"    [disabled]="activity.locked || isPreviousPhaseIncomplete(activity)"
->{{ activity.name }}</mat-checkbox>
-  </li>
-  <button mat-raised-button color="primary" (click)="saveSelectedActivities()">
-  Save Selected Activities
+        <!-- Estado: Asignada pero no iniciada -->
+        <mat-icon *ngIf="isPhaseAssigned(activity)" class="status-icon assigned" title="Assigned - Click to start">
+          assignment
+        </mat-icon>
+
+        <!-- Estado: Iniciada pero no completada -->
+        <mat-icon *ngIf="isPhaseStarted(activity)" class="status-icon started" title="Started - Click to complete">
+          play_circle
+        </mat-icon>
+
+        <!-- Estado: Completada -->
+        <mat-icon *ngIf="isPhaseCompleted(activity)" class="status-icon completed" title="Completed">
+          check_circle
+        </mat-icon>
+      </div>
+
+      <div class="activity-content">
+        <span class="activity-name">{{ activity.name }}</span>
+
+        <!-- Mostrar fecha de inicio si está iniciada -->
+        <span *ngIf="isPhaseStarted(activity) || isPhaseCompleted(activity)" class="activity-date">
+          Started: {{ activity.startDate | date:'MMM d, y, h:mm a' }}
+        </span>
+
+        <!-- Mostrar fecha de finalización si está completada -->
+        <span *ngIf="isPhaseCompleted(activity)" class="activity-date">
+          Completed: {{ activity.endDate | date:'MMM d, y, h:mm a' }}
+        </span>
+
+        <span class="crew-evidence">Remember take a crew photo.</span>
+      </div>
+    </div>
+
+    <div class="activity-actions">
+      <!-- Botón para iniciar fase asignada -->
+      <!-- Botón para iniciar fase asignada o fase opcional no asignada -->
+<button
+  *ngIf="(isPhaseAssigned(activity) || (activity.optional && !activity.assigned)) && !isPreviousPhaseIncomplete(activity)"
+  mat-stroked-button
+  color="primary"
+  (click)="startPhase(activity)"
+  class="action-btn start-btn"
+>
+  <mat-icon>play_arrow</mat-icon>
+  Start Phase
 </button>
-</ul>
-    <mat-divider></mat-divider>
-<!-- Upload Image & Issue -->
- <h3 class="sub-title">Photo evidence</h3>
-<div class="issue-section">
-  <div class="upload-container">
-    <label class="upload-button">
-      <input
-  type="file"
-  accept="image/*"
-  capture="environment"
-  hidden
-  (change)="onFileSelected($event)"
-/>
 
-      <mat-icon style="font-size: 25px;">camera_enhance</mat-icon>
-    </label>
-    <span>Upload Image</span>
+      <!-- Botón para completar fase iniciada -->
+      <button
+        *ngIf="isPhaseStarted(activity) && !isPreviousPhaseIncomplete(activity)"
+        mat-stroked-button
+        color="primary"
+        (click)="completePhase(activity)"
+        class="action-btn complete-btn"
+      >
+        <mat-icon>done</mat-icon>
+        Complete Phase
+      </button>
+
+      <!-- Indicador de fase completada -->
+      <span *ngIf="isPhaseCompleted(activity)" class="completed-indicator">
+        <mat-icon>check</mat-icon>
+        Completed
+      </span>
+
+      <!-- Indicador de fase bloqueada por fase anterior -->
+      <span *ngIf="isPreviousPhaseIncomplete(activity)" class="blocked-indicator" style="color: #bdbdbd; display: flex; align-items: center; gap: 4px;">
+        <mat-icon>lock</mat-icon>
+        Previous phase required
+      </span>
+    </div>
+
+    <!-- Formulario de subida de evidencia SOLO para esta fase -->
+    <mat-expansion-panel>
+      <mat-expansion-panel-header>
+        <mat-panel-title>
+          Photo evidence
+        </mat-panel-title>
+        <!-- <mat-panel-description>
+          (Opcional)
+        </mat-panel-description> -->
+      </mat-expansion-panel-header>
+      <div class="photo-evidence-upload" style="margin: 16px 0;">
+        <mat-card class="evidence-card">
+          <div class="evidence-header">
+            <button mat-raised-button color="primary" class="upload-btn" (click)="fileInput.click()">
+              <mat-icon>camera_enhance</mat-icon>
+              <span style="margin-left: 8px;">Take photo</span>
+            </button>
+            <span class="restriction">You can upload up to 5 photos.</span>
+
+            <input
+              #fileInput
+              type="file"
+              accept="image/*"
+              capture="environment"
+              hidden
+              (change)="onFileSelected($event, activity)"
+              multiple
+            />
+            <span class="file-names" *ngIf="activity.selectedFiles?.length > 0">
+              {{ getSelectedFileNames(activity) }}
+            </span>
+          </div>
+          <div class="preview-container" *ngFor="let preview of activity.imagePreviews; let j = index">
+            <img *ngIf="preview" [src]="preview" alt="Preview" class="preview-img" />
+            <button mat-icon-button color="warn" (click)="removeImage(j, activity)" aria-label="Eliminar imagen">
+              <mat-icon>close</mat-icon>
+            </button>
+          </div>
+          <mat-form-field appearance="fill" class="evidence-field">
+            <mat-label>Photo Name</mat-label>
+            <input matInput [(ngModel)]="activity.name" placeholder="Ej. Foto de zona de trabajo" />
+            <mat-hint *ngIf="activity.name">
+              <mat-icon>auto_fix_high</mat-icon>
+              Auto complete with the phase selected
+            </mat-hint>
+          </mat-form-field>
+          <mat-form-field appearance="fill" class="evidence-field">
+            <mat-label>Comment</mat-label>
+            <input matInput [(ngModel)]="activity.comment" placeholder="Ej. Permiso faltante, entrada bloqueada..." />
+          </mat-form-field>
+          <button
+            mat-raised-button
+            color="accent"
+            class="submit-btn"
+            (click)="uploadPhotoEvidence(activity.id, activity)"
+            [disabled]="!activity.selectedFiles || activity.selectedFiles.length === 0 || isUploading(activity)"
+          >
+            <mat-icon *ngIf="!isUploading(activity)">cloud_upload</mat-icon>
+            <mat-spinner *ngIf="isUploading(activity)" diameter="20" class="upload-spinner"></mat-spinner>
+            <span>{{ isUploading(activity) ? 'Uploading...' : 'Upload evidence' }}</span>
+          </button>
+
+          <!-- 🎯 NUEVO: Indicador de progreso detallado -->
+          <div *ngIf="isUploading(activity)" class="upload-progress" style="margin-top: 8px;">
+            <mat-progress-bar mode="indeterminate" color="accent"></mat-progress-bar>
+            <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px; font-size: 12px; color: #666;">
+              <mat-icon style="font-size: 16px; width: 16px; height: 16px;">cloud_upload</mat-icon>
+              <span>Processing {{ activity.selectedFiles?.length || 0 }} files...</span>
+            </div>
+          </div>
+        </mat-card>
+      </div>
+    </mat-expansion-panel>
+
+    <!-- 🎯 NUEVO: Campo de comentario en expansion panel -->
+    <mat-expansion-panel>
+      <mat-expansion-panel-header>
+        <mat-panel-title>
+          <mat-icon style="color: #2196f3; margin-right: 8px;">comment</mat-icon>
+          Add Issue
+        </mat-panel-title>
+      </mat-expansion-panel-header>
+
+      <div class="comment-section" style="margin: 16px 0;">
+        <div class="comment-input-container" style="display: flex; gap: 12px; align-items: flex-end;">
+          <mat-form-field appearance="outline" style="flex: 1;">
+            <mat-label>Issue for {{ activity.name }}</mat-label>
+            <textarea matInput
+                      [(ngModel)]="activity.observation"
+                      placeholder="Add a comment about this phase..."
+                      rows="2"
+                      maxlength="500"></textarea>
+            <mat-hint>{{ (activity.observation || '').length }}/500</mat-hint>
+          </mat-form-field>
+
+          <button mat-raised-button
+                  color="primary"
+                  (click)="saveObservation(activity)"
+                  [disabled]="!activity.observation || activity.observation.trim().length === 0"
+                  style="height: 40px;">
+            <mat-icon>send</mat-icon>
+            <span style="margin-left: 4px;">Send</span>
+          </button>
+        </div>
+
+      </div>
+    </mat-expansion-panel>
   </div>
+</div>
 
-  <!-- Input para el nombre de la imagen -->
-  <mat-form-field appearance="outline" class="comment-field">
-    <mat-label>Photo Name</mat-label>
-    <input matInput [(ngModel)]="name" placeholder="e.g. Work zone photo" />
-  </mat-form-field>
-
-  <!-- Input para el comentario -->
-  <mat-form-field appearance="outline" class="comment-field">
-    <mat-label>Comment</mat-label>
-    <input matInput [(ngModel)]="comment" placeholder="e.g. Missing permit, blocked entrance..." />
-  </mat-form-field>
-
-  <!-- Botón para subir -->
-  <button
-    mat-raised-button
-    color="primary"
-    (click)="uploadPhotoEvidence()"
-    [disabled]="!selectedFile"
-  >
-    Upload Evidence
+<!-- 🎯 Issues -->
+<div class="comments-header">
+  <h3 class="sub-title">Comments</h3>
+  <button mat-icon-button
+          class="toggle-all-comments-btn"
+          (click)="toggleAllCommentsVisibility()"
+          [title]="showAllComments ? 'Hide all comments' : 'Show all comments'">
+    <mat-icon>{{ showAllComments ? 'visibility' : 'visibility_off' }}</mat-icon>
   </button>
 </div>
 
+<!-- 🎯 NUEVO: Notificación de actualización de issues -->
+<div *ngIf="commentsUpdatedMessage" class="update-notification" style="background-color: #4caf50; color: white; padding: 8px 16px; border-radius: 4px; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+  <mat-icon style="color: white;">check_circle</mat-icon>
+  <span>{{ commentsUpdatedMessage }}</span>
+</div>
+
+<div class="comments-section">
+  <mat-form-field appearance="outline" style="width: 100%; margin-bottom: 16px;">
+    <mat-label>Search issues</mat-label>
+    <mat-icon matPrefix>search</mat-icon>
+    <input matInput [(ngModel)]="commentFilterText" (ngModelChange)="onCommentFilterChange()" placeholder="Search by issue text, phase name, or date">
+  </mat-form-field>
+
+  <div class="comments-container">
+    <div *ngFor="let comment of filteredComments; let i = index"
+         class="comment-item"
+         [class.hidden-comment]="isCommentHidden(i)"
+         [style.display]="isCommentHidden(i) ? 'none' : 'block'">
+      <div class="comment-header">
+        <div class="comment-phase">
+          <mat-icon class="phase-icon">assignment</mat-icon>
+          <span class="phase-name">{{ comment.phaseName }}</span>
+        </div>
+        <div class="comment-date">
+          <mat-icon class="date-icon">schedule</mat-icon>
+          <span>{{ comment.date | date:'MMM d, y, h:mm a' }}</span>
+          <!-- <button mat-icon-button
+                  class="toggle-comment-btn"
+                  (click)="clearIssue(comment)"
+                  title="Clear issue">
+            <mat-icon>check_circle</mat-icon>
+          </button> -->
+        </div>
+      </div>
+
+      <div class="comment-content">
+        <mat-icon *ngIf="comment.hasIssue" class="issue-icon" color="warn">info</mat-icon>
+        <p class="comment-text">{{ comment.text }}</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mostrar mensaje si no hay issues -->
+  <div *ngIf="filteredComments.length === 0" class="no-comments">
+    <p class="no-comments-text">
+      <mat-icon color="info">info</mat-icon>
+      <span *ngIf="getCommentsFromImages().length === 0">
+        No comments have been reported in photos yet.
+      </span>
+      <span *ngIf="getCommentsFromImages().length > 0">
+        No comments match the applied filter.
+      </span>
+    </p>
+  </div>
+</div>
+
+<mat-divider></mat-divider>
+
+<!-- 🎯 Comments (Observations) -->
+<div class="comments-header">
+  <h3 class="sub-title">Issues</h3>
+  <button mat-icon-button
+          class="toggle-all-comments-btn"
+          (click)="toggleAllObservationsVisibility()"
+          [title]="showAllObservations ? 'Hide all issues' : 'Show all issues'">
+    <mat-icon>{{ showAllObservations ? 'visibility' : 'visibility_off' }}</mat-icon>
+  </button>
+</div>
+
+<!-- 🎯 NUEVO: Notificación de actualización de comments -->
+<div *ngIf="observationsUpdatedMessage" class="update-notification" style="background-color: #2196f3; color: white; padding: 8px 16px; border-radius: 4px; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+  <mat-icon style="color: white;">check_circle</mat-icon>
+  <span>{{ observationsUpdatedMessage }}</span>
+</div>
+
+<div class="comments-section">
+  <mat-form-field appearance="outline" style="width: 100%; margin-bottom: 16px;">
+    <mat-label>Search issues</mat-label>
+    <mat-icon matPrefix>search</mat-icon>
+    <input matInput [(ngModel)]="observationFilterText" (ngModelChange)="onObservationFilterChange()" placeholder="Search by comment text, phase name, or date">
+  </mat-form-field>
+
+  <div class="comments-container">
+    <div *ngFor="let observation of filteredObservations; let i = index"
+         class="comment-item"
+         [class.hidden-comment]="isObservationHidden(i)"
+         [style.display]="isObservationHidden(i) ? 'none' : 'block'">
+      <div class="comment-header">
+        <div class="comment-phase">
+          <mat-icon class="phase-icon">comment</mat-icon>
+          <span class="phase-name">{{ observation.phaseName }}</span>
+        </div>
+        <div class="comment-date">
+          <mat-icon class="date-icon">schedule</mat-icon>
+          <span>{{ observation.date | date:'MMM d, y, h:mm a' }}</span>
+          <button mat-icon-button
+                  class="toggle-comment-btn"
+                  (click)="clearObservation(observation)"
+                  title="Clear comment">
+            <mat-icon>check_circle</mat-icon>
+          </button>
+        </div>
+      </div>
+
+      <div class="comment-content">
+        <p class="comment-text">{{ observation.text }}</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mostrar mensaje si no hay comments -->
+  <div *ngIf="filteredObservations.length === 0" class="no-comments">
+    <p class="no-comments-text">
+      <mat-icon color="info">info</mat-icon>
+      <span *ngIf="getObservationsFromTicketStatus().length === 0">
+        No issues have been added to phases yet.
+      </span>
+      <span *ngIf="getObservationsFromTicketStatus().length > 0">
+        No issues match the applied filter.
+      </span>
+    </p>
+  </div>
+</div>
+
+<mat-divider></mat-divider>
 
 <!-- Permits -->
 <h3 class="sub-title">Permits</h3>
 <div class="permits">
   <div *ngFor="let permit of permits" class="permit">
-    <span>Permit Ticket: DOT-{{ permit.id }}</span>
-    <button mat-raised-button color="primary">Download</button>
+    <span>Permit Ticket: {{ permit.number }}</span>
+    <mat-card class="permit-card">
+      <!-- Galería de archivos subidos para el ticket (solo PDFs) -->
+      <div class="permit-gallery" *ngIf="permitFilesByTicket && permitFilesByTicket.length > 0">
+        <div *ngFor="let file of permitFilesByTicket" class="permit-file-item">
+          <ng-container *ngIf="(file.photoURL && file.photoURL.endsWith('.pdf')) || (file.photourl && file.photourl.endsWith('.pdf'))">
+            <mat-icon class="pdf-icon">picture_as_pdf</mat-icon>
+            <button mat-stroked-button color="accent" (click)="downloadFile(file.photoId || file.photoid, file.name)">
+              <mat-icon>download</mat-icon>
+              Download <br> Permit
+            </button>
+          </ng-container>
+        </div>
+      </div>
+    </mat-card>
   </div>
 </div>
 
-<h3 class="sub-title">Diggers</h3>
-<div class="permits">
-  <div *ngFor="let digger of diggers" class="permit">
-    <span>Digger Ticket: DG-{{ digger.id }}</span>
-    <button mat-raised-button color="primary">Download</button>
-  </div>
-</div>
-
-<!-- Mostrar mensaje si no hay permits ni diggers -->
-<div *ngIf="permits.length === 0 && diggers.length === 0" class="no-permits">
+<!-- Mostrar mensaje si no hay permits -->
+<div *ngIf="permits.length === 0" class="no-permits">
   <p class="no-permits-text">
     <mat-icon color="warn">info</mat-icon>
-    There are no permits or digger tickets assigned yet.
+    There are no permits assigned yet.
   </p>
 </div>
 
@@ -101,12 +535,16 @@
 
 <!-- Contact Supervisor -->
 <h3 class="sub-title">Contact supervisor</h3>
-<p><strong>name:</strong>
-   <!-- {{ temporal.supervisor.name }} --> Renee Mercado 
+<p *ngIf="supervisor"><strong>Name:</strong>
+   {{ supervisor.firstname }} {{ supervisor.lastname }}
 </p>
-<p><strong>phone:</strong>
-  <!-- {{ temporal.supervisor.phone }} --> 7737946851 
-  </p>
+<p *ngIf="supervisor"><strong>E-mail:</strong>
+  {{ supervisor.email }}
+</p>
+<p *ngIf="supervisor"><strong>Phone:</strong>
+   {{ supervisor.phone }}
+</p>
+
     <mat-divider></mat-divider>
 </div>
   <app-sitejob-tabs></app-sitejob-tabs>

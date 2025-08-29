@@ -4,9 +4,31 @@
       [title]="'Fine Management'"
       [data]="filteredFineData"
       [columns]="columns"
-      [pageSizeOptions]="[5, 10, 20]"
+      [pageSizeOptions]="[15, 20, 25]"
       (edit)="onEdit($event)"
       (delete)="onDelete($event)">
     </app-data-table>
   </app-card-with-button>
 </app-dashboard-layout>
+
+<app-fab-button
+  title="Add Fine"
+  icon="gavel"
+  tooltip="Create new fine"
+  dialogTitle="Create New Fine"
+  [fields]="[
+    { name: 'ticketId', label: 'Ticket ID', type: 'number', required: true },
+    { name: 'fineNumber', label: 'Fine Number', type: 'text', required: true },
+    { name: 'fineDate', label: 'Fine Date', type: 'date', required: true },
+    { name: 'amount', label: 'Amount', type: 'number', required: true },
+    { name: 'status', label: 'Status', type: 'select', required: true, options: [
+      { value: 'pending', label: 'Pending' },
+      { value: 'paid', label: 'Paid' },
+      { value: 'overdue', label: 'Overdue' }
+    ]},
+    { name: 'paymentDate', label: 'Payment Date', type: 'date', required: false },
+    { name: 'fineURL', label: 'Fine URL', type: 'text', required: false }
+  ]"
+  [excludedFields]="['fineId', 'createdAt', 'updatedAt', 'createdBy', 'updatedBy']"
+  (itemCreated)="onCreateFine($event)">
+</app-fab-button>

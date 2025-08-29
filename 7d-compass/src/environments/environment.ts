@@ -11,6 +11,8 @@ export const environment = {
   fineServiceUrl: 'http://localhost:3000/api/fines',
   invoiceServiceUrl: 'http://localhost:3000/api/invoices',
   diggerServiceUrl: 'http://localhost:3000/api/diggers',
+  permitServiceUrl: 'http://localhost:3000/api/permits',
+  permitedTicketsServiceUrl: 'http://localhost:3000/api/permitedtickets',
   rtrServiceUrl: 'http://localhost:3000/api/rtr',
   ticketServiceUrl: 'http://localhost:3000/api/tickets',
   usedequipmentServiceUrl:'http://localhost:3000/api/usedequipment',
@@ -20,6 +22,9 @@ export const environment = {
   photoEvidenceServiceUrl: 'http://localhost:3000/api/photoevidence',
   necessaryPhasesServiceUrl:'http://localhost:3000/api/necessaryphases',
   contractUnitPhasesServiceUrl: 'http://localhost:3000/api/contractunitsphases',
-  ticketStatusServiceUrl:'http://localhost:3000/api/ticketstatus',  
-    taskStatusServiceUrl:'http://localhost:3000/api/taskstatus',
+  ticketStatusServiceUrl:'http://localhost:3000/api/ticketstatus',
+  taskStatusServiceUrl:'http://localhost:3000/api/taskstatus',
+  wayfindingServiceUrl: 'http://localhost:3000/api/wayfinding',
+  quadrantsServiceUrl: 'http://localhost:3000/api/quadrants',
+  employeeSkillsServiceUrl: 'http://localhost:3000/api/employee-skills'
 };

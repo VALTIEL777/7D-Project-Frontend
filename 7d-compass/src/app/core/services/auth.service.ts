@@ -27,35 +27,55 @@ export class AuthService {
 
 
 handleLoginResponse(response: any): void {
+  if (typeof window !== 'undefined' && window.localStorage) {
   localStorage.setItem('token', response.token);
 
   if (response.user?.userid) {
     localStorage.setItem('userId', response.user.userid.toString());
-    console.log('🧑‍💻 userId guardado:', response.user.userid);
   } else {
     console.warn('⚠️ userId no presente en la respuesta de login.');
   }
 
-  console.log('📦 Verificación localStorage userId:', localStorage.getItem('userId'));
+  }
 }
 
 
 
   isLoggedIn(): boolean {
+    if (typeof window !== 'undefined' && window.localStorage) {
     return !!localStorage.getItem('token');
+    }
+    return false;
   }
 
   getToken(): string | null {
+    if (typeof window !== 'undefined' && window.localStorage) {
     return localStorage.getItem('token');
-  }
-
-  logout(): void {
-    localStorage.removeItem('token');
-    // Puedes redirigir o limpiar más cosas si necesitas
+    }
+    return null;
   }
 
   getUserRole(): string {
     // Esto depende de tu backend; si envías el rol en el payload, puedes guardarlo también
     return 'admin'; // ejemplo estático, ajusta si guardas datos reales
   }
+
+  // ✅ Verificar si Remember me está activado
+  isRememberMeActive(): boolean {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      return localStorage.getItem('rememberMe') === 'true';
+    }
+    return false;
+  }
+
+  // ✅ Limpiar Remember me al hacer logout
+  logout(): void {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('userId');
+      localStorage.removeItem('rememberMe'); // ✅ Limpiar Remember me también
+    }
+    // Puedes redirigir o limpiar más cosas si necesitas
+  }
 }
+

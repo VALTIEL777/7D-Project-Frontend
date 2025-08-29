@@ -4,9 +4,31 @@
       [title]="'Invoice Management'"
       [data]="filteredInvoiceData"
       [columns]="columns"
-      [pageSizeOptions]="[5, 10, 20]"
+      [pageSizeOptions]="[15, 20, 25]"
       (edit)="onEdit($event)"
       (delete)="onDelete($event)">
     </app-data-table>
   </app-card-with-button>
 </app-dashboard-layout>
+
+<app-fab-button
+  title="Add Invoice"
+  icon="receipt"
+  tooltip="Create new invoice"
+  dialogTitle="Create New Invoice"
+  [fields]="[
+    { name: 'invoiceNumber', label: 'Invoice Number', type: 'text', required: true },
+    { name: 'invoiceDateRequested', label: 'Invoice Date Requested', type: 'date', required: true },
+    { name: 'amountRequested', label: 'Amount Requested', type: 'number', required: true },
+    { name: 'status', label: 'Status', type: 'select', required: true, options: [
+      { value: 'pending', label: 'Pending' },
+      { value: 'approved', label: 'Approved' },
+      { value: 'rejected', label: 'Rejected' },
+      { value: 'paid', label: 'Paid' }
+    ]},
+    { name: 'invoiceURL', label: 'Invoice URL', type: 'text', required: false },
+    { name: 'paymentDate', label: 'Payment Date', type: 'date', required: false }
+  ]"
+  [excludedFields]="['invoiceId', 'ticketId', 'createdAt', 'updatedAt', 'createdBy', 'updatedBy']"
+  (itemCreated)="onCreateInvoice($event)">
+</app-fab-button>

@@ -1,0 +1,285 @@
+<div class="invoice-stepper-card">
+  <div class="stepper-header">
+    <h2 class="stepper-title">{{ title }}</h2>
+  </div>
+
+  <mat-stepper #stepper class="custom-stepper" [linear]="isLinear">
+
+    <!-- Step 1: Upload File -->
+    <mat-step label="Upload File" [editable]="true" [completed]="isStepCompleted(1)">
+      <div class="step-content">
+        <div class="step-header">
+          <mat-icon class="step-icon">cloud_upload</mat-icon>
+          <h3>Upload Invoice Excel File</h3>
+        </div>
+
+        <div class="step-description">
+          <p>Drag and drop your Invoice Excel file or click to browse. Supported formats: .xlsx, .xls</p>
+          <p *ngIf="uploadedFile" class="file-replace-hint">
+            <mat-icon>info</mat-icon>
+            You can drag and drop a new file to replace the current one.
+          </p>
+        </div>
+
+        <div class="upload-section">
+          <app-drag-drop-upload
+            [maxFiles]="1"
+            [allowReplace]="true"
+            [isLoading]="isStep1Loading"
+            [currentFileName]="uploadedFile?.name || ''"
+            (filesDropped)="onFileUploaded($event)">
+          </app-drag-drop-upload>
+        </div>
+
+        <div *ngIf="uploadedFile" class="file-info">
+          <mat-icon>file_present</mat-icon>
+          <span>{{ uploadedFile.name }} ({{ (uploadedFile.size / 1024).toFixed(1) }} KB)</span>
+          <button
+            mat-icon-button
+            color="warn"
+            (click)="clearUploadedFile()"
+            matTooltip="Clear file">
+            <mat-icon>clear</mat-icon>
+          </button>
+        </div>
+
+        <div class="step-actions">
+          <button
+            mat-raised-button
+            color="primary"
+            (click)="stepper.next()"
+            [disabled]="!uploadedFile || isStep1Loading">
+            <mat-icon>arrow_forward</mat-icon>
+            Next: Analyze Excel
+          </button>
+        </div>
+      </div>
+    </mat-step>
+
+    <!-- Step 2: Analyze Excel -->
+    <mat-step label="Analyze Excel" [editable]="canAccessStep(2)" [completed]="isStepCompleted(2)">
+      <div class="step-content">
+        <div class="step-header">
+          <mat-icon class="step-icon">analytics</mat-icon>
+          <h3>Analyze Invoice Excel Data</h3>
+        </div>
+
+        <div class="step-description">
+          <p>Processing uploaded file to identify headers, preview data, inconsistencies, and missing information.</p>
+        </div>
+
+        <div *ngIf="!analyzedData" class="analysis-section">
+          <button
+            mat-raised-button
+            color="primary"
+            (click)="analyzeExcel()"
+            [disabled]="isStep2Loading">
+            <mat-spinner *ngIf="isStep2Loading" diameter="20"></mat-spinner>
+            <mat-icon *ngIf="!isStep2Loading">play_arrow</mat-icon>
+            {{ isStep2Loading ? 'Analyzing...' : 'Start Analysis' }}
+          </button>
+        </div>
+
+        <div *ngIf="analyzedData" class="analysis-results">
+          <div class="results-summary">
+            <div class="summary-item">
+              <span class="summary-label">Total Rows:</span>
+              <span class="summary-value">{{ analyzedData.totalDataRows || 0 }}</span>
+            </div>
+            <div class="summary-item">
+              <span class="summary-label">Consistent:</span>
+              <span class="summary-value consistent">{{ analyzedData.consistentCount || 0 }}</span>
+            </div>
+            <div class="summary-item">
+              <span class="summary-label">Inconsistent:</span>
+              <span class="summary-value inconsistent">{{ analyzedData.inconsistentCount || 0 }}</span>
+            </div>
+            <div class="summary-item">
+              <span class="summary-label">Success Rate:</span>
+              <span class="summary-value">{{ getSuccessRate() }}%</span>
+            </div>
+          </div>
+
+          <!-- Inconsistencies -->
+          <!--
+          <div *ngIf="getInconsistencyCount() > 0" class="inconsistencies-section">
+            <h4>Inconsistencies Found</h4>
+            <div class="inconsistencies-list">
+              <div *ngFor="let inconsistency of analyzedData.inconsistencies" class="inconsistency-item">
+                <mat-icon color="warn">warning</mat-icon>
+                <span>Row {{ inconsistency.row }}: Payline Code "{{ inconsistency.paylineCode }}" has inconsistencies</span>
+              </div>
+            </div>
+          </div>
+          -->
+
+          <!-- Missing Fields -->
+          <div *ngIf="getMissingFieldsCount() > 0" class="missing-section">
+            <h4>Missing Fields</h4>
+            <div class="missing-list">
+              <div *ngFor="let missing of analyzedData.missing" class="missing-item">
+                <mat-icon color="warn">error</mat-icon>
+                <span>{{ missing }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="step-actions">
+          <button mat-button (click)="stepper.previous()">
+            <mat-icon>arrow_back</mat-icon>
+            Previous
+          </button>
+          <button
+            mat-raised-button
+            color="primary"
+            (click)="stepper.next()"
+            [disabled]="!analyzedData">
+            <mat-icon>arrow_forward</mat-icon>
+            Next: Upload Excel
+          </button>
+        </div>
+      </div>
+    </mat-step>
+
+    <!-- Step 3: Upload Excel -->
+    <mat-step label="Upload Excel" [editable]="canAccessStep(3)" [completed]="isStepCompleted(3)">
+      <div class="step-content">
+        <div class="step-header">
+          <mat-icon class="step-icon">upload_file</mat-icon>
+          <h3>Upload Excel to Database</h3>
+        </div>
+
+        <div class="step-description">
+          <p>Upload the analyzed Excel file to the database and process the results.</p>
+        </div>
+
+        <div *ngIf="!uploadResults" class="upload-section">
+          <button
+            mat-raised-button
+            color="primary"
+            (click)="uploadExcel()"
+            [disabled]="isStep3Loading">
+            <mat-spinner *ngIf="isStep3Loading" diameter="20"></mat-spinner>
+            <mat-icon *ngIf="!isStep3Loading">upload_file</mat-icon>
+            {{ isStep3Loading ? 'Uploading...' : 'Upload to Database' }}
+          </button>
+        </div>
+
+        <div *ngIf="uploadResults" class="upload-results">
+          <div class="results-summary">
+            <div class="summary-item">
+              <span class="summary-label">Total Results:</span>
+              <span class="summary-value">{{ uploadResults.results?.length || 0 }}</span>
+            </div>
+            <div class="summary-item">
+              <span class="summary-label">Consistent:</span>
+              <span class="summary-value consistent">{{ getConsistentResultsCount() }}</span>
+            </div>
+            <div class="summary-item">
+              <span class="summary-label">Inconsistent:</span>
+              <span class="summary-value inconsistent">{{ getInconsistentResultsCount() }}</span>
+            </div>
+          </div>
+
+          <!-- Pagination Info -->
+          <div *ngIf="getTotalResults() > pageSize" class="pagination-info">
+            <mat-icon>info</mat-icon>
+            <span>Showing {{ pageSize }} failed results per page. Use the paginator below to navigate through all {{ getTotalResults() }} tickets not found.</span>
+          </div>
+
+          <!-- Results Table -->
+          <div *ngIf="uploadResults.results && uploadResults.results.length > 0" class="results-section">
+            <h4>Upload Results</h4>
+
+            <!-- Debug info -->
+            <div class="debug-info" style="font-size: 12px; color: #666; padding: 5px; margin-bottom: 10px;">
+              Failed Results: {{ getTotalResults() }} | Showing: {{ getPaginatedResults().length }} | Page: {{ currentPage + 1 }} | Page Size: {{ pageSize }}
+            </div>
+
+            <div class="table-container">
+              <table mat-table [dataSource]="getPaginatedResults()" class="mat-elevation-z1">
+                <ng-container matColumnDef="row">
+                  <th mat-header-cell *matHeaderCellDef>Row</th>
+                  <td mat-cell *matCellDef="let result">{{ result.row }}</td>
+                </ng-container>
+
+                <ng-container matColumnDef="ticketCode">
+                  <th mat-header-cell *matHeaderCellDef>Ticket Code</th>
+                  <td mat-cell *matCellDef="let result">{{ result.ticketCode }}</td>
+                </ng-container>
+
+                <ng-container matColumnDef="invoiceNumber">
+                  <th mat-header-cell *matHeaderCellDef>Invoice Number</th>
+                  <td mat-cell *matCellDef="let result">{{ result.invoiceNumber }}</td>
+                </ng-container>
+
+                <ng-container matColumnDef="paylineConsistent">
+                  <th mat-header-cell *matHeaderCellDef>Payline Consistent</th>
+                  <td mat-cell *matCellDef="let result">
+                    <mat-icon [color]="result.paylineConsistent ? 'primary' : 'warn'">
+                      {{ result.paylineConsistent ? 'check_circle' : 'error' }}
+                    </mat-icon>
+                    <span [class]="result.paylineConsistent ? 'consistent' : 'inconsistent'">
+                      {{ result.paylineConsistent ? 'Yes' : 'No' }}
+                    </span>
+                  </td>
+                </ng-container>
+
+                <ng-container matColumnDef="error">
+                  <th mat-header-cell *matHeaderCellDef>Error</th>
+                  <td mat-cell *matCellDef="let result">
+                    <span *ngIf="isFailedResult(result)" style="color: #dc3545; font-weight: bold;">
+                      {{ result.error || result.message || 'General Error' }}
+                    </span>
+                    <span *ngIf="!isFailedResult(result) && result.data?.error" style="color: #ff9800; font-weight: bold;">
+                      {{ result.data.error }}
+                    </span>
+                    <span *ngIf="!isFailedResult(result) && !result.data?.error">-</span>
+                  </td>
+                </ng-container>
+
+                <tr mat-header-row *matHeaderRowDef="resultsColumns"></tr>
+                <tr mat-row *matRowDef="let row; columns: resultsColumns;"></tr>
+              </table>
+
+              <!-- Paginator -->
+              <mat-paginator
+                *ngIf="getTotalResults() > 0"
+                [length]="getTotalResults()"
+                [pageSize]="pageSize"
+                [pageSizeOptions]="pageSizeOptions"
+                [pageIndex]="currentPage"
+                (page)="onPageChange($event)"
+                showFirstLastButtons
+                aria-label="Select page of failed results">
+              </mat-paginator>
+            </div>
+          </div>
+
+          <!-- File URL -->
+          <div *ngIf="uploadResults.fileUrl" class="file-url-section">
+            <h4>Uploaded File</h4>
+            <p class="file-url">{{ uploadResults.fileUrl }}</p>
+          </div>
+        </div>
+
+        <div class="step-actions">
+          <button mat-button (click)="stepper.previous()">
+            <mat-icon>arrow_back</mat-icon>
+            Previous
+          </button>
+          <button
+            mat-raised-button
+            color="primary"
+            [disabled]="!uploadResults"
+            (click)="completeProcess()">
+            <mat-icon>done</mat-icon>
+            Complete Process
+          </button>
+        </div>
+      </div>
+    </mat-step>
+
+  </mat-stepper>
+</div>

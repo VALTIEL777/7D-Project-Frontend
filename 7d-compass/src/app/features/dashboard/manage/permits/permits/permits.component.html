@@ -1,0 +1,62 @@
+<app-dashboard-layout>
+  <app-card-with-button title="Permits Management" [showEyeButton]="false">
+    <!-- Loading indicator -->
+    <div *ngIf="isLoading" class="loading-container" style="text-align: center; padding: 20px;">
+      <mat-spinner diameter="40" style="margin: 0 auto;"></mat-spinner>
+      <p style="margin-top: 10px; color: #666;">Loading permits...</p>
+    </div>
+
+    <!-- Duplicate permits information -->
+    <div *ngIf="!isLoading && hasDuplicatePermits()" class="duplicate-info" style="margin-bottom: 15px; padding: 10px; background-color: #fff3cd; border: 1px solid #ffeaa7; border-radius: 4px;">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <mat-icon style="color: #856404;">info</mat-icon>
+        <span style="color: #856404; font-weight: 500;">
+          Permits with duplicate numbers detected. PDF files can be automatically propagated to all permits with the same number, and deletions can also be propagated.
+        </span>
+        <button mat-button color="primary" (click)="showDuplicateDetails()" style="margin-left: auto;">
+          View Details
+        </button>
+      </div>
+    </div>
+
+    <!-- Multiple upload progress indicator -->
+    <div *ngIf="uploadProgress.isUploading" class="upload-progress" style="margin-bottom: 15px; padding: 15px; background-color: #e3f2fd; border: 1px solid #2196f3; border-radius: 4px;">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <mat-spinner diameter="20" style="color: #2196f3;"></mat-spinner>
+        <span style="color: #1976d2; font-weight: 500;">
+          Uploading file to multiple permits... ({{uploadProgress.current}}/{{uploadProgress.total}})
+        </span>
+        <div style="margin-left: auto; color: #1976d2;">
+          {{(uploadProgress.current / uploadProgress.total * 100) | number:'1.0-0'}}%
+        </div>
+      </div>
+      <div style="margin-top: 10px; background-color: #e0e0e0; border-radius: 2px; height: 4px;">
+        <div style="background-color: #2196f3; height: 100%; border-radius: 2px; transition: width 0.3s ease;" 
+             [style.width.%]="uploadProgress.total > 0 ? (uploadProgress.current / uploadProgress.total * 100) : 0">
+        </div>
+      </div>
+    </div>
+
+    <!-- Debug button -->
+    <div style="margin-bottom: 10px; text-align: center;">
+      <button mat-button color="accent" (click)="debugAllPermitFiles()">
+        Debug Files Status
+      </button>
+    </div>
+
+    <!-- Tabla de datos -->
+    <app-data-table
+      *ngIf="!isLoading"
+      [title]="'Permits Management'"
+      [data]="filteredPermitData"
+      [columns]="columns"
+      [pageSizeOptions]="[15, 20, 25]"
+      [hasFiles]="hasPermitFiles"
+      [showUploadButton]="true"
+      (edit)="onEdit($event)"
+      (delete)="onDelete($event)"
+      (uploadPdf)="onUploadPdf($event)"
+      (deleteFile)="onDeletePermitFile($event)">
+    </app-data-table>
+  </app-card-with-button>
+</app-dashboard-layout>

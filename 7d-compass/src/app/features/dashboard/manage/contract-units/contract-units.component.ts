@@ -8,6 +8,7 @@ import { ConfirmationDialogComponent } from '../../../../shared/confirmation-dia
 import { ContractUnitsService, ContractUnit } from '../../../../core/services/contract-units.service';
 import { BaseDashboardComponent } from '../../../../shared/base-dashboard.component';
 import { FilterService } from '../../../../core/services/filter.service';
+import { FabButtonComponent } from '../../../../shared/fab-button/fab-button.component';
 
 interface ColumnDefinition {
   name: string;
@@ -23,6 +24,7 @@ interface ColumnDefinition {
     DashboardLayoutComponent,
     CardWithButtonComponent,
     DataTableComponent,
+    FabButtonComponent,
   ],
   templateUrl: './contract-units.component.html',
   styleUrl: './contract-units.component.scss'
@@ -55,11 +57,6 @@ export class ContractUnitsComponent extends BaseDashboardComponent implements On
         const numCost = typeof cost === 'string' ? parseFloat(cost) : cost;
         return isNaN(numCost) ? '$0.00' : `$${numCost.toFixed(2)}`;
       }
-    },
-    {
-      name: 'zone',
-      header: 'Zone',
-      cell: (unit: any) => unit.zone || 'N/A'
     },
     {
       name: 'actions',
@@ -208,6 +205,34 @@ export class ContractUnitsComponent extends BaseDashboardComponent implements On
             console.error('Error details:', err.error);
           }
         });
+      }
+    });
+  }
+
+  onCreateContractUnit(newUnit: any): void {
+    const unitToCreate = {
+      ...newUnit,
+      createdBy: this.getCurrentUserId(),
+      updatedBy: this.getCurrentUserId()
+    };
+
+    this.contractUnitsService.createContractUnit(unitToCreate).subscribe({
+      next: (response) => {
+        // Fetch the full created unit to get all fields
+        this.contractUnitsService.getContractUnitById(response.contractUnitId).subscribe({
+          next: (createdUnit) => {
+            this.tableData = [...this.tableData, createdUnit];
+            this.allData = [...this.tableData];
+            this.applyFilters();
+            console.log('Contract unit created:', createdUnit);
+          },
+          error: (err) => {
+            console.error('Error fetching created contract unit:', err);
+          }
+        });
+      },
+      error: (err) => {
+        console.error('Error creating contract unit:', err);
       }
     });
   }

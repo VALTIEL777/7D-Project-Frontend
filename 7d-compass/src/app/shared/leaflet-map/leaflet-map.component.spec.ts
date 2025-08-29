@@ -1,18 +1,18 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { MiscGenerationComponent } from './misc-generation.component';
+import { LeafletMapComponent } from './leaflet-map.component';
 
-describe('MiscGenerationComponent', () => {
-  let component: MiscGenerationComponent;
-  let fixture: ComponentFixture<MiscGenerationComponent>;
+describe('LeafletMapComponent', () => {
+  let component: LeafletMapComponent;
+  let fixture: ComponentFixture<LeafletMapComponent>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [MiscGenerationComponent]
+      imports: [LeafletMapComponent]
     })
     .compileComponents();
 
-    fixture = TestBed.createComponent(MiscGenerationComponent);
+    fixture = TestBed.createComponent(LeafletMapComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
   });

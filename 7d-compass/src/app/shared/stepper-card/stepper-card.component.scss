@@ -264,6 +264,13 @@
   border: 2px dashed #dee2e6;
 }
 
+.save-button-container {
+  display: flex;
+  justify-content: center;
+  margin-top: 20px;
+  padding: 20px;
+}
+
 .analysis-results {
   margin-bottom: 20px;
 }
@@ -421,6 +428,19 @@
   &.info {
     background: #d1ecf1;
     color: #0c5460;
+  }
+}
+
+// Validation table specific styling
+.validation-results {
+  .mat-table {
+    .mat-cell {
+      &.mat-column-field {
+        font-weight: 600;
+        color: #007bff;
+        font-family: monospace;
+      }
+    }
   }
 }
 

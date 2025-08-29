@@ -1,6 +1,30 @@
-export const environmentV = {
-    production: true,
-    apiUrl: 'https://stirred-sculpin-carefully.ngrok-free.app/api',
-    authServiceUrl: 'https://stirred-sculpin-carefully.ngrok-free.app/apih',
-    productServiceUrl: 'https://stirred-sculpin-carefully.ngrok-free.app/api',
-  };
+export const environment = {
+  production: true,
+  apiUrl: '/api',  // ← Use relative path, Nginx will proxy to API
+  authServiceUrl: '/api/auths',
+  crewServiceUrl: '/api/crews',
+  peopleServiceUrl: '/api/people',
+  skillsServiceUrl: '/api/skills',
+  equipmentServiceUrl: '/api/equipment',
+  inventoryServiceUrl: '/api/inventory',
+  supplierServiceUrl: '/api/suppliers',
+  fineServiceUrl: '/api/fines',
+  invoiceServiceUrl: '/api/invoices',
+  diggerServiceUrl: '/api/diggers',
+  permitServiceUrl: '/api/permits',
+  permitedTicketsServiceUrl: '/api/permitedtickets',
+  rtrServiceUrl: '/api/rtr',
+  ticketServiceUrl: '/api/tickets',
+  usedequipmentServiceUrl: '/api/usedequipment',
+  usedinventoryServiceUrl: '/api/usedinventory',
+  crewEmployeesServiceUrl: '/api/crewemployees',
+  routeServiceUrl: '/api/routes',
+  photoEvidenceServiceUrl: '/api/photoevidence',
+  necessaryPhasesServiceUrl: '/api/necessaryphases',
+  contractUnitPhasesServiceUrl: '/api/contractunitsphases',
+  ticketStatusServiceUrl: '/api/ticketstatus',
+  taskStatusServiceUrl: '/api/taskstatus',
+  wayfindingServiceUrl: '/api/wayfinding',
+  quadrantsServiceUrl: '/api/quadrants',
+  employeeSkillsServiceUrl: '/api/employee-skills'
+};

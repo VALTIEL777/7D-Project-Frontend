@@ -5,18 +5,23 @@ import { environment } from '../../../environments/environment';
 
 export interface Ticket {
   ticketId?: number;
+  ticketid?: number;
   incidentId?: number;
   incidentName?: string;
   quadrantId?: number;
+  cuadranteId?: number;
   contractUnitId?: number;
   contractUnitName?: string;
   wayfindingId?: number;
+    wayfindingid?: number;
   paymentId?: number | null;
   mobilizationId?: number | null;
   ticketCode: string;
+  ticketcode?: string;
   quantity: number;
   daysOutstanding: number | null;
   comment7d: string | null;
+  PeopleGasComment?: string | null;
   partnerComment: string | null;
   partnerSupervisorComment: string | null;
   contractNumber: string | null;
@@ -36,6 +41,23 @@ export interface TicketResponse {
 
 export interface DeleteResponse {
   message: string;
+}
+
+export interface PaymentInvoiceInfo {
+  ticketCode: string;
+  amountToPay: number;
+  calculatedCost: number;
+  invoiceNumber: string;
+  amountRequested: number;
+  amountPaid: number | null;
+  statusPaid: string | null;
+}
+
+export interface PaymentInvoiceInfoResponse {
+  success: boolean;
+  message: string;
+  count: number;
+  data: PaymentInvoiceInfo[];
 }
 
 @Injectable({
@@ -66,8 +88,18 @@ export class TicketService {
     return this.http.put<Ticket>(`${this.baseUrl}/${id}`, ticket);
   }
 
+  updateTicketB(id: number, ticket: Ticket): Observable<Ticket> {
+    return this.http.put<Ticket>(`${this.baseUrl}/${id}`, ticket);
+  }
+
   // Delete ticket by ID
   deleteTicket(id: number): Observable<DeleteResponse> {
     return this.http.delete<DeleteResponse>(`${this.baseUrl}/${id}`);
+  }
+
+
+  // Get payment and invoice info for tickets
+  getPaymentInvoiceInfo(): Observable<PaymentInvoiceInfoResponse> {
+    return this.http.get<PaymentInvoiceInfoResponse>(`${environment.apiUrl}/tickets/payment-invoice-info`);
   }
 }

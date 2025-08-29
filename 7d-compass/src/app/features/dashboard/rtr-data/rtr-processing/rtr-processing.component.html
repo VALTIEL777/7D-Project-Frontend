@@ -24,7 +24,8 @@
             <mat-icon>folder_open</mat-icon>
             <span>No RTR files found</span>
           </div>
-          <div *ngFor="let rtr of receivedRTRs" class="history-item">
+
+          <div *ngFor="let rtr of getPaginatedReceivedRTRs()" class="history-item">
             <div class="history-content">
               <div class="history-info">
                 <h4 class="history-title">{{ rtr.name }}</h4>
@@ -40,6 +41,18 @@
             </div>
             <hr class="custom-divider" />
           </div>
+
+          <!-- Paginator for Received RTR History -->
+          <mat-paginator
+            *ngIf="receivedRTRs.length > 0"
+            [length]="receivedRTRs.length"
+            [pageSize]="receivedPageSize"
+            [pageSizeOptions]="[receivedPageSize]"
+            [pageIndex]="receivedCurrentPage"
+            (page)="onReceivedPageChange($event)"
+            showFirstLastButtons
+            aria-label="Select page of received RTR files">
+          </mat-paginator>
         </div>
       </app-card-with-button>
 
@@ -54,7 +67,8 @@
             <mat-icon>folder_open</mat-icon>
             <span>No RTR files found</span>
           </div>
-          <div *ngFor="let rtr of sentRTRs" class="history-item">
+
+          <div *ngFor="let rtr of getPaginatedSentRTRs()" class="history-item">
             <div class="history-content">
               <div class="history-info">
                 <h4 class="history-title">{{ rtr.name }}</h4>
@@ -70,6 +84,18 @@
             </div>
             <hr class="custom-divider" />
           </div>
+
+          <!-- Paginator for 7D-RTR -->
+          <mat-paginator
+            *ngIf="sentRTRs.length > 0"
+            [length]="sentRTRs.length"
+            [pageSize]="sentPageSize"
+            [pageSizeOptions]="[sentPageSize]"
+            [pageIndex]="sentCurrentPage"
+            (page)="onSentPageChange($event)"
+            showFirstLastButtons
+            aria-label="Select page of sent RTR files">
+          </mat-paginator>
         </div>
       </app-card-with-button>
 

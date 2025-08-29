@@ -1,0 +1,128 @@
+<app-dashboard-layout>
+  <div class="content-container">
+    <div class="table-section">
+      <app-card-with-button title="Photo Evidence" [showEyeButton]="false">
+        <div *ngIf="loading" class="loading-container">
+          <div class="loading-spinner"></div>
+          <p>Loading photo evidence...</p>
+        </div>
+
+        <div *ngIf="error" class="error-container">
+          <p class="error-message">{{ error }}</p>
+          <button mat-button (click)="loadGalleryData()">Retry</button>
+        </div>
+
+        <app-data-table
+          *ngIf="!loading && !error"
+          [title]="'Photo Evidence'"
+          [data]="filteredGalleryData"
+          [columns]="columns"
+          [showEditButton]="false"
+          [showDeleteButton]="false"
+          [showViewButton]="true"
+          [pageSizeOptions]="[15]"
+          [shouldShowViewButton]="shouldShowViewButton"
+          [getViewButtonColor]="getViewButtonColor"
+          [getViewButtonTooltip]="getViewButtonTooltip"
+          (view)="onTicketSelect($event)"
+          (commentChange)="onCommentChange($event)">
+        </app-data-table>
+      </app-card-with-button>
+    </div>
+
+    <div class="gallery-section" *ngIf="selectedTicket">
+      <app-card-with-button title="Photo Gallery" [showEyeButton]="false">
+        <div class="ticket-info">
+          <div class="ticket-header">
+            <h3>{{ selectedTicket?.ticketCode }}</h3>
+          </div>
+          <div class="ticket-details">
+            <div class="detail-item">
+              <span class="label">Address:</span>
+              <span class="value">{{ selectedTicket?.addresses?.[0]?.fullAddress || 'N/A' }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="label">Photos:</span>
+              <span class="value">{{ selectedTicket ? getPhotoCount(selectedTicket) : 0 }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Loading spinner for photos -->
+        <div *ngIf="loadingPhotos" class="loading-photos-container">
+          <div class="loading-spinner"></div>
+          <p>Loading photos for this ticket...</p>
+        </div>
+
+        <div class="photo-gallery" *ngIf="!loadingPhotos && allPhases.length > 0">
+          <div class="phase-groups">
+            <div *ngFor="let phase of allPhases" class="phase-group">
+              <div class="phase-header">
+                <div class="phase-info">
+                  <h4 class="phase-title">{{ phase.phaseName }}</h4>
+                  <span class="photo-count">{{ phase.photos.length }} photo{{ phase.photos.length !== 1 ? 's' : '' }}</span>
+                </div>
+                <button mat-icon-button class="add-photo-btn" (click)="addPhotoToPhase(getTaskStatusId(phase.phaseName))" matTooltip="Add Photo to this phase" [disabled]="uploadingPhoto">
+                  <mat-icon *ngIf="!uploadingPhoto">add_a_photo</mat-icon>
+                  <div *ngIf="uploadingPhoto" class="upload-spinner"></div>
+                </button>
+              </div>
+              <div class="gallery-grid" *ngIf="phase.photos.length > 0">
+                <div *ngFor="let photo of phase.photos" class="photo-item">
+                  <div class="photo-container">
+                    <img
+                      [src]="getPhotoPreviewUrl(photo)"
+                      [alt]="photo.name || 'Photo'"
+                      class="photo-preview"
+                      (error)="onImageError($event)">
+                    <div class="photo-overlay">
+                      <button mat-icon-button class="view-photo-btn" (click)="viewPhoto(photo)">
+                        <mat-icon>visibility</mat-icon>
+                      </button>
+                      <button mat-icon-button class="delete-photo-btn" (click)="deletePhoto(photo)" [disabled]="deletingPhoto">
+                        <mat-icon *ngIf="!deletingPhoto">delete</mat-icon>
+                        <div *ngIf="deletingPhoto" class="delete-spinner"></div>
+                      </button>
+                    </div>
+                  </div>
+                  <div class="photo-info">
+                    <div class="photo-name">{{ photo.name || 'Photo' }}</div>
+                    <div class="photo-date">{{ formatDate(photo.date) }}</div>
+                    <div class="photo-comment" *ngIf="photo.comment">{{ photo.comment }}</div>
+                  </div>
+                </div>
+              </div>
+              <div *ngIf="phase.photos.length === 0" class="no-photos-phase">
+                <p>No photos for this phase yet</p>
+                <p class="upload-hint">Click the camera icon above to add photos</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Show no phases message only when ticket has no task statuses -->
+        <div *ngIf="shouldShowNoPhases" class="no-phases">
+          <mat-icon>construction</mat-icon>
+          <p>No phases available for this ticket</p>
+          <p class="phase-hint">This ticket doesn't have any task statuses defined</p>
+        </div>
+
+        <!-- Show no photos message when phases exist but have no photos -->
+        <div *ngIf="shouldShowNoPhotos" class="no-photos-overall">
+          <mat-icon>photo_library</mat-icon>
+          <p>No photos uploaded for this ticket yet</p>
+          <p class="upload-hint">Click the camera icon above any phase to add photos</p>
+        </div>
+      </app-card-with-button>
+    </div>
+
+    <div class="no-ticket-selected" *ngIf="!selectedTicket">
+      <app-card-with-button title="Photo Gallery" [showEyeButton]="false">
+        <div class="no-ticket-content">
+          <mat-icon>photo_library</mat-icon>
+          <p>Select a ticket from the table to view its photos</p>
+        </div>
+      </app-card-with-button>
+    </div>
+  </div>
+</app-dashboard-layout>

@@ -3,8 +3,6 @@ import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 
-
-
 @Injectable({
   providedIn: 'root'
 })
@@ -13,28 +11,29 @@ export class PeopleService {
 
   constructor(private http: HttpClient) {}
 
-  // Obtener lista de todos los empleados
+  // Get all people with user accounts
   getAllPeople(): Observable<any[]> {
-    return this.http.get<any[]>(this.apiUrl);
+    return this.http.get<any[]>(`${this.apiUrl}/with-users`);
   }
 
-  // Obtener un empleado por ID
+  // Get a person by ID
   getPeopleById(employeeId: number): Observable<any> {
     return this.http.get<any>(`${this.apiUrl}/${employeeId}`);
   }
 
-  // Crear un nuevo empleado
+  // Create a new person with user account
   createPeople(person: any): Observable<any> {
-    return this.http.post<any>(this.apiUrl, person);
+    return this.http.post<any>(`${this.apiUrl}/with-user`, person);
   }
 
-  // Actualizar un empleado por ID
+  // Update a person with user account
   updatePeople(employeeId: number, person: Partial<any>): Observable<any> {
-    return this.http.put<any>(`${this.apiUrl}/${employeeId}`, person);
+    return this.http.put<any>(`${this.apiUrl}/${employeeId}/with-user`, person);
   }
 
-  // Eliminar un empleado por ID
-  deletePeople(employeeId: number): Observable<{ message: string }> {
-    return this.http.delete<{ message: string }>(`${this.apiUrl}/${employeeId}`);
+  // Soft delete a person with user account
+  deletePeople(employeeId: number, deletePayload?: any): Observable<{ message: string }> {
+    const payload = deletePayload || { deleteUser: true, updatedBy: 1 };
+    return this.http.delete<{ message: string }>(`${this.apiUrl}/${employeeId}/soft-delete`, { body: payload });
   }
 }

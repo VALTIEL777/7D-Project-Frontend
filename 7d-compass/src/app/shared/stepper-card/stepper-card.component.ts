@@ -249,6 +249,7 @@ export class StepperCardComponent {
   userDecisions: { [ticketId: string]: { [field: string]: 'excel' | 'database' } } = {};
   missingInfoFilled: any[] = [];
   skippedRows: any[] = [];
+  originalParsedTickets: { [ticketCode: string]: any } = {};
 
   // Display columns for tables
   inconsistencyColumns: string[] = ['ticket', 'field', 'excelValue', 'databaseValue', 'choice'];
@@ -289,6 +290,15 @@ export class StepperCardComponent {
           if (response.success) {
             this.rtrId = response.rtrId;
             this.parsedData = response.parsedData;
+            // Build originalParsedTickets as an object mapping ticketCode to ticket data
+            this.originalParsedTickets = {};
+            if (Array.isArray(response.parsedData)) {
+              response.parsedData.forEach(ticket => {
+                if (ticket.TASK_WO_NUM) {
+                  this.originalParsedTickets[ticket.TASK_WO_NUM] = ticket;
+                }
+              });
+            }
 
             this.snackBar.open(response.message, 'Close', { duration: 3000 });
             this.stepCompleted.emit({ step: 1, data: { uploadedFile: this.uploadedFile, rtrId: this.rtrId, parsedData: this.parsedData } });
@@ -317,6 +327,7 @@ export class StepperCardComponent {
     this.userDecisions = {};
     this.missingInfoFilled = [];
     this.skippedRows = [];
+    this.originalParsedTickets = {};
 
     // Reset loading states
     this.isStep1Loading = false;
@@ -350,25 +361,16 @@ export class StepperCardComponent {
       parsedData: this.parsedData
     };
 
-    console.log('🔍 ANALYSIS REQUEST JSON:');
-    console.log('URL:', `${environment.apiUrl}/rtr/stepper/analyze`);
-    console.log('Request Body:', JSON.stringify(analysisRequest, null, 2));
-
     this.http.post<StepperAnalyzeResponse>(`${environment.apiUrl}/rtr/stepper/analyze`, analysisRequest)
       .subscribe({
         next: (response) => {
-          console.log('✅ ANALYSIS RESPONSE:', response);
           if (response.success) {
             this.analyzedData = response.analysis;
 
             // Convert inconsistencies to our format - one row per ticket with the first inconsistency
             this.inconsistencies = [];
-            console.log('Processing inconsistent tickets:', response.analysis.inconsistentTickets?.length || 0);
 
             response.analysis.inconsistentTickets.forEach((ticket, index) => {
-              // Debug: Log the full ticket object to see what fields are available
-              console.log(`🔍 Processing inconsistent ticket ${index}:`, JSON.stringify(ticket, null, 2));
-
               // Use the actual ticketId from the backend
               const ticketId = ticket.databaseData.ticketid;
 
@@ -380,7 +382,6 @@ export class StepperCardComponent {
               // Take the first inconsistency for this ticket to display in UI
               if (ticket.inconsistencies && ticket.inconsistencies.length > 0) {
                 const firstInconsistency = ticket.inconsistencies[0];
-                console.log('Adding inconsistency for ticket:', ticket.databaseData.ticketcode, 'field:', firstInconsistency.field, 'ticketId:', ticketId);
 
                 this.inconsistencies.push({
                   ticketId: ticketId,
@@ -405,19 +406,19 @@ export class StepperCardComponent {
               }
             });
 
-            // Reset pagination to first page when new data is loaded
-            this.currentPage = 0;
-
-            console.log('Final inconsistencies array length:', this.inconsistencies.length);
-
             // Convert missing info to our format - handle both single and multiple missing fields
             this.missingInfo = [];
             response.analysis.missingInfo.forEach(item => {
+              // Ensure the original parsed data for this ticket is in originalParsedTickets
+              if (item.ticketCode && item.row) {
+                this.originalParsedTickets[item.ticketCode] = item.row;
+              }
+
               // Handle single missing field
               if (item.missingField) {
                 this.missingInfo.push({
                   field: item.missingField,
-                  label: item.missingField,
+                  label: item.missingField.replace(/^Edit\s+/i, ''),
                   value: item.row[item.missingField] || null,
                   required: item.type === 'critical' || item.type === 'required',
                   type: 'text',
@@ -431,7 +432,7 @@ export class StepperCardComponent {
                 item.missingFields.forEach(field => {
                   this.missingInfo.push({
                     field: field.field,
-                    label: field.name,
+                    label: field.name.replace(/^Edit\s+/i, ''),
                     value: item.row[field.field] || null,
                     required: field.type === 'required',
                     type: 'text',
@@ -442,6 +443,9 @@ export class StepperCardComponent {
                 });
               }
             });
+
+            // Reset pagination to first page when new data is loaded
+            this.currentPage = 0;
 
             this.snackBar.open(response.message, 'Close', { duration: 3000 });
             this.stepCompleted.emit({ step: 2, data: { analyzedData: this.analyzedData } });
@@ -497,23 +501,11 @@ export class StepperCardComponent {
     setTimeout(() => {
       this.isStep3Loading = false;
 
-      console.log('Review inconsistencies - analyzedData:', this.analyzedData);
-      console.log('Review inconsistencies - inconsistencies array:', this.inconsistencies);
-      console.log('Review inconsistencies - userDecisions:', this.userDecisions);
-
       // Check if we have inconsistencies from the analysis step
       if (this.analyzedData?.inconsistentTickets && this.analyzedData.inconsistentTickets.length > 0) {
-        console.log('Found inconsistencies from analysis:', this.analyzedData.inconsistentTickets.length);
-        console.log('Inconsistencies array length:', this.inconsistencies.length);
-
-        if (this.inconsistencies.length > 0) {
-          this.snackBar.open(`Found ${this.inconsistencies.length} inconsistencies to review. Please make your selections.`, 'Close', { duration: 3000 });
-        } else {
-          this.snackBar.open(`Found ${this.analyzedData.inconsistentTickets.length} tickets with inconsistencies, but none were processed.`, 'Close', { duration: 3000 });
-        }
+        this.snackBar.open(`Found ${this.inconsistencies.length} inconsistencies to review. Please make your selections.`, 'Close', { duration: 3000 });
       } else if (this.inconsistencies.length === 0) {
-        console.log('No inconsistencies found during analysis');
-        this.snackBar.open('No inconsistencies found. You can proceed to the next step.', 'Close', { duration: 3000 });
+        this.snackBar.open('No inconsistencies found during analysis', 'Close', { duration: 3000 });
       }
 
       this.stepCompleted.emit({ step: 3, data: { inconsistencies: this.inconsistencies } });
@@ -558,16 +550,16 @@ export class StepperCardComponent {
       if (result) {
         item.value = result[item.field];
 
-        // Update missingInfoFilled
-        const existingIndex = this.missingInfoFilled.findIndex(f => f.ticketCode === item.ticketCode);
-        if (existingIndex >= 0) {
-          this.missingInfoFilled[existingIndex].data[item.field] = item.value;
-        } else {
-          this.missingInfoFilled.push({
-            ticketCode: item.ticketCode!,
-            data: { [item.field]: item.value }
-          });
+        // Find or create the entry for this ticket
+        let entry = this.missingInfoFilled.find(f => f.ticketCode === item.ticketCode);
+        if (!entry) {
+          entry = { ticketCode: item.ticketCode, data: {} };
+          this.missingInfoFilled.push(entry);
         }
+        entry.data[item.field] = item.value;
+
+        // Debug log after updating missingInfoFilled
+        console.log('DEBUG: missingInfoFilled after edit:', JSON.stringify(this.missingInfoFilled, null, 2));
       }
     });
   }
@@ -609,23 +601,52 @@ export class StepperCardComponent {
 
     this.isStep5Loading = true;
 
-    // Log the data being sent for debugging
-    console.log('Validation data being sent:', {
-      rtrId: this.rtrId,
-      newTicketsCount: this.analyzedData?.newTickets?.length || 0,
-      inconsistentTicketsCount: this.analyzedData?.inconsistentTickets?.length || 0,
-      userDecisions: this.userDecisions,
-      missingInfoFilledCount: this.missingInfoFilled.length,
-      skippedRowsCount: this.skippedRows.length
+    // Build a set of relevant ticket codes (from missingInfoFilled and inconsistentTickets)
+    const relevantTicketCodes = new Set([
+      ...this.missingInfoFilled.map(t => t.ticketCode),
+      ...((this.analyzedData?.inconsistentTickets || []).map((t: any) => t.ticketCode))
+    ]);
+    // Build the filtered originalParsedTickets
+    const filteredOriginalParsedTickets: { [ticketCode: string]: any } = {};
+    relevantTicketCodes.forEach(code => {
+      if (this.originalParsedTickets[code]) {
+        filteredOriginalParsedTickets[code] = this.originalParsedTickets[code];
+      }
     });
 
-    const validationData = {
-      decisions: this.userDecisions
-    };
+    // Fix inconsistent tickets structure - ensure each has ticketCode
+    const fixedInconsistentTickets = (this.analyzedData?.inconsistentTickets || []).map((ticket: any) => ({
+      ...ticket,
+      ticketCode: ticket.databaseData?.ticketcode || ticket.taskWoNum || 'UNKNOWN'
+    }));
 
-    console.log('🔍 VALIDATION REQUEST JSON:');
-    console.log('URL:', `${environment.apiUrl}/rtr/stepper/validate`);
-    console.log('Request Body:', JSON.stringify(validationData, null, 2));
+    // Fix missingInfoFilled structure - include all required fields
+    const fixedMissingInfoFilled = this.missingInfoFilled.map(item => {
+      const originalData = this.originalParsedTickets[item.ticketCode] || {};
+      return {
+        ticketCode: item.ticketCode,
+        data: {
+          // Include all required fields from original data
+          RESTN_WO_NUM: originalData.RESTN_WO_NUM || item.data?.RESTN_WO_NUM || '',
+          TASK_WO_NUM: originalData.TASK_WO_NUM || item.data?.TASK_WO_NUM || item.ticketCode || '',
+          ADDRESS: originalData.ADDRESS || item.data?.ADDRESS || '',
+          // Include any additional fields from user input
+          ...item.data
+        }
+      };
+    });
+
+    // Build the full validation payload including only relevant originalParsedTickets
+    const validationData = {
+      originalParsedTickets: filteredOriginalParsedTickets,
+      newTickets: this.analyzedData?.newTickets || [],
+      inconsistentTickets: fixedInconsistentTickets,
+      decisions: this.userDecisions,
+      missingInfoFilled: fixedMissingInfoFilled,
+      skippedRows: Array.isArray(this.skippedRows) ? this.skippedRows : []
+    };
+    // Print the entire JSON request as a single object
+    console.log('DEBUG: Validation request body being sent:', JSON.stringify(validationData, null, 2));
 
     this.http.post<StepperValidateResponse>(`${environment.apiUrl}/rtr/stepper/validate`, validationData)
       .subscribe({
@@ -638,12 +659,26 @@ export class StepperCardComponent {
 
             if (response.validation.errors.length > 0) {
               response.validation.errors.forEach(error => {
-                this.validationResults.push({
-                  field: error.field || 'General',
-                  isValid: false,
-                  message: error.message || 'Validation error',
-                  severity: 'error'
-                });
+                // Handle the new error structure where each error has ticketCode and errors array
+                if (error.ticketCode && error.errors && Array.isArray(error.errors)) {
+                  // Create one validation result per error in the errors array
+                  error.errors.forEach((errorMessage: string) => {
+                    this.validationResults.push({
+                      field: error.ticketCode,
+                      isValid: false,
+                      message: errorMessage,
+                      severity: 'error'
+                    });
+                  });
+                } else {
+                  // Fallback for old error structure
+                  this.validationResults.push({
+                    field: error.field || 'General',
+                    isValid: false,
+                    message: error.message || 'Validation error',
+                    severity: 'error'
+                  });
+                }
               });
             }
 
@@ -759,6 +794,42 @@ export class StepperCardComponent {
       const base64String = reader.result as string;
       const base64Data = base64String.split(',')[1]; // Remove data URL prefix
 
+      // Build a set of relevant ticket codes (from missingInfoFilled and inconsistentTickets)
+      const relevantTicketCodes = new Set([
+        ...this.missingInfoFilled.map(t => t.ticketCode),
+        ...((this.analyzedData?.inconsistentTickets || []).map((t: any) => t.ticketCode))
+      ]);
+      // Build the filtered originalParsedTickets
+      const filteredOriginalParsedTickets: { [ticketCode: string]: any } = {};
+      relevantTicketCodes.forEach(code => {
+        if (this.originalParsedTickets[code]) {
+          filteredOriginalParsedTickets[code] = this.originalParsedTickets[code];
+        }
+      });
+
+      // Fix inconsistent tickets structure - ensure each has ticketCode
+      const fixedInconsistentTickets = (this.analyzedData?.inconsistentTickets || []).map((ticket: any) => ({
+        ...ticket,
+        ticketCode: ticket.databaseData?.ticketcode || ticket.taskWoNum || 'UNKNOWN'
+      }));
+
+      // Fix missingInfoFilled structure - include all required fields
+      const fixedMissingInfoFilled = this.missingInfoFilled.map(item => {
+        const originalData = this.originalParsedTickets[item.ticketCode] || {};
+        return {
+          ticketCode: item.ticketCode,
+          data: {
+            // Include all required fields from original data
+            RESTN_WO_NUM: originalData.RESTN_WO_NUM || item.data?.RESTN_WO_NUM || '',
+            TASK_WO_NUM: originalData.TASK_WO_NUM || item.data?.TASK_WO_NUM || item.ticketCode || '',
+            ADDRESS: originalData.ADDRESS || item.data?.ADDRESS || '',
+            // Include any additional fields from user input
+            ...item.data
+          }
+        };
+      });
+
+      // Build the full save payload matching the validation endpoint structure
       const saveData = {
         fileInfo: {
           originalName: this.uploadedFile!.name,
@@ -766,20 +837,18 @@ export class StepperCardComponent {
           size: this.uploadedFile!.size,
           mimetype: this.uploadedFile!.type
         },
+        originalParsedTickets: filteredOriginalParsedTickets,
         newTickets: this.analyzedData?.newTickets || [],
-        inconsistentTickets: this.analyzedData?.inconsistentTickets?.map((ticket: any) => ({
-          ticketId: ticket.databaseData.ticketid,
-          ticketCode: ticket.databaseData.ticketcode,
-          excelData: ticket.excelData,
-          databaseData: ticket.databaseData,
-          inconsistencies: ticket.inconsistencies
-        })) || [],
+        inconsistentTickets: fixedInconsistentTickets,
         decisions: this.userDecisions,
-        missingInfoFilled: this.missingInfoFilled,
-        skippedRows: this.skippedRows,
+        missingInfoFilled: fixedMissingInfoFilled,
+        skippedRows: Array.isArray(this.skippedRows) ? this.skippedRows : [],
         createdBy: 1, // TODO: Get from auth service
         updatedBy: 1  // TODO: Get from auth service
       };
+
+      // Debug log for the full save request body
+      console.log('DEBUG: Save request body being sent:', JSON.stringify(saveData, null, 2));
 
       // Validate the save data before sending
       const validationErrors = this.validateSaveData(saveData);
@@ -794,20 +863,18 @@ export class StepperCardComponent {
       console.log('🔍 VALIDATION CHECKS:');
       console.log('- Has analyzedData:', !!this.analyzedData);
       console.log('- Has uploadedFile:', !!this.uploadedFile);
+      console.log('- originalParsedTickets length:', Object.keys(saveData.originalParsedTickets).length);
+      console.log('- missingInfoFilled length:', saveData.missingInfoFilled.length);
       console.log('- newTickets length:', saveData.newTickets.length);
       console.log('- inconsistentTickets length:', saveData.inconsistentTickets.length);
-      console.log('- decisions keys:', Object.keys(saveData.decisions));
-      console.log('- missingInfoFilled length:', saveData.missingInfoFilled.length);
-      console.log('- skippedRows length:', saveData.skippedRows.length);
 
       console.log('Saving data with file info:', {
         fileName: this.uploadedFile!.name,
         fileSize: this.uploadedFile!.size,
-        newTicketsCount: saveData.newTickets.length,
-        inconsistentTicketsCount: saveData.inconsistentTickets.length,
-        decisionsCount: Object.keys(saveData.decisions).length,
+        originalParsedTicketsCount: Object.keys(saveData.originalParsedTickets).length,
         missingInfoFilledCount: saveData.missingInfoFilled.length,
-        skippedRowsCount: saveData.skippedRows.length
+        newTicketsCount: saveData.newTickets.length,
+        inconsistentTicketsCount: saveData.inconsistentTickets.length
       });
 
       console.log('🔍 SAVE REQUEST JSON:');
@@ -816,19 +883,13 @@ export class StepperCardComponent {
 
       // Add detailed debugging for each section
       console.log('📋 SAVE DATA BREAKDOWN:');
-      console.log('- fileInfo:', {
-        originalName: saveData.fileInfo.originalName,
-        size: saveData.fileInfo.size,
-        mimetype: saveData.fileInfo.mimetype,
-        bufferLength: saveData.fileInfo.buffer?.length || 0
-      });
+      console.log('- fileInfo:', saveData.fileInfo);
+      console.log('- originalParsedTickets:', saveData.originalParsedTickets);
       console.log('- newTickets:', saveData.newTickets);
       console.log('- inconsistentTickets:', saveData.inconsistentTickets);
       console.log('- decisions:', saveData.decisions);
       console.log('- missingInfoFilled:', saveData.missingInfoFilled);
       console.log('- skippedRows:', saveData.skippedRows);
-      console.log('- createdBy:', saveData.createdBy);
-      console.log('- updatedBy:', saveData.updatedBy);
 
       this.http.post<StepperSaveResponse>(`${environment.apiUrl}/rtr/stepper/save`, saveData)
         .subscribe({
@@ -863,17 +924,10 @@ export class StepperCardComponent {
 
             // Log the request data that was sent
             console.error('Request data that was sent:', {
-              fileInfo: {
-                originalName: saveData.fileInfo.originalName,
-                size: saveData.fileInfo.size,
-                mimetype: saveData.fileInfo.mimetype,
-                bufferLength: saveData.fileInfo.buffer?.length || 0
-              },
-              newTicketsCount: saveData.newTickets.length,
-              inconsistentTicketsCount: saveData.inconsistentTickets.length,
-              decisionsCount: Object.keys(saveData.decisions).length,
+              originalParsedTicketsCount: Object.keys(saveData.originalParsedTickets).length,
               missingInfoFilledCount: saveData.missingInfoFilled.length,
-              skippedRowsCount: saveData.skippedRows.length
+              newTicketsCount: saveData.newTickets.length,
+              inconsistentTicketsCount: saveData.inconsistentTickets.length
             });
 
             let errorMessage = 'Save failed. Please try again.';
@@ -1055,44 +1109,41 @@ export class StepperCardComponent {
   private validateSaveData(saveData: any): string[] {
     const errors: string[] = [];
 
-    // Validate fileInfo
-    if (!saveData.fileInfo) {
-      errors.push('Missing fileInfo object');
-    } else {
-      if (!saveData.fileInfo.originalName) errors.push('Missing fileInfo.originalName');
-      if (!saveData.fileInfo.buffer) errors.push('Missing fileInfo.buffer');
-      if (!saveData.fileInfo.size) errors.push('Missing fileInfo.size');
-      if (!saveData.fileInfo.mimetype) errors.push('Missing fileInfo.mimetype');
+    // Validate originalParsedTickets - should be an object, not an array
+    if (!saveData.originalParsedTickets || typeof saveData.originalParsedTickets !== 'object') {
+      errors.push('Missing or invalid originalParsedTickets object');
     }
 
-    // Validate arrays (can be empty)
-    if (!saveData.newTickets || !Array.isArray(saveData.newTickets)) {
-      errors.push('Missing or invalid newTickets array');
-    }
-
-    if (!saveData.inconsistentTickets || !Array.isArray(saveData.inconsistentTickets)) {
-      errors.push('Missing or invalid inconsistentTickets array');
-    }
-
-    if (!saveData.decisions || typeof saveData.decisions !== 'object') {
-      errors.push('Missing or invalid decisions object');
-    }
-
+    // Validate missingInfoFilled
     if (!saveData.missingInfoFilled || !Array.isArray(saveData.missingInfoFilled)) {
       errors.push('Missing or invalid missingInfoFilled array');
     }
 
+    // Validate newTickets
+    if (!saveData.newTickets || !Array.isArray(saveData.newTickets)) {
+      errors.push('Missing or invalid newTickets array');
+    }
+
+    // Validate inconsistentTickets
+    if (!saveData.inconsistentTickets || !Array.isArray(saveData.inconsistentTickets)) {
+      errors.push('Missing or invalid inconsistentTickets array');
+    }
+
+    // Validate decisions
+    if (!saveData.decisions || typeof saveData.decisions !== 'object') {
+      errors.push('Missing or invalid decisions object');
+    }
+
+    // Validate skippedRows
     if (!saveData.skippedRows || !Array.isArray(saveData.skippedRows)) {
       errors.push('Missing or invalid skippedRows array');
     }
 
-    // Validate user IDs
-    if (!saveData.createdBy || typeof saveData.createdBy !== 'number') {
-      errors.push('Missing or invalid createdBy');
-    }
-
-    if (!saveData.updatedBy || typeof saveData.updatedBy !== 'number') {
-      errors.push('Missing or invalid updatedBy');
+    // Validate fileInfo (for save endpoint)
+    if (saveData.fileInfo) {
+      if (!saveData.fileInfo.originalName || !saveData.fileInfo.buffer || !saveData.fileInfo.size) {
+        errors.push('Missing required fileInfo fields (originalName, buffer, size)');
+      }
     }
 
     return errors;
@@ -1355,24 +1406,24 @@ export class StepperCardComponent {
     // 4. Save Request
     console.log('\n4️⃣ SAVE REQUEST (/rtr/stepper/save):');
     console.log(JSON.stringify({
-      fileInfo: {
-        originalName: "rtr_data.xlsx",
-        buffer: "base64_encoded_file_content",
-        size: 10240,
-        mimetype: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-      },
-      newTickets: [/* new tickets array */],
-      inconsistentTickets: [/* inconsistent tickets array */],
-      decisions: {
-        "1001": {
-          "address": "excel",
-          "taskWoNum": "database"
+      originalParsedTickets: [
+        {
+          RESTN_WO_NUM: "REST-001",
+          TASK_WO_NUM: "WO-001",
+          ADDRESS: "123 Main St",
+          SQ_MI: 0.5,
+          Earliest_Rpt_Dt: "2024-01-01",
+          // ... other RTR fields
         }
-      },
-      missingInfoFilled: [/* filled missing info */],
-      skippedRows: [/* skipped rows */],
-      createdBy: 1,
-      updatedBy: 1
+      ],
+      missingInfoFilled: [
+        {
+          ticketCode: "TKT-003",
+          data: {
+            "SAP_ITEM_NUM": "SAP123456"
+          }
+        }
+      ]
     }, null, 2));
 
     console.log('\n✅ API Structure documentation completed!');

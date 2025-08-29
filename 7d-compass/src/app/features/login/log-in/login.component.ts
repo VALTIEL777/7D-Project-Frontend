@@ -27,19 +27,23 @@ export class LoginComponent implements OnInit {
     this.loginForm = this.formB.group({
       identifier: ['', [Validators.required, Validators.minLength(3)]],
       password: ['', [Validators.required, Validators.minLength(3)]],
+      rememberMe: [false] // ✅ Agregar campo para Remember me
     });
+
+    // ✅ Cargar estado previo de Remember me si existe
+    this.loadRememberMeState();
   }
 
 login(): void {
   if (this.loginForm.invalid) {
-    this.errorMessage = 'Todos los campos son requeridos';
+    this.errorMessage = 'All fields are required';
     return;
   }
 
   this.isLoading = true;
   this.errorMessage = '';
 
-  const { identifier, password } = this.loginForm.value;
+  const { identifier, password, rememberMe } = this.loginForm.value;
 
   const credentials = identifier.includes('@')
     ? { email: identifier, password }
@@ -47,6 +51,9 @@ login(): void {
 
   this.authService.login(credentials).subscribe({
     next: (response) => {
+      // ✅ Guardar estado de Remember me
+      this.saveRememberMeState(rememberMe);
+      
       this.authService.handleLoginResponse(response);
 
       const role = response.user?.role?.toLowerCase();
@@ -58,7 +65,7 @@ login(): void {
       }
     },
     error: (error) => {
-      this.errorMessage = error.error?.message || 'Credenciales inválidas';
+      this.errorMessage = error.error?.message || 'Invalid credentials';
       this.isLoading = false; // ✅ Detener el spinner al fallar
     },
     complete: () => {
@@ -70,5 +77,26 @@ login(): void {
 
   redirectToForgotPassword(): void {
     this.router.navigate(['/forgot-password']);
+  }
+
+  // ✅ Cargar estado previo de Remember me
+  private loadRememberMeState(): void {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      const remembered = localStorage.getItem('rememberMe');
+      if (remembered === 'true') {
+        this.loginForm.patchValue({ rememberMe: true });
+      }
+    }
+  }
+
+  // ✅ Guardar estado de Remember me
+  private saveRememberMeState(rememberMe: boolean): void {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      if (rememberMe) {
+        localStorage.setItem('rememberMe', 'true');
+      } else {
+        localStorage.removeItem('rememberMe');
+      }
+    }
   }
 }

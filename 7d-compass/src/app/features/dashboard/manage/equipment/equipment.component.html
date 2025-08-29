@@ -4,9 +4,33 @@
       [title]="'Equipment Management'"
       [data]="filteredEquipmentData"
       [columns]="columns"
-      [pageSizeOptions]="[5, 10, 20]"
+      [pageSizeOptions]="[15, 20, 25]"
       (edit)="onEdit($event)"
       (delete)="onDelete($event)">
     </app-data-table>
   </app-card-with-button>
 </app-dashboard-layout>
+
+<app-fab-button
+  title="Add Equipment"
+  icon="build"
+  tooltip="Create new equipment"
+  dialogTitle="Create New Equipment"
+  [fields]="[
+    { name: 'equipmentname', label: 'Equipment Name', type: 'text', required: true },
+    { name: 'owner', label: 'Owner', type: 'text', required: true },
+    { name: 'type', label: 'Type', type: 'select', required: true, options: [
+      { value: 'vehicle', label: 'Vehicle' },
+      { value: 'tool', label: 'Tool' },
+      { value: 'machine', label: 'Machine' }
+    ]},
+    { name: 'hourlyrate', label: 'Hourly Rate', type: 'number', required: false },
+    { name: 'status', label: 'Status', type: 'select', required: true, options: [
+      { value: 'Available', label: 'Available' },
+      { value: 'In Use', label: 'In Use' }
+    ]},
+    { name: 'observation', label: 'Notes', type: 'textarea', required: false }
+  ]"
+  [excludedFields]="['equipmentid', 'createdAt', 'updatedAt', 'createdBy', 'updatedBy', 'deletedAt']"
+  (itemCreated)="onCreateEquipment($event)">
+</app-fab-button>

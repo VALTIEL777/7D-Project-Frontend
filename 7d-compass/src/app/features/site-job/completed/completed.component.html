@@ -1,11 +1,25 @@
 <app-sitejob-sidenavbar [teamLeader]="teamLeader" [teamMembers]="teamMembers">
 
-<app-sitejob-layout></app-sitejob-layout>
-<div class="content-wrapper">
+<!-- 🔄 Spinner de carga optimizado -->
+<div *ngIf="isLoading" class="loader-container">
+  <mat-spinner diameter="50"></mat-spinner>
+  <div class="loading-text">
+    <mat-icon>history</mat-icon>
+    <span>Cargando ubicaciones completadas...</span>
+  </div>
+</div>
+
+<!-- ✅ Contenido visible solo cuando no hay carga -->
+<div *ngIf="!isLoading" class="content-wrapper">
   <h2 class="section-title">Completed Locations</h2>
 
+  <mat-form-field appearance="outline" style="width: 100%; margin-bottom: 16px;">
+    <mat-label>Search completed location</mat-label>
+    <mat-icon matPrefix>search</mat-icon>
+    <input matInput [(ngModel)]="completedFilterText" (ngModelChange)="onCompletedFilterChange()" placeholder="Search by address or phase">
+  </mat-form-field>
 
-    <!-- Mostrar mensaje si no hay ubicaciones completadas -->
+  <!-- Mostrar mensaje si no hay ubicaciones completadas -->
   <div *ngIf="previousLocations.length === 0" class="no-locations">
     <p class="no-locations-text">
       <mat-icon color="warn">info</mat-icon>
@@ -13,39 +27,68 @@
     </p>
   </div>
 
-<div *ngFor="let location of previousLocations" class="location-card">
-  <div class="location-header">
-    <p class="address">
-      <mat-icon class="location-icon">place</mat-icon>
-      <strong>{{ location.address }}</strong>
-    </p>
+  <div *ngFor="let location of filteredTickets" class="location-card">
+    <div class="location-header">
+      <p class="address">
+        <mat-icon class="location-icon">place</mat-icon>
+        <strong>{{ location.address }}</strong>
+      </p>
 
-    <p class="date-info">
-      <mat-icon class="calendar-icon">calendar_today</mat-icon>
-      <strong>Started:</strong> {{ location.startingDate | date:'medium' }}<br />
-      <mat-icon class="calendar-icon">calendar_today</mat-icon>
-      <strong>Completed:</strong> {{ location.endingDate | date:'medium' }}
-    </p>
+      <div class="location-info">
+
+        <p class="date-info">
+          <mat-icon class="calendar-icon">calendar_today</mat-icon>
+          <strong>Started:</strong> {{ location.startingDate | date:'MMM d, y, h:mm a' }}<br />
+          <strong>Completed:</strong> {{ location.endingDate | date:'MMM d, y, h:mm a' }}
+        </p>
+
+        <!-- ✅ NUEVO: Mostrar fases completadas -->
+        <div class="completed-phases" *ngIf="location.completedPhases && location.completedPhases.length > 0">
+          <p class="phases-title">
+            <mat-icon class="phases-icon">check_circle</mat-icon>
+            <strong>Completed Phases:</strong>
+          </p>
+          <div class="phases-list">
+            <span *ngFor="let phase of location.completedPhases" class="phase-badge">
+              {{ phase.name }}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="photo-comment" *ngIf="location.images && location.images.length > 0">
+      <ng-container *ngIf="groupImagesByName(location.images) as groupedImages">
+        <mat-accordion>
+          <mat-expansion-panel>
+            <mat-expansion-panel-header>
+              <mat-panel-title> 
+                <mat-icon class="calendar-icon">image</mat-icon>
+                Show images ({{ location.images.length }} total)
+              </mat-panel-title>
+            </mat-expansion-panel-header>
+            
+            <div *ngFor="let groupName of (groupedImages | keyvalue)">
+              <button mat-button class="group-button" (click)="toggleGroup(groupName.key)">
+                {{ openedGroups[groupName.key] ? 'Hide' : 'Show' }} {{ groupName.key }} ({{ groupName.value.length }})
+              </button>
+              <div class="images-container" *ngIf="openedGroups[groupName.key]">
+                <div *ngFor="let img of groupName.value" class="photo-item">
+                  <p class="photo-name">{{ img.name }}</p>
+                  <img [src]="img.url" [alt]="img.name" class="location-image" />
+                  <p class="photo-comment-text">{{ img.comment || 'No issues reported' }}</p>
+                </div>
+              </div>
+            </div>
+          </mat-expansion-panel>
+        </mat-accordion>
+      </ng-container>
+    </div>
+
+    <hr class="divider" />
   </div>
 
-  <ul class="info-list">
-    <li *ngFor="let action of location.actions">
-      <mat-icon class="icon">check_circle</mat-icon>
-      {{ action }}
-    </li>
-  </ul>
-
-  <div class="photo-comment">
-    <img [src]="location.imageUrl" alt="location image" class="location-image" />
-    <button mat-raised-button color="primary" class="comment-btn">
-      {{ location.comment }}
-    </button>
-  </div>
-
-  <hr class="divider" />
 </div>
 
-</div>
-
-  <app-sitejob-tabs></app-sitejob-tabs>
+<app-sitejob-tabs></app-sitejob-tabs>
 </app-sitejob-sidenavbar>

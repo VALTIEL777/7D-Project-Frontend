@@ -44,44 +44,45 @@
       </mat-expansion-panel>
 
       <!-- RTR Data -->
-      <mat-expansion-panel [expanded]="isExpanded(['/rtr-processing', '/misc-generation'])">
+      <mat-expansion-panel [expanded]="isExpanded(['/rtr-processing'])">
         <mat-expansion-panel-header>
           <mat-icon>storage</mat-icon>
           <span>RTR Data</span>
         </mat-expansion-panel-header>
         <a mat-button routerLink="/rtr-processing" routerLinkActive="active-link" (click)="closeSidenav()">RTR Processing</a>
-        <a mat-button routerLink="/misc-generation" routerLinkActive="active-link" (click)="closeSidenav()">Misc Generation</a>
       </mat-expansion-panel>
 
       <!-- Files & Reports -->
-      <mat-expansion-panel [expanded]="isExpanded(['/report-center', '/files-permits'])">
+      <mat-expansion-panel [expanded]="isExpanded(['/report-center', '/files-permits', '/photo-evidence'])">
         <mat-expansion-panel-header>
           <mat-icon>folder</mat-icon>
           <span>Files & Reports</span>
         </mat-expansion-panel-header>
         <a mat-button routerLink="/report-center" routerLinkActive="active-link" (click)="closeSidenav()">Report Center</a>
         <a mat-button routerLink="/files-permits" routerLinkActive="active-link" (click)="closeSidenav()">Files & Permits</a>
+        <a mat-button routerLink="/photo-evidence" routerLinkActive="active-link" (click)="closeSidenav()">Photo Evidence</a>
       </mat-expansion-panel>
 
       <!-- Routes -->
-      <mat-expansion-panel [expanded]="isExpanded(['/route-generator', '/route-history', '/route-tracker'])">
+      <mat-expansion-panel [expanded]="isExpanded(['/route-generator', '/route-history', '/route-tracker', '/crew-generation'])">
         <mat-expansion-panel-header>
           <mat-icon>alt_route</mat-icon>
           <span>Routes</span>
         </mat-expansion-panel-header>
         <a mat-button routerLink="/route-generator" routerLinkActive="active-link" (click)="closeSidenav()">Route Generator</a>
         <a mat-button routerLink="/route-history" routerLinkActive="active-link" (click)="closeSidenav()">Route History</a>
+        <a mat-button routerLink="/crew-generation" routerLinkActive="active-link" (click)="closeSidenav()">Crew Generation</a>
         <!-- <a mat-button routerLink="/route-tracker" routerLinkActive="active-link" (click)="closeSidenav()">Route Tracker</a> -->
       </mat-expansion-panel>
 
       <!-- Revenue -->
-      <mat-expansion-panel [expanded]="isExpanded(['/income', '/fines-penalties'])">
+      <mat-expansion-panel [expanded]="isExpanded(['/income'])">
         <mat-expansion-panel-header>
           <mat-icon>payments</mat-icon>
           <span>Revenue</span>
         </mat-expansion-panel-header>
         <a mat-button routerLink="/income" routerLinkActive="active-link" (click)="closeSidenav()">Income</a>
-        <a mat-button routerLink="/fines-penalties" routerLinkActive="active-link" (click)="closeSidenav()">Fines & Penalties</a>
+        <!-- <a mat-button routerLink="/fines-penalties" routerLinkActive="active-link" (click)="closeSidenav()">Fines & Penalties</a> -->
       </mat-expansion-panel>
 
       <!-- Manage -->
@@ -105,9 +106,18 @@
         <a mat-button routerLink="/equipment" routerLinkActive="active-link" (click)="closeSidenav()">Equipment</a>
         <a mat-button routerLink="/crews" routerLinkActive="active-link" (click)="closeSidenav()">Crews</a>
         <a mat-button routerLink="/ticket" routerLinkActive="active-link" (click)="closeSidenav()">Ticket</a>
+        <a mat-button routerLink="/permits" routerLinkActive="active-link" (click)="closeSidenav()">Permits</a>
       </mat-expansion-panel>
 
     </mat-accordion>
+
+    <!-- Logout Button -->
+    <div class="logout-section">
+      <button mat-button color="warn" class="logout-button" (click)="onLogout()">
+        <mat-icon>logout</mat-icon>
+        <span>Log out</span>
+      </button>
+    </div>
   </mat-sidenav>
 
   <mat-sidenav-content>

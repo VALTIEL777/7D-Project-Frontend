@@ -4,9 +4,32 @@
       [title]="'User Management'"
       [data]="filteredUserData"
       [columns]="columns"
-      [pageSizeOptions]="[5, 10, 20]"
+      [pageSizeOptions]="[15, 20, 25]"
       (edit)="onEdit($event)"
       (delete)="onDelete($event)">
     </app-data-table>
   </app-card-with-button>
 </app-dashboard-layout>
+
+<app-fab-button
+  title="Add User"
+  icon="person_add"
+  tooltip="Create new user"
+  dialogTitle="Create New User"
+  [fields]="[
+    { name: 'firstname', label: 'First Name', type: 'text', required: true },
+    { name: 'lastname', label: 'Last Name', type: 'text', required: true },
+    { name: 'username', label: 'Username', type: 'text', required: true },
+    { name: 'password', label: 'Password', type: 'password', required: true },
+    { name: 'email', label: 'Email', type: 'email', required: false },
+    { name: 'phone', label: 'Phone', type: 'text', required: false },
+    { name: 'role', label: 'Role', type: 'select', required: false, options: [
+      { value: 'Regional Manager', label: 'Regional Manager' },
+      { value: 'Quadrant Manager', label: 'Quadrant Manager' },
+      { value: 'Admin', label: 'Admin' },
+      { value: 'Operator', label: 'Operator' }
+    ]}
+  ]"
+  [excludedFields]="['employeeid', 'createdAt', 'updatedAt', 'createdBy', 'updatedBy', 'deletedAt']"
+  (itemCreated)="onCreateUser($event)">
+</app-fab-button>
