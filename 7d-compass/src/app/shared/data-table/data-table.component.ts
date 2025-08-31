@@ -103,5 +103,30 @@ export class DataTableComponent<T> implements AfterViewInit {
   saveComment(element: any): void {
     this.commentChange.emit({element, newComment: element.comment7d});
     element.commentChanged = false;
+    element.commentEditing = false;
+  }
+
+  startCommentEdit(element: any): void {
+    element.commentEditing = true;
+    element.originalComment = element.comment7d; // Store original value for cancel
+  }
+
+  cancelCommentEdit(element: any): void {
+    element.comment7d = element.originalComment; // Restore original value
+    element.commentEditing = false;
+    element.commentChanged = false;
+  }
+
+  isPredefinedComment(comment: string): boolean {
+    const predefinedComments = [
+      'TK - LAYOUT',
+      'TK - ON HOLD OFF',
+      'TK - CANCELLED',
+      'TK - ON PROGRESS',
+      'TK - COMPLETED',
+      'TK - NEEDS PERMISION EXTENDED'
+
+    ];
+    return predefinedComments.includes(comment);
   }
 }

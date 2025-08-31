@@ -909,3 +909,135 @@ app-leaflet-map {
     }
   }
 }
+
+// WP Checkbox styling
+.wp-checkbox-container {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0 8px;
+  flex-shrink: 0;
+  position: relative;
+  min-width: 60px;
+  justify-content: center;
+
+  @media (max-width: 768px) {
+    min-width: 50px;
+    margin: 0 4px;
+  }
+}
+
+.wp-checkbox {
+  .wp-label {
+    font-size: 10px;
+    font-weight: 600;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+
+    @media (max-width: 768px) {
+      font-size: 9px;
+      letter-spacing: 0.3px;
+    }
+  }
+
+  &.mat-checkbox-checked .wp-label {
+    color: #3f51b5;
+    font-weight: 700;
+  }
+
+  // Custom checkbox styling
+  ::ng-deep .mat-checkbox-frame {
+    border-color: #ccc;
+    border-width: 1px;
+  }
+
+  ::ng-deep .mat-checkbox-checkmark-path {
+    stroke: #3f51b5;
+    stroke-width: 2px;
+  }
+
+  ::ng-deep .mat-checkbox-checked .mat-checkbox-background {
+    background-color: #3f51b5;
+  }
+
+  // Hover effects
+  &:hover ::ng-deep .mat-checkbox-frame {
+    border-color: #3f51b5;
+  }
+}
+
+.wp-loading {
+  position: absolute;
+  right: -20px;
+  top: 50%;
+  transform: translateY(-50%);
+
+  @media (max-width: 768px) {
+    right: -16px;
+  }
+}
+
+// Ensure proper spacing in route detail items
+.route-detail-item {
+  padding: 4px 0;
+  cursor: grab;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: nowrap;
+  min-height: 40px;
+
+  @media (max-width: 768px) {
+    gap: 4px;
+    min-height: 36px;
+    padding: 2px 0;
+  }
+
+  .queue-number {
+    font-weight: 600;
+    flex-shrink: 0;
+    min-width: 20px;
+
+    @media (max-width: 768px) {
+      min-width: 16px;
+      font-size: 12px;
+    }
+  }
+
+  .ticket-info {
+    flex: 1;
+    margin-left: 10px;
+    min-width: 0; // Allow text to wrap
+
+    @media (max-width: 768px) {
+      margin-left: 6px;
+    }
+  }
+
+  .wp-checkbox-container {
+    flex-shrink: 0;
+    min-width: 60px; // Ensure consistent width
+
+    @media (max-width: 768px) {
+      min-width: 50px;
+    }
+  }
+
+  .ticket-code {
+    font-size: 0.8em;
+    color: #007bff;
+    font-weight: 600;
+    margin-left: auto;
+    padding-left: 10px;
+    flex-shrink: 0;
+    min-width: 80px; // Ensure consistent width
+
+    @media (max-width: 768px) {
+      min-width: 60px;
+      padding-left: 6px;
+      font-size: 0.75em;
+    }
+  }
+}

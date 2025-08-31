@@ -25,26 +25,55 @@
               <!-- Custom template for comment7d dropdown -->
               <ng-container *ngSwitchCase="'comment7d'">
                 <div class="comment-dropdown-container">
-                  <mat-form-field appearance="outline" class="comment-dropdown">
-                    <mat-select
-                      [value]="element.comment7d || ''"
-                      (selectionChange)="onCommentChange($event, element)"
-                      placeholder="Select status">
-                      <mat-option value="TK - LAYOUT">TK - LAYOUT</mat-option>
-                      <mat-option value="TK - ON HOLD OFF">TK - ON HOLD OFF</mat-option>
-                      <mat-option value="TK - CANCELLED">TK - CANCELLED</mat-option>
-                      <mat-option value="TK - ON PROGRESS">TK - ON PROGRESS</mat-option>
-                      <mat-option value="TK - COMPLETED">TK - COMPLETED</mat-option>
-                    </mat-select>
-                  </mat-form-field>
-                  <button
-                    mat-icon-button
-                    class="save-comment-btn"
-                    matTooltip="Save changes"
-                    (click)="saveComment(element)"
-                    [disabled]="!element.commentChanged">
-                    <mat-icon>save</mat-icon>
-                  </button>
+                  <!-- Show as text if not editing or if comment is not a predefined option -->
+                  <div *ngIf="!element.commentEditing && !isPredefinedComment(element.comment7d)" class="comment-display">
+                    <span class="comment-text">{{ element.comment7d || 'N/A' }}</span>
+                    <button
+                      mat-icon-button
+                      class="edit-comment-btn"
+                      matTooltip="Edit comment"
+                      (click)="startCommentEdit(element)">
+                      <mat-icon>edit</mat-icon>
+                    </button>
+                  </div>
+
+                  <!-- Show dropdown for editing or if comment is a predefined option -->
+                  <div *ngIf="element.commentEditing || isPredefinedComment(element.comment7d)" class="comment-edit">
+                    <mat-form-field appearance="outline" class="comment-dropdown">
+                      <mat-select
+                        [value]="element.comment7d || ''"
+                        (selectionChange)="onCommentChange($event, element)"
+                        placeholder="Select status">
+                        <mat-option value="TK - LAYOUT">TK - LAYOUT</mat-option>
+                        <mat-option value="TK - ON HOLD OFF">TK - ON HOLD OFF</mat-option>
+                        <mat-option value="TK - CANCELLED">TK - CANCELLED</mat-option>
+                        <mat-option value="TK - ON PROGRESS">TK - ON PROGRESS</mat-option>
+                        <mat-option value="TK - COMPLETED">TK - COMPLETED</mat-option>
+                        <mat-option value="NEEDS PERMISION EXTENDED">NEEDS PERMISION EXTENDED</mat-option>
+                        <mat-option value="ON HOLD OFF">ON HOLD OFF</mat-option>
+                        <mat-option value="ON PROGRESS">ON PROGRESS</mat-option>
+                        <mat-option value="ON SCHEDULE">ON SCHEDULE</mat-option>
+                        <mat-option value="DIGGER APPLAY">DIGGER APPLAY</mat-option>
+                        <mat-option value="HMA- ON PROGRESS">HMA- ON PROGRESS</mat-option>
+                      </mat-select>
+                    </mat-form-field>
+                    <button
+                      mat-icon-button
+                      class="save-comment-btn"
+                      matTooltip="Save changes"
+                      (click)="saveComment(element)"
+                      [disabled]="!element.commentChanged">
+                      <mat-icon>save</mat-icon>
+                    </button>
+                    <button
+                      *ngIf="element.commentEditing"
+                      mat-icon-button
+                      class="cancel-comment-btn"
+                      matTooltip="Cancel edit"
+                      (click)="cancelCommentEdit(element)">
+                      <mat-icon>close</mat-icon>
+                    </button>
+                  </div>
                 </div>
               </ng-container>
               <!-- Default case for other custom templates -->

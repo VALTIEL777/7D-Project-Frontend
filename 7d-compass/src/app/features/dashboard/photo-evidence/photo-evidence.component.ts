@@ -373,7 +373,7 @@ export class PhotoEvidenceComponent extends BaseDashboardComponent implements On
     this.selectedTicket = ticket;
     this.loadingPhotos = true; // Start loading photos
     console.log('🔄 Starting to load photos for ticket:', ticket.ticketCode);
-    
+
     try {
       // Get all photos from the ticket (including empty phases)
       const rawPhotos = this.getAllPhotosFromTicket(ticket);
@@ -383,12 +383,12 @@ export class PhotoEvidenceComponent extends BaseDashboardComponent implements On
       // Load photo blobs and create object URLs
       this.selectedPhotos = await this.loadPhotoBlobs(rawPhotos);
       console.log('Photos loaded with blobs:', this.selectedPhotos.length);
-      
+
       // Add a small delay to ensure UI updates are processed
       await new Promise(resolve => setTimeout(resolve, 100));
-      
+
       console.log('✅ Photos loading completed for ticket:', ticket.ticketCode);
-      
+
     } catch (error) {
       console.error('Error loading photos:', error);
       this.error = 'Error loading photos. Please try again.';
@@ -600,7 +600,7 @@ export class PhotoEvidenceComponent extends BaseDashboardComponent implements On
     // Get all phases from the ticket, even if they have no photos
     const phases = this.selectedTicket.taskStatuses.map(taskStatus => {
       // Find photos for this phase
-      const phasePhotos = this.selectedPhotos.filter(photo => 
+      const phasePhotos = this.selectedPhotos.filter(photo =>
         photo.taskStatusName === taskStatus.name
       );
 
@@ -614,20 +614,20 @@ export class PhotoEvidenceComponent extends BaseDashboardComponent implements On
     const sortedPhases = phases.sort((a, b) => {
       const aIndex = phaseOrder.indexOf(a.phaseName);
       const bIndex = phaseOrder.indexOf(b.phaseName);
-      
+
       // If both phases are in the defined order, sort by their position
       if (aIndex !== -1 && bIndex !== -1) {
         return aIndex - bIndex;
       }
-      
+
       // If only one phase is in the defined order, prioritize it
       if (aIndex !== -1) return -1;
       if (bIndex !== -1) return 1;
-      
+
       // If neither phase is in the defined order, sort alphabetically
       return a.phaseName.localeCompare(b.phaseName);
     });
-    
+
     console.log('📊 allPhases getter: returning', sortedPhases.length, 'phases in custom order');
     return sortedPhases;
   }
@@ -639,7 +639,7 @@ export class PhotoEvidenceComponent extends BaseDashboardComponent implements On
 
   // Check if we should show the no phases message
   get shouldShowNoPhases(): boolean {
-    const result = !this.loadingPhotos && !!this.selectedTicket && 
+    const result = !this.loadingPhotos && !!this.selectedTicket &&
            (!this.selectedTicket.taskStatuses || this.selectedTicket.taskStatuses.length === 0);
     console.log('🔍 shouldShowNoPhases:', result, '(loadingPhotos:', this.loadingPhotos, ')');
     return result;
@@ -647,7 +647,7 @@ export class PhotoEvidenceComponent extends BaseDashboardComponent implements On
 
   // Check if we should show the no photos message
   get shouldShowNoPhotos(): boolean {
-    const result = !this.loadingPhotos && !!this.selectedTicket && 
+    const result = !this.loadingPhotos && !!this.selectedTicket &&
            !!this.selectedTicket.taskStatuses && this.selectedTicket.taskStatuses.length > 0 &&
            this.allPhases.every(phase => phase.photos.length === 0);
     console.log('🔍 shouldShowNoPhotos:', result, '(loadingPhotos:', this.loadingPhotos, ')');
@@ -783,7 +783,7 @@ export class PhotoEvidenceComponent extends BaseDashboardComponent implements On
     dialogRef.afterClosed().subscribe(confirmed => {
       if (confirmed) {
         this.deletingPhoto = true; // Start delete loading
-        
+
         this.http.delete(`${environment.apiUrl}/photoevidence/${photo.photoId}`).subscribe({
           next: () => {
             console.log('✅ Photo deleted successfully');
