@@ -179,26 +179,26 @@ filteredTicketImages: any[] = [];
 
   ngOnInit() {
     console.log('🚀 Iniciando carga optimizada del componente...');
-  
+
     // 👇 Recuperar datos básicos desde localStorage
     this.loadBasicDataFromStorage();
-  
+
     // 🎯 Cargar ruta completa si hay routeId o ticketId
     if ((this.routeId && this.routeId !== 0) || (this.ticketId && this.ticketId !== 0)) {
       this.loadFullRoute();
     } else {
       console.warn('⚠️ No hay routeId ni ticketId para cargar la ruta.');
     }
-  
+
     // 🎯 NUEVO: Cargar datos críticos en paralelo
     this.loadCriticalDataInParallel();
-  
+
     // 🎯 NUEVO: Cargar datos secundarios después
     setTimeout(() => {
       this.loadSecondaryData();
     }, 50);
   }
-  
+
 
 // 🎯 NUEVO: Método para cargar datos básicos desde localStorage
 private loadBasicDataFromStorage(): void {
@@ -472,35 +472,35 @@ private loadAllPhasesAsync() {
 getActivityColor(activityName: string): string {
   switch(activityName) {
     case 'Spotting':
-      return '#CEDBF2'; 
+      return '#B4F0D3'; // Serene Mint - Fresh, clean, and calming
     case 'Install Signs':
-      return '#ADD8E6'; // azul claro
+      return '#FFD1DC'; // Blush Pink - Friendly, approachable, and sweet
     case 'Grind':
-      return '#C8A2C8'; // lila
+      return '#D2C9E8'; // Lavender Dream - Creative, whimsical, and luxurious
     case 'Asphalt':
-      return '#B002B0'; // purple
+      return '#ACE5EE'; // Sky Blue - Trustworthy, peaceful, and open
     case 'Crack Seal':
-      return '#BABABA'; // gris
+      return '#F1E5C9'; // Buttercream - Welcoming, reliable, and subtle
     case 'Stripping':
-      return '#00FF00'; // verde
+      return '#FAD6BB'; // Peach Smoothie - Energetic, optimistic, and friendly
     case 'Sawcut':
-      return '#FFD700'; // dorado
+      return '#DCD0FF'; // Lilac Mist - Sophisticated, soft, and imaginative
     case 'Removal':
-      return '#75D475'; // verde
+      return '#BCE6DF'; // Seafoam Green - Balanced, tranquil, and natural
     case 'Framing':
-      return '#FFB347'; // naranja
+      return '#F9E8A1'; // Pale Gold - Happy, cheerful, and attention-grabbing
     case 'Concrete':
-      return '#C0C0C0'; // gris
+      return '#B3D9E8'; // Powder Blue - Dependable, serene, and professional
     case 'Pour':
-      return '#4682B4'; // azul acero
+      return '#E8C5C5'; // Dusty Rose - Vintage, elegant, and soft
     case 'Clean':
-      return '#FF69B4'; // rosa
+      return '#C8D9C7'; // Soft Sage - Organic, stable, and calming
     case 'Steel Plate Pickup':
-      return '#FFB347'; // naranja claro
+      return '#C5D0E8'; // Periwinkle - Dreamy, nostalgic, and comforting
     case 'No Parking Signs':
-      return '#FF6B6B'; // rojo coral
+      return '#F8C9C1'; // Coral Kiss - Playful, inviting, and energetic
     default:
-      return '#fafafa'; // fallback
+      return '#E2E2F0'; // Icy Lavender - Minimalist, cool, and modern
   }
 }
 
@@ -2195,7 +2195,7 @@ getObservationsFromTicketStatus(): any[] {
 
   // 🎯 NUEVO: Combinar actividades obligatorias y opcionales
   const allActivities = [...this.activities, ...this.optionalActivities];
-  
+
   const validObservations = allActivities
     .filter(activity => {
       // 🎯 FILTRAR SOLO ACTIVIDADES CON OBSERVACIÓN VÁLIDA
@@ -2753,7 +2753,7 @@ async loadFullRoute(): Promise<void> {
 }
 
 
-  
+
 
 // Helper method to get current date in local timezone
 private getCurrentDateString(): string {
