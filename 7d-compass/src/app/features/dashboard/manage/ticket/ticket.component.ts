@@ -52,6 +52,29 @@ export class TicketComponent extends BaseDashboardComponent implements OnInit {
       cell: (ticket: any) => ticket.contractUnitName || 'N/A'
     },
     {
+      name: 'address',
+      header: 'Address',
+      cell: (ticket: any) => {
+        if (ticket.addresses && ticket.addresses.length > 0) {
+          // Return the first address's fullAddress, or concatenate if fullAddress is not available
+          const firstAddress = ticket.addresses[0];
+          if (firstAddress.fullAddress) {
+            return firstAddress.fullAddress;
+          } else {
+            // Concatenate address components if fullAddress is not provided
+            const parts = [
+              firstAddress.addressNumber,
+              firstAddress.addressCardinal,
+              firstAddress.addressStreet,
+              firstAddress.addressSuffix
+            ].filter(part => part && part.trim() !== '');
+            return parts.join(' ');
+          }
+        }
+        return 'N/A';
+      }
+    },
+    {
       name: 'amountToPay',
       header: 'Amount',
       cell: (ticket: any) => {
@@ -111,13 +134,31 @@ export class TicketComponent extends BaseDashboardComponent implements OnInit {
   protected override matchesTextSearch(item: any, searchTerm: string): boolean {
     const searchableFields = ['ticketCode', 'incidentName', 'contractUnitName', 'comment7d'];
 
-    return searchableFields.some(field => {
+    // Check regular fields
+    const regularFieldMatch = searchableFields.some(field => {
       const value = this.getNestedValue(item, field);
       if (value) {
         return String(value).toLowerCase().includes(searchTerm);
       }
       return false;
     });
+
+    if (regularFieldMatch) {
+      return true;
+    }
+
+    // Check address fields
+    if (item.addresses && item.addresses.length > 0) {
+      return item.addresses.some((address: any) => {
+        const addressString = address.fullAddress ||
+          [address.addressNumber, address.addressCardinal, address.addressStreet, address.addressSuffix]
+            .filter(part => part && part.trim() !== '')
+            .join(' ');
+        return addressString.toLowerCase().includes(searchTerm);
+      });
+    }
+
+    return false;
   }
 
   // Getter for filtered ticket data
@@ -139,6 +180,10 @@ export class TicketComponent extends BaseDashboardComponent implements OnInit {
           console.log('quantity:', data[0].quantity);
           console.log('amountToPay:', data[0].amountToPay);
           console.log('comment7d:', data[0].comment7d);
+          console.log('addresses:', data[0].addresses);
+          if (data[0].addresses && data[0].addresses.length > 0) {
+            console.log('First address:', data[0].addresses[0]);
+          }
         }
         this.tableData = data;
         this.allData = [...data];

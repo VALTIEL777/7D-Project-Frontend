@@ -166,11 +166,9 @@ export class TitleBarComponent {
 
   private setPageTitle(url: string) {
     const routeMap: Record<string, string> = {
-      '/overview': 'Overview',
       '/rtr-processing': 'RTR Processing',
       '/crew-generation': 'Crew Generation',
-      '/report-center': 'Report Center',
-      '/files-permits': 'Files & Permits',
+      '/photo-evidence': 'Photo Evidence',
       '/route-generator': 'Route Generator',
       '/route-history': 'Route History',
       '/route-tracker': 'Route Tracker',

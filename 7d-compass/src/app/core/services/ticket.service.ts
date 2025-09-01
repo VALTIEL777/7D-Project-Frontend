@@ -3,6 +3,14 @@ import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 
+export interface Address {
+  addressNumber: string;
+  addressCardinal: string;
+  addressStreet: string;
+  addressSuffix: string;
+  fullAddress: string;
+}
+
 export interface Ticket {
   ticketId?: number;
   ticketid?: number;
@@ -32,6 +40,7 @@ export interface Ticket {
   deletedAt?: string | null;
   createdBy?: number;
   updatedBy?: number;
+  addresses?: Address[];
 }
 
 export interface TicketResponse {

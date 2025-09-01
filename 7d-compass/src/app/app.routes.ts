@@ -16,14 +16,7 @@ export const routes: Routes = [
       ),
     // No canActivate/data here; children are guarded individually
   },
-  {
-    path: 'overview',
-    loadComponent: () =>
-      import('./features/dashboard/general/overview/overview.component').then(
-        (m) => m.OverviewComponent
-      ),
-    canActivate: [AuthGuard],
-  },
+
   {
     path: 'rtr-processing',
     loadComponent: () =>
@@ -40,22 +33,7 @@ export const routes: Routes = [
       ).then((m) => m.CrewGenerationComponent),
     canActivate: [AuthGuard],
   },
-  {
-    path: 'report-center',
-    loadComponent: () =>
-      import(
-        './features/dashboard/files-reports/report-center/report-center.component'
-      ).then((m) => m.ReportCenterComponent),
-    canActivate: [AuthGuard],
-  },
-  {
-    path: 'files-permits',
-    loadComponent: () =>
-      import(
-        './features/dashboard/files-reports/files-permits/files-permits.component'
-      ).then((m) => m.FilesPermitsComponent),
-    canActivate: [AuthGuard],
-  },
+
   {
     path: 'photo-evidence',
     loadComponent: () =>
