@@ -28,6 +28,8 @@ interface PhotoEvidence {
   taskStatusName?: string; // Optional property added for context
   loaded?: boolean; // Whether the photo has been loaded as blob
   error?: boolean; // Whether there was an error loading the photo
+  ticketCode?: string; // Optional property for context when showing photos from multiple tickets
+  ticketAddress?: string; // Optional property for context when showing photos from multiple tickets
 }
 
 interface TaskStatus {
@@ -70,6 +72,10 @@ interface Ticket {
   contractUnit: ContractUnit;
   addresses: Address[];
   taskStatuses: TaskStatus[];
+  // Properties added during data flattening
+  incidentId?: number;
+  incidentName?: string;
+  earliestRptDate?: string;
 }
 
 interface Incident {
@@ -132,6 +138,7 @@ export class PhotoEvidenceComponent extends BaseDashboardComponent implements On
   totalCount = 0;
   currentPage = 1;
   pageSize = 10;
+  mxNumberPhotos: PhotoEvidence[] = []; // New property to store photos from all tickets with the same MX Number
 
   columns: ColumnDefinition[] = [
     {
@@ -380,9 +387,12 @@ export class PhotoEvidenceComponent extends BaseDashboardComponent implements On
       console.log('Selected ticket:', ticket);
       console.log('Raw photos found:', rawPhotos.length);
 
-      // Load photo blobs and create object URLs
+      // Load photo blobs and create object URLs for current ticket photos
       this.selectedPhotos = await this.loadPhotoBlobs(rawPhotos);
       console.log('Photos loaded with blobs:', this.selectedPhotos.length);
+
+      // Load photos from all tickets with the same MX Number for "No Parking Signs" and "Install Signs"
+      await this.loadPhotosFromSameMXNumber();
 
       // Add a small delay to ensure UI updates are processed
       await new Promise(resolve => setTimeout(resolve, 100));
@@ -481,11 +491,31 @@ export class PhotoEvidenceComponent extends BaseDashboardComponent implements On
 
   getPhotoCount(ticket: Ticket): number {
     let count = 0;
+
+    // Count photos from current ticket
     ticket.taskStatuses.forEach(taskStatus => {
       if (taskStatus.photoEvidence) {
         count += taskStatus.photoEvidence.length;
       }
     });
+
+    // Add photos from all tickets with the same MX Number for "No Parking Signs" and "Install Signs"
+    if (ticket.incidentName) {
+      this.galleryData.forEach(incident => {
+        if (incident.incidentName === ticket.incidentName) {
+          incident.tickets.forEach(otherTicket => {
+            if (otherTicket.ticketId !== ticket.ticketId) { // Don't count the current ticket twice
+              otherTicket.taskStatuses.forEach(taskStatus => {
+                if ((taskStatus.name === 'No Parking Signs' || taskStatus.name === 'Install Signs') && taskStatus.photoEvidence) {
+                  count += taskStatus.photoEvidence.length;
+                }
+              });
+            }
+          });
+        }
+      });
+    }
+
     return count;
   }
 
@@ -496,6 +526,7 @@ export class PhotoEvidenceComponent extends BaseDashboardComponent implements On
   getAllPhotoComments(ticket: Ticket): string {
     const comments: string[] = [];
 
+    // Get comments from current ticket
     ticket.taskStatuses.forEach(taskStatus => {
       if (taskStatus.photoEvidence && taskStatus.photoEvidence.length > 0) {
         taskStatus.photoEvidence.forEach(photo => {
@@ -505,6 +536,28 @@ export class PhotoEvidenceComponent extends BaseDashboardComponent implements On
         });
       }
     });
+
+    // Get comments from all tickets with the same MX Number for "No Parking Signs" and "Install Signs"
+    if (ticket.incidentName) {
+      this.galleryData.forEach(incident => {
+        if (incident.incidentName === ticket.incidentName) {
+          incident.tickets.forEach(otherTicket => {
+            if (otherTicket.ticketId !== ticket.ticketId) { // Don't count the current ticket twice
+              otherTicket.taskStatuses.forEach(taskStatus => {
+                if ((taskStatus.name === 'No Parking Signs' || taskStatus.name === 'Install Signs') &&
+                    taskStatus.photoEvidence && taskStatus.photoEvidence.length > 0) {
+                  taskStatus.photoEvidence.forEach(photo => {
+                    if (photo.comment && photo.comment.trim()) {
+                      comments.push(photo.comment.trim());
+                    }
+                  });
+                }
+              });
+            }
+          });
+        }
+      });
+    }
 
     if (comments.length === 0) {
       return 'No comments';
@@ -523,11 +576,32 @@ export class PhotoEvidenceComponent extends BaseDashboardComponent implements On
 
   hasPhotos(ticket: Ticket): boolean {
     let hasPhotos = false;
+
+    // Check photos from current ticket
     ticket.taskStatuses.forEach(taskStatus => {
       if (taskStatus.photoEvidence && taskStatus.photoEvidence.length > 0) {
         hasPhotos = true;
       }
     });
+
+    // Check photos from all tickets with the same MX Number for "No Parking Signs" and "Install Signs"
+    if (!hasPhotos && ticket.incidentName) {
+      this.galleryData.forEach(incident => {
+        if (incident.incidentName === ticket.incidentName) {
+          incident.tickets.forEach(otherTicket => {
+            if (otherTicket.ticketId !== ticket.ticketId) { // Don't check the current ticket twice
+              otherTicket.taskStatuses.forEach(taskStatus => {
+                if ((taskStatus.name === 'No Parking Signs' || taskStatus.name === 'Install Signs') &&
+                    taskStatus.photoEvidence && taskStatus.photoEvidence.length > 0) {
+                  hasPhotos = true;
+                }
+              });
+            }
+          });
+        }
+      });
+    }
+
     return hasPhotos;
   }
 
@@ -599,10 +673,17 @@ export class PhotoEvidenceComponent extends BaseDashboardComponent implements On
 
     // Get all phases from the ticket, even if they have no photos
     const phases = this.selectedTicket.taskStatuses.map(taskStatus => {
-      // Find photos for this phase
-      const phasePhotos = this.selectedPhotos.filter(photo =>
-        photo.taskStatusName === taskStatus.name
-      );
+      let phasePhotos: PhotoEvidence[] = [];
+
+      // For "No Parking Signs" and "Install Signs", get photos from all tickets with the same MX Number
+      if (taskStatus.name === 'No Parking Signs' || taskStatus.name === 'Install Signs') {
+        phasePhotos = this.mxNumberPhotos.filter(photo => photo.taskStatusName === taskStatus.name);
+      } else {
+        // For other phases, only get photos from the current ticket
+        phasePhotos = this.selectedPhotos.filter(photo =>
+          photo.taskStatusName === taskStatus.name
+        );
+      }
 
       return {
         phaseName: taskStatus.name,
@@ -630,6 +711,73 @@ export class PhotoEvidenceComponent extends BaseDashboardComponent implements On
 
     console.log('📊 allPhases getter: returning', sortedPhases.length, 'phases in custom order');
     return sortedPhases;
+  }
+
+  // Helper method to get all photos from the same MX Number for specific phases
+  private getAllPhotosFromSameMXNumber(phaseName: string): PhotoEvidence[] {
+    if (!this.selectedTicket) return [];
+
+    const mxNumber = this.selectedTicket.incidentName;
+    const allPhotos: PhotoEvidence[] = [];
+
+    // Find all tickets with the same MX Number in the gallery data
+    this.galleryData.forEach(incident => {
+      if (incident.incidentName === mxNumber) {
+        incident.tickets.forEach(ticket => {
+          ticket.taskStatuses.forEach(taskStatus => {
+            if (taskStatus.name === phaseName && taskStatus.photoEvidence) {
+              // Add task status name and ticket info to each photo for context
+              const photosWithContext = taskStatus.photoEvidence.map(photo => ({
+                ...photo,
+                taskStatusName: taskStatus.name,
+                ticketCode: ticket.ticketCode, // Add ticket code for context
+                ticketAddress: ticket.addresses?.[0]?.fullAddress || 'N/A' // Add address for context
+              }));
+              allPhotos.push(...photosWithContext);
+            }
+          });
+        });
+      }
+    });
+
+    console.log(`📸 Found ${allPhotos.length} photos for phase "${phaseName}" across all tickets with MX Number "${mxNumber}"`);
+    return allPhotos;
+  }
+
+  // Load photos from all tickets with the same MX Number for specific phases
+  private async loadPhotosFromSameMXNumber(): Promise<void> {
+    if (!this.selectedTicket) return;
+
+    const mxNumber = this.selectedTicket.incidentName;
+    const allPhotos: PhotoEvidence[] = [];
+
+    // Find all tickets with the same MX Number in the gallery data
+    this.galleryData.forEach(incident => {
+      if (incident.incidentName === mxNumber) {
+        incident.tickets.forEach(ticket => {
+          ticket.taskStatuses.forEach(taskStatus => {
+            if ((taskStatus.name === 'No Parking Signs' || taskStatus.name === 'Install Signs') && taskStatus.photoEvidence) {
+              // Add task status name and ticket info to each photo for context
+              const photosWithContext = taskStatus.photoEvidence.map(photo => ({
+                ...photo,
+                taskStatusName: taskStatus.name,
+                ticketCode: ticket.ticketCode, // Add ticket code for context
+                ticketAddress: ticket.addresses?.[0]?.fullAddress || 'N/A' // Add address for context
+              }));
+              allPhotos.push(...photosWithContext);
+            }
+          });
+        });
+      }
+    });
+
+    console.log(`📸 Found ${allPhotos.length} photos from all tickets with MX Number "${mxNumber}" for No Parking Signs and Install Signs`);
+
+    // Load photo blobs for all photos from multiple tickets
+    const photosWithBlobs = await this.loadPhotoBlobs(allPhotos);
+
+    // Store these photos separately so they can be accessed by the allPhases getter
+    this.mxNumberPhotos = photosWithBlobs;
   }
 
   // Keep the old method for backward compatibility
