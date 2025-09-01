@@ -79,6 +79,18 @@
                       <p class="route-location">{{ formatAddress(ticket.address) }}</p>
                       <!-- If you want to show incident name, add here: <p class="incident-name">{{ ticket.incidentname || 'No incident name' }}</p> -->
                     </div>
+                    <!-- WP Checkbox -->
+                    <div class="wp-checkbox-container">
+                      <mat-checkbox
+                        [checked]="ticket.watchnProtect || false"
+                        (change)="onWatchnProtectChange(ticket.ticketId, $event)"
+                        [disabled]="watchnProtectLoading.has(ticket.ticketId)"
+                        class="wp-checkbox"
+                        title="Watch 'n Protect">
+                        <span class="wp-label">WP</span>
+                      </mat-checkbox>
+                      <mat-spinner *ngIf="watchnProtectLoading.has(ticket.ticketId)" diameter="16" class="wp-loading"></mat-spinner>
+                    </div>
                     <span class="ticket-code">{{ ticket.ticketCode || 'No ticket code' }}</span>
                     <mat-divider></mat-divider>
                   </div>
@@ -159,6 +171,18 @@
                       <p class="route-location">{{ formatAddress(ticket.address) }}</p>
                       <!-- If you want to show incident name, add here: <p class="incident-name">{{ ticket.incidentname || 'No incident name' }}</p> -->
                     </div>
+                    <!-- WP Checkbox -->
+                    <div class="wp-checkbox-container">
+                      <mat-checkbox
+                        [checked]="ticket.watchnProtect || false"
+                        (change)="onWatchnProtectChange(ticket.ticketId, $event)"
+                        [disabled]="watchnProtectLoading.has(ticket.ticketId)"
+                        class="wp-checkbox"
+                        title="Watch 'n Protect">
+                        <span class="wp-label">WP</span>
+                      </mat-checkbox>
+                      <mat-spinner *ngIf="watchnProtectLoading.has(ticket.ticketId)" diameter="16" class="wp-loading"></mat-spinner>
+                    </div>
                     <span class="ticket-code">{{ ticket.ticketCode || 'No ticket code' }}</span>
                     <mat-divider></mat-divider>
                   </div>
@@ -237,6 +261,18 @@
                     <div class="ticket-info">
                       <p class="route-location">{{ formatAddress(ticket.address) }}</p>
                       <!-- If you want to show incident name, add here: <p class="incident-name">{{ ticket.incidentname || 'No incident name' }}</p> -->
+                    </div>
+                    <!-- WP Checkbox -->
+                    <div class="wp-checkbox-container">
+                      <mat-checkbox
+                        [checked]="ticket.watchnProtect || false"
+                        (change)="onWatchnProtectChange(ticket.ticketId, $event)"
+                        [disabled]="watchnProtectLoading.has(ticket.ticketId)"
+                        class="wp-checkbox"
+                        title="Watch 'n Protect">
+                        <span class="wp-label">WP</span>
+                      </mat-checkbox>
+                      <mat-spinner *ngIf="watchnProtectLoading.has(ticket.ticketId)" diameter="16" class="wp-loading"></mat-spinner>
                     </div>
                     <span class="ticket-code">{{ ticket.ticketCode || 'No ticket code' }}</span>
                     <mat-divider></mat-divider>
@@ -405,6 +441,18 @@
                     </span>
                   </p>
                 </div>
+                <!-- WP Checkbox -->
+                <div class="wp-checkbox-container">
+                  <mat-checkbox
+                    [checked]="ticket.watchnProtect || false"
+                    (change)="onWatchnProtectChange(ticket.ticketid, $event)"
+                    [disabled]="watchnProtectLoading.has(ticket.ticketid)"
+                    class="wp-checkbox"
+                    title="Watch 'n Protect">
+                    <span class="wp-label">WP</span>
+                  </mat-checkbox>
+                  <mat-spinner *ngIf="watchnProtectLoading.has(ticket.ticketid)" diameter="16" class="wp-loading"></mat-spinner>
+                </div>
                 <span class="ticket-code">{{ ticket.ticketcode || 'No ticket code' }}</span>
                 <mat-divider></mat-divider>
               </div>
@@ -459,6 +507,18 @@
                     </span>
                   </p>
                 </div>
+                <!-- WP Checkbox -->
+                <div class="wp-checkbox-container">
+                  <mat-checkbox
+                    [checked]="ticket.watchnProtect || false"
+                    (change)="onWatchnProtectChange(ticket.ticketid, $event)"
+                    [disabled]="watchnProtectLoading.has(ticket.ticketid)"
+                    class="wp-checkbox"
+                    title="Watch 'n Protect">
+                    <span class="wp-label">WP</span>
+                  </mat-checkbox>
+                  <mat-spinner *ngIf="watchnProtectLoading.has(ticket.ticketid)" diameter="16" class="wp-loading"></mat-spinner>
+                </div>
                 <span class="ticket-code">{{ ticket.ticketcode || 'No ticket code' }}</span>
                 <mat-divider></mat-divider>
               </div>
@@ -512,6 +572,18 @@
                       (EXPIRED)
                     </span>
                   </p>
+                </div>
+                <!-- WP Checkbox -->
+                <div class="wp-checkbox-container">
+                  <mat-checkbox
+                    [checked]="ticket.watchnProtect || false"
+                    (change)="onWatchnProtectChange(ticket.ticketid, $event)"
+                    [disabled]="watchnProtectLoading.has(ticket.ticketid)"
+                    class="wp-checkbox"
+                    title="Watch 'n Protect">
+                    <span class="wp-label">WP</span>
+                  </mat-checkbox>
+                  <mat-spinner *ngIf="watchnProtectLoading.has(ticket.ticketid)" diameter="16" class="wp-loading"></mat-spinner>
                 </div>
                 <span class="ticket-code">{{ ticket.ticketcode || 'No ticket code' }}</span>
                 <mat-divider></mat-divider>

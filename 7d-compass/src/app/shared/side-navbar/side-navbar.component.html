@@ -34,14 +34,7 @@
 
     <mat-accordion>
 
-      <!-- Overview -->
-      <mat-expansion-panel [expanded]="isExpanded(['/overview'])">
-        <mat-expansion-panel-header>
-          <mat-icon>dashboard</mat-icon>
-          <span>Overview</span>
-        </mat-expansion-panel-header>
-        <a mat-button routerLink="/overview" routerLinkActive="active-link" (click)="closeSidenav()">Overview</a>
-      </mat-expansion-panel>
+
 
       <!-- RTR Data -->
       <mat-expansion-panel [expanded]="isExpanded(['/rtr-processing'])">
@@ -52,14 +45,12 @@
         <a mat-button routerLink="/rtr-processing" routerLinkActive="active-link" (click)="closeSidenav()">RTR Processing</a>
       </mat-expansion-panel>
 
-      <!-- Files & Reports -->
-      <mat-expansion-panel [expanded]="isExpanded(['/report-center', '/files-permits', '/photo-evidence'])">
+      <!-- Photo Evidence -->
+      <mat-expansion-panel [expanded]="isExpanded(['/photo-evidence'])">
         <mat-expansion-panel-header>
-          <mat-icon>folder</mat-icon>
-          <span>Files & Reports</span>
+          <mat-icon>photo_library</mat-icon>
+          <span>Photo Evidence</span>
         </mat-expansion-panel-header>
-        <a mat-button routerLink="/report-center" routerLinkActive="active-link" (click)="closeSidenav()">Report Center</a>
-        <a mat-button routerLink="/files-permits" routerLinkActive="active-link" (click)="closeSidenav()">Files & Permits</a>
         <a mat-button routerLink="/photo-evidence" routerLinkActive="active-link" (click)="closeSidenav()">Photo Evidence</a>
       </mat-expansion-panel>
 

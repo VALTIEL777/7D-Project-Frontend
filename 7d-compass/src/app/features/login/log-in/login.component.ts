@@ -53,7 +53,7 @@ login(): void {
     next: (response) => {
       // ✅ Guardar estado de Remember me
       this.saveRememberMeState(rememberMe);
-      
+
       this.authService.handleLoginResponse(response);
 
       const role = response.user?.role?.toLowerCase();
@@ -61,7 +61,7 @@ login(): void {
       if (role === 'operator') {
         this.router.navigate(['/upcoming']);
       } else {
-        this.router.navigate(['/overview']);
+        this.router.navigate(['/route-generator']);
       }
     },
     error: (error) => {

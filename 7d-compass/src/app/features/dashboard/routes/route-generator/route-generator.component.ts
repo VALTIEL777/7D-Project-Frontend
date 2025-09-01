@@ -15,6 +15,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatCheckboxModule } from '@angular/material/checkbox';
 import { LoadingSpinnerComponent } from '../../../../shared/loading-spinner/loading-spinner.component';
 import { BaseDashboardComponent } from '../../../../shared/base-dashboard.component';
 import { FilterService } from '../../../../core/services/filter.service';
@@ -37,6 +38,7 @@ interface RouteTicket {
     longitude: number;
     placeid?: string;
   };
+  watchnProtect?: boolean; // Add watchnProtect property
 }
 
 // Interface for optimization metadata
@@ -89,6 +91,7 @@ interface ReadyTicket {
   incidentname: string;
   createdat: string;
   updatedat: string;
+  watchnProtect?: boolean; // Add watchnProtect property
 }
 
 // Interface for ready tickets API response
@@ -136,6 +139,7 @@ interface TicketWithIssue {
     crewId: number;
   }>;
   taskStatusCount: number;
+  watchnProtect?: boolean; // Add watchnProtect property
 }
 
 interface TicketsWithIssuesResponse {
@@ -170,6 +174,7 @@ interface TicketsWithIssuesResponse {
     MatSelectModule,
     MatProgressSpinnerModule,
     MatSnackBarModule,
+    MatCheckboxModule,
     LoadingSpinnerComponent,
     LeafletMapComponent
   ],
@@ -266,6 +271,9 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
   // Add a loading state for batch add (optional)
   isBatchAddingTickets: boolean = false;
 
+  // Add watchnProtect loading states
+  watchnProtectLoading: Set<number> = new Set();
+
   constructor(
     filterService: FilterService,
     private http: HttpClient,
@@ -296,6 +304,11 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     setTimeout(() => {
       this.updateLeafletMap();
     }, 1000);
+
+    // Load watchnProtect status for all tickets after data is loaded
+    setTimeout(async () => {
+      await this.loadWatchnProtectStatusForTickets();
+    }, 2000);
 
     // Subscribe to filter changes to trigger change detection
     this.filterService.textSearch$.subscribe(() => {
@@ -352,8 +365,8 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     allRoutes.forEach(route => {
       // Only add routes that match the current type visibility settings
       const typeVisible = (route.type === 'SPOTTER' && this.showSpottingRoutes) ||
-                         (route.type === 'CONCRETE' && this.showConcreteRoutes) ||
-                         (route.type === 'ASPHALT' && this.showAsphaltRoutes);
+                          (route.type === 'CONCRETE' && this.showConcreteRoutes) ||
+                          (route.type === 'ASPHALT' && this.showAsphaltRoutes);
 
       if (typeVisible) {
         this.visibleRoutes.add(route.routeId);
@@ -362,16 +375,9 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
   }
 
   private updateVisibleRoutes() {
-    // Only update visible routes if this is the initial load (visibleRoutes is empty)
-    // or if we're toggling type visibility (not individual route visibility)
-    // FIX: Do not auto-populate visibleRoutes when empty; let empty mean 'show nothing'.
-    // This prevents the reset when all are untapped.
-    // No action needed if visibleRoutes is empty.
     if (this.visibleRoutes.size === 0) {
-      // Do nothing: show nothing if all are untapped
       return;
     }
-    // Otherwise, preserve existing visible routes (no-op)
   }
 
   private updateTypeVisibility() {
@@ -382,8 +388,8 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     allRoutes.forEach((route: any) => {
       // Check if route type is visible
       const typeVisible = (route.type === 'SPOTTER' && this.showSpottingRoutes) ||
-                         (route.type === 'CONCRETE' && this.showConcreteRoutes) ||
-                         (route.type === 'ASPHALT' && this.showAsphaltRoutes);
+                          (route.type === 'CONCRETE' && this.showConcreteRoutes) ||
+                          (route.type === 'ASPHALT' && this.showAsphaltRoutes);
 
       if (typeVisible) {
         this.visibleRoutes.add(route.routeId);
@@ -2152,6 +2158,11 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     this.loadConcreteReadyTickets();
     this.loadTicketsWithIssues();
     this.updateLeafletMap(); // Update Leaflet map after refresh
+
+    // Reload watchnProtect status for all tickets after data refresh
+    setTimeout(async () => {
+      await this.loadWatchnProtectStatusForTickets();
+    }, 1000);
   }
 
   // Remove route from local arrays immediately
@@ -2209,5 +2220,163 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
         rect: el.getBoundingClientRect()
       }))
     });
+  }
+
+  // Method to get watchnProtect status for a ticket
+  async getWatchnProtectStatus(ticketId: number): Promise<boolean> {
+    try {
+      const response = await this.http.get<any>(`${environment.apiUrl}/diggers/ticket/${ticketId}`).toPromise();
+      // The API returns { success: true, data: { watchnProtect: boolean } }
+      return response?.data?.watchnProtect || false;
+    } catch (error) {
+      console.error(`Error getting watchnProtect status for ticket ${ticketId}:`, error);
+      return false;
+    }
+  }
+
+  // Method to update watchnProtect status for a ticket
+  async updateWatchnProtectStatus(ticketId: number, watchnProtect: boolean): Promise<void> {
+    if (this.watchnProtectLoading.has(ticketId)) {
+      return; // Prevent multiple simultaneous updates
+    }
+
+    this.watchnProtectLoading.add(ticketId);
+
+    try {
+      const requestBody = {
+        watchnProtect: watchnProtect,
+        updatedBy: 1
+      };
+
+      await this.http.patch(`${environment.apiUrl}/diggers/ticket/${ticketId}/watchn-protect`, requestBody).toPromise();
+
+      // Update the local ticket data
+      this.updateLocalTicketWatchnProtect(ticketId, watchnProtect);
+
+      this.snackBar.open(`Watch 'n Protect ${watchnProtect ? 'enabled' : 'disabled'} for ticket`, 'Close', { duration: 2000 });
+    } catch (error) {
+      console.error(`Error updating watchnProtect status for ticket ${ticketId}:`, error);
+      this.snackBar.open('Error updating Watch \'n Protect status', 'Close', { duration: 3000, panelClass: ['error-snackbar'] });
+    } finally {
+      this.watchnProtectLoading.delete(ticketId);
+    }
+  }
+
+  // Helper method to update local ticket data with new watchnProtect status
+  private updateLocalTicketWatchnProtect(ticketId: number, watchnProtect: boolean): void {
+    // Update in spotting routes
+    this.spottingRoutes.forEach(route => {
+      route.tickets.forEach(ticket => {
+        if (ticket.ticketId === ticketId) {
+          ticket.watchnProtect = watchnProtect;
+        }
+      });
+    });
+
+    // Update in concrete routes
+    this.concreteRoutes.forEach(route => {
+      route.tickets.forEach(ticket => {
+        if (ticket.ticketId === ticketId) {
+          ticket.watchnProtect = watchnProtect;
+        }
+      });
+    });
+
+    // Update in asphalt routes
+    this.asphaltRoutes.forEach(route => {
+      route.tickets.forEach(ticket => {
+        if (ticket.ticketId === ticketId) {
+          ticket.watchnProtect = watchnProtect;
+        }
+      });
+    });
+
+    // Update in ready tickets
+    this.spotReadyTickets.forEach(ticket => {
+      if (ticket.ticketid === ticketId) {
+        ticket.watchnProtect = watchnProtect;
+      }
+    });
+
+    this.asphaltReadyTickets.forEach(ticket => {
+      if (ticket.ticketid === ticketId) {
+        ticket.watchnProtect = watchnProtect;
+      }
+    });
+
+    this.concreteReadyTickets.forEach(ticket => {
+      if (ticket.ticketid === ticketId) {
+        ticket.watchnProtect = watchnProtect;
+      }
+    });
+
+    // Update in tickets with issues
+    this.ticketsWithIssues.forEach(ticket => {
+      if (ticket.ticketId === ticketId) {
+        ticket.watchnProtect = watchnProtect;
+      }
+    });
+  }
+
+  // Method to handle checkbox change
+  onWatchnProtectChange(ticketId: number, event: any): void {
+    const checked = event.checked;
+    this.updateWatchnProtectStatus(ticketId, checked);
+  }
+
+  // Method to load watchnProtect status for all tickets
+  private async loadWatchnProtectStatusForTickets(): Promise<void> {
+    const allTickets: Array<{ ticketId: number; type: string }> = [];
+
+    // Collect all ticket IDs from routes
+    this.spottingRoutes.forEach(route => {
+      route.tickets.forEach(ticket => {
+        allTickets.push({ ticketId: ticket.ticketId, type: 'route' });
+      });
+    });
+
+    this.concreteRoutes.forEach(route => {
+      route.tickets.forEach(ticket => {
+        allTickets.push({ ticketId: ticket.ticketId, type: 'route' });
+      });
+    });
+
+    this.asphaltRoutes.forEach(route => {
+      route.tickets.forEach(ticket => {
+        allTickets.push({ ticketId: ticket.ticketId, type: 'route' });
+      });
+    });
+
+    // Collect all ticket IDs from ready tickets
+    this.spotReadyTickets.forEach(ticket => {
+      allTickets.push({ ticketId: ticket.ticketid, type: 'ready' });
+    });
+
+    this.asphaltReadyTickets.forEach(ticket => {
+      allTickets.push({ ticketId: ticket.ticketid, type: 'ready' });
+    });
+
+    this.concreteReadyTickets.forEach(ticket => {
+      allTickets.push({ ticketId: ticket.ticketid, type: 'ready' });
+    });
+
+    // Load watchnProtect status for each ticket
+    const promises = allTickets.map(async ({ ticketId, type }) => {
+      try {
+        const status = await this.getWatchnProtectStatus(ticketId);
+
+        // Update the local data based on ticket type
+        if (type === 'route') {
+          this.updateLocalTicketWatchnProtect(ticketId, status);
+        } else if (type === 'ready') {
+          this.updateLocalTicketWatchnProtect(ticketId, status);
+        }
+      } catch (error) {
+        console.error(`Error loading watchnProtect status for ticket ${ticketId}:`, error);
+      }
+    });
+
+    // Wait for all statuses to be loaded
+    await Promise.all(promises);
   }
 }
