@@ -725,7 +725,7 @@
     }
 
     &.completed {
-      color: #4caf50;
+      color: #1e5a21; // Darker green for better visibility
     }
   }
 }
@@ -786,7 +786,7 @@
     display: flex;
     align-items: center;
     gap: 4px;
-    color: #4caf50;
+    color: #1b5c1e; // Darker green to match the completed status icon
     font-weight: 500;
     font-size: 0.9rem;
 
