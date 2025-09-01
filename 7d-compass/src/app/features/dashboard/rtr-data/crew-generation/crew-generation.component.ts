@@ -78,11 +78,9 @@ export class CrewGenerationComponent implements OnInit {
     'Sawcut',
     'Removal',
     'Framing',
-    'Concrete',
     'Pour',
     'Clean',
     // Otros tipos adicionales
-    'Dirt',
     'Steel Plate Pick Up'
   ];
   typeControl = new FormControl('');

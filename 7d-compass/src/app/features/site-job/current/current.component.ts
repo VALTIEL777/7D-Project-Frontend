@@ -125,6 +125,9 @@ galleryUpdatedMessage: string = ''; // 🎯 NUEVO: Mensaje de actualización de 
 
 public orderedPhaseNames: string[] = [];
 
+// 🎯 NUEVO: Propiedad para actividades opcionales
+optionalActivities: any[] = [];
+
 // 🎯 NUEVO: Propiedades para la sección de comments (observations)
 filteredObservations: any[] = [];
 observationFilterText: string = '';
@@ -409,11 +412,11 @@ private loadAllPhasesAsync() {
       let orderedPhaseNames: string[] = [];
 
       if (this.routeCode.includes('SPOTTER')) {
-        orderedPhaseNames = ['Spotting', 'Install Signs'];
+        orderedPhaseNames = ['Spotting', 'No Parking Signs'];
       } else if (this.routeCode.includes('ASPHALT')) {
         orderedPhaseNames = ['Spotting', 'Grind', 'Asphalt', 'Crack Seal', 'Stripping'];
       } else if (this.routeCode.includes('CONCRETE')) {
-        orderedPhaseNames = [ 'Spotting', 'Install Signs', 'Sawcut', 'Removal', 'Framing', 'Concrete', 'Pour', 'Clean'];
+        orderedPhaseNames = [ 'Spotting', 'No Parking Signs', 'Sawcut', 'Removal', 'Framing', 'Pour', 'Clean','Steel Plate Pickup', 'Install Signs',];
       }
 
       // 🧹 Filtrar y ordenar según orderedPhaseNames
@@ -421,18 +424,38 @@ private loadAllPhasesAsync() {
         .map(name => statuses.find(s => s.name === name))
         .filter(Boolean); // Elimina los undefined
 
-      // 🔄 Convertir a actividades
-      this.activities = filteredStatuses.map((s: any) => ({
-        id: s.taskstatusid,
-        name: s.name,
-        description: s.description,
-        checked: false,
-        locked: false,
-        optional: this.isPhaseOptional(s.name, this.routeCode),
-        selectedFiles: [],
-        imagePreviews: [],
-        comment: ''
-      }));
+      // 🔄 Convertir a actividades (solo las obligatorias)
+      this.activities = filteredStatuses
+        .filter((s: any) => !this.isPhaseOptional(s.name, this.routeCode)) // 🎯 NUEVO: Filtrar solo actividades obligatorias
+        .map((s: any) => ({
+          id: s.taskstatusid,
+          name: s.name,
+          description: s.description,
+          checked: false,
+          locked: false,
+          optional: false, // 🎯 NUEVO: Todas las actividades en la lista principal son obligatorias
+          selectedFiles: [],
+          imagePreviews: [],
+          comment: ''
+        }));
+
+        // 🎯 NUEVO: Cargar actividades opcionales
+  this.optionalActivities = filteredStatuses
+    .filter((s: any) => this.isPhaseOptional(s.name, this.routeCode)) // 🎯 NUEVO: Filtrar solo actividades opcionales
+    .map((s: any) => ({
+      id: s.taskstatusid,
+      name: s.name,
+      description: s.description,
+      checked: false,
+      locked: false,
+      optional: true, // 🎯 NUEVO: Todas las actividades opcionales
+      selectedFiles: [],
+      imagePreviews: [],
+      comment: ''
+    }));
+
+  // 🎯 NUEVO: Verificar y crear TicketStatus para "No Parking Signs" si es necesario
+  this.ensureNoParkingSignsTicketStatus();
 
       // 🔍 Buscar Crack Seal (si está disponible en general)
       const crackSeal = statuses.find((s: any) => s.name?.toLowerCase() === 'crack seal');
@@ -446,6 +469,42 @@ private loadAllPhasesAsync() {
   );
 }
 
+getActivityColor(activityName: string): string {
+  switch(activityName) {
+    case 'Spotting':
+      return '#CEDBF2'; 
+    case 'Install Signs':
+      return '#ADD8E6'; // azul claro
+    case 'Grind':
+      return '#C8A2C8'; // lila
+    case 'Asphalt':
+      return '#B002B0'; // purple
+    case 'Crack Seal':
+      return '#BABABA'; // gris
+    case 'Stripping':
+      return '#00FF00'; // verde
+    case 'Sawcut':
+      return '#FFD700'; // dorado
+    case 'Removal':
+      return '#75D475'; // verde
+    case 'Framing':
+      return '#FFB347'; // naranja
+    case 'Concrete':
+      return '#C0C0C0'; // gris
+    case 'Pour':
+      return '#4682B4'; // azul acero
+    case 'Clean':
+      return '#FF69B4'; // rosa
+    case 'Steel Plate Pickup':
+      return '#FFB347'; // naranja claro
+    case 'No Parking Signs':
+      return '#FF6B6B'; // rojo coral
+    default:
+      return '#fafafa'; // fallback
+  }
+}
+
+
 // ✅ NUEVO MÉTODO: Determinar si una fase es opcional según el tipo de ruta
 private isPhaseOptional(phaseName: string, routeCode: string): boolean {
   const phaseNameLower = phaseName.toLowerCase();
@@ -457,16 +516,55 @@ private isPhaseOptional(phaseName: string, routeCode: string): boolean {
 
   // Fases opcionales para rutas CONCRETE
   if (routeCode.includes('CONCRETE')) {
-    return ['steel plate pickup', 'install signs'].includes(phaseNameLower);
+    return ['no parking signs','steel plate pickup', 'install signs'].includes(phaseNameLower);
   }
 
   // Fases opcionales para rutas SPOTTER
   if (routeCode.includes('SPOTTER')) {
-    return ['install signs'].includes(phaseNameLower);
+    return ['no parking signs'].includes(phaseNameLower);
   }
 
   // Por defecto, todas las fases son obligatorias
   return false;
+}
+
+// 🎯 NUEVO: Verificar y crear TicketStatus para "No Parking Signs" si es necesario
+private async ensureNoParkingSignsTicketStatus(): Promise<void> {
+  // Solo verificar para rutas CONCRETE y SPOTTER
+  if (!this.routeCode.includes('CONCRETE') && !this.routeCode.includes('SPOTTER')) {
+    return;
+  }
+
+  try {
+    // Verificar si ya existe el TicketStatus para "No Parking Signs" (taskstatusid: 14)
+    const existingTicketStatus = await firstValueFrom(
+      this.ticketStatusService.getById(14, this.ticketId)
+    );
+
+    // Si no existe, crearlo
+    if (!existingTicketStatus || existingTicketStatus.length === 0) {
+      const newTicketStatus = {
+        taskstatusid: 14,
+        ticketid: this.ticketId,
+        crewid: null,
+        startingdate: null,
+        endingdate: null,
+        observation: null,
+        createdby: this.userId,
+        updatedby: this.userId
+      };
+
+      await firstValueFrom(this.ticketStatusService.create(newTicketStatus));
+      console.log('✅ TicketStatus creado para "No Parking Signs"');
+    }
+  } catch (error) {
+    console.error('❌ Error al verificar/crear TicketStatus para "No Parking Signs":', error);
+  }
+}
+
+// 🎯 NUEVO MÉTODO: Obtener actividades opcionales
+getOptionalActivities(): any[] {
+  return this.optionalActivities || [];
 }
 
 loadTicketCode() {
@@ -744,6 +842,7 @@ loadLinkedPhases() {
     console.log('🔍 === DEBUGGING FECHAS ===');
     console.log('📋 TicketStatuses recibidos del backend:', safeStatuses);
 
+    // 🎯 NUEVO: Procesar actividades obligatorias
     this.activities.forEach(activity => {
       const activityId = Number(activity.id);
       const existingStatus = safeStatuses.find(ts => Number(ts.taskstatusid) === activityId);
@@ -876,6 +975,51 @@ loadLinkedPhases() {
       console.log(`📋 ${activity.name}: startDate=${activity.startDate}, endDate=${activity.endDate}, observation=${activity.observation}`);
     });
     console.log('🔍 === FIN DEBUGGING FECHAS ===');
+
+    // 🎯 NUEVO: Procesar actividades opcionales
+    this.optionalActivities.forEach(activity => {
+      const activityId = Number(activity.id);
+      const existingStatus = safeStatuses.find(ts => Number(ts.taskstatusid) === activityId);
+
+      if (existingStatus) {
+        // ✅ Si existe TicketStatus pero ambas fechas son NULL, está "asignada" pero no iniciada
+        if (!existingStatus.startingdate && !existingStatus.endingdate) {
+          activity.checked = false;
+          activity.locked = false;
+          activity.assigned = true;
+          activity.startDate = null;
+          activity.endDate = null;
+          activity.observation = existingStatus.observation || '';
+        }
+        // ✅ Si tiene startingDate pero no endingDate, está iniciada
+        else if (existingStatus.startingdate && !existingStatus.endingdate) {
+          activity.checked = true;
+          activity.locked = false;
+          activity.assigned = true;
+          activity.started = true;
+          activity.startDate = existingStatus.startingdate;
+          activity.endDate = null;
+          activity.observation = existingStatus.observation || '';
+        }
+        // ✅ Si tiene endingDate, está completada
+        else if (existingStatus.endingdate) {
+          activity.checked = true;
+          activity.locked = true;
+          activity.assigned = true;
+          activity.completed = true;
+          activity.startDate = existingStatus.startingdate;
+          activity.endDate = existingStatus.endingdate;
+          activity.observation = existingStatus.observation || '';
+        }
+      } else {
+        // ✅ Fase opcional no asignada al ticket
+        activity.checked = false;
+        activity.locked = false;
+        activity.assigned = false;
+        activity.startDate = null;
+        activity.endDate = null;
+      }
+    });
 
     // 🎯 NUEVO: Inicializar observaciones filtradas
     this.filteredObservations = this.getObservationsFromTicketStatus();
@@ -2040,7 +2184,7 @@ onObservationFilterChange() {
 
 // 🎯 MÉTODO PARA OBTENER OBSERVACIONES DE TICKETSTATUS
 getObservationsFromTicketStatus(): any[] {
-  if (!this.activities || this.activities.length === 0) {
+  if ((!this.activities || this.activities.length === 0) && (!this.optionalActivities || this.optionalActivities.length === 0)) {
     return [];
   }
 
@@ -2049,7 +2193,10 @@ getObservationsFromTicketStatus(): any[] {
     console.log(`📝 ${activity.name}: observation="${activity.observation}" (tipo: ${typeof activity.observation})`);
   });
 
-  const validObservations = this.activities
+  // 🎯 NUEVO: Combinar actividades obligatorias y opcionales
+  const allActivities = [...this.activities, ...this.optionalActivities];
+  
+  const validObservations = allActivities
     .filter(activity => {
       // 🎯 FILTRAR SOLO ACTIVIDADES CON OBSERVACIÓN VÁLIDA
       const hasValidObservation = activity.observation &&

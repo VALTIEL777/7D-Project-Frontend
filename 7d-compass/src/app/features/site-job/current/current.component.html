@@ -32,7 +32,7 @@
         (click)="changeZoomLevel(zoom)"
         class="zoom-btn"
       >
-        {{ zoom }}
+        {{ zoom}}
       </button>
     </div>
   </div> -->
@@ -173,7 +173,7 @@
     <mat-icon matPrefix>search</mat-icon>
     <input matInput [(ngModel)]="activityFilterText" (ngModelChange)="onActivityFilterChange()" placeholder="Search by phase name">
   </mat-form-field>
-  <div *ngFor="let activity of filteredActivities; let i = index" class="activity-item">
+  <div *ngFor="let activity of filteredActivities; let i = index" class="activity-item"  [ngStyle]="{'background-color': getActivityColor(activity.name)}">
     <div class="activity-header">
       <div class="activity-status">
         <!-- Estado: No asignada -->
@@ -360,6 +360,206 @@
 
       </div>
     </mat-expansion-panel>
+  </div>
+</div>
+
+<!-- 🎯 NUEVA SECCIÓN: Optional Activities -->
+<div *ngIf="getOptionalActivities().length > 0">
+  <h3 class="sub-title">
+    <mat-icon style="color: #ff9800; margin-right: 8px;">star_half</mat-icon>
+    Optional Activities
+  </h3>
+  <div class="optional-activities-container" style="margin-bottom: 24px;">
+    <div class="optional-info" style="background-color: #fff3e0; border: 1px solid #ffb74d; border-radius: 8px; padding: 16px; margin-bottom: 16px;">
+      <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+        <mat-icon style="color: #ff9800;">info</mat-icon>
+        <strong style="color: #e65100;">Optional Activities</strong>
+      </div>
+      <p style="color: #bf360c; margin: 0; font-size: 14px;">
+        These activities are optional and can be performed if needed. They are not required to complete the main workflow.
+      </p>
+    </div>
+
+    <div *ngFor="let activity of getOptionalActivities(); let i = index" class="activity-item optional-activity" [ngStyle]="{'background-color': getActivityColor(activity.name)}">
+      <div class="activity-header">
+        <div class="activity-status">
+          <!-- Estado: No asignada -->
+          <mat-icon *ngIf="!activity.assigned" class="status-icon not-assigned" title="Not assigned">
+            radio_button_unchecked
+          </mat-icon>
+
+          <!-- Estado: Asignada pero no iniciada -->
+          <mat-icon *ngIf="isPhaseAssigned(activity)" class="status-icon assigned" title="Assigned - Click to start">
+            assignment
+          </mat-icon>
+
+          <!-- Estado: Iniciada pero no completada -->
+          <mat-icon *ngIf="isPhaseStarted(activity)" class="status-icon started" title="Started - Click to complete">
+            play_circle
+          </mat-icon>
+
+          <!-- Estado: Completada -->
+          <mat-icon *ngIf="isPhaseCompleted(activity)" class="status-icon completed" title="Completed">
+            check_circle
+          </mat-icon>
+        </div>
+
+        <div class="activity-content">
+          <span class="activity-name">
+            {{ activity.name }}
+            <span class="optional-badge" style="background-color: #ff9800; color: white; padding: 2px 8px; border-radius: 12px; font-size: 10px; margin-left: 8px; text-transform: uppercase;">Optional</span>
+          </span>
+
+          <!-- Mostrar fecha de inicio si está iniciada -->
+          <span *ngIf="isPhaseStarted(activity) || isPhaseCompleted(activity)" class="activity-date">
+            Started: {{ activity.startDate | date:'MMM d, y, h:mm a' }}
+          </span>
+
+          <!-- Mostrar fecha de finalización si está completada -->
+          <span *ngIf="isPhaseCompleted(activity)" class="activity-date">
+            Completed: {{ activity.endDate | date:'MMM d, y, h:mm a' }}
+          </span>
+
+          <span class="crew-evidence">Remember take a crew photo.</span>
+        </div>
+      </div>
+
+      <div class="activity-actions">
+        <!-- Botón para iniciar fase opcional -->
+        <button
+          *ngIf="!activity.assigned || isPhaseAssigned(activity)"
+          mat-stroked-button
+          color="accent"
+          (click)="startPhase(activity)"
+          class="action-btn start-btn"
+        >
+          <mat-icon>play_arrow</mat-icon>
+          Start Optional Phase
+        </button>
+
+        <!-- Botón para completar fase iniciada -->
+        <button
+          *ngIf="isPhaseStarted(activity)"
+          mat-stroked-button
+          color="accent"
+          (click)="completePhase(activity)"
+          class="action-btn complete-btn"
+        >
+          <mat-icon>done</mat-icon>
+          Complete Optional Phase
+        </button>
+
+        <!-- Indicador de fase completada -->
+        <span *ngIf="isPhaseCompleted(activity)" class="completed-indicator">
+          <mat-icon>check</mat-icon>
+          Completed
+        </span>
+      </div>
+
+      <!-- Formulario de subida de evidencia para fase opcional -->
+      <mat-expansion-panel>
+        <mat-expansion-panel-header>
+          <mat-panel-title>
+            Photo evidence
+          </mat-panel-title>
+        </mat-expansion-panel-header>
+        <div class="photo-evidence-upload" style="margin: 16px 0;">
+          <mat-card class="evidence-card">
+            <div class="evidence-header">
+              <button mat-raised-button color="primary" class="upload-btn" (click)="optionalFileInput.click()">
+                <mat-icon>camera_enhance</mat-icon>
+                <span style="margin-left: 8px;">Take photo</span>
+              </button>
+              <span class="restriction">You can upload up to 5 photos.</span>
+
+              <input
+                #optionalFileInput
+                type="file"
+                accept="image/*"
+                capture="environment"
+                hidden
+                (change)="onFileSelected($event, activity)"
+                multiple
+              />
+              <span class="file-names" *ngIf="activity.selectedFiles?.length > 0">
+                {{ getSelectedFileNames(activity) }}
+              </span>
+            </div>
+            <div class="preview-container" *ngFor="let preview of activity.imagePreviews; let j = index">
+              <img *ngIf="preview" [src]="preview" alt="Preview" class="preview-img" />
+              <button mat-icon-button color="warn" (click)="removeImage(j, activity)" aria-label="Eliminar imagen">
+                <mat-icon>close</mat-icon>
+              </button>
+            </div>
+            <mat-form-field appearance="fill" class="evidence-field">
+              <mat-label>Photo Name</mat-label>
+              <input matInput [(ngModel)]="activity.name" placeholder="Ej. Foto de zona de trabajo" />
+              <mat-hint *ngIf="activity.name">
+                <mat-icon>auto_fix_high</mat-icon>
+                Auto complete with the phase selected
+              </mat-hint>
+            </mat-form-field>
+            <mat-form-field appearance="fill" class="evidence-field">
+              <mat-label>Comment</mat-label>
+              <input matInput [(ngModel)]="activity.comment" placeholder="Ej. Permiso faltante, entrada bloqueada..." />
+            </mat-form-field>
+            <button
+              mat-raised-button
+              color="accent"
+              class="submit-btn"
+              (click)="uploadPhotoEvidence(activity.id, activity)"
+              [disabled]="!activity.selectedFiles || activity.selectedFiles.length === 0 || isUploading(activity)"
+            >
+              <mat-icon *ngIf="!isUploading(activity)">cloud_upload</mat-icon>
+              <mat-spinner *ngIf="isUploading(activity)" diameter="20" class="upload-spinner"></mat-spinner>
+              <span>{{ isUploading(activity) ? 'Uploading...' : 'Upload evidence' }}</span>
+            </button>
+
+            <!-- Indicador de progreso detallado -->
+            <div *ngIf="isUploading(activity)" class="upload-progress" style="margin-top: 8px;">
+              <mat-progress-bar mode="indeterminate" color="accent"></mat-progress-bar>
+              <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px; font-size: 12px; color: #666;">
+                <mat-icon style="font-size: 16px; width: 16px; height: 16px;">cloud_upload</mat-icon>
+                <span>Processing {{ activity.selectedFiles?.length || 0 }} files...</span>
+              </div>
+            </div>
+          </mat-card>
+        </div>
+      </mat-expansion-panel>
+
+      <!-- Campo de comentario para fase opcional -->
+      <mat-expansion-panel>
+        <mat-expansion-panel-header>
+          <mat-panel-title>
+            <mat-icon style="color: #2196f3; margin-right: 8px;">comment</mat-icon>
+            Add Issue
+          </mat-panel-title>
+        </mat-expansion-panel-header>
+
+        <div class="comment-section" style="margin: 16px 0;">
+          <div class="comment-input-container" style="display: flex; gap: 12px; align-items: flex-end;">
+            <mat-form-field appearance="outline" style="flex: 1;">
+              <mat-label>Issue for {{ activity.name }}</mat-label>
+              <textarea matInput
+                        [(ngModel)]="activity.observation"
+                        placeholder="Add a comment about this phase..."
+                        rows="2"
+                        maxlength="500"></textarea>
+              <mat-hint>{{ (activity.observation || '').length }}/500</mat-hint>
+            </mat-form-field>
+
+            <button mat-raised-button
+                    color="primary"
+                    (click)="saveObservation(activity)"
+                    [disabled]="!activity.observation || activity.observation.trim().length === 0"
+                    style="height: 40px;">
+              <mat-icon>send</mat-icon>
+              <span style="margin-left: 4px;">Send</span>
+            </button>
+          </div>
+        </div>
+      </mat-expansion-panel>
+    </div>
   </div>
 </div>
 
