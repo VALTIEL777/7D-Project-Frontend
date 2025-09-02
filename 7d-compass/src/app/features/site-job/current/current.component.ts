@@ -472,37 +472,38 @@ private loadAllPhasesAsync() {
 getActivityColor(activityName: string): string {
   switch(activityName) {
     case 'Spotting':
-      return '#B4F0D3'; // Serene Mint - Fresh, clean, and calming
+      return '#DCCFC0'; // cafe claro
     case 'Install Signs':
-      return '#FFD1DC'; // Blush Pink - Friendly, approachable, and sweet
+      return '#90C8E0'; // azul pastel
     case 'Grind':
-      return '#D2C9E8'; // Lavender Dream - Creative, whimsical, and luxurious
+      return '#B3C8CF'; // 
     case 'Asphalt':
-      return '#ACE5EE'; // Sky Blue - Trustworthy, peaceful, and open
+      return '#E5E1DA'; // 
     case 'Crack Seal':
-      return '#F1E5C9'; // Buttercream - Welcoming, reliable, and subtle
+      return '#F1F0E8'; // gris medio
     case 'Stripping':
-      return '#FAD6BB'; // Peach Smoothie - Energetic, optimistic, and friendly
+      return '#4CAF50'; // verde controlado (no fosforescente)
     case 'Sawcut':
-      return '#DCD0FF'; // Lilac Mist - Sophisticated, soft, and imaginative
+      return '#AAB99A'; // verde pastel
     case 'Removal':
-      return '#BCE6DF'; // Seafoam Green - Balanced, tranquil, and natural
+      return '#D0DDD0'; // verde claro
     case 'Framing':
-      return '#F9E8A1'; // Pale Gold - Happy, cheerful, and attention-grabbing
+      return '#F0F0D7'; // amarillo claro
     case 'Concrete':
-      return '#B3D9E8'; // Powder Blue - Dependable, serene, and professional
+      return '#B0B0B0'; // gris claro medio
     case 'Pour':
-      return '#E8C5C5'; // Dusty Rose - Vintage, elegant, and soft
+      return '#DCE4C9'; // verdesito
     case 'Clean':
-      return '#C8D9C7'; // Soft Sage - Organic, stable, and calming
+      return '#9CAFAA'; // rosa pastel
     case 'Steel Plate Pickup':
-      return '#C5D0E8'; // Periwinkle - Dreamy, nostalgic, and comforting
+      return '#F7B267'; // naranja claro mate
     case 'No Parking Signs':
-      return '#F8C9C1'; // Coral Kiss - Playful, inviting, and energetic
+      return '#B3C8CF'; // rojo apagado
     default:
-      return '#E2E2F0'; // Icy Lavender - Minimalist, cool, and modern
+      return '#F5F5F5'; // gris neutro de fondo
   }
 }
+
 
 
 // ✅ NUEVO MÉTODO: Determinar si una fase es opcional según el tipo de ruta
