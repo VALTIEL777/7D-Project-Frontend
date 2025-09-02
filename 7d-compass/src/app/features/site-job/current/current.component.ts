@@ -2608,7 +2608,7 @@ getLastRequiredPhase(): string | null {
   // 🎯 MÉTODO PARA VERIFICAR SI UNA FASE DEBE ACTUALIZAR EL TICKET A COMPLETED
   shouldUpdateTicketToCompleted(activityName: string): boolean {
     // Solo Crack Seal actualizan el ticket a COMPLETED
-    return activityName === 'Crack Seal';
+    return activityName === 'Crack Seal' || activityName === 'Clean';
   }
 
   // 🎯 MÉTODO PARA VERIFICAR SI SE COMPLETÓ LA ÚLTIMA FASE OBLIGATORIA (DEPRECATED)
