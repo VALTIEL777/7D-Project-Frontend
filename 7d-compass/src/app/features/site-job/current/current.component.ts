@@ -159,6 +159,10 @@ filteredTicketImages: any[] = [];
   // 🎯 NUEVO: Propiedad para almacenar quadrantId
   private quadrantId: number | null = null;
 
+  // 🎯 NUEVO: Propiedades para detección de dispositivo móvil
+  private isMobileDevice: boolean = false;
+  private hasCameraSupport: boolean = false;
+
   constructor(
      private crewsService: CrewsService,
         private crewEmployeesService: CrewEmployeesService,
@@ -179,6 +183,9 @@ filteredTicketImages: any[] = [];
 
   ngOnInit() {
     console.log('🚀 Iniciando carga optimizada del componente...');
+
+    // 🎯 NUEVO: Detectar dispositivo móvil y soporte de cámara
+    this.detectMobileDeviceAndCamera();
 
     // 👇 Recuperar datos básicos desde localStorage
     this.loadBasicDataFromStorage();
@@ -1519,12 +1526,14 @@ onFileSelected(event: Event, activity: any) {
   const input = event.target as HTMLInputElement;
   if (input.files && input.files.length > 0) {
     const validImageTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-    if (activity.selectedFiles.length >= 5) {
-      return;
-    }
-    const file = input.files[0];
-    if (validImageTypes.includes(file.type)) {
-      if (activity.selectedFiles.length < 5) {
+    
+    // Procesar múltiples archivos si están disponibles
+    Array.from(input.files).forEach(file => {
+      if (activity.selectedFiles.length >= 5) {
+        return;
+      }
+      
+      if (validImageTypes.includes(file.type)) {
         // Renombrar el archivo para evitar caracteres especiales
         const fileExtension = file.name.split('.').pop() || 'jpg';
         const safeName = `${Date.now()}_${this.ticketId}_${activity.id}.${fileExtension}`;
@@ -1537,7 +1546,44 @@ onFileSelected(event: Event, activity: any) {
         };
         reader.readAsDataURL(renamedFile);
       }
+    });
+    
+    input.value = '';
+  }
+}
+
+// 🎯 NUEVO: Método específico para fotos de cámara
+onCameraPhotoSelected(event: Event, activity: any) {
+  const input = event.target as HTMLInputElement;
+  if (input.files && input.files.length > 0) {
+    const file = input.files[0];
+    const validImageTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    
+    if (validImageTypes.includes(file.type)) {
+      if (activity.selectedFiles.length < 5) {
+        // Renombrar el archivo para evitar caracteres especiales
+        const fileExtension = file.name.split('.').pop() || 'jpg';
+        const safeName = `${Date.now()}_${this.ticketId}_${activity.id}_camera.${fileExtension}`;
+        const renamedFile = new File([file], safeName, { type: file.type });
+
+        activity.selectedFiles.push(renamedFile);
+        const reader = new FileReader();
+        reader.onload = () => {
+          activity.imagePreviews.push(reader.result);
+        };
+        reader.readAsDataURL(renamedFile);
+        
+        console.log(`📸 Foto de cámara agregada: ${renamedFile.name}`);
+        
+        // 🎯 NUEVO: Preguntar si quiere tomar otra foto (solo en móviles)
+        if (this.isMobileDevice && activity.selectedFiles.length < 5) {
+          this.askForAnotherPhoto(activity);
+        }
+      } else {
+        console.warn('⚠️ Máximo de 5 fotos alcanzado');
+      }
     }
+    
     input.value = '';
   }
 }
@@ -1546,6 +1592,45 @@ onFileSelected(event: Event, activity: any) {
 removeImage(index: number, activity: any): void {
   activity.selectedFiles.splice(index, 1);
   activity.imagePreviews.splice(index, 1);
+}
+
+// 🎯 NUEVO: Método para abrir cámara o selector de archivos
+openCameraOrFilePicker(activity: any): void {
+  console.log(`📸 Abriendo cámara/selector para actividad: ${activity.name}`);
+  console.log(`📱 Es dispositivo móvil: ${this.isMobileDevice}`);
+  console.log(`📷 Tiene soporte de cámara: ${this.hasCameraSupport}`);
+
+  if (this.isMobileDevice && this.hasCameraSupport) {
+    // En dispositivos móviles, mostrar opciones
+    this.showCameraOptions(activity);
+  } else {
+    // En desktop o sin soporte de cámara, abrir selector de archivos normal
+    this.openFileSelector(activity);
+  }
+}
+
+// 🎯 NUEVO: Método para preguntar si quiere tomar otra foto
+private askForAnotherPhoto(activity: any): void {
+  const remainingSlots = 5 - activity.selectedFiles.length;
+  
+  if (remainingSlots <= 0) {
+    return;
+  }
+
+  const message = remainingSlots === 1 
+    ? `¿Quieres tomar otra foto? (${remainingSlots} espacio restante)`
+    : `¿Quieres tomar otra foto? (${remainingSlots} espacios restantes)`;
+
+  const takeAnother = confirm(message);
+  
+  if (takeAnother) {
+    // Esperar un momento antes de abrir la cámara nuevamente
+    setTimeout(() => {
+      this.openCamera(activity);
+    }, 500);
+  } else {
+    console.log(`📸 Usuario decidió no tomar más fotos. Total: ${activity.selectedFiles.length} fotos`);
+  }
 }
 
 // 🎯 OPTIMIZADO: Método para subir evidencia fotográfica con mejor rendimiento
@@ -2935,6 +3020,193 @@ private updateGalleryAfterUpload(): void {
   }, 3000);
 
   console.log(`✅ Galería actualizada: ${this.filteredTicketImages.length} imágenes encontradas`);
+}
+
+// 🎯 NUEVO: Método para detectar dispositivo móvil y soporte de cámara
+private detectMobileDeviceAndCamera(): void {
+  // Detectar si es un dispositivo móvil
+  this.isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+                       (navigator.maxTouchPoints && navigator.maxTouchPoints > 2) ||
+                       window.matchMedia('(max-width: 768px)').matches;
+
+  // Detectar soporte de cámara
+  this.hasCameraSupport = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+
+  console.log(`📱 Dispositivo móvil detectado: ${this.isMobileDevice}`);
+  console.log(`📷 Soporte de cámara detectado: ${this.hasCameraSupport}`);
+  console.log(`🔍 User Agent: ${navigator.userAgent}`);
+}
+
+// 🎯 NUEVO: Método para mostrar opciones de cámara en móviles
+private showCameraOptions(activity: any): void {
+  // Crear un diálogo con opciones
+  const options = [
+    { text: '📷 Tomar foto con cámara', action: 'camera' },
+    { text: '📁 Seleccionar de galería', action: 'gallery' }
+  ];
+
+  // Crear elementos del diálogo
+  const dialog = document.createElement('div');
+  dialog.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10000;
+  `;
+
+  const content = document.createElement('div');
+  content.style.cssText = `
+    background: white;
+    border-radius: 8px;
+    padding: 20px;
+    max-width: 300px;
+    width: 90%;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+  `;
+
+  const title = document.createElement('h3');
+  title.textContent = 'Seleccionar imagen';
+  title.style.cssText = 'margin: 0 0 15px 0; text-align: center;';
+
+  content.appendChild(title);
+
+  options.forEach(option => {
+    const button = document.createElement('button');
+    button.textContent = option.text;
+    button.style.cssText = `
+      width: 100%;
+      padding: 12px;
+      margin: 5px 0;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      background: white;
+      cursor: pointer;
+      font-size: 16px;
+    `;
+
+    button.addEventListener('click', () => {
+      document.body.removeChild(dialog);
+      if (option.action === 'camera') {
+        this.openCamera(activity);
+      } else {
+        this.openFileSelector(activity);
+      }
+    });
+
+    content.appendChild(button);
+  });
+
+  // Botón cancelar
+  const cancelButton = document.createElement('button');
+  cancelButton.textContent = 'Cancelar';
+  cancelButton.style.cssText = `
+    width: 100%;
+    padding: 12px;
+    margin: 10px 0 0 0;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background: #f5f5f5;
+    cursor: pointer;
+    font-size: 16px;
+  `;
+
+  cancelButton.addEventListener('click', () => {
+    document.body.removeChild(dialog);
+  });
+
+  content.appendChild(cancelButton);
+  dialog.appendChild(content);
+  document.body.appendChild(dialog);
+
+  // Cerrar al hacer clic fuera del diálogo
+  dialog.addEventListener('click', (e) => {
+    if (e.target === dialog) {
+      document.body.removeChild(dialog);
+    }
+  });
+}
+
+// 🎯 NUEVO: Método para abrir la cámara directamente
+private openCamera(activity: any): void {
+  console.log(`📷 Abriendo cámara para actividad: ${activity.name}`);
+  
+  // Solicitar permisos de cámara primero
+  this.requestCameraPermission().then(hasPermission => {
+    if (hasPermission) {
+      // Buscar el input de cámara y activarlo
+      const cameraInput = document.querySelector('input[capture="environment"]') as HTMLInputElement;
+      if (cameraInput) {
+        cameraInput.click();
+      } else {
+        console.warn('⚠️ No se encontró el input de cámara');
+        // Fallback al selector de archivos
+        this.openFileSelector(activity);
+      }
+    } else {
+      console.warn('⚠️ Permisos de cámara denegados');
+      // Fallback al selector de archivos
+      this.openFileSelector(activity);
+    }
+  }).catch(error => {
+    console.error('❌ Error solicitando permisos de cámara:', error);
+    // Fallback al selector de archivos
+    this.openFileSelector(activity);
+  });
+}
+
+// 🎯 NUEVO: Método para abrir selector de archivos
+private openFileSelector(activity: any): void {
+  console.log(`📁 Abriendo selector de archivos para actividad: ${activity.name}`);
+  
+  const fileInput = document.querySelector('input[type="file"]:not([capture])') as HTMLInputElement;
+  if (fileInput) {
+    fileInput.click();
+  } else {
+    console.error('❌ No se encontró el input de archivos');
+  }
+}
+
+// 🎯 NUEVO: Método para solicitar permisos de cámara
+private async requestCameraPermission(): Promise<boolean> {
+  try {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      console.warn('⚠️ API de medios no soportada');
+      return false;
+    }
+
+    console.log('🔐 Solicitando permisos de cámara...');
+    
+    // Solicitar acceso a la cámara
+    const stream = await navigator.mediaDevices.getUserMedia({ 
+      video: { facingMode: 'environment' }, // Cámara trasera
+      audio: false 
+    });
+    
+    // Detener el stream inmediatamente ya que solo queríamos verificar permisos
+    stream.getTracks().forEach(track => track.stop());
+    
+    console.log('✅ Permisos de cámara concedidos');
+    return true;
+    
+  } catch (error: any) {
+    console.error('❌ Error solicitando permisos de cámara:', error);
+    
+    if (error.name === 'NotAllowedError') {
+      console.warn('⚠️ Usuario denegó permisos de cámara');
+    } else if (error.name === 'NotFoundError') {
+      console.warn('⚠️ No se encontró cámara');
+    } else if (error.name === 'NotSupportedError') {
+      console.warn('⚠️ Cámara no soportada');
+    }
+    
+    return false;
+  }
 }
 
 }

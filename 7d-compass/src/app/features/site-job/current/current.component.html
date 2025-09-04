@@ -272,14 +272,24 @@
             </button>
             <span class="restriction">You can upload up to 5 photos.</span>
 
+            <!-- Input para archivos normales -->
             <input
               #fileInput
+              type="file"
+              accept="image/*"
+              hidden
+              (change)="onFileSelected($event, activity)"
+              multiple
+            />
+            
+            <!-- Input específico para cámara en móviles -->
+            <input
+              #cameraInput
               type="file"
               accept="image/*"
               capture="environment"
               hidden
               (change)="onFileSelected($event, activity)"
-              multiple
             />
             <span class="file-names" *ngIf="activity.selectedFiles?.length > 0">
               {{ getSelectedFileNames(activity) }}
