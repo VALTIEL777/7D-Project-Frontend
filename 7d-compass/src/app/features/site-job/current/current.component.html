@@ -266,40 +266,31 @@
       <div class="photo-evidence-upload" style="margin: 16px 0;">
         <mat-card class="evidence-card">
           <div class="evidence-header">
-            <button mat-raised-button color="primary" class="upload-btn" (click)="openCameraOrFilePicker(activity)">
+            <button mat-raised-button color="primary" class="upload-btn" (click)="showPhotoOptions(activity)">
               <mat-icon>camera_enhance</mat-icon>
               <span style="margin-left: 8px;">Take photo</span>
             </button>
             <span class="restriction">You can upload up to 5 photos.</span>
 
-            <!-- Input para archivos normales -->
+            <!-- Input para cámara (móviles) -->
             <input
               #fileInput
-              type="file"
-              accept="image/*"
-              hidden
-              (change)="onFileSelected($event, activity)"
-              multiple
-            />
-            
-            <!-- Input específico para cámara en móviles -->
-            <input
-              #cameraInput
               type="file"
               accept="image/*"
               capture="environment"
               hidden
               (change)="onFileSelected($event, activity)"
+              multiple
             />
             
-            <!-- Input específico para cámara web en desktop -->
+            <!-- Input para galería -->
             <input
-              #webcamInput
+              #galleryInput
               type="file"
               accept="image/*"
-              capture="user"
               hidden
               (change)="onFileSelected($event, activity)"
+              multiple
             />
             <span class="file-names" *ngIf="activity.selectedFiles?.length > 0">
               {{ getSelectedFileNames(activity) }}

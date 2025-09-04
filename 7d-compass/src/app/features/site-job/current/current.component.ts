@@ -1594,24 +1594,101 @@ removeImage(index: number, activity: any): void {
   activity.imagePreviews.splice(index, 1);
 }
 
-// 🎯 NUEVO: Método para abrir cámara o selector de archivos
-openCameraOrFilePicker(activity: any): void {
-  console.log(`📸 Abriendo cámara/selector para actividad: ${activity.name}`);
-  console.log(`📱 Es dispositivo móvil: ${this.isMobileDevice}`);
-  console.log(`📷 Tiene soporte de cámara: ${this.hasCameraSupport}`);
-  console.log(`🖥️ User Agent: ${navigator.userAgent}`);
-  console.log(`📏 Screen width: ${window.innerWidth}px`);
+// 🎯 SIMPLIFICADO: Método para mostrar opciones de foto
+showPhotoOptions(activity: any): void {
+  console.log(`📸 Mostrando opciones de foto para actividad: ${activity.name}`);
+  
+  // Crear opciones simples
+  const options = [
+    { text: '📷 Take Photo with Camera', action: 'camera' },
+    { text: '📁 Select from Gallery', action: 'gallery' }
+  ];
 
-  // 🎯 HÍBRIDO: Mostrar opciones apropiadas según el dispositivo
-  if (this.hasCameraSupport) {
-    // Si hay soporte de cámara, mostrar opciones (tanto móvil como desktop)
-    console.log(`📷 Soporte de cámara detectado - mostrando opciones`);
-    this.showCameraOptions(activity);
-  } else {
-    // Sin soporte de cámara, abrir selector de archivos normal
-    console.log(`❌ Sin soporte de cámara - abriendo selector de archivos`);
-    this.openFileSelector(activity);
-  }
+  // Crear elementos del diálogo
+  const dialog = document.createElement('div');
+  dialog.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10000;
+  `;
+
+  const content = document.createElement('div');
+  content.style.cssText = `
+    background: white;
+    border-radius: 8px;
+    padding: 20px;
+    max-width: 300px;
+    width: 90%;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+  `;
+
+  const title = document.createElement('h3');
+  title.textContent = 'Select images';
+  title.style.cssText = 'margin: 0 0 15px 0; text-align: center;';
+
+  content.appendChild(title);
+
+  options.forEach(option => {
+    const button = document.createElement('button');
+    button.textContent = option.text;
+    button.style.cssText = `
+      width: 100%;
+      padding: 12px;
+      margin: 5px 0;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      background: white;
+      cursor: pointer;
+      font-size: 16px;
+    `;
+
+    button.addEventListener('click', () => {
+      document.body.removeChild(dialog);
+      if (option.action === 'camera') {
+        this.openCamera(activity);
+      } else {
+        this.openGallery(activity);
+      }
+    });
+
+    content.appendChild(button);
+  });
+
+  // Botón cancelar
+  const cancelButton = document.createElement('button');
+  cancelButton.textContent = 'Cancel';
+  cancelButton.style.cssText = `
+    width: 100%;
+    padding: 12px;
+    margin: 10px 0 0 0;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background: #f5f5f5;
+    cursor: pointer;
+    font-size: 16px;
+  `;
+
+  cancelButton.addEventListener('click', () => {
+    document.body.removeChild(dialog);
+  });
+
+  content.appendChild(cancelButton);
+  dialog.appendChild(content);
+  document.body.appendChild(dialog);
+
+  // Cerrar al hacer clic fuera del diálogo
+  dialog.addEventListener('click', (e) => {
+    if (e.target === dialog) {
+      document.body.removeChild(dialog);
+    }
+  });
 }
 
 // 🎯 NUEVO: Método para preguntar si quiere tomar otra foto
@@ -3199,7 +3276,7 @@ private showCameraOptions(activity: any): void {
       if (option.action === 'camera') {
         this.openCamera(activity);
       } else {
-        this.openFileSelector(activity);
+        this.openGallery(activity);
       }
     });
 
@@ -3282,59 +3359,30 @@ private showPerformanceWarning(): void {
   }
 }
 
-// 🎯 NUEVO: Método para abrir la cámara directamente
+// 🎯 SIMPLIFICADO: Método para abrir la cámara
 private openCamera(activity: any): void {
   console.log(`📷 Abriendo cámara para actividad: ${activity.name}`);
-  console.log(`📱 Es dispositivo móvil: ${this.isMobileDevice}`);
   
-  if (this.isMobileDevice) {
-    // En móviles: usar input con capture="environment"
-    this.requestCameraPermission().then(hasPermission => {
-      if (hasPermission) {
-        const cameraInput = document.querySelector('input[capture="environment"]') as HTMLInputElement;
-        if (cameraInput) {
-          cameraInput.click();
-        } else {
-          console.warn('⚠️ No se encontró el input de cámara móvil');
-          this.openFileSelector(activity);
-        }
-      } else {
-        console.warn('⚠️ Permisos de cámara denegados en móvil');
-        this.openFileSelector(activity);
-      }
-    }).catch(error => {
-      console.error('❌ Error solicitando permisos de cámara móvil:', error);
-      this.openFileSelector(activity);
-    });
-  } else {
-    // En desktop: usar input con capture="user" para cámara web
-    console.log(`🖥️ Abriendo cámara web en desktop`);
-    console.log(`🔍 Buscando input con capture="user"`);
-    
-    const webcamInput = document.querySelector('input[capture="user"]') as HTMLInputElement;
-    console.log(`🔍 Input encontrado:`, webcamInput);
-    
-    if (webcamInput) {
-      console.log(`✅ Activando cámara web en desktop`);
-      webcamInput.click();
-    } else {
-      console.warn('⚠️ No se encontró el input de cámara web, usando selector de archivos');
-      this.openFileSelector(activity);
-    }
-  }
-}
-
-// 🎯 NUEVO: Método para abrir selector de archivos
-private openFileSelector(activity: any): void {
-  console.log(`📁 Abriendo selector de archivos para actividad: ${activity.name}`);
-  
-  const fileInput = document.querySelector('input[type="file"]:not([capture])') as HTMLInputElement;
+  const fileInput = document.querySelector('input[capture="environment"]') as HTMLInputElement;
   if (fileInput) {
     fileInput.click();
   } else {
-    console.error('❌ No se encontró el input de archivos');
+    console.warn('⚠️ No se encontró el input de cámara');
   }
 }
+
+// 🎯 SIMPLIFICADO: Método para abrir la galería
+private openGallery(activity: any): void {
+  console.log(`📁 Abriendo galería para actividad: ${activity.name}`);
+  
+  const galleryInput = document.querySelector('input[type="file"]:not([capture])') as HTMLInputElement;
+  if (galleryInput) {
+    galleryInput.click();
+  } else {
+    console.warn('⚠️ No se encontró el input de galería');
+  }
+}
+
 
 // 🎯 NUEVO: Método para solicitar permisos de cámara
 private async requestCameraPermission(): Promise<boolean> {
