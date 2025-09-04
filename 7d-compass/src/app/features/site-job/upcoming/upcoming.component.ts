@@ -303,10 +303,26 @@ crewDetails: any[] = [];
     const routeTickets = this.assignedRoute?.tickets || [];
     console.log('🎫 Route tickets for queue mapping:', routeTickets.length);
 
-    // 🎯 SIMPLIFIED: Just map the basic location data
+    // 🎯 FIXED: Create a set of valid ticket IDs from the assigned route
+    const validTicketIds = new Set(routeTickets.map((rt: any) => Number(rt.ticketId || rt.ticketid)));
+    console.log('✅ Valid ticket IDs from route:', Array.from(validTicketIds));
+
+    // 🎯 FIXED: Filter crew details to only include tickets that are in the current route
+    const filteredDetails = details.filter((data: any) => {
+      const ticketId = Number(data.ticketid);
+      const isValid = validTicketIds.has(ticketId);
+      if (!isValid) {
+        console.log(`❌ Filtered out ticket ${ticketId} - not in current route`);
+      }
+      return isValid;
+    });
+
+    console.log(`✅ Filtered crew details: ${filteredDetails.length} tickets (from ${details.length} total)`);
+
+    // 🎯 FIXED: Process only the filtered details
     const uniqueLocationsMap = new Map<number, any>();
 
-    details.forEach((data: any) => {
+    filteredDetails.forEach((data: any) => {
       if (!uniqueLocationsMap.has(data.ticketid)) {
         const address = data.address || this.formatAddress(data);
 
@@ -1255,6 +1271,48 @@ crewDetails: any[] = [];
         ticketsCount: this.assignedRoute?.tickets?.length || 0
       }),
       refreshRoute: () => this.getAssignedRoute(),
+      // 🎯 NUEVO: Método para verificar el filtrado de tickets
+      checkTicketFiltering: () => {
+        console.log('🔍 === TICKET FILTERING DEBUG ===');
+        const routeTickets = this.assignedRoute?.tickets || [];
+        const validTicketIds = new Set(routeTickets.map((rt: any) => Number(rt.ticketId || rt.ticketid)));
+
+        console.log('🎫 Route tickets:', routeTickets.length);
+        console.log('✅ Valid ticket IDs:', Array.from(validTicketIds));
+
+        // Simulate what the filtering would do
+        const storedUserId = Number(localStorage.getItem('userId'));
+        const person = this.employeeList.find(p => p.userid === storedUserId);
+        const currentCrewId = person?.crewid;
+
+        if (currentCrewId) {
+          this.crewsService.getCrewDetails(currentCrewId).subscribe({
+            next: (details: any[]) => {
+              console.log('📊 All crew details:', details.length);
+              const filteredDetails = details.filter((data: any) => {
+                const ticketId = Number(data.ticketid);
+                return validTicketIds.has(ticketId);
+              });
+              console.log('✅ Filtered crew details:', filteredDetails.length);
+              console.log('❌ Filtered out:', details.length - filteredDetails.length);
+
+              // Show which tickets were filtered out
+              const filteredOutTickets = details.filter((data: any) => {
+                const ticketId = Number(data.ticketid);
+                return !validTicketIds.has(ticketId);
+              });
+
+              if (filteredOutTickets.length > 0) {
+                console.log('❌ Filtered out tickets:', filteredOutTickets.map(d => ({
+                  ticketId: d.ticketid,
+                  address: d.address || 'No address'
+                })));
+              }
+            }
+          });
+        }
+        console.log('🔍 === END TICKET FILTERING DEBUG ===');
+      },
       // 🎯 NUEVO: Métodos para debugging de sincronización de estado
       forceUserChangeCheck: () => this.forceCheckForUserChange(),
       checkLocationStates: () => this.debugLocationStates(),
