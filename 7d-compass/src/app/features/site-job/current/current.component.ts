@@ -1599,12 +1599,17 @@ openCameraOrFilePicker(activity: any): void {
   console.log(`📸 Abriendo cámara/selector para actividad: ${activity.name}`);
   console.log(`📱 Es dispositivo móvil: ${this.isMobileDevice}`);
   console.log(`📷 Tiene soporte de cámara: ${this.hasCameraSupport}`);
+  console.log(`🖥️ User Agent: ${navigator.userAgent}`);
+  console.log(`📏 Screen width: ${window.innerWidth}px`);
 
-  if (this.isMobileDevice && this.hasCameraSupport) {
-    // En dispositivos móviles, mostrar opciones
+  // 🎯 HÍBRIDO: Mostrar opciones apropiadas según el dispositivo
+  if (this.hasCameraSupport) {
+    // Si hay soporte de cámara, mostrar opciones (tanto móvil como desktop)
+    console.log(`📷 Soporte de cámara detectado - mostrando opciones`);
     this.showCameraOptions(activity);
   } else {
-    // En desktop o sin soporte de cámara, abrir selector de archivos normal
+    // Sin soporte de cámara, abrir selector de archivos normal
+    console.log(`❌ Sin soporte de cámara - abriendo selector de archivos`);
     this.openFileSelector(activity);
   }
 }
@@ -1709,9 +1714,11 @@ uploadPhotoEvidence(taskStatusId: number, activity: any): void {
 // 🎯 NUEVO: Método para optimizar archivos antes de subir
 private optimizeFilesForUpload(files: File[]): File[] {
   return files.map(file => {
-    // 🎯 NUEVO: Comprimir imágenes si son muy grandes
-    if (file.size > 1024 * 1024) { // Más de 1MB
+    // 🎯 NUEVO: Comprimir imágenes según el nivel de rendimiento
+    if (file.size > this.maxImageSize) {
       console.log(`📦 Comprimiendo archivo: ${file.name} (${file.size} bytes)`);
+      console.log(`⚡ Tamaño máximo configurado: ${this.maxImageSize} bytes`);
+      console.log(`⚡ Calidad configurada: ${(this.maxImageQuality * 100).toFixed(0)}%`);
       return this.compressImageFile(file);
     }
     return file;
@@ -1720,10 +1727,47 @@ private optimizeFilesForUpload(files: File[]): File[] {
 
 // 🎯 NUEVO: Método para comprimir imágenes
 private compressImageFile(file: File): File {
-  return new File([file], file.name, {
-    type: file.type,
-    lastModified: file.lastModified
-  });
+  // Crear un canvas para comprimir la imagen
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  const img = new Image();
+  
+  return new Promise<File>((resolve) => {
+    img.onload = () => {
+      // Calcular nuevas dimensiones (máximo 1920x1080)
+      const maxWidth = 1920;
+      const maxHeight = 1080;
+      let { width, height } = img;
+      
+      if (width > maxWidth || height > maxHeight) {
+        const ratio = Math.min(maxWidth / width, maxHeight / height);
+        width *= ratio;
+        height *= ratio;
+      }
+      
+      canvas.width = width;
+      canvas.height = height;
+      
+      // Dibujar imagen redimensionada
+      ctx?.drawImage(img, 0, 0, width, height);
+      
+      // Convertir a blob con compresión
+      canvas.toBlob((blob) => {
+        if (blob) {
+          const compressedFile = new File([blob], file.name, {
+            type: 'image/jpeg',
+            lastModified: Date.now()
+          });
+          console.log(`📦 Imagen comprimida: ${file.size} → ${compressedFile.size} bytes`);
+          resolve(compressedFile);
+        } else {
+          resolve(file); // Fallback al archivo original
+        }
+      }, 'image/jpeg', this.maxImageQuality);
+    };
+    
+    img.src = URL.createObjectURL(file);
+  }) as any; // Simplificación para evitar async/await complejo
 }
 
 // 🎯 NUEVO: Método para actualización optimizada después de subida exitosa
@@ -3032,18 +3076,78 @@ private detectMobileDeviceAndCamera(): void {
   // Detectar soporte de cámara
   this.hasCameraSupport = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
 
+  // 🎯 NUEVO: Detectar nivel de batería y rendimiento
+  this.detectPerformanceLevel();
+
   console.log(`📱 Dispositivo móvil detectado: ${this.isMobileDevice}`);
   console.log(`📷 Soporte de cámara detectado: ${this.hasCameraSupport}`);
   console.log(`🔍 User Agent: ${navigator.userAgent}`);
 }
 
-// 🎯 NUEVO: Método para mostrar opciones de cámara en móviles
+// 🎯 NUEVO: Propiedades para optimización de rendimiento
+private isLowBattery: boolean = false;
+private isLowPerformance: boolean = false;
+private maxImageSize: number = 1024 * 1024; // 1MB por defecto
+private maxImageQuality: number = 0.8; // 80% de calidad por defecto
+
+// 🎯 NUEVO: Método para detectar nivel de rendimiento
+private detectPerformanceLevel(): void {
+  // Detectar nivel de batería
+  if ('getBattery' in navigator) {
+    (navigator as any).getBattery().then((battery: any) => {
+      this.isLowBattery = battery.level < 0.2; // Menos del 20%
+      console.log(`🔋 Nivel de batería: ${(battery.level * 100).toFixed(0)}%`);
+      console.log(`🔋 Batería baja: ${this.isLowBattery}`);
+      
+      if (this.isLowBattery) {
+        this.maxImageSize = 512 * 1024; // 512KB para batería baja
+        this.maxImageQuality = 0.6; // 60% de calidad para batería baja
+        console.log(`⚡ Modo de ahorro de batería activado`);
+      }
+    });
+  }
+
+  // Detectar rendimiento del dispositivo
+  if ('deviceMemory' in navigator) {
+    const memory = (navigator as any).deviceMemory;
+    if (memory && memory < 4) { // Menos de 4GB RAM
+      this.isLowPerformance = true;
+      this.maxImageSize = 512 * 1024; // 512KB para dispositivos con poca RAM
+      this.maxImageQuality = 0.6; // 60% de calidad
+      console.log(`⚡ Dispositivo con poca RAM detectado: ${memory}GB`);
+      console.log(`⚡ Modo de bajo rendimiento activado`);
+    }
+  }
+
+  // Detectar conexión lenta
+  if ('connection' in navigator) {
+    const connection = (navigator as any).connection;
+    if (connection && (connection.effectiveType === 'slow-2g' || connection.effectiveType === '2g')) {
+      this.maxImageSize = 256 * 1024; // 256KB para conexiones lentas
+      this.maxImageQuality = 0.5; // 50% de calidad
+      console.log(`🌐 Conexión lenta detectada: ${connection.effectiveType}`);
+      console.log(`⚡ Modo de conexión lenta activado`);
+    }
+  }
+}
+
+// 🎯 NUEVO: Método para mostrar opciones de cámara (móvil y desktop)
 private showCameraOptions(activity: any): void {
-  // Crear un diálogo con opciones
-  const options = [
-    { text: '📷 Tomar foto con cámara', action: 'camera' },
-    { text: '📁 Seleccionar de galería', action: 'gallery' }
-  ];
+  // Crear opciones según el dispositivo
+  const options = this.isMobileDevice 
+    ? [
+        { text: '📷 Tomar foto con cámara', action: 'camera' },
+        { text: '📁 Seleccionar de galería', action: 'gallery' }
+      ]
+    : [
+        { text: '📷 Tomar foto con cámara web', action: 'camera' },
+        { text: '📁 Seleccionar archivos', action: 'gallery' }
+      ];
+
+  // 🎯 NUEVO: Mostrar advertencias de rendimiento si es necesario
+  if (this.isLowBattery || this.isLowPerformance) {
+    this.showPerformanceWarning();
+  }
 
   // Crear elementos del diálogo
   const dialog = document.createElement('div');
@@ -3132,32 +3236,92 @@ private showCameraOptions(activity: any): void {
   });
 }
 
+// 🎯 NUEVO: Método para mostrar advertencias de rendimiento
+private showPerformanceWarning(): void {
+  let warningMessage = '';
+  
+  if (this.isLowBattery) {
+    warningMessage += '⚠️ Batería baja detectada. Las fotos se comprimirán para ahorrar energía.\n';
+  }
+  
+  if (this.isLowPerformance) {
+    warningMessage += '⚠️ Dispositivo con recursos limitados. Se aplicará compresión automática.\n';
+  }
+  
+  if (warningMessage) {
+    warningMessage += '\n💡 Recomendación: Use la galería para mejor rendimiento.';
+    
+    // Mostrar notificación temporal
+    const notification = document.createElement('div');
+    notification.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: #ff9800;
+      color: white;
+      padding: 15px;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      z-index: 10001;
+      max-width: 300px;
+      font-size: 14px;
+      line-height: 1.4;
+    `;
+    
+    notification.textContent = warningMessage;
+    document.body.appendChild(notification);
+    
+    // Remover después de 5 segundos
+    setTimeout(() => {
+      if (document.body.contains(notification)) {
+        document.body.removeChild(notification);
+      }
+    }, 5000);
+    
+    console.log(`⚠️ Advertencia de rendimiento mostrada: ${warningMessage}`);
+  }
+}
+
 // 🎯 NUEVO: Método para abrir la cámara directamente
 private openCamera(activity: any): void {
   console.log(`📷 Abriendo cámara para actividad: ${activity.name}`);
+  console.log(`📱 Es dispositivo móvil: ${this.isMobileDevice}`);
   
-  // Solicitar permisos de cámara primero
-  this.requestCameraPermission().then(hasPermission => {
-    if (hasPermission) {
-      // Buscar el input de cámara y activarlo
-      const cameraInput = document.querySelector('input[capture="environment"]') as HTMLInputElement;
-      if (cameraInput) {
-        cameraInput.click();
+  if (this.isMobileDevice) {
+    // En móviles: usar input con capture="environment"
+    this.requestCameraPermission().then(hasPermission => {
+      if (hasPermission) {
+        const cameraInput = document.querySelector('input[capture="environment"]') as HTMLInputElement;
+        if (cameraInput) {
+          cameraInput.click();
+        } else {
+          console.warn('⚠️ No se encontró el input de cámara móvil');
+          this.openFileSelector(activity);
+        }
       } else {
-        console.warn('⚠️ No se encontró el input de cámara');
-        // Fallback al selector de archivos
+        console.warn('⚠️ Permisos de cámara denegados en móvil');
         this.openFileSelector(activity);
       }
+    }).catch(error => {
+      console.error('❌ Error solicitando permisos de cámara móvil:', error);
+      this.openFileSelector(activity);
+    });
+  } else {
+    // En desktop: usar input con capture="user" para cámara web
+    console.log(`🖥️ Abriendo cámara web en desktop`);
+    console.log(`🔍 Buscando input con capture="user"`);
+    
+    const webcamInput = document.querySelector('input[capture="user"]') as HTMLInputElement;
+    console.log(`🔍 Input encontrado:`, webcamInput);
+    
+    if (webcamInput) {
+      console.log(`✅ Activando cámara web en desktop`);
+      webcamInput.click();
     } else {
-      console.warn('⚠️ Permisos de cámara denegados');
-      // Fallback al selector de archivos
+      console.warn('⚠️ No se encontró el input de cámara web, usando selector de archivos');
       this.openFileSelector(activity);
     }
-  }).catch(error => {
-    console.error('❌ Error solicitando permisos de cámara:', error);
-    // Fallback al selector de archivos
-    this.openFileSelector(activity);
-  });
+  }
 }
 
 // 🎯 NUEVO: Método para abrir selector de archivos

@@ -266,7 +266,7 @@
       <div class="photo-evidence-upload" style="margin: 16px 0;">
         <mat-card class="evidence-card">
           <div class="evidence-header">
-            <button mat-raised-button color="primary" class="upload-btn" (click)="fileInput.click()">
+            <button mat-raised-button color="primary" class="upload-btn" (click)="openCameraOrFilePicker(activity)">
               <mat-icon>camera_enhance</mat-icon>
               <span style="margin-left: 8px;">Take photo</span>
             </button>
@@ -288,6 +288,16 @@
               type="file"
               accept="image/*"
               capture="environment"
+              hidden
+              (change)="onFileSelected($event, activity)"
+            />
+            
+            <!-- Input específico para cámara web en desktop -->
+            <input
+              #webcamInput
+              type="file"
+              accept="image/*"
+              capture="user"
               hidden
               (change)="onFileSelected($event, activity)"
             />
