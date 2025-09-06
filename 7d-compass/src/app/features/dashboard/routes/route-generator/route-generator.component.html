@@ -600,6 +600,82 @@
 
         </div>
 
+        <!-- Issued Tickets Section -->
+        <div class="section-title full-span">
+          <h4>Issued Tickets</h4>
+        </div>
+        <div class="dashboard-grid">
+          <!-- On Hold Off Card -->
+          <app-card-with-button
+            title="On Hold Off"
+            [showEyeButton]="true"
+          >
+            <div style="margin-bottom: 8px; display: flex; gap: 8px; align-items: center;">
+              <input
+                type="text"
+                [(ngModel)]="issuedOnHoldOffFilter"
+                placeholder="Filter address, code or comment..."
+                style="max-width: 200px; font-size: 12px; padding: 2px 6px;"
+              />
+            </div>
+            <div class="route-list-container" data-ready-section="true">
+              <div
+                *ngFor="let ticket of getFilteredOnHoldOffTickets(); let i = index"
+                class="route-detail-item"
+              >
+                <span class="queue-number">{{ i + 1 }}.</span>
+                <div class="ticket-info">
+                  <p class="route-location">{{ formatAddressFromIssues(ticket) }}</p>
+                  <p class="incident-name" *ngIf="getCrewComments(ticket)">{{ getCrewComments(ticket) }}</p>
+                </div>
+                <span class="ticket-code">{{ ticket.ticketCode || 'No ticket code' }}</span>
+                <mat-divider></mat-divider>
+              </div>
+              <div *ngIf="isLoadingTicketsWithIssues" class="loading-state">
+                <p>Loading issued tickets...</p>
+              </div>
+              <div *ngIf="!isLoadingTicketsWithIssues && getFilteredOnHoldOffTickets().length === 0 && (issuedOnHoldOffFilter || '').trim()" class="empty-state">
+                <p>No issued tickets found</p>
+              </div>
+            </div>
+          </app-card-with-button>
+
+          <!-- Expired Tickets Card -->
+          <app-card-with-button
+            title="Expired Tickets"
+            [showEyeButton]="true"
+          >
+            <div style="margin-bottom: 8px; display: flex; gap: 8px; align-items: center;">
+              <input
+                type="text"
+                [(ngModel)]="expiredTicketsFilter"
+                placeholder="Filter address, code or comment..."
+                style="max-width: 200px; font-size: 12px; padding: 2px 6px;"
+              />
+            </div>
+            <div class="route-list-container" data-ready-section="true">
+              <div
+                *ngFor="let ticket of getFilteredExpiredTickets(); let i = index"
+                class="route-detail-item"
+              >
+                <span class="queue-number">{{ i + 1 }}.</span>
+                <div class="ticket-info">
+                  <p class="route-location">{{ formatAddressFromIssues(ticket) }}</p>
+                  <p class="incident-name" *ngIf="getCrewComments(ticket)">{{ getCrewComments(ticket) }}</p>
+                </div>
+                <span class="ticket-code">{{ ticket.ticketCode || 'No ticket code' }}</span>
+                <mat-divider></mat-divider>
+              </div>
+              <div *ngIf="isLoadingExpiredTickets" class="loading-state">
+                <p>Loading expired tickets...</p>
+              </div>
+              <div *ngIf="!isLoadingExpiredTickets && getFilteredExpiredTickets().length === 0 && (expiredTicketsFilter || '').trim()" class="empty-state">
+                <p>No expired tickets found</p>
+              </div>
+            </div>
+          </app-card-with-button>
+        </div>
+
         <div class="full-span buttons-container">
         </div>
       </div>
