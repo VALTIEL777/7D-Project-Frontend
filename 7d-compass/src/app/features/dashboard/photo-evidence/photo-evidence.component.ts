@@ -30,6 +30,17 @@ interface PhotoEvidence {
   error?: boolean; // Whether there was an error loading the photo
   ticketCode?: string; // Optional property for context when showing photos from multiple tickets
   ticketAddress?: string; // Optional property for context when showing photos from multiple tickets
+  crewLeaderFullName?: string; // New: crew leader full name for displaying under phase text
+}
+
+interface CrewLeader {
+  employeeId: number;
+  firstName: string;
+  lastName: string;
+  fullName: string;
+  role: string;
+  phone: string;
+  email: string;
 }
 
 interface TaskStatus {
@@ -40,6 +51,7 @@ interface TaskStatus {
   endingDate: string;
   observation: string;
   crewId: number;
+  crewLeader?: CrewLeader; // New: include crew leader info from API
   photoEvidence: PhotoEvidence[];
 }
 
@@ -416,7 +428,8 @@ export class PhotoEvidenceComponent extends BaseDashboardComponent implements On
         // Add task status name to each photo for context
         const photosWithContext = taskStatus.photoEvidence.map(photo => ({
           ...photo,
-          taskStatusName: taskStatus.name
+          taskStatusName: taskStatus.name,
+          crewLeaderFullName: taskStatus.crewLeader?.fullName
         }));
         allPhotos.push(...photosWithContext);
       }
@@ -730,6 +743,7 @@ export class PhotoEvidenceComponent extends BaseDashboardComponent implements On
               const photosWithContext = taskStatus.photoEvidence.map(photo => ({
                 ...photo,
                 taskStatusName: taskStatus.name,
+                crewLeaderFullName: taskStatus.crewLeader?.fullName,
                 ticketCode: ticket.ticketCode, // Add ticket code for context
                 ticketAddress: ticket.addresses?.[0]?.fullAddress || 'N/A' // Add address for context
               }));
@@ -761,6 +775,7 @@ export class PhotoEvidenceComponent extends BaseDashboardComponent implements On
               const photosWithContext = taskStatus.photoEvidence.map(photo => ({
                 ...photo,
                 taskStatusName: taskStatus.name,
+                crewLeaderFullName: taskStatus.crewLeader?.fullName,
                 ticketCode: ticket.ticketCode, // Add ticket code for context
                 ticketAddress: ticket.addresses?.[0]?.fullAddress || 'N/A' // Add address for context
               }));
