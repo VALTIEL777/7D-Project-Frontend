@@ -107,11 +107,11 @@ interface ReadyTicketsResponse {
 interface TicketWithIssue {
   ticketId: number;
   ticketCode: string;
-  contractNumber: string;
+  contractNumber: string | null;
   contractUnitName: string;
-  amountToPay: number;
+  amountToPay: string | number;
   ticketType: string;
-  daysOutstanding: number;
+  daysOutstanding: number | null;
   comment7d: string;
   quantity: number;
   createdAt: string;
@@ -119,15 +119,21 @@ interface TicketWithIssue {
   incidentName: string;
   addresses: string;
   addressDetails: Array<{
-    addressId: number;
-    addressNumber: string;
-    addressCardinal: string;
-    addressStreet: string;
-    addressSuffix: string;
-    latitude: number;
-    longitude: number;
-    placeid: string;
-    fullAddress: string;
+    ticketid?: number;
+    addressid?: number;
+    addressNumber?: string;
+    addressnumber?: string;
+    addressCardinal?: string;
+    addresscardinal?: string;
+    addressStreet?: string;
+    addressstreet?: string;
+    addressSuffix?: string;
+    addresssuffix?: string;
+    latitude: number | null;
+    longitude: number | null;
+    placeid: string | null;
+    fullAddress?: string;
+    fulladdress?: string;
   }>;
   taskStatuses: Array<{
     taskStatusId: number;
@@ -149,6 +155,20 @@ interface TicketsWithIssuesResponse {
     totalTickets: number;
     ticketsOnHoldOff: number;
     ticketsWillBeScheduled: number;
+    ticketsNeedsPermitExtension: number;
+    ticketsWithCrewComments: number;
+    totalCrewComments: number;
+  };
+  data: TicketWithIssue[];
+}
+
+// Interface for expired tickets API response
+interface ExpiredTicketsResponse {
+  success: boolean;
+  message: string;
+  summary: {
+    totalTickets: number;
+    ticketsExpired: number;
     ticketsNeedsPermitExtension: number;
     ticketsWithCrewComments: number;
     totalCrewComments: number;
@@ -214,6 +234,10 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
   ticketsWithIssues: TicketWithIssue[] = [];
   isLoadingTicketsWithIssues = false;
 
+  // Expired tickets
+  expiredTickets: TicketWithIssue[] = [];
+  isLoadingExpiredTickets = false;
+
   // Leaflet map properties
   mapConfig: MapConfig = {
     center: [41.8781, -87.6298], // Chicago coordinates
@@ -266,7 +290,11 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
   asphaltReadyFilter: string = '';
   concreteReadyFilter: string = '';
 
+  // Filter for Issued Tickets - On Hold Off card
+  issuedOnHoldOffFilter: string = '';
 
+  // Filter for Expired Tickets card
+  expiredTicketsFilter: string = '';
 
   // Add a loading state for batch add (optional)
   isBatchAddingTickets: boolean = false;
@@ -299,6 +327,7 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     this.loadAsphaltReadyTickets();
     this.loadConcreteReadyTickets();
     this.loadTicketsWithIssues();
+    this.loadExpiredTickets();
 
     // Generate Leaflet map after initial data load
     setTimeout(() => {
@@ -561,16 +590,76 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
   }
 
   get filteredConcreteReadyTickets() {
-    if (!this.currentTextSearch.trim()) {
-      return this.concreteReadyTickets;
+    let filteredTickets = this.concreteReadyTickets;
+
+    // Apply text filter
+    const textFilter = this.concreteReadyFilter.toLowerCase().trim();
+    if (textFilter) {
+      filteredTickets = filteredTickets.filter(ticket => ticket.address && ticket.address.toLowerCase().includes(textFilter));
     }
-    const searchTerm = this.currentTextSearch.toLowerCase().trim();
-    return this.concreteReadyTickets.filter(ticket => {
-      if (ticket.address) {
-        return ticket.address.toLowerCase().includes(searchTerm);
-      }
-      return false;
+
+    return filteredTickets;
+  }
+
+  // Filter issued tickets by On Hold Off and text filter
+  getFilteredOnHoldOffTickets(): TicketWithIssue[] {
+    let tickets = this.ticketsWithIssues.filter(t => this.isTicketOnHoldOff(t));
+
+    const textFilter = (this.issuedOnHoldOffFilter || '').toLowerCase().trim();
+    if (textFilter) {
+      tickets = tickets.filter(t => {
+        const address = this.formatAddressFromIssues(t).toLowerCase();
+        const ticketCode = (t.ticketCode || '').toLowerCase();
+        const comments = (this.getCrewComments(t) || '').toLowerCase();
+        return address.includes(textFilter) || ticketCode.includes(textFilter) || comments.includes(textFilter);
+      });
+    }
+
+    return tickets;
+  }
+
+  // Filter expired tickets by text filter
+  getFilteredExpiredTickets(): TicketWithIssue[] {
+    let tickets = this.expiredTickets;
+
+    // Debug logging
+    console.log('🔍 Expired tickets debug:', {
+      totalTickets: this.expiredTickets.length,
+      tickets: this.expiredTickets.map(t => ({
+        ticketId: t.ticketId,
+        ticketCode: t.ticketCode,
+        address: this.formatAddressFromIssues(t),
+        comment7d: t.comment7d
+      }))
     });
+
+    const textFilter = (this.expiredTicketsFilter || '').toLowerCase().trim();
+    if (textFilter) {
+      tickets = tickets.filter(t => {
+        const address = this.formatAddressFromIssues(t).toLowerCase();
+        const ticketCode = (t.ticketCode || '').toLowerCase();
+        const comments = (this.getCrewComments(t) || '').toLowerCase();
+        return address.includes(textFilter) || ticketCode.includes(textFilter) || comments.includes(textFilter);
+      });
+    }
+
+    console.log('🔍 Filtered expired tickets:', {
+      filteredCount: tickets.length,
+      filter: textFilter,
+      tickets: tickets.map(t => ({
+        ticketId: t.ticketId,
+        ticketCode: t.ticketCode,
+        address: this.formatAddressFromIssues(t)
+      }))
+    });
+
+    return tickets;
+  }
+
+  // Determine if a ticket is marked as On Hold Off
+  private isTicketOnHoldOff(ticket: TicketWithIssue): boolean {
+    const comment = (ticket.comment7d || '').toLowerCase();
+    return comment.includes('hold off');
   }
 
   // Filter tickets in a route by the filter for that route
@@ -2129,12 +2218,45 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     });
   }
 
+  // Load expired tickets from API
+  loadExpiredTickets() {
+    this.isLoadingExpiredTickets = true;
+    this.http.get<ExpiredTicketsResponse>(`${environment.apiUrl}/tickets/expired-or-needs-permit`).subscribe({
+      next: (response) => {
+        this.expiredTickets = response.data;
+        this.isLoadingExpiredTickets = false;
+      },
+      error: (error) => {
+        console.error('Error loading expired tickets:', error);
+        this.isLoadingExpiredTickets = false;
+        // Fallback to empty array if API fails
+        this.expiredTickets = [];
+      }
+    });
+  }
+
   // Helper method to format address from addressDetails
   formatAddressFromIssues(ticket: TicketWithIssue): string {
     if (ticket.addressDetails && ticket.addressDetails.length > 0) {
       const address = ticket.addressDetails[0];
-      return `${address.addressNumber} ${address.addressCardinal} ${address.addressStreet} ${address.addressSuffix}`;
+      // Handle both camelCase and snake_case property names
+      const addressNumber = address.addressNumber || address.addressnumber;
+      const addressCardinal = address.addressCardinal || address.addresscardinal;
+      const addressStreet = address.addressStreet || address.addressstreet;
+      const addressSuffix = address.addressSuffix || address.addresssuffix;
+
+      if (addressNumber && addressCardinal && addressStreet && addressSuffix) {
+        return `${addressNumber} ${addressCardinal} ${addressStreet} ${addressSuffix}`;
+      }
+
+      // Fallback to fullAddress if available
+      const fullAddress = address.fullAddress || address.fulladdress;
+      if (fullAddress) {
+        return fullAddress;
+      }
     }
+
+    // Fallback to addresses field (which is a string in the API response)
     return ticket.addresses || 'N/A';
   }
 
@@ -2142,10 +2264,10 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
   getCrewComments(ticket: TicketWithIssue): string {
     const comments = ticket.taskStatuses
       ?.filter(status => status.crewComment && status.crewComment.trim() !== '')
-      ?.map(status => status.crewComment)
+      ?.map(status => status.crewComment as string)
       ?.join(', ');
 
-    return comments || 'No crew comments';
+    return comments || '';
   }
 
   // Refresh all data
@@ -2157,6 +2279,7 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     this.loadAsphaltReadyTickets();
     this.loadConcreteReadyTickets();
     this.loadTicketsWithIssues();
+    this.loadExpiredTickets();
     this.updateLeafletMap(); // Update Leaflet map after refresh
 
     // Reload watchnProtect status for all tickets after data refresh
