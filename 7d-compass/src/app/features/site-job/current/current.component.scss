@@ -1341,3 +1341,23 @@
     }
   }
 }
+.watchn-badge {
+  font-size: 1.1rem;
+}
+
+.badge-yes {
+  background-color: #d1fae5; /* verde suave */
+  color: #065f46; 
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-weight: 500;
+}
+
+.badge-no {
+  background-color: #fee2e2; /* rojo suave */
+  color: #991b1b;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-weight: 500;
+}
+

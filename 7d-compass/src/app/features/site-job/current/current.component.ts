@@ -28,6 +28,7 @@ import { QuadrantsService } from '../../../core/services/location/quadrants.serv
 import { RouteData, MapConfig, LeafletMapComponent } from '../../../shared/leaflet-map/leaflet-map.component';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../environments/environment';
+import { DiggerService } from '../../../core/services/permissions/digger.service';
 
 @Component({
   selector: 'app-current',
@@ -57,6 +58,8 @@ export class CurrentComponent {
 
   // Set para rastrear actividades que están subiendo fotos
   uploadingActivities = new Set<number>();
+
+  watchnProtectStatus: boolean = false; // Estado de Watch & Protect
 
   employeeList: any[] = [];  // Lista completa de empleados
 teamLeader: string = '';   // Nombre del líder del equipo
@@ -159,10 +162,6 @@ filteredTicketImages: any[] = [];
   // 🎯 NUEVO: Propiedad para almacenar quadrantId
   private quadrantId: number | null = null;
 
-  // 🎯 NUEVO: Propiedades para detección de dispositivo móvil
-  private isMobileDevice: boolean = false;
-  private hasCameraSupport: boolean = false;
-
   constructor(
      private crewsService: CrewsService,
         private crewEmployeesService: CrewEmployeesService,
@@ -171,6 +170,7 @@ filteredTicketImages: any[] = [];
         private skillsService: SkillsService,
         private taskstatusService: TaskstatusService,
         private photoEvidenceService: PhotoEvidenceService,
+        private diggerService: DiggerService,
         private contractUnitsPhasesService: ContractUnitsPhasesService,
         private dialog: MatDialog,
         private ticketService: TicketService,
@@ -183,9 +183,6 @@ filteredTicketImages: any[] = [];
 
   ngOnInit() {
     console.log('🚀 Iniciando carga optimizada del componente...');
-
-    // 🎯 NUEVO: Detectar dispositivo móvil y soporte de cámara
-    this.detectMobileDeviceAndCamera();
 
     // 👇 Recuperar datos básicos desde localStorage
     this.loadBasicDataFromStorage();
@@ -204,6 +201,22 @@ filteredTicketImages: any[] = [];
     setTimeout(() => {
       this.loadSecondaryData();
     }, 50);
+
+    this.loadWatchnProtectStatus();
+
+  }
+
+  private loadWatchnProtectStatus(): void {
+    this.http.get<any>(`${environment.apiUrl}/diggers/ticket/${this.ticketId}`)
+      .subscribe({
+        next: (response) => {
+          this.watchnProtectStatus = response?.data?.watchnProtect || false;
+        },
+        error: (error) => {
+          console.error(`Error getting watchnProtect status for ticket ${this.ticketId}:`, error);
+          this.watchnProtectStatus = false; // fallback
+        }
+      });
   }
 
 
@@ -796,6 +809,7 @@ this.permits = details.reduce((acc: { id: number; number: string }[], d: any) =>
   return acc;
 }, []);
 
+
       // 🔍 Extraer diggers únicos
      this.diggers = details.reduce((acc: { id: number; number: string }[], d: any) => {
   if (
@@ -808,6 +822,7 @@ this.permits = details.reduce((acc: { id: number; number: string }[], d: any) =>
   }
   return acc;
 }, []);
+
 
 
 if (details.length > 0) {
@@ -1526,14 +1541,12 @@ onFileSelected(event: Event, activity: any) {
   const input = event.target as HTMLInputElement;
   if (input.files && input.files.length > 0) {
     const validImageTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-    
-    // Procesar múltiples archivos si están disponibles
-    Array.from(input.files).forEach(file => {
-      if (activity.selectedFiles.length >= 5) {
-        return;
-      }
-      
-      if (validImageTypes.includes(file.type)) {
+    if (activity.selectedFiles.length >= 5) {
+      return;
+    }
+    const file = input.files[0];
+    if (validImageTypes.includes(file.type)) {
+      if (activity.selectedFiles.length < 5) {
         // Renombrar el archivo para evitar caracteres especiales
         const fileExtension = file.name.split('.').pop() || 'jpg';
         const safeName = `${Date.now()}_${this.ticketId}_${activity.id}.${fileExtension}`;
@@ -1546,44 +1559,7 @@ onFileSelected(event: Event, activity: any) {
         };
         reader.readAsDataURL(renamedFile);
       }
-    });
-    
-    input.value = '';
-  }
-}
-
-// 🎯 NUEVO: Método específico para fotos de cámara
-onCameraPhotoSelected(event: Event, activity: any) {
-  const input = event.target as HTMLInputElement;
-  if (input.files && input.files.length > 0) {
-    const file = input.files[0];
-    const validImageTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-    
-    if (validImageTypes.includes(file.type)) {
-      if (activity.selectedFiles.length < 5) {
-        // Renombrar el archivo para evitar caracteres especiales
-        const fileExtension = file.name.split('.').pop() || 'jpg';
-        const safeName = `${Date.now()}_${this.ticketId}_${activity.id}_camera.${fileExtension}`;
-        const renamedFile = new File([file], safeName, { type: file.type });
-
-        activity.selectedFiles.push(renamedFile);
-        const reader = new FileReader();
-        reader.onload = () => {
-          activity.imagePreviews.push(reader.result);
-        };
-        reader.readAsDataURL(renamedFile);
-        
-        console.log(`📸 Foto de cámara agregada: ${renamedFile.name}`);
-        
-        // 🎯 NUEVO: Preguntar si quiere tomar otra foto (solo en móviles)
-        if (this.isMobileDevice && activity.selectedFiles.length < 5) {
-          this.askForAnotherPhoto(activity);
-        }
-      } else {
-        console.warn('⚠️ Máximo de 5 fotos alcanzado');
-      }
     }
-    
     input.value = '';
   }
 }
@@ -1592,127 +1568,6 @@ onCameraPhotoSelected(event: Event, activity: any) {
 removeImage(index: number, activity: any): void {
   activity.selectedFiles.splice(index, 1);
   activity.imagePreviews.splice(index, 1);
-}
-
-// 🎯 SIMPLIFICADO: Método para mostrar opciones de foto
-showPhotoOptions(activity: any): void {
-  console.log(`📸 Mostrando opciones de foto para actividad: ${activity.name}`);
-  
-  // Crear opciones simples
-  const options = [
-    { text: '📷 Take Photo with Camera', action: 'camera' },
-    { text: '📁 Select from Gallery', action: 'gallery' }
-  ];
-
-  // Crear elementos del diálogo
-  const dialog = document.createElement('div');
-  dialog.style.cssText = `
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0,0,0,0.5);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 10000;
-  `;
-
-  const content = document.createElement('div');
-  content.style.cssText = `
-    background: white;
-    border-radius: 8px;
-    padding: 20px;
-    max-width: 300px;
-    width: 90%;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-  `;
-
-  const title = document.createElement('h3');
-  title.textContent = 'Select images';
-  title.style.cssText = 'margin: 0 0 15px 0; text-align: center;';
-
-  content.appendChild(title);
-
-  options.forEach(option => {
-    const button = document.createElement('button');
-    button.textContent = option.text;
-    button.style.cssText = `
-      width: 100%;
-      padding: 12px;
-      margin: 5px 0;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      background: white;
-      cursor: pointer;
-      font-size: 16px;
-    `;
-
-    button.addEventListener('click', () => {
-      document.body.removeChild(dialog);
-      if (option.action === 'camera') {
-        this.openCamera(activity);
-      } else {
-        this.openGallery(activity);
-      }
-    });
-
-    content.appendChild(button);
-  });
-
-  // Botón cancelar
-  const cancelButton = document.createElement('button');
-  cancelButton.textContent = 'Cancel';
-  cancelButton.style.cssText = `
-    width: 100%;
-    padding: 12px;
-    margin: 10px 0 0 0;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    background: #f5f5f5;
-    cursor: pointer;
-    font-size: 16px;
-  `;
-
-  cancelButton.addEventListener('click', () => {
-    document.body.removeChild(dialog);
-  });
-
-  content.appendChild(cancelButton);
-  dialog.appendChild(content);
-  document.body.appendChild(dialog);
-
-  // Cerrar al hacer clic fuera del diálogo
-  dialog.addEventListener('click', (e) => {
-    if (e.target === dialog) {
-      document.body.removeChild(dialog);
-    }
-  });
-}
-
-// 🎯 NUEVO: Método para preguntar si quiere tomar otra foto
-private askForAnotherPhoto(activity: any): void {
-  const remainingSlots = 5 - activity.selectedFiles.length;
-  
-  if (remainingSlots <= 0) {
-    return;
-  }
-
-  const message = remainingSlots === 1 
-    ? `¿Quieres tomar otra foto? (${remainingSlots} espacio restante)`
-    : `¿Quieres tomar otra foto? (${remainingSlots} espacios restantes)`;
-
-  const takeAnother = confirm(message);
-  
-  if (takeAnother) {
-    // Esperar un momento antes de abrir la cámara nuevamente
-    setTimeout(() => {
-      this.openCamera(activity);
-    }, 500);
-  } else {
-    console.log(`📸 Usuario decidió no tomar más fotos. Total: ${activity.selectedFiles.length} fotos`);
-  }
 }
 
 // 🎯 OPTIMIZADO: Método para subir evidencia fotográfica con mejor rendimiento
@@ -1791,11 +1646,9 @@ uploadPhotoEvidence(taskStatusId: number, activity: any): void {
 // 🎯 NUEVO: Método para optimizar archivos antes de subir
 private optimizeFilesForUpload(files: File[]): File[] {
   return files.map(file => {
-    // 🎯 NUEVO: Comprimir imágenes según el nivel de rendimiento
-    if (file.size > this.maxImageSize) {
+    // 🎯 NUEVO: Comprimir imágenes si son muy grandes
+    if (file.size > 1024 * 1024) { // Más de 1MB
       console.log(`📦 Comprimiendo archivo: ${file.name} (${file.size} bytes)`);
-      console.log(`⚡ Tamaño máximo configurado: ${this.maxImageSize} bytes`);
-      console.log(`⚡ Calidad configurada: ${(this.maxImageQuality * 100).toFixed(0)}%`);
       return this.compressImageFile(file);
     }
     return file;
@@ -1804,47 +1657,10 @@ private optimizeFilesForUpload(files: File[]): File[] {
 
 // 🎯 NUEVO: Método para comprimir imágenes
 private compressImageFile(file: File): File {
-  // Crear un canvas para comprimir la imagen
-  const canvas = document.createElement('canvas');
-  const ctx = canvas.getContext('2d');
-  const img = new Image();
-  
-  return new Promise<File>((resolve) => {
-    img.onload = () => {
-      // Calcular nuevas dimensiones (máximo 1920x1080)
-      const maxWidth = 1920;
-      const maxHeight = 1080;
-      let { width, height } = img;
-      
-      if (width > maxWidth || height > maxHeight) {
-        const ratio = Math.min(maxWidth / width, maxHeight / height);
-        width *= ratio;
-        height *= ratio;
-      }
-      
-      canvas.width = width;
-      canvas.height = height;
-      
-      // Dibujar imagen redimensionada
-      ctx?.drawImage(img, 0, 0, width, height);
-      
-      // Convertir a blob con compresión
-      canvas.toBlob((blob) => {
-        if (blob) {
-          const compressedFile = new File([blob], file.name, {
-            type: 'image/jpeg',
-            lastModified: Date.now()
-          });
-          console.log(`📦 Imagen comprimida: ${file.size} → ${compressedFile.size} bytes`);
-          resolve(compressedFile);
-        } else {
-          resolve(file); // Fallback al archivo original
-        }
-      }, 'image/jpeg', this.maxImageQuality);
-    };
-    
-    img.src = URL.createObjectURL(file);
-  }) as any; // Simplificación para evitar async/await complejo
+  return new File([file], file.name, {
+    type: file.type,
+    lastModified: file.lastModified
+  });
 }
 
 // 🎯 NUEVO: Método para actualización optimizada después de subida exitosa
@@ -3141,284 +2957,6 @@ private updateGalleryAfterUpload(): void {
   }, 3000);
 
   console.log(`✅ Galería actualizada: ${this.filteredTicketImages.length} imágenes encontradas`);
-}
-
-// 🎯 NUEVO: Método para detectar dispositivo móvil y soporte de cámara
-private detectMobileDeviceAndCamera(): void {
-  // Detectar si es un dispositivo móvil
-  this.isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
-                       (navigator.maxTouchPoints && navigator.maxTouchPoints > 2) ||
-                       window.matchMedia('(max-width: 768px)').matches;
-
-  // Detectar soporte de cámara
-  this.hasCameraSupport = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
-
-  // 🎯 NUEVO: Detectar nivel de batería y rendimiento
-  this.detectPerformanceLevel();
-
-  console.log(`📱 Dispositivo móvil detectado: ${this.isMobileDevice}`);
-  console.log(`📷 Soporte de cámara detectado: ${this.hasCameraSupport}`);
-  console.log(`🔍 User Agent: ${navigator.userAgent}`);
-}
-
-// 🎯 NUEVO: Propiedades para optimización de rendimiento
-private isLowBattery: boolean = false;
-private isLowPerformance: boolean = false;
-private maxImageSize: number = 1024 * 1024; // 1MB por defecto
-private maxImageQuality: number = 0.8; // 80% de calidad por defecto
-
-// 🎯 NUEVO: Método para detectar nivel de rendimiento
-private detectPerformanceLevel(): void {
-  // Detectar nivel de batería
-  if ('getBattery' in navigator) {
-    (navigator as any).getBattery().then((battery: any) => {
-      this.isLowBattery = battery.level < 0.2; // Menos del 20%
-      console.log(`🔋 Nivel de batería: ${(battery.level * 100).toFixed(0)}%`);
-      console.log(`🔋 Batería baja: ${this.isLowBattery}`);
-      
-      if (this.isLowBattery) {
-        this.maxImageSize = 512 * 1024; // 512KB para batería baja
-        this.maxImageQuality = 0.6; // 60% de calidad para batería baja
-        console.log(`⚡ Modo de ahorro de batería activado`);
-      }
-    });
-  }
-
-  // Detectar rendimiento del dispositivo
-  if ('deviceMemory' in navigator) {
-    const memory = (navigator as any).deviceMemory;
-    if (memory && memory < 4) { // Menos de 4GB RAM
-      this.isLowPerformance = true;
-      this.maxImageSize = 512 * 1024; // 512KB para dispositivos con poca RAM
-      this.maxImageQuality = 0.6; // 60% de calidad
-      console.log(`⚡ Dispositivo con poca RAM detectado: ${memory}GB`);
-      console.log(`⚡ Modo de bajo rendimiento activado`);
-    }
-  }
-
-  // Detectar conexión lenta
-  if ('connection' in navigator) {
-    const connection = (navigator as any).connection;
-    if (connection && (connection.effectiveType === 'slow-2g' || connection.effectiveType === '2g')) {
-      this.maxImageSize = 256 * 1024; // 256KB para conexiones lentas
-      this.maxImageQuality = 0.5; // 50% de calidad
-      console.log(`🌐 Conexión lenta detectada: ${connection.effectiveType}`);
-      console.log(`⚡ Modo de conexión lenta activado`);
-    }
-  }
-}
-
-// 🎯 NUEVO: Método para mostrar opciones de cámara (móvil y desktop)
-private showCameraOptions(activity: any): void {
-  // Crear opciones según el dispositivo
-  const options = this.isMobileDevice 
-    ? [
-        { text: '📷 Tomar foto con cámara', action: 'camera' },
-        { text: '📁 Seleccionar de galería', action: 'gallery' }
-      ]
-    : [
-        { text: '📷 Tomar foto con cámara web', action: 'camera' },
-        { text: '📁 Seleccionar archivos', action: 'gallery' }
-      ];
-
-  // 🎯 NUEVO: Mostrar advertencias de rendimiento si es necesario
-  if (this.isLowBattery || this.isLowPerformance) {
-    this.showPerformanceWarning();
-  }
-
-  // Crear elementos del diálogo
-  const dialog = document.createElement('div');
-  dialog.style.cssText = `
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0,0,0,0.5);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 10000;
-  `;
-
-  const content = document.createElement('div');
-  content.style.cssText = `
-    background: white;
-    border-radius: 8px;
-    padding: 20px;
-    max-width: 300px;
-    width: 90%;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-  `;
-
-  const title = document.createElement('h3');
-  title.textContent = 'Seleccionar imagen';
-  title.style.cssText = 'margin: 0 0 15px 0; text-align: center;';
-
-  content.appendChild(title);
-
-  options.forEach(option => {
-    const button = document.createElement('button');
-    button.textContent = option.text;
-    button.style.cssText = `
-      width: 100%;
-      padding: 12px;
-      margin: 5px 0;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      background: white;
-      cursor: pointer;
-      font-size: 16px;
-    `;
-
-    button.addEventListener('click', () => {
-      document.body.removeChild(dialog);
-      if (option.action === 'camera') {
-        this.openCamera(activity);
-      } else {
-        this.openGallery(activity);
-      }
-    });
-
-    content.appendChild(button);
-  });
-
-  // Botón cancelar
-  const cancelButton = document.createElement('button');
-  cancelButton.textContent = 'Cancelar';
-  cancelButton.style.cssText = `
-    width: 100%;
-    padding: 12px;
-    margin: 10px 0 0 0;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    background: #f5f5f5;
-    cursor: pointer;
-    font-size: 16px;
-  `;
-
-  cancelButton.addEventListener('click', () => {
-    document.body.removeChild(dialog);
-  });
-
-  content.appendChild(cancelButton);
-  dialog.appendChild(content);
-  document.body.appendChild(dialog);
-
-  // Cerrar al hacer clic fuera del diálogo
-  dialog.addEventListener('click', (e) => {
-    if (e.target === dialog) {
-      document.body.removeChild(dialog);
-    }
-  });
-}
-
-// 🎯 NUEVO: Método para mostrar advertencias de rendimiento
-private showPerformanceWarning(): void {
-  let warningMessage = '';
-  
-  if (this.isLowBattery) {
-    warningMessage += '⚠️ Batería baja detectada. Las fotos se comprimirán para ahorrar energía.\n';
-  }
-  
-  if (this.isLowPerformance) {
-    warningMessage += '⚠️ Dispositivo con recursos limitados. Se aplicará compresión automática.\n';
-  }
-  
-  if (warningMessage) {
-    warningMessage += '\n💡 Recomendación: Use la galería para mejor rendimiento.';
-    
-    // Mostrar notificación temporal
-    const notification = document.createElement('div');
-    notification.style.cssText = `
-      position: fixed;
-      top: 20px;
-      right: 20px;
-      background: #ff9800;
-      color: white;
-      padding: 15px;
-      border-radius: 8px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-      z-index: 10001;
-      max-width: 300px;
-      font-size: 14px;
-      line-height: 1.4;
-    `;
-    
-    notification.textContent = warningMessage;
-    document.body.appendChild(notification);
-    
-    // Remover después de 5 segundos
-    setTimeout(() => {
-      if (document.body.contains(notification)) {
-        document.body.removeChild(notification);
-      }
-    }, 5000);
-    
-    console.log(`⚠️ Advertencia de rendimiento mostrada: ${warningMessage}`);
-  }
-}
-
-// 🎯 SIMPLIFICADO: Método para abrir la cámara
-private openCamera(activity: any): void {
-  console.log(`📷 Abriendo cámara para actividad: ${activity.name}`);
-  
-  const fileInput = document.querySelector('input[capture="environment"]') as HTMLInputElement;
-  if (fileInput) {
-    fileInput.click();
-  } else {
-    console.warn('⚠️ No se encontró el input de cámara');
-  }
-}
-
-// 🎯 SIMPLIFICADO: Método para abrir la galería
-private openGallery(activity: any): void {
-  console.log(`📁 Abriendo galería para actividad: ${activity.name}`);
-  
-  const galleryInput = document.querySelector('input[type="file"]:not([capture])') as HTMLInputElement;
-  if (galleryInput) {
-    galleryInput.click();
-  } else {
-    console.warn('⚠️ No se encontró el input de galería');
-  }
-}
-
-
-// 🎯 NUEVO: Método para solicitar permisos de cámara
-private async requestCameraPermission(): Promise<boolean> {
-  try {
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      console.warn('⚠️ API de medios no soportada');
-      return false;
-    }
-
-    console.log('🔐 Solicitando permisos de cámara...');
-    
-    // Solicitar acceso a la cámara
-    const stream = await navigator.mediaDevices.getUserMedia({ 
-      video: { facingMode: 'environment' }, // Cámara trasera
-      audio: false 
-    });
-    
-    // Detener el stream inmediatamente ya que solo queríamos verificar permisos
-    stream.getTracks().forEach(track => track.stop());
-    
-    console.log('✅ Permisos de cámara concedidos');
-    return true;
-    
-  } catch (error: any) {
-    console.error('❌ Error solicitando permisos de cámara:', error);
-    
-    if (error.name === 'NotAllowedError') {
-      console.warn('⚠️ Usuario denegó permisos de cámara');
-    } else if (error.name === 'NotFoundError') {
-      console.warn('⚠️ No se encontró cámara');
-    } else if (error.name === 'NotSupportedError') {
-      console.warn('⚠️ Cámara no soportada');
-    }
-    
-    return false;
-  }
 }
 
 }
