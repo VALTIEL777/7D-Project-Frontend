@@ -604,7 +604,7 @@
         <div class="section-title full-span">
           <h4>Issued Tickets</h4>
         </div>
-        <div class="dashboard-grid">
+        <div class="dashboard-grid issued-tickets-grid">
           <!-- On Hold Off Card -->
           <app-card-with-button
             title="On Hold Off"
@@ -626,6 +626,19 @@
                 <span class="queue-number">{{ i + 1 }}.</span>
                 <div class="ticket-info">
                   <p class="route-location">{{ formatAddressFromIssues(ticket) }}</p>
+                  <p class="contract-unit" *ngIf="ticket.contractUnitName">{{ ticket.contractUnitName }}</p>
+                  <p class="expiration-date"
+                     [class.expired]="isTicketExpiredOrExpiringSoon(ticket).isExpired"
+                     [class.expiring-soon]="isTicketExpiredOrExpiringSoon(ticket).isExpiringSoon">
+                    <span class="expiration-label">Expires:</span>
+                    {{ formatExpirationDate(ticket) }}
+                    <span *ngIf="isTicketExpiredOrExpiringSoon(ticket).daysLeft >= 0" class="days-left">
+                      ({{ isTicketExpiredOrExpiringSoon(ticket).daysLeft }} days left)
+                    </span>
+                    <span *ngIf="isTicketExpiredOrExpiringSoon(ticket).isExpired" class="expired-text">
+                      (EXPIRED)
+                    </span>
+                  </p>
                   <p class="incident-name" *ngIf="getCrewComments(ticket)">{{ getCrewComments(ticket) }}</p>
                 </div>
                 <span class="ticket-code">{{ ticket.ticketCode || 'No ticket code' }}</span>
@@ -661,6 +674,19 @@
                 <span class="queue-number">{{ i + 1 }}.</span>
                 <div class="ticket-info">
                   <p class="route-location">{{ formatAddressFromIssues(ticket) }}</p>
+                  <p class="contract-unit" *ngIf="ticket.contractUnitName">{{ ticket.contractUnitName }}</p>
+                  <p class="expiration-date"
+                     [class.expired]="isTicketExpiredOrExpiringSoon(ticket).isExpired"
+                     [class.expiring-soon]="isTicketExpiredOrExpiringSoon(ticket).isExpiringSoon">
+                    <span class="expiration-label">Expires:</span>
+                    {{ formatExpirationDate(ticket) }}
+                    <span *ngIf="isTicketExpiredOrExpiringSoon(ticket).daysLeft >= 0" class="days-left">
+                      ({{ isTicketExpiredOrExpiringSoon(ticket).daysLeft }} days left)
+                    </span>
+                    <span *ngIf="isTicketExpiredOrExpiringSoon(ticket).isExpired" class="expired-text">
+                      (EXPIRED)
+                    </span>
+                  </p>
                   <p class="incident-name" *ngIf="getCrewComments(ticket)">{{ getCrewComments(ticket) }}</p>
                 </div>
                 <span class="ticket-code">{{ ticket.ticketCode || 'No ticket code' }}</span>

@@ -127,8 +127,9 @@ export class RtrProcessingComponent extends BaseDashboardComponent implements On
     this.rtrService.listRTRs().subscribe({
       next: (response) => {
         if (response.success) {
-          this.receivedRTRs = response.files.uploaded || [];
-          this.sentRTRs = response.files.generated || [];
+          // Sort files by last modified (newest first)
+          this.receivedRTRs = this.sortFilesByLastModifiedDesc(response.files.uploaded || []);
+          this.sentRTRs = this.sortFilesByLastModifiedDesc(response.files.generated || []);
 
           // Update the base component's data arrays with received files for filtering
           this.allData = [...this.receivedRTRs];
@@ -1328,16 +1329,26 @@ export class RtrProcessingComponent extends BaseDashboardComponent implements On
 
     // Filter received RTRs
     if (text) {
-      this.receivedRTRs = this.allData.filter((rtr: RTRFile) =>
+      const filtered = this.allData.filter((rtr: RTRFile) =>
         rtr.name.toLowerCase().includes(text) ||
         rtr.lastModified.toLowerCase().includes(text)
       );
+      this.receivedRTRs = this.sortFilesByLastModifiedDesc(filtered);
     } else {
-      this.receivedRTRs = [...this.allData];
+      this.receivedRTRs = this.sortFilesByLastModifiedDesc(this.allData);
     }
 
     // Reset pagination after filtering
     this.resetPagination();
+  }
+
+  // Helper: sort files by lastModified descending (newest first)
+  private sortFilesByLastModifiedDesc(files: RTRFile[]): RTRFile[] {
+    return [...(files || [])].sort((a: RTRFile, b: RTRFile) => {
+      const timeA = a && a.lastModified ? new Date(a.lastModified).getTime() : 0;
+      const timeB = b && b.lastModified ? new Date(b.lastModified).getTime() : 0;
+      return timeB - timeA;
+    });
   }
 
   // Pagination methods for Received RTR History

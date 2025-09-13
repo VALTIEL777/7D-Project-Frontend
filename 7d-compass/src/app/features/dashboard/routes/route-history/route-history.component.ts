@@ -93,7 +93,14 @@ export class RouteHistoryComponent implements OnInit {
     {
       name: 'endDate',
       header: 'End Date',
-      cell: (route: Route) => new Date(route.endDate).toLocaleDateString()
+      cell: (route: Route) => {
+        const endDate = new Date(route.endDate);
+        // Hide end date if it's 12/31/1969 (Unix epoch 0)
+        if (endDate.getFullYear() === 1969 && endDate.getMonth() === 11 && endDate.getDate() === 31) {
+          return '-';
+        }
+        return endDate.toLocaleDateString();
+      }
     },
     {
       name: 'addressCount',
@@ -313,6 +320,11 @@ export class RouteHistoryComponent implements OnInit {
     console.log('🔍 Date range:', this.selectedDateRange);
 
     this.filteredRoutes = this.routes.filter(route => {
+      // Filter out routes with 0 locations
+      if (route.addressCount === 0) {
+        return false;
+      }
+
       // Text search filter
       const textMatch = !this.textSearch ||
         route.routeCode.toLowerCase().includes(this.textSearch.toLowerCase()) ||

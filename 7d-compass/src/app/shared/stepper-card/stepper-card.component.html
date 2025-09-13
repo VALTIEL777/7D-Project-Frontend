@@ -103,6 +103,20 @@
               <span class="summary-value missing">{{ analyzedData.summary.missingInfo }}</span>
             </div>
           </div>
+
+          <!-- Analysis Warnings -->
+          <div *ngIf="analyzedData.warnings && analyzedData.warnings.length > 0" class="analysis-warnings">
+            <div class="warnings-header">
+              <mat-icon class="warning-icon">warning</mat-icon>
+              <h4>Analysis Warnings</h4>
+            </div>
+            <div class="warnings-list">
+              <div *ngFor="let warning of analyzedData.warnings" class="warning-item">
+                <mat-icon class="warning-bullet">warning</mat-icon>
+                <span class="warning-text">{{ warning }}</span>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div class="step-actions">
@@ -255,6 +269,22 @@
             <tr mat-header-row *matHeaderRowDef="inconsistencyColumns"></tr>
             <tr mat-row *matRowDef="let row; columns: inconsistencyColumns;"></tr>
           </table>
+
+          <!-- Pagination controls at the bottom -->
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 12px;">
+            <span class="pagination-info">
+              Showing {{ getDisplayedInconsistencies().length }} of {{ inconsistencies.length }} inconsistencies
+            </span>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <span>Page {{ currentPage + 1 }} of {{ getTotalPages() }}</span>
+              <button mat-icon-button (click)="previousPage()" [disabled]="currentPage === 0">
+                <mat-icon>chevron_left</mat-icon>
+              </button>
+              <button mat-icon-button (click)="nextPage()" [disabled]="currentPage >= getTotalPages() - 1">
+                <mat-icon>chevron_right</mat-icon>
+              </button>
+            </div>
+          </div>
         </div>
 
         <!-- Show message when no inconsistencies found -->

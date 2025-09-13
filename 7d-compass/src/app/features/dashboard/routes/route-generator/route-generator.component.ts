@@ -91,6 +91,7 @@ interface ReadyTicket {
   incidentname: string;
   createdat: string;
   updatedat: string;
+  expiredate: string; // Add expiredate field from API
   watchnProtect?: boolean; // Add watchnProtect property
 }
 
@@ -113,6 +114,7 @@ interface TicketWithIssue {
   ticketType: string;
   daysOutstanding: number | null;
   comment7d: string;
+  expireDate: string; // Add expireDate field from API
   quantity: number;
   createdAt: string;
   updatedAt: string;
@@ -2013,6 +2015,16 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
 
   // Format expiration date for tickets
   formatExpirationDate(ticket: any): string {
+    // Check if ticket has the expiredate field from API (highest priority for ready tickets)
+    if (ticket.expiredate) {
+      return this.formatDate(ticket.expiredate);
+    }
+
+    // Check if ticket has the expireDate field from API (for tickets with issues)
+    if (ticket.expireDate) {
+      return this.formatDate(ticket.expireDate);
+    }
+
     // Check if ticket has an explicit expiration date field
     if (ticket.expirationDate) {
       return this.formatDate(ticket.expirationDate);
@@ -2063,8 +2075,12 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
   isTicketExpiredOrExpiringSoon(ticket: any): { isExpired: boolean; isExpiringSoon: boolean; daysLeft: number } {
     let expirationDate: Date | null = null;
 
-    // Try to get expiration date from various possible fields
-    if (ticket.expirationDate) {
+    // Try to get expiration date from various possible fields (prioritize expiredate from API)
+    if (ticket.expiredate) {
+      expirationDate = new Date(ticket.expiredate);
+    } else if (ticket.expireDate) {
+      expirationDate = new Date(ticket.expireDate);
+    } else if (ticket.expirationDate) {
       expirationDate = new Date(ticket.expirationDate);
     } else if (ticket.expiryDate) {
       expirationDate = new Date(ticket.expiryDate);

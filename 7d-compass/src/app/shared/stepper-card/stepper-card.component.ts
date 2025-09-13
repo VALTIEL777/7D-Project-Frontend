@@ -90,6 +90,7 @@ export interface StepperAnalyzeResponse {
       type: string;
       description: string;
     }>;
+    warnings?: string[];
     summary: {
       total: number;
       new: number;
@@ -106,7 +107,7 @@ export interface StepperValidateResponse {
   validation: {
     isValid: boolean;
     errors: any[];
-    warnings: any[];
+    warnings: Array<string | { field?: string; message?: string }>;
     summary: {
       totalTickets: number;
       validTickets: number;
@@ -406,6 +407,9 @@ export class StepperCardComponent {
               }
             });
 
+            // Sort inconsistencies by conflicting field alphabetically
+            this.inconsistencies.sort((a, b) => a.field.localeCompare(b.field));
+
             // Convert missing info to our format - handle both single and multiple missing fields
             this.missingInfo = [];
             response.analysis.missingInfo.forEach(item => {
@@ -682,14 +686,23 @@ export class StepperCardComponent {
               });
             }
 
-            if (response.validation.warnings.length > 0) {
-              response.validation.warnings.forEach(warning => {
-                this.validationResults.push({
-                  field: warning.field || 'General',
-                  isValid: true,
-                  message: warning.message || 'Warning',
-                  severity: 'warning'
-                });
+            if (Array.isArray(response.validation.warnings) && response.validation.warnings.length > 0) {
+              response.validation.warnings.forEach((warning: any) => {
+                if (typeof warning === 'string') {
+                  this.validationResults.push({
+                    field: 'General',
+                    isValid: true,
+                    message: warning,
+                    severity: 'warning'
+                  });
+                } else if (warning && typeof warning === 'object') {
+                  this.validationResults.push({
+                    field: warning.field || 'General',
+                    isValid: true,
+                    message: warning.message || 'Warning',
+                    severity: 'warning'
+                  });
+                }
               });
             }
 
