@@ -1,7 +1,14 @@
 <app-dashboard-layout>
   <div class="full-layout-container">
     <div class="dashboard-container">
-      <div class="dashboard-wrapper" cdkDropListGroup>
+      <!-- Loading Spinner -->
+      <div *ngIf="isInitialLoading" class="loading-container">
+        <app-loading-spinner></app-loading-spinner>
+        <p class="loading-text">Loading route data...</p>
+      </div>
+
+      <!-- Main Content -->
+      <div class="dashboard-wrapper" cdkDropListGroup *ngIf="!isInitialLoading">
 
 
         <!-- Top Row: Route Containers and Today's Routes -->
@@ -627,18 +634,6 @@
                 <div class="ticket-info">
                   <p class="route-location">{{ formatAddressFromIssues(ticket) }}</p>
                   <p class="contract-unit" *ngIf="ticket.contractUnitName">{{ ticket.contractUnitName }}</p>
-                  <p class="expiration-date"
-                     [class.expired]="isTicketExpiredOrExpiringSoon(ticket).isExpired"
-                     [class.expiring-soon]="isTicketExpiredOrExpiringSoon(ticket).isExpiringSoon">
-                    <span class="expiration-label">Expires:</span>
-                    {{ formatExpirationDate(ticket) }}
-                    <span *ngIf="isTicketExpiredOrExpiringSoon(ticket).daysLeft >= 0" class="days-left">
-                      ({{ isTicketExpiredOrExpiringSoon(ticket).daysLeft }} days left)
-                    </span>
-                    <span *ngIf="isTicketExpiredOrExpiringSoon(ticket).isExpired" class="expired-text">
-                      (EXPIRED)
-                    </span>
-                  </p>
                   <p class="incident-name" *ngIf="getCrewComments(ticket)">{{ getCrewComments(ticket) }}</p>
                 </div>
                 <span class="ticket-code">{{ ticket.ticketCode || 'No ticket code' }}</span>

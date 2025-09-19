@@ -224,6 +224,9 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
   isLoadingAsphaltReady = false;
   isLoadingConcreteReady = false;
 
+  // Master loading state - shows loading until all data is loaded
+  isInitialLoading = true;
+
   // Dialog properties
   newRouteType: string = '';
   private dialogRef: any;
@@ -322,35 +325,59 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     super.ngOnInit();
     this.updateDisplayedColumns();
 
-    this.loadSpottingRoutes();
-    this.loadConcreteRoutes();
-    this.loadAsphaltRoutes();
-    this.loadSpotReadyTickets();
-    this.loadAsphaltReadyTickets();
-    this.loadConcreteReadyTickets();
-    this.loadTicketsWithIssues();
-    this.loadExpiredTickets();
+    // Load all data and wait for completion before showing the page
+    this.loadAllData();
+  }
 
-    // Generate Leaflet map after initial data load
-    setTimeout(() => {
-      this.updateLeafletMap();
-    }, 1000);
+  private async loadAllData(): Promise<void> {
+    try {
+      console.log('🔄 Starting to load all data...');
 
-    // Load watchnProtect status for all tickets after data is loaded
-    setTimeout(async () => {
-      await this.loadWatchnProtectStatusForTickets();
-    }, 2000);
+      // Load all data in parallel
+      const loadPromises = [
+        this.loadSpottingRoutesAsync(),
+        this.loadConcreteRoutesAsync(),
+        this.loadAsphaltRoutesAsync(),
+        this.loadSpotReadyTicketsAsync(),
+        this.loadAsphaltReadyTicketsAsync(),
+        this.loadConcreteReadyTicketsAsync(),
+        this.loadTicketsWithIssuesAsync(),
+        this.loadExpiredTicketsAsync()
+      ];
 
-    // Subscribe to filter changes to trigger change detection
-    this.filterService.textSearch$.subscribe(() => {
-      // Force change detection when filter changes
-      this.cdr.detectChanges();
-    });
+      // Wait for all data to load
+      await Promise.all(loadPromises);
 
-    // Debug: Check route rendering after data loads
-    setTimeout(() => {
-      this.debugRouteRendering();
-    }, 2000);
+      console.log('✅ All data loaded successfully');
+
+      // Generate Leaflet map after all data is loaded
+      setTimeout(() => {
+        this.updateLeafletMap();
+      }, 500);
+
+      // Load watchnProtect status for all tickets after data is loaded
+      setTimeout(async () => {
+        await this.loadWatchnProtectStatusForTickets();
+      }, 1000);
+
+      // Subscribe to filter changes to trigger change detection
+      this.filterService.textSearch$.subscribe(() => {
+        // Force change detection when filter changes
+        this.cdr.detectChanges();
+      });
+
+      // Debug: Check route rendering after data loads
+      setTimeout(() => {
+        this.debugRouteRendering();
+      }, 1500);
+
+    } catch (error) {
+      console.error('❌ Error loading data:', error);
+    } finally {
+      // Hide loading state and show the page
+      this.isInitialLoading = false;
+      console.log('🎉 Page is now ready to display');
+    }
   }
 
   private debugRouteRendering() {
@@ -406,6 +433,20 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
   }
 
   private updateVisibleRoutes() {
+    // Debug visible routes
+    console.log('👁️ VISIBLE ROUTES DEBUG:', {
+      showSpottingRoutes: this.showSpottingRoutes,
+      showConcreteRoutes: this.showConcreteRoutes,
+      showAsphaltRoutes: this.showAsphaltRoutes,
+      visibleRoutesSet: Array.from(this.visibleRoutes),
+      concreteRouteIds: this.concreteRoutes.map(r => r.routeId),
+      concreteRoutesVisible: this.concreteRoutes.map(r => ({
+        routeId: r.routeId,
+        routeCode: r.routeCode,
+        isVisible: this.visibleRoutes.has(r.routeId)
+      }))
+    });
+
     if (this.visibleRoutes.size === 0) {
       return;
     }
@@ -668,7 +709,10 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
   getFilteredRouteTickets(route: Route): RouteTicket[] {
     const filter = (this.routeTicketFilters[route.routeId] || '').toLowerCase().trim();
     if (!filter) return route.tickets;
-    return route.tickets.filter(ticket => ticket.address && ticket.address.toLowerCase().includes(filter));
+    return route.tickets.filter(ticket =>
+      (ticket.address && ticket.address.toLowerCase().includes(filter)) ||
+      (ticket.ticketCode && ticket.ticketCode.toLowerCase().includes(filter))
+    );
   }
 
   // Filter spot ready tickets by the spotReadyFilter
@@ -678,7 +722,10 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     // Apply text filter
     const textFilter = this.spotReadyFilter.toLowerCase().trim();
     if (textFilter) {
-      filteredTickets = filteredTickets.filter(ticket => ticket.address && ticket.address.toLowerCase().includes(textFilter));
+      filteredTickets = filteredTickets.filter(ticket =>
+        (ticket.address && ticket.address.toLowerCase().includes(textFilter)) ||
+        (ticket.ticketcode && ticket.ticketcode.toLowerCase().includes(textFilter))
+      );
     }
 
     return filteredTickets;
@@ -691,7 +738,10 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     // Apply text filter
     const textFilter = this.asphaltReadyFilter.toLowerCase().trim();
     if (textFilter) {
-      filteredTickets = filteredTickets.filter(ticket => ticket.address && ticket.address.toLowerCase().includes(textFilter));
+      filteredTickets = filteredTickets.filter(ticket =>
+        (ticket.address && ticket.address.toLowerCase().includes(textFilter)) ||
+        (ticket.ticketcode && ticket.ticketcode.toLowerCase().includes(textFilter))
+      );
     }
 
     return filteredTickets;
@@ -704,21 +754,61 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     // Apply text filter
     const textFilter = this.concreteReadyFilter.toLowerCase().trim();
     if (textFilter) {
-      filteredTickets = filteredTickets.filter(ticket => ticket.address && ticket.address.toLowerCase().includes(textFilter));
+      filteredTickets = filteredTickets.filter(ticket =>
+        (ticket.address && ticket.address.toLowerCase().includes(textFilter)) ||
+        (ticket.ticketcode && ticket.ticketcode.toLowerCase().includes(textFilter))
+      );
     }
 
     return filteredTickets;
   }
 
 
+  // Async version of loadSpottingRoutes for Promise.all
+  private async loadSpottingRoutesAsync(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      this.loadSpottingRoutes();
+      // Wait for loading to complete
+      const checkLoading = () => {
+        if (!this.isLoadingSpottingRoutes) {
+          resolve();
+        } else {
+          setTimeout(checkLoading, 100);
+        }
+      };
+      checkLoading();
+    });
+  }
+
   // Load spotting routes from API
   loadSpottingRoutes() {
     this.isLoadingSpottingRoutes = true;
     this.http.get<RoutesResponse>(`${environment.apiUrl}/routes/spotting`).subscribe({
       next: (response) => {
+        console.log('🔍 SPOTTING ROUTES API Response:', response);
+
         this.spottingRoutes = response.routes || [];
         this.initialSpottingRoutes = [...this.spottingRoutes];
         this.isLoadingSpottingRoutes = false;
+
+        // Debug each route's ticket data
+        this.spottingRoutes.forEach((route, routeIndex) => {
+          console.log(`🔍 Spotting Route ${routeIndex + 1} (${route.routeCode}) - Raw Data:`, {
+            routeId: route.routeId,
+            routeCode: route.routeCode,
+            type: route.type,
+            ticketsCount: route.tickets?.length || 0,
+            tickets: route.tickets?.map((ticket, ticketIndex) => ({
+              index: ticketIndex,
+              ticketId: ticket.ticketId,
+              ticketCode: ticket.ticketCode,
+              address: ticket.address,
+              queue: ticket.queue,
+              coordinates: ticket.coordinates,
+              rawTicketData: ticket
+            }))
+          });
+        });
 
         this.loadData(); // Refresh filtered data
         this.initializeVisibleRoutes(); // Initialize visible routes
@@ -736,14 +826,81 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     });
   }
 
+  // Async version of loadConcreteRoutes for Promise.all
+  private async loadConcreteRoutesAsync(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      this.loadConcreteRoutes();
+      const checkLoading = () => {
+        if (!this.isLoadingConcreteRoutes) {
+          resolve();
+        } else {
+          setTimeout(checkLoading, 100);
+        }
+      };
+      checkLoading();
+    });
+  }
+
   // Load concrete routes from API
   loadConcreteRoutes() {
     this.isLoadingConcreteRoutes = true;
     this.http.get<RoutesResponse>(`${environment.apiUrl}/routes/concrete`).subscribe({
       next: (response) => {
+        console.log('🔍 CONCRETE ROUTES API Response:', response);
+
         this.concreteRoutes = response.routes || [];
         this.initialConcreteRoutes = [...this.concreteRoutes];
         this.isLoadingConcreteRoutes = false;
+
+        // Debug each route's ticket data
+        this.concreteRoutes.forEach((route, routeIndex) => {
+          console.log(`🔍 Concrete Route ${routeIndex + 1} (${route.routeCode}) - Raw Data:`, {
+            routeId: route.routeId,
+            routeCode: route.routeCode,
+            type: route.type,
+            ticketsCount: route.tickets?.length || 0,
+            encodedPolyline: route.encodedPolyline,
+            polylineLength: route.encodedPolyline?.length || 0,
+            tickets: route.tickets?.map((ticket, ticketIndex) => ({
+              index: ticketIndex,
+              ticketId: ticket.ticketId,
+              ticketCode: ticket.ticketCode,
+              address: ticket.address,
+              queue: ticket.queue,
+              coordinates: ticket.coordinates,
+              rawTicketData: ticket
+            }))
+          });
+
+          // Special debugging for concrete routes
+          console.log(`🚨 CONCRETE ROUTE DEBUG - ${route.routeCode}:`, {
+            hasPolyline: !!route.encodedPolyline,
+            polylineValid: route.encodedPolyline && route.encodedPolyline.length > 0,
+            ticketsValid: route.tickets && route.tickets.length > 0,
+            firstTicket: route.tickets?.[0],
+            lastTicket: route.tickets?.[route.tickets.length - 1],
+            allTicketIds: route.tickets?.map(t => t.ticketId),
+            allTicketCodes: route.tickets?.map(t => t.ticketCode),
+            allQueues: route.tickets?.map(t => t.queue)
+          });
+
+          // Check if polyline can be decoded
+          if (route.encodedPolyline) {
+            try {
+              const decodedPolyline = polyline.decode(route.encodedPolyline);
+              console.log(`🗺️ Concrete Polyline Decoded Successfully:`, {
+                pointCount: decodedPolyline.length,
+                firstPoint: decodedPolyline[0],
+                lastPoint: decodedPolyline[decodedPolyline.length - 1],
+                isValid: decodedPolyline.length > 0
+              });
+            } catch (error) {
+              console.error(`❌ Concrete Polyline Decode Error:`, error);
+            }
+          } else {
+            console.warn(`⚠️ Concrete Route ${route.routeCode} has NO encoded polyline!`);
+          }
+        });
 
         this.loadData(); // Refresh filtered data
         this.initializeVisibleRoutes(); // Initialize visible routes
@@ -761,14 +918,50 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     });
   }
 
+  // Async version of loadAsphaltRoutes for Promise.all
+  private async loadAsphaltRoutesAsync(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      this.loadAsphaltRoutes();
+      const checkLoading = () => {
+        if (!this.isLoadingAsphaltRoutes) {
+          resolve();
+        } else {
+          setTimeout(checkLoading, 100);
+        }
+      };
+      checkLoading();
+    });
+  }
+
   // Load asphalt routes from API
   loadAsphaltRoutes() {
     this.isLoadingAsphaltRoutes = true;
     this.http.get<RoutesResponse>(`${environment.apiUrl}/routes/asphalt`).subscribe({
       next: (response) => {
+        console.log('🔍 ASPHALT ROUTES API Response:', response);
+
         this.asphaltRoutes = response.routes || [];
         this.initialAsphaltRoutes = [...this.asphaltRoutes];
         this.isLoadingAsphaltRoutes = false;
+
+        // Debug each route's ticket data
+        this.asphaltRoutes.forEach((route, routeIndex) => {
+          console.log(`🔍 Asphalt Route ${routeIndex + 1} (${route.routeCode}) - Raw Data:`, {
+            routeId: route.routeId,
+            routeCode: route.routeCode,
+            type: route.type,
+            ticketsCount: route.tickets?.length || 0,
+            tickets: route.tickets?.map((ticket, ticketIndex) => ({
+              index: ticketIndex,
+              ticketId: ticket.ticketId,
+              ticketCode: ticket.ticketCode,
+              address: ticket.address,
+              queue: ticket.queue,
+              coordinates: ticket.coordinates,
+              rawTicketData: ticket
+            }))
+          });
+        });
 
         this.loadData(); // Refresh filtered data
         this.initializeVisibleRoutes(); // Initialize visible routes
@@ -783,6 +976,21 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
         this.loadData(); // Refresh filtered data
         this.updateLeafletMap(); // Update Leaflet map
       }
+    });
+  }
+
+  // Async version of loadSpotReadyTickets for Promise.all
+  private async loadSpotReadyTicketsAsync(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      this.loadSpotReadyTickets();
+      const checkLoading = () => {
+        if (!this.isLoadingSpotReady) {
+          resolve();
+        } else {
+          setTimeout(checkLoading, 100);
+        }
+      };
+      checkLoading();
     });
   }
 
@@ -805,6 +1013,21 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     });
   }
 
+  // Async version of loadAsphaltReadyTickets for Promise.all
+  private async loadAsphaltReadyTicketsAsync(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      this.loadAsphaltReadyTickets();
+      const checkLoading = () => {
+        if (!this.isLoadingAsphaltReady) {
+          resolve();
+        } else {
+          setTimeout(checkLoading, 100);
+        }
+      };
+      checkLoading();
+    });
+  }
+
   // Load asphalt ready tickets from API
   loadAsphaltReadyTickets() {
     this.isLoadingAsphaltReady = true;
@@ -821,6 +1044,21 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
         this.asphaltReadyTickets = [];
         this.loadData(); // Refresh filtered data
       }
+    });
+  }
+
+  // Async version of loadConcreteReadyTickets for Promise.all
+  private async loadConcreteReadyTicketsAsync(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      this.loadConcreteReadyTickets();
+      const checkLoading = () => {
+        if (!this.isLoadingConcreteReady) {
+          resolve();
+        } else {
+          setTimeout(checkLoading, 100);
+        }
+      };
+      checkLoading();
     });
   }
 
@@ -1941,22 +2179,93 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
       console.log(`📍 Route ${routeIndex + 1} (${route.type}):`, {
         routeId: route.routeId,
         routeCode: route.routeCode,
-        ticketsCount: route.tickets?.length || 0
+        ticketsCount: route.tickets?.length || 0,
+        encodedPolyline: route.encodedPolyline,
+        polylineLength: route.encodedPolyline?.length || 0
       });
+
+      // Special focus on concrete routes
+      if (route.type === 'concrete') {
+        console.log(`🚨 CONCRETE ROUTE MAP DEBUG - ${route.routeCode}:`, {
+          routeInArray: route,
+          hasTickets: !!route.tickets,
+          ticketsLength: route.tickets?.length || 0,
+          hasPolyline: !!route.encodedPolyline,
+          polylineLength: route.encodedPolyline?.length || 0,
+          willBeInLeafletRoutes: true
+        });
+      }
 
       route.tickets?.forEach((ticket, ticketIndex) => {
         console.log(`  📍 Ticket ${ticketIndex + 1}:`, {
           ticketId: ticket.ticketId,
+          ticketCode: ticket.ticketCode,
           address: ticket.address,
+          queue: ticket.queue,
           hasCoordinates: !!ticket.coordinates,
           coordinates: ticket.coordinates,
           coordinateKeys: ticket.coordinates ? Object.keys(ticket.coordinates) : [],
           latType: ticket.coordinates?.latitude ? typeof ticket.coordinates.latitude : 'undefined',
           lngType: ticket.coordinates?.longitude ? typeof ticket.coordinates.longitude : 'undefined',
           latValue: ticket.coordinates?.latitude,
-          lngValue: ticket.coordinates?.longitude
+          lngValue: ticket.coordinates?.longitude,
+          placeid: ticket.coordinates?.placeid
         });
       });
+
+      // Debug polyline decoding
+      if (route.encodedPolyline) {
+        try {
+          const decodedPolyline = polyline.decode(route.encodedPolyline);
+          console.log(`  🗺️ Decoded Polyline for ${route.routeCode}:`, {
+            pointCount: decodedPolyline.length,
+            firstPoint: decodedPolyline[0],
+            lastPoint: decodedPolyline[decodedPolyline.length - 1],
+            allPoints: decodedPolyline.map((point, index) => ({
+              index,
+              lat: point[0],
+              lng: point[1]
+            }))
+          });
+
+          // Compare ticket coordinates with polyline points
+          console.log(`  🔍 Comparing ticket coordinates with polyline points:`);
+          route.tickets?.forEach((ticket, ticketIndex) => {
+            if (ticket.coordinates?.latitude && ticket.coordinates?.longitude) {
+              const ticketLat = ticket.coordinates.latitude;
+              const ticketLng = ticket.coordinates.longitude;
+
+              // Find closest polyline point
+              let closestPoint = null;
+              let minDistance = Infinity;
+              let closestIndex = -1;
+
+              decodedPolyline.forEach((point, pointIndex) => {
+                const distance = Math.sqrt(
+                  Math.pow(point[0] - ticketLat, 2) +
+                  Math.pow(point[1] - ticketLng, 2)
+                );
+                if (distance < minDistance) {
+                  minDistance = distance;
+                  closestPoint = point;
+                  closestIndex = pointIndex;
+                }
+              });
+
+              console.log(`    🎯 Ticket ${ticketIndex + 1} (${ticket.ticketCode}):`, {
+                ticketCoords: { lat: ticketLat, lng: ticketLng },
+                closestPolylinePoint: closestPoint,
+                closestIndex: closestIndex,
+                distance: minDistance,
+                address: ticket.address,
+                queue: ticket.queue
+              });
+            }
+          });
+        } catch (error) {
+          console.error(`  ❌ Error decoding polyline for ${route.routeCode}:`, error);
+        }
+      }
     });
 
     // Convert routes to Leaflet map format
@@ -1972,6 +2281,25 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
         coordinates: ticket.coordinates // Include coordinates from API
       }))
     }));
+
+    // Debug the final leafletRoutes array
+    console.log('🗺️ FINAL LEAFLET ROUTES ARRAY:', {
+      totalRoutes: this.leafletRoutes.length,
+      routeTypes: this.leafletRoutes.map(r => r.type),
+      concreteRoutes: this.leafletRoutes.filter(r => r.type === 'concrete'),
+      concreteRouteDetails: this.leafletRoutes.filter(r => r.type === 'concrete').map(r => ({
+        routeId: r.routeId,
+        routeCode: r.routeCode,
+        hasPolyline: !!r.encodedPolyline,
+        polylineLength: r.encodedPolyline?.length || 0,
+        ticketsCount: r.tickets?.length || 0,
+        tickets: r.tickets?.map(t => ({
+          ticketId: t.ticketId,
+          queue: t.queue,
+          hasCoordinates: !!t.coordinates
+        }))
+      }))
+    });
 
     // Remove: if (this.visibleRoutes.size === 0) { ... add all ... }
     // Instead, just update visible routes based on current settings
@@ -2217,6 +2545,21 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     }
   }
 
+  // Async version of loadTicketsWithIssues for Promise.all
+  private async loadTicketsWithIssuesAsync(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      this.loadTicketsWithIssues();
+      const checkLoading = () => {
+        if (!this.isLoadingTicketsWithIssues) {
+          resolve();
+        } else {
+          setTimeout(checkLoading, 100);
+        }
+      };
+      checkLoading();
+    });
+  }
+
   // Load tickets with issues from API
   loadTicketsWithIssues() {
     this.isLoadingTicketsWithIssues = true;
@@ -2231,6 +2574,21 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
         // Fallback to empty array if API fails
         this.ticketsWithIssues = [];
       }
+    });
+  }
+
+  // Async version of loadExpiredTickets for Promise.all
+  private async loadExpiredTicketsAsync(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      this.loadExpiredTickets();
+      const checkLoading = () => {
+        if (!this.isLoadingExpiredTickets) {
+          resolve();
+        } else {
+          setTimeout(checkLoading, 100);
+        }
+      };
+      checkLoading();
     });
   }
 
