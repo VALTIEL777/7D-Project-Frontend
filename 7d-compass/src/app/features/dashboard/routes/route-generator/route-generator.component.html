@@ -105,6 +105,9 @@
                     </div>
                   </app-card-with-button>
                 </div>
+                <div *ngIf="spottingRoutes.length === 0" class="empty-state">
+                  <p>No Spotting routes</p>
+                </div>
               </mat-tab>
 
               <mat-tab label="Concrete">
@@ -196,6 +199,9 @@
                     </div>
                   </app-card-with-button>
                 </div>
+                <div *ngIf="concreteRoutes.length === 0" class="empty-state">
+                  <p>No Concrete routes</p>
+                </div>
               </mat-tab>
 
               <mat-tab label="Asphalt">
@@ -286,6 +292,9 @@
                       </div>
                     </div>
                   </app-card-with-button>
+                </div>
+                <div *ngIf="asphaltRoutes.length === 0" class="empty-state">
+                  <p>No Asphalt routes</p>
                 </div>
               </mat-tab>
             </mat-tab-group>
@@ -662,6 +671,57 @@
               </div>
               <div *ngIf="!isLoadingExpiredTickets && getFilteredExpiredTickets().length === 0 && (expiredTicketsFilter || '').trim()" class="empty-state">
                 <p>No expired tickets found</p>
+              </div>
+            </div>
+          </app-card-with-button>
+
+          <!-- Unassigned Tickets (Diagnostics) Card -->
+          <app-card-with-button
+            title="Unassigned Tickets"
+            [showEyeButton]="true"
+          >
+            <div style="margin-bottom: 8px; display: flex; gap: 8px; align-items: center;">
+              <input
+                type="text"
+                [(ngModel)]="unassignedTicketsFilter"
+                placeholder="Filter code, comment, or reason..."
+                style="max-width: 220px; font-size: 12px; padding: 2px 6px;"
+              />
+            </div>
+            <div class="route-list-container" data-ready-section="true">
+              <div
+                *ngFor="let ticket of getFilteredUnassignedTickets(); let i = index"
+                class="route-detail-item"
+              >
+                <span class="queue-number">{{ i + 1 }}.</span>
+                <div class="ticket-info">
+                  <p class="route-location" style="color:#000;">{{ ticket.ticketCode }}</p>
+                  <p class="incident-name" *ngIf="ticket.comment7d" style="color:#000;">{{ ticket.comment7d }}</p>
+                  <p class="expiration-date" *ngIf="ticket.permitExpireDate" style="color:#000;">
+                    <span class="expiration-label" style="color:#000;">Permit Expires:</span>
+                    {{ ticket.permitExpireDate | date:'MM/dd/yyyy' }}
+                  </p>
+                  <p class="incident-name" style="color:#000;">
+                    <strong style="color:#f44336;">Ineligible:</strong>
+                    <span>{{ mapIneligibleType(ticket.ineligibleType) }}</span>
+                  </p>
+                  <p class="incident-name" *ngIf="ticket.reasons">
+                    <strong style="color:#1976d2;">Reasons:</strong>
+                    <span style="color:#000;">
+                      {{ (ticket.reasons.spotting || []).join(', ') }}
+                      {{ (ticket.reasons.concrete || []).join(', ') }}
+                      {{ (ticket.reasons.asphalt || []).join(', ') }}
+                    </span>
+                  </p>
+                </div>
+                <span class="ticket-code">{{ ticket.ticketCode }}</span>
+                <mat-divider></mat-divider>
+              </div>
+              <div *ngIf="isLoadingDiagnosticsTickets" class="loading-state">
+                <p>Loading unassigned tickets...</p>
+              </div>
+              <div *ngIf="!isLoadingDiagnosticsTickets && getFilteredUnassignedTickets().length === 0 && (unassignedTicketsFilter || '').trim()" class="empty-state">
+                <p>No unassigned tickets found</p>
               </div>
             </div>
           </app-card-with-button>

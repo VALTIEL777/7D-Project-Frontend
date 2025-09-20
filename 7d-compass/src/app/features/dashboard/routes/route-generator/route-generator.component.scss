@@ -52,12 +52,37 @@
 
 .dashboard-grid.vertical-list {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: repeat(2, 1fr);
   gap: 1rem;
 
   @media (max-width: 768px) {
     grid-template-columns: 1fr;
   }
+}
+
+/* Make tab cards two columns and match map height */
+.routes-section app-card-with-button {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+
+  @media (max-width: 768px) {
+    height: 70vh; /* align with map reduced height on mobile */
+  }
+
+  ::ng-deep .card-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0; /* allow inner scroll areas to size properly */
+  }
+}
+
+.routes-section .route-list-container {
+  flex: 1;
+  min-height: 0;
+  max-height: none;
+  overflow-y: auto;
 }
 
 .full-span {
@@ -679,10 +704,10 @@ mat-dialog-actions {
   }
 }
 
-// Issued Tickets section - 2 columns for better sizing
+// Issued Tickets section - 3 columns for better sizing
 .issued-tickets-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 20px;
   margin-bottom: 20px;
 

@@ -165,6 +165,34 @@ interface TicketsWithIssuesResponse {
   data: TicketWithIssue[];
 }
 
+// Diagnostics (Unassigned) tickets
+interface DiagnosticsTicket {
+  ticketId: number;
+  ticketCode: string;
+  comment7d: string;
+  permitExpireDate: string | null;
+  // New API may provide a single ineligible type instead of per-type eligibility booleans
+  ineligibleType?: 'SPOTTER' | 'CONCRETE' | 'ASPHALT' | string;
+  // Keep reasons grouped by type; some types may be missing
+  reasons: {
+    spotting?: string[];
+    concrete?: string[];
+    asphalt?: string[];
+  };
+  // Backward compatibility if older API returns booleans
+  eligibility?: {
+    spotting?: boolean;
+    concrete?: boolean;
+    asphalt?: boolean;
+  };
+}
+
+interface DiagnosticsTicketsResponse {
+  message: string;
+  count: number;
+  tickets: DiagnosticsTicket[];
+}
+
 // Interface for expired tickets API response
 interface ExpiredTicketsResponse {
   success: boolean;
@@ -245,6 +273,10 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
   expiredTickets: TicketWithIssue[] = [];
   isLoadingExpiredTickets = false;
 
+  // Diagnostics (Unassigned) tickets
+  diagnosticsTickets: DiagnosticsTicket[] = [];
+  isLoadingDiagnosticsTickets = false;
+
   // Leaflet map properties
   mapConfig: MapConfig = {
     center: [41.8781, -87.6298], // Chicago coordinates
@@ -303,6 +335,9 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
   // Filter for Expired Tickets card
   expiredTicketsFilter: string = '';
 
+  // Filter for Unassigned (Diagnostics) Tickets card
+  unassignedTicketsFilter: string = '';
+
   // Add a loading state for batch add (optional)
   isBatchAddingTickets: boolean = false;
 
@@ -349,7 +384,8 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
         this.loadAsphaltReadyTicketsAsync(),
         this.loadConcreteReadyTicketsAsync(),
         this.loadTicketsWithIssuesAsync(),
-        this.loadExpiredTicketsAsync()
+        this.loadExpiredTicketsAsync(),
+        this.loadDiagnosticsTicketsAsync()
       ];
 
       // Wait for all data to load
@@ -702,6 +738,28 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
         address: this.formatAddressFromIssues(t)
       }))
     });
+
+    return tickets;
+  }
+
+  // Filter unassigned (diagnostics) tickets by text filter
+  getFilteredUnassignedTickets(): DiagnosticsTicket[] {
+    let tickets = this.diagnosticsTickets;
+
+    const textFilter = (this.unassignedTicketsFilter || '').toLowerCase().trim();
+    if (textFilter) {
+      tickets = tickets.filter(t => {
+        const code = (t.ticketCode || '').toLowerCase();
+        const comment = (t.comment7d || '').toLowerCase();
+        // Flatten reasons
+        const reasons = [
+          ...((t.reasons?.spotting as string[] | undefined) || []),
+          ...((t.reasons?.concrete as string[] | undefined) || []),
+          ...((t.reasons?.asphalt as string[] | undefined) || [])
+        ].join(' ').toLowerCase();
+        return code.includes(textFilter) || comment.includes(textFilter) || reasons.includes(textFilter);
+      });
+    }
 
     return tickets;
   }
@@ -2643,6 +2701,52 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
         this.expiredTickets = [];
       }
     });
+  }
+
+  // Async load for Diagnostics tickets
+  private async loadDiagnosticsTicketsAsync(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      this.loadDiagnosticsTickets();
+      const checkLoading = () => {
+        if (!this.isLoadingDiagnosticsTickets) {
+          resolve();
+        } else {
+          setTimeout(checkLoading, 100);
+        }
+      };
+      checkLoading();
+    });
+  }
+
+  // Load diagnostics (unassigned) tickets from API
+  loadDiagnosticsTickets() {
+    this.isLoadingDiagnosticsTickets = true;
+    this.http.get<DiagnosticsTicketsResponse>(`${environment.apiUrl}/routes/diagnostics/tickets-progress-layout`).subscribe({
+      next: (response) => {
+        this.diagnosticsTickets = response.tickets || [];
+        this.isLoadingDiagnosticsTickets = false;
+      },
+      error: (error) => {
+        console.error('Error loading diagnostics tickets:', error);
+        this.isLoadingDiagnosticsTickets = false;
+        this.diagnosticsTickets = [];
+      }
+    });
+  }
+
+  // Map ineligible type code to human-friendly label
+  mapIneligibleType(type?: string): string {
+    switch ((type || '').toUpperCase()) {
+      case 'SPOTTER':
+        return 'Spotting';
+      case 'CONCRETE':
+        return 'Concrete';
+      case 'ASPHALT':
+        return 'Asphalt';
+      default:
+        // Fallback: derive from eligibility if present
+        return 'N/A';
+    }
   }
 
   // Helper method to format address from addressDetails
