@@ -1175,14 +1175,15 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
         }
 
         await this.handleMoveBetweenReadySections(event, draggedTicket);
-                      } else if (isFromReadySection && isToRoute) {
+      } else if (isFromReadySection && isToRoute) {
           // Check type compatibility for ready to route
           const readyType = this.getReadySectionType(event.previousContainer.data);
           const routeId = this.getRouteIdFromDropEvent(event);
 
           if (routeId) {
             const route = this.findRouteByTickets(routeId);
-            if (route && route.type !== readyType.toUpperCase()) {
+            const normalizedReadyRouteType = this.mapReadyTypeToRouteType(readyType);
+            if (route && route.type !== normalizedReadyRouteType) {
               this.snackBar.open(`Cannot move ${readyType} ready tickets to ${route.type} routes. Only matching types are allowed.`, 'Close', {
                 duration: 4000,
                 panelClass: ['error-snackbar']
@@ -1457,6 +1458,22 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     });
 
     return isSpotReady || isConcreteReady || isAsphaltReady;
+  }
+
+  // Normalize ready section types to canonical route types
+  private mapReadyTypeToRouteType(readyType: string): string {
+    const normalized = (readyType || '').toString().trim().toUpperCase();
+    if (normalized === 'SPOT' || normalized === 'SPOTTING') {
+      return 'SPOTTER';
+    }
+    if (normalized === 'CONCRETE') {
+      return 'CONCRETE';
+    }
+    if (normalized === 'ASPHALT') {
+      return 'ASPHALT';
+    }
+    // If already in route-type form or unknown, return as-is
+    return normalized;
   }
 
         private isRouteSection(container: any): boolean {
