@@ -1024,6 +1024,7 @@ app-leaflet-map {
   gap: 8px;
   flex-wrap: nowrap;
   min-height: 40px;
+  touch-action: pan-y; // Allow vertical scrolling on touch without triggering drag
 
   @media (max-width: 768px) {
     gap: 4px;
