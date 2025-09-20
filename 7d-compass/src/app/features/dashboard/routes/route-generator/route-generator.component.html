@@ -15,320 +15,292 @@
         <div class="top-row">
           <!-- Left Side: Route Containers -->
           <div class="routes-section">
-            <!-- Spotting Routes -->
-            <div class="section-title">
-              <h4>Spotting Routes</h4>
-            </div>
-            <div class="dashboard-grid vertical-list">
-              <app-card-with-button
-                *ngFor="let route of spottingRoutes"
-                [title]="route.routeCode"
-                [showEyeButton]="true"
-                [style.display]="isRouteDisplayed(route.routeId) ? 'block' : 'none'"
-              >
-                <div class="route-actions" style="display: flex; align-items: center; gap: 8px;">
-                  <!-- Filter input -->
-                  <input
-                    type="text"
-                    [(ngModel)]="routeTicketFilters[route.routeId]"
-                    placeholder="Filter address..."
-                    style="max-width: 140px; font-size: 12px; padding: 2px 6px; margin-right: 8px;"
-                  />
-                  <!-- Location count indicator -->
-                  <span
-                    class="location-count"
-                    [style.color]="getLocationCountDisplay(route).color"
-                    [style.font-weight]="isRouteApproachingLimit(route) ? 'bold' : 'normal'"
-                    [title]="isRouteApproachingLimit(route) ? 'Route is approaching the 95 location limit' : 'Current location count'">
-                    {{ getLocationCountDisplay(route).text }}
-                  </span>
-                  <!-- Action buttons -->
-                  <button
-                    mat-icon-button
-                    color="primary"
-                    (click)="reoptimizeSpecificRoute(route)"
-                    [disabled]="isRouteTooLargeForReoptimization(route) || reoptimizingRoutes.has(route.routeId)"
-                    [title]="isRouteTooLargeForReoptimization(route) ? 'Route has too many locations (max 95)' : 'Reoptimize Route'"
-                    [class.disabled-button]="isRouteTooLargeForReoptimization(route)">
-                    <mat-icon *ngIf="!reoptimizingRoutes.has(route.routeId)">route</mat-icon>
-                    <mat-spinner *ngIf="reoptimizingRoutes.has(route.routeId)" diameter="20"></mat-spinner>
-                  </button>
-                  <button
-                    mat-icon-button
-                    color="warn"
-                    (click)="cancelRoute(route)"
-                    title="Cancel Route">
-                    <mat-icon>cancel</mat-icon>
-                  </button>
-                  <button
-                    mat-icon-button
-                    color="accent"
-                    (click)="completeRoute(route)"
-                    title="Complete Route">
-                    <mat-icon>check_circle</mat-icon>
-                  </button>
+            <mat-tab-group (selectedIndexChange)="onRouteTypeTabChange($event)">
+              <mat-tab label="Spotting">
+                <div class="section-title">
+                  <h4>Spotting Routes</h4>
                 </div>
-                <div
-                  cdkDropList
-                  [cdkDropListData]="route.tickets"
-                  (cdkDropListDropped)="drop($event)"
-                  class="route-list-container"
-                  data-route-section="true"
-                  [attr.data-route-id]="route.routeId"
-                >
-                  <div
-                    *ngFor="let ticket of getFilteredRouteTickets(route); let i = index"
-                    cdkDrag
-                    class="route-detail-item"
+                <div class="dashboard-grid vertical-list">
+                  <app-card-with-button
+                    *ngFor="let route of spottingRoutes"
+                    [style.display]="showSpottingRoutes ? 'block' : 'none'"
+                    [title]="route.routeCode"
+                    [showEyeButton]="true"
+                    [style.display]="isRouteDisplayed(route.routeId) && showSpottingRoutes ? 'block' : 'none'"
                   >
-                    <span class="queue-number">{{ ticket.queue + 1 }}.</span>
-                    <div class="ticket-info">
-                      <p class="route-location">{{ formatAddress(ticket.address) }}</p>
-                      <!-- If you want to show incident name, add here: <p class="incident-name">{{ ticket.incidentname || 'No incident name' }}</p> -->
+                    <div class="route-actions" style="display: flex; align-items: center; gap: 8px;">
+                      <input
+                        type="text"
+                        [(ngModel)]="routeTicketFilters[route.routeId]"
+                        placeholder="Filter address..."
+                        style="max-width: 140px; font-size: 12px; padding: 2px 6px; margin-right: 8px;"
+                      />
+                      <span
+                        class="location-count"
+                        [style.color]="getLocationCountDisplay(route).color"
+                        [style.font-weight]="isRouteApproachingLimit(route) ? 'bold' : 'normal'"
+                        [title]="isRouteApproachingLimit(route) ? 'Route is approaching the 95 location limit' : 'Current location count'">
+                        {{ getLocationCountDisplay(route).text }}
+                      </span>
+                      <button
+                        mat-icon-button
+                        color="primary"
+                        (click)="reoptimizeSpecificRoute(route)"
+                        [disabled]="isRouteTooLargeForReoptimization(route) || reoptimizingRoutes.has(route.routeId)"
+                        [title]="isRouteTooLargeForReoptimization(route) ? 'Route has too many locations (max 95)' : 'Reoptimize Route'"
+                        [class.disabled-button]="isRouteTooLargeForReoptimization(route)">
+                        <mat-icon *ngIf="!reoptimizingRoutes.has(route.routeId)">route</mat-icon>
+                        <mat-spinner *ngIf="reoptimizingRoutes.has(route.routeId)" diameter="20"></mat-spinner>
+                      </button>
+                      <button
+                        mat-icon-button
+                        color="warn"
+                        (click)="cancelRoute(route)"
+                        title="Cancel Route">
+                        <mat-icon>cancel</mat-icon>
+                      </button>
+                      <button
+                        mat-icon-button
+                        color="accent"
+                        (click)="completeRoute(route)"
+                        title="Complete Route">
+                        <mat-icon>check_circle</mat-icon>
+                      </button>
                     </div>
-                    <!-- WP Checkbox -->
-                    <div class="wp-checkbox-container">
-                      <mat-checkbox
-                        [checked]="ticket.watchnProtect || false"
-                        (change)="onWatchnProtectChange(ticket.ticketId, $event)"
-                        [disabled]="watchnProtectLoading.has(ticket.ticketId)"
-                        class="wp-checkbox"
-                        title="Watch 'n Protect">
-                        <span class="wp-label">WP</span>
-                      </mat-checkbox>
-                      <mat-spinner *ngIf="watchnProtectLoading.has(ticket.ticketId)" diameter="16" class="wp-loading"></mat-spinner>
+                    <div
+                      cdkDropList
+                      [cdkDropListData]="route.tickets"
+                      (cdkDropListDropped)="drop($event)"
+                      class="route-list-container"
+                      data-route-section="true"
+                      [attr.data-route-id]="route.routeId"
+                    >
+                      <div
+                        *ngFor="let ticket of getFilteredRouteTickets(route); let i = index"
+                        cdkDrag
+                        [cdkDragStartDelay]="{touch: 250, mouse: 0}"
+                        class="route-detail-item"
+                      >
+                        <span class="queue-number">{{ ticket.queue + 1 }}.</span>
+                        <div class="ticket-info">
+                          <p class="route-location">{{ formatAddress(ticket.address) }}</p>
+                        </div>
+                        <div class="wp-checkbox-container">
+                          <mat-checkbox
+                            [checked]="ticket.watchnProtect || false"
+                            (change)="onWatchnProtectChange(ticket.ticketId, $event)"
+                            [disabled]="watchnProtectLoading.has(ticket.ticketId)"
+                            class="wp-checkbox"
+                            title="Watch 'n Protect">
+                            <span class="wp-label">WP</span>
+                          </mat-checkbox>
+                          <mat-spinner *ngIf="watchnProtectLoading.has(ticket.ticketId)" diameter="16" class="wp-loading"></mat-spinner>
+                        </div>
+                        <span class="ticket-code">{{ ticket.ticketCode || 'No ticket code' }}</span>
+                        <mat-divider></mat-divider>
+                      </div>
+                      <div *ngIf="getFilteredRouteTickets(route).length === 0 && (routeTicketFilters[route.routeId] || '').trim()" class="no-matching-tickets">
+                        <p>No tickets match the current filter</p>
+                      </div>
                     </div>
-                    <span class="ticket-code">{{ ticket.ticketCode || 'No ticket code' }}</span>
-                    <mat-divider></mat-divider>
-                  </div>
-                  <!-- Show message when no tickets match the filter -->
-                  <div *ngIf="getFilteredRouteTickets(route).length === 0 && (routeTicketFilters[route.routeId] || '').trim()" class="no-matching-tickets">
-                    <p>No tickets match the current filter</p>
-                  </div>
+                  </app-card-with-button>
                 </div>
-              </app-card-with-button>
-            </div>
+              </mat-tab>
 
-            <!-- Concrete Routes -->
-            <div class="section-title">
-              <h4>Concrete Routes</h4>
-            </div>
-            <div class="dashboard-grid vertical-list">
-              <app-card-with-button
-                *ngFor="let route of concreteRoutes"
-                [title]="route.routeCode"
-                [showEyeButton]="true"
-                [style.display]="isRouteDisplayed(route.routeId) ? 'block' : 'none'"
-              >
-                <div class="route-actions" style="display: flex; align-items: center; gap: 8px;">
-                  <input
-                    type="text"
-                    [(ngModel)]="routeTicketFilters[route.routeId]"
-                    placeholder="Filter address..."
-                    style="max-width: 140px; font-size: 12px; padding: 2px 6px; margin-right: 8px;"
-                  />
-                  <!-- Location count indicator -->
-                  <span
-                    class="location-count"
-                    [style.color]="getLocationCountDisplay(route).color"
-                    [style.font-weight]="isRouteApproachingLimit(route) ? 'bold' : 'normal'"
-                    [title]="isRouteApproachingLimit(route) ? 'Route is approaching the 95 location limit' : 'Current location count'">
-                    {{ getLocationCountDisplay(route).text }}
-                  </span>
-                  <button
-                    mat-icon-button
-                    color="primary"
-                    (click)="reoptimizeSpecificRoute(route)"
-                    [disabled]="isRouteTooLargeForReoptimization(route) || reoptimizingRoutes.has(route.routeId)"
-                    [title]="isRouteTooLargeForReoptimization(route) ? 'Route has too many locations (max 95)' : 'Reoptimize Route'"
-                    [class.disabled-button]="isRouteTooLargeForReoptimization(route)">
-                    <mat-icon *ngIf="!reoptimizingRoutes.has(route.routeId)">route</mat-icon>
-                    <mat-spinner *ngIf="reoptimizingRoutes.has(route.routeId)" diameter="20"></mat-spinner>
-                  </button>
-                  <button
-                    mat-icon-button
-                    color="warn"
-                    (click)="cancelRoute(route)"
-                    title="Cancel Route">
-                    <mat-icon>cancel</mat-icon>
-                  </button>
-                  <button
-                    mat-icon-button
-                    color="accent"
-                    (click)="completeRoute(route)"
-                    title="Complete Route">
-                    <mat-icon>check_circle</mat-icon>
-                  </button>
+              <mat-tab label="Concrete">
+                <div class="section-title">
+                  <h4>Concrete Routes</h4>
                 </div>
-                <div
-                  cdkDropList
-                  [cdkDropListData]="route.tickets"
-                  (cdkDropListDropped)="drop($event)"
-                  class="route-list-container"
-                  data-route-section="true"
-                  [attr.data-route-id]="route.routeId"
-                >
-                  <div
-                    *ngFor="let ticket of getFilteredRouteTickets(route); let i = index"
-                    cdkDrag
-                    class="route-detail-item"
+                <div class="dashboard-grid vertical-list">
+                  <app-card-with-button
+                    *ngFor="let route of concreteRoutes"
+                    [style.display]="showConcreteRoutes ? 'block' : 'none'"
+                    [title]="route.routeCode"
+                    [showEyeButton]="true"
+                    [style.display]="isRouteDisplayed(route.routeId) && showConcreteRoutes ? 'block' : 'none'"
                   >
-                    <span class="queue-number">{{ ticket.queue + 1 }}.</span>
-                    <div class="ticket-info">
-                      <p class="route-location">{{ formatAddress(ticket.address) }}</p>
-                      <!-- If you want to show incident name, add here: <p class="incident-name">{{ ticket.incidentname || 'No incident name' }}</p> -->
+                    <div class="route-actions" style="display: flex; align-items: center; gap: 8px;">
+                      <input
+                        type="text"
+                        [(ngModel)]="routeTicketFilters[route.routeId]"
+                        placeholder="Filter address..."
+                        style="max-width: 140px; font-size: 12px; padding: 2px 6px; margin-right: 8px;"
+                      />
+                      <span
+                        class="location-count"
+                        [style.color]="getLocationCountDisplay(route).color"
+                        [style.font-weight]="isRouteApproachingLimit(route) ? 'bold' : 'normal'"
+                        [title]="isRouteApproachingLimit(route) ? 'Route is approaching the 95 location limit' : 'Current location count'">
+                        {{ getLocationCountDisplay(route).text }}
+                      </span>
+                      <button
+                        mat-icon-button
+                        color="primary"
+                        (click)="reoptimizeSpecificRoute(route)"
+                        [disabled]="isRouteTooLargeForReoptimization(route) || reoptimizingRoutes.has(route.routeId)"
+                        [title]="isRouteTooLargeForReoptimization(route) ? 'Route has too many locations (max 95)' : 'Reoptimize Route'"
+                        [class.disabled-button]="isRouteTooLargeForReoptimization(route)">
+                        <mat-icon *ngIf="!reoptimizingRoutes.has(route.routeId)">route</mat-icon>
+                        <mat-spinner *ngIf="reoptimizingRoutes.has(route.routeId)" diameter="20"></mat-spinner>
+                      </button>
+                      <button
+                        mat-icon-button
+                        color="warn"
+                        (click)="cancelRoute(route)"
+                        title="Cancel Route">
+                        <mat-icon>cancel</mat-icon>
+                      </button>
+                      <button
+                        mat-icon-button
+                        color="accent"
+                        (click)="completeRoute(route)"
+                        title="Complete Route">
+                        <mat-icon>check_circle</mat-icon>
+                      </button>
                     </div>
-                    <!-- WP Checkbox -->
-                    <div class="wp-checkbox-container">
-                      <mat-checkbox
-                        [checked]="ticket.watchnProtect || false"
-                        (change)="onWatchnProtectChange(ticket.ticketId, $event)"
-                        [disabled]="watchnProtectLoading.has(ticket.ticketId)"
-                        class="wp-checkbox"
-                        title="Watch 'n Protect">
-                        <span class="wp-label">WP</span>
-                      </mat-checkbox>
-                      <mat-spinner *ngIf="watchnProtectLoading.has(ticket.ticketId)" diameter="16" class="wp-loading"></mat-spinner>
+                    <div
+                      cdkDropList
+                      [cdkDropListData]="route.tickets"
+                      (cdkDropListDropped)="drop($event)"
+                      class="route-list-container"
+                      data-route-section="true"
+                      [attr.data-route-id]="route.routeId"
+                    >
+                      <div
+                        *ngFor="let ticket of getFilteredRouteTickets(route); let i = index"
+                        cdkDrag
+                        [cdkDragStartDelay]="{touch: 250, mouse: 0}"
+                        class="route-detail-item"
+                      >
+                        <span class="queue-number">{{ ticket.queue + 1 }}.</span>
+                        <div class="ticket-info">
+                          <p class="route-location">{{ formatAddress(ticket.address) }}</p>
+                        </div>
+                        <div class="wp-checkbox-container">
+                          <mat-checkbox
+                            [checked]="ticket.watchnProtect || false"
+                            (change)="onWatchnProtectChange(ticket.ticketId, $event)"
+                            [disabled]="watchnProtectLoading.has(ticket.ticketId)"
+                            class="wp-checkbox"
+                            title="Watch 'n Protect">
+                            <span class="wp-label">WP</span>
+                          </mat-checkbox>
+                          <mat-spinner *ngIf="watchnProtectLoading.has(ticket.ticketId)" diameter="16" class="wp-loading"></mat-spinner>
+                        </div>
+                        <span class="ticket-code">{{ ticket.ticketCode || 'No ticket code' }}</span>
+                        <mat-divider></mat-divider>
+                      </div>
+                      <div *ngIf="getFilteredRouteTickets(route).length === 0 && (routeTicketFilters[route.routeId] || '').trim()" class="no-matching-tickets">
+                        <p>No tickets match the current filter</p>
+                      </div>
                     </div>
-                    <span class="ticket-code">{{ ticket.ticketCode || 'No ticket code' }}</span>
-                    <mat-divider></mat-divider>
-                  </div>
-                  <div *ngIf="getFilteredRouteTickets(route).length === 0 && (routeTicketFilters[route.routeId] || '').trim()" class="no-matching-tickets">
-                    <p>No tickets match the current filter</p>
-                  </div>
+                  </app-card-with-button>
                 </div>
-              </app-card-with-button>
-            </div>
+              </mat-tab>
 
-            <!-- Asphalt Routes -->
-            <div class="section-title">
-              <h4>Asphalt Routes</h4>
-            </div>
-            <div class="dashboard-grid vertical-list">
-              <app-card-with-button
-                *ngFor="let route of asphaltRoutes"
-                [title]="route.routeCode"
-                [showEyeButton]="true"
-                [style.display]="isRouteDisplayed(route.routeId) ? 'block' : 'none'"
-              >
-                <div class="route-actions" style="display: flex; align-items: center; gap: 8px;">
-                  <input
-                    type="text"
-                    [(ngModel)]="routeTicketFilters[route.routeId]"
-                    placeholder="Filter address..."
-                    style="max-width: 140px; font-size: 12px; padding: 2px 6px; margin-right: 8px;"
-                  />
-                  <!-- Location count indicator -->
-                  <span
-                    class="location-count"
-                    [style.color]="getLocationCountDisplay(route).color"
-                    [style.font-weight]="isRouteApproachingLimit(route) ? 'bold' : 'normal'"
-                    [title]="isRouteApproachingLimit(route) ? 'Route is approaching the 95 location limit' : 'Current location count'">
-                    {{ getLocationCountDisplay(route).text }}
-                  </span>
-                  <button
-                    mat-icon-button
-                    color="primary"
-                    (click)="reoptimizeSpecificRoute(route)"
-                    [disabled]="isRouteTooLargeForReoptimization(route) || reoptimizingRoutes.has(route.routeId)"
-                    [title]="isRouteTooLargeForReoptimization(route) ? 'Route has too many locations (max 95)' : 'Reoptimize Route'"
-                    [class.disabled-button]="isRouteTooLargeForReoptimization(route)">
-                    <mat-icon *ngIf="!reoptimizingRoutes.has(route.routeId)">route</mat-icon>
-                    <mat-spinner *ngIf="reoptimizingRoutes.has(route.routeId)" diameter="20"></mat-spinner>
-                  </button>
-                  <button
-                    mat-icon-button
-                    color="warn"
-                    (click)="cancelRoute(route)"
-                    title="Cancel Route">
-                    <mat-icon>cancel</mat-icon>
-                  </button>
-                  <button
-                    mat-icon-button
-                    color="accent"
-                    (click)="completeRoute(route)"
-                    title="Complete Route">
-                    <mat-icon>check_circle</mat-icon>
-                  </button>
+              <mat-tab label="Asphalt">
+                <div class="section-title">
+                  <h4>Asphalt Routes</h4>
                 </div>
-                <div
-                  cdkDropList
-                  [cdkDropListData]="route.tickets"
-                  (cdkDropListDropped)="drop($event)"
-                  class="route-list-container"
-                  data-route-section="true"
-                  [attr.data-route-id]="route.routeId"
-                >
-                  <div
-                    *ngFor="let ticket of getFilteredRouteTickets(route); let i = index"
-                    cdkDrag
-                    class="route-detail-item"
+                <div class="dashboard-grid vertical-list">
+                  <app-card-with-button
+                    *ngFor="let route of asphaltRoutes"
+                    [style.display]="showAsphaltRoutes ? 'block' : 'none'"
+                    [title]="route.routeCode"
+                    [showEyeButton]="true"
+                    [style.display]="isRouteDisplayed(route.routeId) && showAsphaltRoutes ? 'block' : 'none'"
                   >
-                    <span class="queue-number">{{ ticket.queue + 1 }}.</span>
-                    <div class="ticket-info">
-                      <p class="route-location">{{ formatAddress(ticket.address) }}</p>
-                      <!-- If you want to show incident name, add here: <p class="incident-name">{{ ticket.incidentname || 'No incident name' }}</p> -->
+                    <div class="route-actions" style="display: flex; align-items: center; gap: 8px;">
+                      <input
+                        type="text"
+                        [(ngModel)]="routeTicketFilters[route.routeId]"
+                        placeholder="Filter address..."
+                        style="max-width: 140px; font-size: 12px; padding: 2px 6px; margin-right: 8px;"
+                      />
+                      <span
+                        class="location-count"
+                        [style.color]="getLocationCountDisplay(route).color"
+                        [style.font-weight]="isRouteApproachingLimit(route) ? 'bold' : 'normal'"
+                        [title]="isRouteApproachingLimit(route) ? 'Route is approaching the 95 location limit' : 'Current location count'">
+                        {{ getLocationCountDisplay(route).text }}
+                      </span>
+                      <button
+                        mat-icon-button
+                        color="primary"
+                        (click)="reoptimizeSpecificRoute(route)"
+                        [disabled]="isRouteTooLargeForReoptimization(route) || reoptimizingRoutes.has(route.routeId)"
+                        [title]="isRouteTooLargeForReoptimization(route) ? 'Route has too many locations (max 95)' : 'Reoptimize Route'"
+                        [class.disabled-button]="isRouteTooLargeForReoptimization(route)">
+                        <mat-icon *ngIf="!reoptimizingRoutes.has(route.routeId)">route</mat-icon>
+                        <mat-spinner *ngIf="reoptimizingRoutes.has(route.routeId)" diameter="20"></mat-spinner>
+                      </button>
+                      <button
+                        mat-icon-button
+                        color="warn"
+                        (click)="cancelRoute(route)"
+                        title="Cancel Route">
+                        <mat-icon>cancel</mat-icon>
+                      </button>
+                      <button
+                        mat-icon-button
+                        color="accent"
+                        (click)="completeRoute(route)"
+                        title="Complete Route">
+                        <mat-icon>check_circle</mat-icon>
+                      </button>
                     </div>
-                    <!-- WP Checkbox -->
-                    <div class="wp-checkbox-container">
-                      <mat-checkbox
-                        [checked]="ticket.watchnProtect || false"
-                        (change)="onWatchnProtectChange(ticket.ticketId, $event)"
-                        [disabled]="watchnProtectLoading.has(ticket.ticketId)"
-                        class="wp-checkbox"
-                        title="Watch 'n Protect">
-                        <span class="wp-label">WP</span>
-                      </mat-checkbox>
-                      <mat-spinner *ngIf="watchnProtectLoading.has(ticket.ticketId)" diameter="16" class="wp-loading"></mat-spinner>
+                    <div
+                      cdkDropList
+                      [cdkDropListData]="route.tickets"
+                      (cdkDropListDropped)="drop($event)"
+                      class="route-list-container"
+                      data-route-section="true"
+                      [attr.data-route-id]="route.routeId"
+                    >
+                      <div
+                        *ngFor="let ticket of getFilteredRouteTickets(route); let i = index"
+                        cdkDrag
+                        [cdkDragStartDelay]="{touch: 250, mouse: 0}"
+                        class="route-detail-item"
+                      >
+                        <span class="queue-number">{{ ticket.queue + 1 }}.</span>
+                        <div class="ticket-info">
+                          <p class="route-location">{{ formatAddress(ticket.address) }}</p>
+                        </div>
+                        <div class="wp-checkbox-container">
+                          <mat-checkbox
+                            [checked]="ticket.watchnProtect || false"
+                            (change)="onWatchnProtectChange(ticket.ticketId, $event)"
+                            [disabled]="watchnProtectLoading.has(ticket.ticketId)"
+                            class="wp-checkbox"
+                            title="Watch 'n Protect">
+                            <span class="wp-label">WP</span>
+                          </mat-checkbox>
+                          <mat-spinner *ngIf="watchnProtectLoading.has(ticket.ticketId)" diameter="16" class="wp-loading"></mat-spinner>
+                        </div>
+                        <span class="ticket-code">{{ ticket.ticketCode || 'No ticket code' }}</span>
+                        <mat-divider></mat-divider>
+                      </div>
+                      <div *ngIf="getFilteredRouteTickets(route).length === 0 && (routeTicketFilters[route.routeId] || '').trim()" class="no-matching-tickets">
+                        <p>No tickets match the current filter</p>
+                      </div>
                     </div>
-                    <span class="ticket-code">{{ ticket.ticketCode || 'No ticket code' }}</span>
-                    <mat-divider></mat-divider>
-                  </div>
-                  <div *ngIf="getFilteredRouteTickets(route).length === 0 && (routeTicketFilters[route.routeId] || '').trim()" class="no-matching-tickets">
-                    <p>No tickets match the current filter</p>
-                  </div>
+                  </app-card-with-button>
                 </div>
-              </app-card-with-button>
-            </div>
+              </mat-tab>
+            </mat-tab-group>
           </div>
 
           <!-- Right Side: Today's Routes Card -->
           <app-card-with-button class="todays-routes-card">
-                        <!-- Route type visibility controls -->
-            <div class="route-controls">
-              <button
-                mat-stroked-button
-                [class.active]="showSpottingRoutes"
-                (click)="toggleSpottingRoutes()"
-                class="route-toggle-btn spotting-btn">
-                <div class="route-color-indicator" style="background-color: #FF4500;"></div>
-                Spotting Routes
-              </button>
-              <button
-                mat-stroked-button
-                [class.active]="showConcreteRoutes"
-                (click)="toggleConcreteRoutes()"
-                class="route-toggle-btn concrete-btn">
-                <div class="route-color-indicator" style="background-color: #4A90E2;"></div>
-                Concrete Routes
-              </button>
-                            <button
-                mat-stroked-button
-                [class.active]="showAsphaltRoutes"
-                (click)="toggleAsphaltRoutes()"
-                class="route-toggle-btn asphalt-btn">
-                <div class="route-color-indicator" style="background-color: #228B22;"></div>
-                Asphalt Routes
-              </button>
-            </div>
+
 
             <!-- Individual route visibility controls -->
             <div class="individual-route-controls">
               <h4>Individual Routes</h4>
               <div class="route-buttons-container">
                 <!-- Spotting Routes -->
-                <div class="route-group" *ngIf="spottingRoutes.length > 0">
-                  <div class="route-group-title">Spotting</div>
+                <div class="route-group" *ngIf="spottingRoutes.length > 0 && showSpottingRoutes">
                   <div class="route-buttons">
                     <button
                       *ngFor="let route of spottingRoutes"
@@ -344,8 +316,7 @@
                 </div>
 
                 <!-- Concrete Routes -->
-                <div class="route-group" *ngIf="concreteRoutes.length > 0">
-                  <div class="route-group-title">Concrete</div>
+                <div class="route-group" *ngIf="concreteRoutes.length > 0 && showConcreteRoutes">
                   <div class="route-buttons">
                     <button
                       *ngFor="let route of concreteRoutes"
@@ -361,8 +332,7 @@
                 </div>
 
                 <!-- Asphalt Routes -->
-                <div class="route-group" *ngIf="asphaltRoutes.length > 0">
-                  <div class="route-group-title">Asphalt</div>
+                <div class="route-group" *ngIf="asphaltRoutes.length > 0 && showAsphaltRoutes">
                   <div class="route-buttons">
                     <button
                       *ngFor="let route of asphaltRoutes"

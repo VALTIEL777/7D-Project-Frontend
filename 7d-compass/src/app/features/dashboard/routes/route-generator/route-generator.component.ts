@@ -16,6 +16,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatTabsModule } from '@angular/material/tabs';
 import { LoadingSpinnerComponent } from '../../../../shared/loading-spinner/loading-spinner.component';
 import { BaseDashboardComponent } from '../../../../shared/base-dashboard.component';
 import { FilterService } from '../../../../core/services/filter.service';
@@ -198,7 +199,8 @@ interface ExpiredTicketsResponse {
     MatSnackBarModule,
     MatCheckboxModule,
     LoadingSpinnerComponent,
-    LeafletMapComponent
+    LeafletMapComponent,
+    MatTabsModule
   ],
   templateUrl: './route-generator.component.html',
   styleUrl: './route-generator.component.scss'
@@ -327,6 +329,11 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
 
     // Load all data and wait for completion before showing the page
     this.loadAllData();
+
+    // Default to Spotting tab behavior: show only Spotting on initial load
+    this.showSpottingRoutes = true;
+    this.showConcreteRoutes = false;
+    this.showAsphaltRoutes = false;
   }
 
   private async loadAllData(): Promise<void> {
@@ -2487,6 +2494,18 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
 
   toggleAsphaltRoutes() {
     this.showAsphaltRoutes = !this.showAsphaltRoutes;
+    this.updateTypeVisibility();
+    this.forceMapUpdate();
+  }
+
+  // Tab change should mirror the old three buttons behavior
+  onRouteTypeTabChange(index: number) {
+    // 0: Spotting, 1: Concrete, 2: Asphalt
+    this.showSpottingRoutes = index === 0;
+    this.showConcreteRoutes = index === 1;
+    this.showAsphaltRoutes = index === 2;
+
+    // Reset visibleRoutes to include only routes of the active type
     this.updateTypeVisibility();
     this.forceMapUpdate();
   }
