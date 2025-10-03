@@ -76,6 +76,15 @@
         <!-- <a mat-button routerLink="/fines-penalties" routerLinkActive="active-link" (click)="closeSidenav()">Fines & Penalties</a> -->
       </mat-expansion-panel>
 
+      <!-- Reports -->
+      <mat-expansion-panel [expanded]="isExpanded(['/route-reports'])">
+        <mat-expansion-panel-header>
+          <mat-icon>assessment</mat-icon>
+          <span>Reports</span>
+        </mat-expansion-panel-header>
+        <a mat-button routerLink="/route-reports" routerLinkActive="active-link" (click)="closeSidenav()">Route Reports</a>
+      </mat-expansion-panel>
+
       <!-- Manage -->
       <mat-expansion-panel [expanded]="isExpanded([
         '/users', '/contract-units', '/payments', '/invoices',

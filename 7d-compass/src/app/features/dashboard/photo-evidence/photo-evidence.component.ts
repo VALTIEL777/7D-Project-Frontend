@@ -151,6 +151,7 @@ export class PhotoEvidenceComponent extends BaseDashboardComponent implements On
   currentPage = 1;
   pageSize = 10;
   mxNumberPhotos: PhotoEvidence[] = []; // New property to store photos from all tickets with the same MX Number
+  phases: { phaseName: string; photos: PhotoEvidence[] }[] = [];
 
   columns: ColumnDefinition[] = [
     {
@@ -399,12 +400,20 @@ export class PhotoEvidenceComponent extends BaseDashboardComponent implements On
       console.log('Selected ticket:', ticket);
       console.log('Raw photos found:', rawPhotos.length);
 
+      // Reset state to avoid flicker during rebuild
+      this.selectedPhotos = [];
+      this.mxNumberPhotos = [];
+      this.phases = [];
+
       // Load photo blobs and create object URLs for current ticket photos
       this.selectedPhotos = await this.loadPhotoBlobs(rawPhotos);
       console.log('Photos loaded with blobs:', this.selectedPhotos.length);
 
       // Load photos from all tickets with the same MX Number for "No Parking Signs" and "Install Signs"
       await this.loadPhotosFromSameMXNumber();
+
+      // Rebuild phases once after photos are loaded
+      this.rebuildPhases();
 
       // Add a small delay to ensure UI updates are processed
       await new Promise(resolve => setTimeout(resolve, 100));
@@ -477,12 +486,16 @@ export class PhotoEvidenceComponent extends BaseDashboardComponent implements On
   }
 
   getPhotoPreviewUrl(photo: PhotoEvidence): string {
-    // Use photoURL if available (now contains blob object URL)
+    // Prefer previously resolved URL (blob or direct)
     if (photo.photoURL) {
       return photo.photoURL;
     }
     // Fallback to base64 data if available
-    return photo.photo || '';
+    if (photo.photo) {
+      return photo.photo;
+    }
+    // Final fallback: serve directly from API endpoint
+    return `${environment.photoEvidenceServiceUrl}/${photo.photoId}/file`;
   }
 
   formatDate(dateString: string): string {
@@ -662,68 +675,7 @@ export class PhotoEvidenceComponent extends BaseDashboardComponent implements On
 
   // Computed property for phases - only recalculate when needed
   get allPhases(): { phaseName: string; photos: PhotoEvidence[] }[] {
-    if (!this.selectedTicket || this.loadingPhotos) {
-      console.log('🔄 allPhases getter: returning empty array (loadingPhotos:', this.loadingPhotos, ')');
-      return [];
-    }
-
-    // Define the custom phase order
-    const phaseOrder = [
-      'Spotting',
-      'No Parking Signs',
-      'Sawcut',
-      'Removal',
-      'Framing',
-      'Pour',
-      'Clean',
-      'Steel Plate Pickup',
-      'Grind',
-      'Asphalt',
-      'Crack Seal',
-      'Stripping',
-      'Install Signs'
-    ];
-
-    // Get all phases from the ticket, even if they have no photos
-    const phases = this.selectedTicket.taskStatuses.map(taskStatus => {
-      let phasePhotos: PhotoEvidence[] = [];
-
-      // For "No Parking Signs" and "Install Signs", get photos from all tickets with the same MX Number
-      if (taskStatus.name === 'No Parking Signs' || taskStatus.name === 'Install Signs') {
-        phasePhotos = this.mxNumberPhotos.filter(photo => photo.taskStatusName === taskStatus.name);
-      } else {
-        // For other phases, only get photos from the current ticket
-        phasePhotos = this.selectedPhotos.filter(photo =>
-          photo.taskStatusName === taskStatus.name
-        );
-      }
-
-      return {
-        phaseName: taskStatus.name,
-        photos: phasePhotos
-      };
-    });
-
-    // Sort phases by custom order instead of alphabetically
-    const sortedPhases = phases.sort((a, b) => {
-      const aIndex = phaseOrder.indexOf(a.phaseName);
-      const bIndex = phaseOrder.indexOf(b.phaseName);
-
-      // If both phases are in the defined order, sort by their position
-      if (aIndex !== -1 && bIndex !== -1) {
-        return aIndex - bIndex;
-      }
-
-      // If only one phase is in the defined order, prioritize it
-      if (aIndex !== -1) return -1;
-      if (bIndex !== -1) return 1;
-
-      // If neither phase is in the defined order, sort alphabetically
-      return a.phaseName.localeCompare(b.phaseName);
-    });
-
-    console.log('📊 allPhases getter: returning', sortedPhases.length, 'phases in custom order');
-    return sortedPhases;
+    return this.phases;
   }
 
   // Helper method to get all photos from the same MX Number for specific phases
@@ -812,7 +764,7 @@ export class PhotoEvidenceComponent extends BaseDashboardComponent implements On
   get shouldShowNoPhotos(): boolean {
     const result = !this.loadingPhotos && !!this.selectedTicket &&
            !!this.selectedTicket.taskStatuses && this.selectedTicket.taskStatuses.length > 0 &&
-           this.allPhases.every(phase => phase.photos.length === 0);
+           this.phases.every(phase => phase.photos.length === 0);
     console.log('🔍 shouldShowNoPhotos:', result, '(loadingPhotos:', this.loadingPhotos, ')');
     return result;
   }
@@ -827,7 +779,7 @@ export class PhotoEvidenceComponent extends BaseDashboardComponent implements On
   onImageError(event: any): void {
     // Handle image loading errors
     const img = event.target;
-    img.src = 'assets/imgs/no-image.png'; // Fallback image
+    img.src = 'assets/imgs/profile-placeholder.png'; // Fallback image
   }
 
   viewPhoto(photo: PhotoEvidence): void {
@@ -1081,6 +1033,62 @@ export class PhotoEvidenceComponent extends BaseDashboardComponent implements On
     console.log('🔍 Photo URL type:', photoUrl.startsWith('blob:') ? 'blob' : 'regular');
     console.log('🔍 Original photo data:', photo.photo ? 'exists' : 'none');
   }
+
+  private rebuildPhases(): void {
+    if (!this.selectedTicket) {
+      this.phases = [];
+      return;
+    }
+
+    const phaseOrder = [
+      'Spotting',
+      'No Parking Signs',
+      'Sawcut',
+      'Removal',
+      'Framing',
+      'Pour',
+      'Clean',
+      'Steel Plate Pickup',
+      'Grind',
+      'Asphalt',
+      'Crack Seal',
+      'Stripping',
+      'Install Signs'
+    ];
+
+    const phases = this.selectedTicket.taskStatuses.map(taskStatus => {
+      let phasePhotos: PhotoEvidence[] = [];
+
+      if (taskStatus.name === 'No Parking Signs' || taskStatus.name === 'Install Signs') {
+        phasePhotos = this.mxNumberPhotos.filter(photo => photo.taskStatusName === taskStatus.name);
+      } else {
+        phasePhotos = this.selectedPhotos.filter(photo => photo.taskStatusName === taskStatus.name);
+      }
+
+      return {
+        phaseName: taskStatus.name,
+        photos: phasePhotos
+      };
+    });
+
+    this.phases = phases.sort((a, b) => {
+      const aIndex = phaseOrder.indexOf(a.phaseName);
+      const bIndex = phaseOrder.indexOf(b.phaseName);
+
+      if (aIndex !== -1 && bIndex !== -1) {
+        return aIndex - bIndex;
+      }
+      if (aIndex !== -1) return -1;
+      if (bIndex !== -1) return 1;
+      return a.phaseName.localeCompare(b.phaseName);
+    });
+
+    console.log('📊 phases rebuilt:', this.phases.length);
+  }
+
+  trackByPhase = (_index: number, phase: { phaseName: string }): string => phase.phaseName;
+
+  trackByPhoto = (_index: number, photo: PhotoEvidence): number => photo.photoId;
 
   onPageChange(page: number) {
     this.currentPage = page;

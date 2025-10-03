@@ -82,6 +82,14 @@ export const routes: Routes = [
       ).then((m) => m.FinesPenaltiesComponent),
     canActivate: [AuthGuard],
   },
+  {
+    path: 'route-reports',
+    loadComponent: () =>
+      import(
+        './features/dashboard/reports/route-reports/route-reports.component'
+      ).then((m) => m.RouteReportsComponent),
+    canActivate: [AuthGuard],
+  },
   // Admin-only dashboard pages
   {
     path: 'users',

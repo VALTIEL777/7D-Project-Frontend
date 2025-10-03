@@ -34,12 +34,12 @@
       <app-card-with-button title="Photo Gallery" [showEyeButton]="false">
         <div class="ticket-info">
           <div class="ticket-header">
-            <h3>{{ selectedTicket?.ticketCode }}</h3>
+            <h3>{{ selectedTicket.ticketCode }}</h3>
           </div>
           <div class="ticket-details">
             <div class="detail-item">
               <span class="label">Address:</span>
-              <span class="value">{{ selectedTicket?.addresses?.[0]?.fullAddress || 'N/A' }}</span>
+              <span class="value">{{ selectedTicket.addresses[0].fullAddress || 'N/A' }}</span>
             </div>
             <div class="detail-item">
               <span class="label">Photos:</span>
@@ -54,9 +54,9 @@
           <p>Loading photos for this ticket...</p>
         </div>
 
-        <div class="photo-gallery" *ngIf="!loadingPhotos && allPhases.length > 0">
+        <div class="photo-gallery" *ngIf="!loadingPhotos && phases.length > 0">
           <div class="phase-groups">
-            <div *ngFor="let phase of allPhases" class="phase-group">
+            <div *ngFor="let phase of phases; trackBy: trackByPhase" class="phase-group">
               <div class="phase-header">
                 <div class="phase-info">
                   <h4 class="phase-title">{{ phase.phaseName }}</h4>
@@ -68,7 +68,7 @@
                 </button>
               </div>
               <div class="gallery-grid" *ngIf="phase.photos.length > 0">
-                <div *ngFor="let photo of phase.photos" class="photo-item">
+                <div *ngFor="let photo of phase.photos; trackBy: trackByPhoto" class="photo-item">
                   <div class="photo-container">
                     <img
                       [src]="getPhotoPreviewUrl(photo)"

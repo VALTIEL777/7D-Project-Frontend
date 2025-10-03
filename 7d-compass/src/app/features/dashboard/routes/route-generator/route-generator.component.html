@@ -27,6 +27,7 @@
                     [title]="route.routeCode"
                     [showEyeButton]="true"
                     [style.display]="isRouteDisplayed(route.routeId) && showSpottingRoutes ? 'block' : 'none'"
+                    class="route-spotting"
                   >
                     <div class="route-actions" style="display: flex; align-items: center; gap: 8px;">
                       <input
@@ -80,10 +81,17 @@
                         cdkDrag
                         [cdkDragStartDelay]="{touch: 250, mouse: 0}"
                         class="route-detail-item"
+                        [ngClass]="{ 'latest-phase-highlight': isLatestPhaseTicket(route, ticket) }"
                       >
                         <span class="queue-number">{{ ticket.queue + 1 }}.</span>
                         <div class="ticket-info">
                           <p class="route-location">{{ formatAddress(ticket.address) }}</p>
+                          <p class="contract-unit" *ngIf="ticket.contractUnitName">{{ ticket.contractUnitName }}</p>
+                          <p class="latest-phase" *ngIf="ticket.latestPhase?.name"><strong>{{ ticket.latestPhase?.name }}</strong></p>
+                          <p class="expiration-date" *ngIf="ticket.permitExpireDate">
+                            <span class="expiration-label">Permit Expires:</span>
+                            {{ ticket.permitExpireDate | date:'MM/dd/yyyy' }}
+                          </p>
                         </div>
                         <div class="wp-checkbox-container">
                           <mat-checkbox
@@ -121,6 +129,7 @@
                     [title]="route.routeCode"
                     [showEyeButton]="true"
                     [style.display]="isRouteDisplayed(route.routeId) && showConcreteRoutes ? 'block' : 'none'"
+                    class="route-concrete"
                   >
                     <div class="route-actions" style="display: flex; align-items: center; gap: 8px;">
                       <input
@@ -174,10 +183,17 @@
                         cdkDrag
                         [cdkDragStartDelay]="{touch: 250, mouse: 0}"
                         class="route-detail-item"
+                        [ngClass]="{ 'latest-phase-highlight': isLatestPhaseTicket(route, ticket) }"
                       >
                         <span class="queue-number">{{ ticket.queue + 1 }}.</span>
                         <div class="ticket-info">
                           <p class="route-location">{{ formatAddress(ticket.address) }}</p>
+                          <p class="contract-unit" *ngIf="ticket.contractUnitName">{{ ticket.contractUnitName }}</p>
+                          <p class="latest-phase" *ngIf="ticket.latestPhase?.name"><strong>{{ ticket.latestPhase?.name }}</strong></p>
+                          <p class="expiration-date" *ngIf="ticket.permitExpireDate">
+                            <span class="expiration-label">Permit Expires:</span>
+                            {{ ticket.permitExpireDate | date:'MM/dd/yyyy' }}
+                          </p>
                         </div>
                         <div class="wp-checkbox-container">
                           <mat-checkbox
@@ -215,6 +231,7 @@
                     [title]="route.routeCode"
                     [showEyeButton]="true"
                     [style.display]="isRouteDisplayed(route.routeId) && showAsphaltRoutes ? 'block' : 'none'"
+                    class="route-asphalt"
                   >
                     <div class="route-actions" style="display: flex; align-items: center; gap: 8px;">
                       <input
@@ -268,10 +285,17 @@
                         cdkDrag
                         [cdkDragStartDelay]="{touch: 250, mouse: 0}"
                         class="route-detail-item"
+                        [ngClass]="{ 'latest-phase-highlight': isLatestPhaseTicket(route, ticket) }"
                       >
                         <span class="queue-number">{{ ticket.queue + 1 }}.</span>
                         <div class="ticket-info">
                           <p class="route-location">{{ formatAddress(ticket.address) }}</p>
+                          <p class="contract-unit" *ngIf="ticket.contractUnitName">{{ ticket.contractUnitName }}</p>
+                          <p class="latest-phase" *ngIf="ticket.latestPhase?.name"><strong>{{ ticket.latestPhase?.name }}</strong></p>
+                          <p class="expiration-date" *ngIf="ticket.permitExpireDate">
+                            <span class="expiration-label">Permit Expires:</span>
+                            {{ ticket.permitExpireDate | date:'MM/dd/yyyy' }}
+                          </p>
                         </div>
                         <div class="wp-checkbox-container">
                           <mat-checkbox
@@ -389,6 +413,7 @@
           <app-card-with-button
             title="Spot Ready"
             [showEyeButton]="true"
+            class="route-spotting"
           >
             <div style="margin-bottom: 8px; display: flex; gap: 8px; align-items: center;">
               <input
@@ -521,6 +546,7 @@
           <app-card-with-button
             title="Asphalt Ready"
             [showEyeButton]="true"
+            class="route-asphalt"
           >
             <div style="margin-bottom: 8px; display: flex; gap: 8px; align-items: center;">
               <input
@@ -697,6 +723,7 @@
                 <div class="ticket-info">
                   <p class="route-location" style="color:#000;">{{ ticket.ticketCode }}</p>
                   <p class="incident-name" *ngIf="ticket.comment7d" style="color:#000;">{{ ticket.comment7d }}</p>
+                  <p class="contract-unit" *ngIf="ticket.contractUnitName">{{ ticket.contractUnitName }}</p>
                   <p class="expiration-date" *ngIf="ticket.permitExpireDate" style="color:#000;">
                     <span class="expiration-label" style="color:#000;">Permit Expires:</span>
                     {{ ticket.permitExpireDate | date:'MM/dd/yyyy' }}

@@ -34,6 +34,12 @@ interface RouteTicket {
   queue: number;
   quantity: number;
   amountToPay: number;
+  contractUnitName?: string;
+  permitExpireDate?: string | null;
+  latestPhase?: {
+    name: string;
+    endedAt?: string;
+  };
   coordinates?: {
     latitude: number;
     longitude: number;
@@ -170,6 +176,7 @@ interface DiagnosticsTicket {
   ticketId: number;
   ticketCode: string;
   comment7d: string;
+  contractUnitName: string | null;
   permitExpireDate: string | null;
   // New API may provide a single ineligible type instead of per-type eligibility booleans
   ineligibleType?: 'SPOTTER' | 'CONCRETE' | 'ASPHALT' | string;
@@ -237,6 +244,35 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
   isMobile: boolean = false;
 
   // API data properties
+
+  // Highlight the ticket within a route that has the most recent phase end date
+  isLatestPhaseTicket(route: Route, ticket: RouteTicket): boolean {
+    const latestId = this.findLatestEndedAtTicketId(route);
+    return latestId !== null && ticket.ticketId === latestId;
+  }
+
+  private findLatestEndedAtTicketId(route: Route): number | null {
+    if (!route || !Array.isArray(route.tickets) || route.tickets.length === 0) {
+      return null;
+    }
+
+    let latestTicketId: number | null = null;
+    let latestTimestamp = -Infinity;
+
+    for (const routeTicket of route.tickets) {
+      const endedAt = routeTicket.latestPhase?.endedAt;
+      if (!endedAt) {
+        continue;
+      }
+      const ts = new Date(endedAt).getTime();
+      if (!Number.isNaN(ts) && ts > latestTimestamp) {
+        latestTimestamp = ts;
+        latestTicketId = routeTicket.ticketId;
+      }
+    }
+
+    return latestTicketId;
+  }
   spottingRoutes: Route[] = [];
   concreteRoutes: Route[] = [];
   asphaltRoutes: Route[] = [];
@@ -1492,7 +1528,64 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
   private getRouteIdFromDropEvent(event: CdkDragDrop<any[]>): number | null {
     // Get route ID from the container element's data attribute
     const containerElement = event.container.element.nativeElement;
-    const routeId = containerElement.getAttribute('data-route-id');
+    let routeId = containerElement.getAttribute('data-route-id');
+
+    // If not found on the container element, check parent elements
+    if (!routeId) {
+      let currentElement = containerElement.parentElement;
+      while (currentElement && !routeId) {
+        routeId = currentElement.getAttribute('data-route-id');
+        currentElement = currentElement.parentElement;
+      }
+    }
+
+    // If still not found, try to find it by looking for the route data in the container's data
+    if (!routeId) {
+      // Check if the container data contains route information
+      const containerData = event.container.data;
+      if (containerData && containerData.length > 0) {
+        // Look for a route that contains this data
+        const allRoutes = [...this.spottingRoutes, ...this.concreteRoutes, ...this.asphaltRoutes];
+        const matchingRoute = allRoutes.find(route => route.tickets === containerData);
+        if (matchingRoute) {
+          routeId = matchingRoute.routeId.toString();
+        }
+      }
+    }
+
+    // If still not found, try to find it by looking at the container's parent elements
+    if (!routeId) {
+      let currentElement = containerElement.parentElement;
+      while (currentElement && !routeId) {
+        // Check if this element has a route ID
+        routeId = currentElement.getAttribute('data-route-id');
+        if (!routeId) {
+          // Check if this element contains route information
+          const allRoutes = [...this.spottingRoutes, ...this.concreteRoutes, ...this.asphaltRoutes];
+          for (const route of allRoutes) {
+            // Check if this element contains the route's tickets
+            if (currentElement.querySelector(`[data-route-id="${route.routeId}"]`)) {
+              routeId = route.routeId.toString();
+              break;
+            }
+          }
+        }
+        currentElement = currentElement.parentElement;
+      }
+    }
+
+    // Debug logging
+    console.log('getRouteIdFromDropEvent debug:', {
+      containerElement,
+      routeId,
+      hasDataRouteId: containerElement ? containerElement.hasAttribute('data-route-id') : false,
+      allAttributes: containerElement ? Array.from(containerElement.attributes).map((attr: any) => ({ name: attr.name, value: attr.value })) : [],
+      containerData: event.container.data,
+      containerDataLength: event.container.data ? event.container.data.length : 0,
+      parentElement: containerElement ? containerElement.parentElement : null,
+      parentAttributes: containerElement?.parentElement ? Array.from(containerElement.parentElement.attributes).map((attr: any) => ({ name: attr.name, value: attr.value })) : []
+    });
+
     return routeId ? parseInt(routeId, 10) : null;
   }
 
@@ -1537,11 +1630,22 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
         private isRouteSection(container: any): boolean {
     // Check if the container element has the route section attribute or route ID
     const containerElement = container.element?.nativeElement;
-    const hasRouteSection = containerElement && (
+    let hasRouteSection = containerElement && (
       containerElement.hasAttribute('data-route-section') ||
       containerElement.getAttribute('data-route-section') === 'true' ||
       containerElement.hasAttribute('data-route-id')
     );
+
+    // If not found on the container element, check parent elements
+    if (!hasRouteSection && containerElement) {
+      let currentElement = containerElement.parentElement;
+      while (currentElement && !hasRouteSection) {
+        hasRouteSection = currentElement.hasAttribute('data-route-section') ||
+                         currentElement.getAttribute('data-route-section') === 'true' ||
+                         currentElement.hasAttribute('data-route-id');
+        currentElement = currentElement.parentElement;
+      }
+    }
 
     // Debug logging
     console.log('isRouteSection debug:', {
@@ -1632,6 +1736,12 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
 
       // Add ticket to destination route
       await this.addTicketsToRoute(destinationRoute.routeId, [ticketId]);
+
+      // Update the queue position in the destination route
+      const destinationTickets = event.container.data;
+      if (destinationTickets && destinationTickets.length > 0) {
+        await this.handleReorderWithinRoute(destinationRoute, destinationTickets);
+      }
 
       // Note: Reoptimization will be done manually via the route button
 
@@ -1812,6 +1922,12 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
 
         // 2. Add to destination route
         await this.addTicketsToRoute(destinationRoute.routeId, [ticketId]);
+
+        // 3. Update the queue position in the destination route
+        const destinationTickets = event.container.data;
+        if (destinationTickets && destinationTickets.length > 0) {
+          await this.handleReorderWithinRoute(destinationRoute, destinationTickets);
+        }
 
         // Note: Reoptimization will be done manually via the route buttons
 

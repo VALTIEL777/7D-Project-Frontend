@@ -1,5 +1,10 @@
 @use '../../../../../variables' as *;
 
+// Route-specific gradient variables for this component only
+$gradient-spotting: linear-gradient(160deg, #f3c787 0%, #FAF9FD 100%); // Spotting: main color changed, same direction/end
+$gradient-concrete: linear-gradient(160deg, #B1CAF3 0%, #FAF9FD 100%); // Concrete: default/unchanged
+$gradient-asphalt: linear-gradient(160deg, #bddab2 0%, #FAF9FD 100%); // Asphalt: main color changed, same direction/end
+
 .full-layout-container {
   height: 100%;
   display: flex;
@@ -742,9 +747,16 @@ mat-dialog-actions {
 
 .contract-unit {
   font-size: 0.8em;
-  color: #007bff;
+  color: #1976d2;
   margin: 2px 0;
   font-weight: 500;
+}
+
+.latest-phase {
+  font-size: 0.8em;
+  color: #1976d2;
+  margin: 2px 0;
+  font-weight: 700;
 }
 
 // Loading and empty states
@@ -817,6 +829,11 @@ mat-dialog-actions {
   background-color: #f5f5f5;
   transform: translateY(-1px);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+// Highlight for the ticket with the latest phase end date within a route
+.latest-phase-highlight {
+  background-color: #e7f3ff; // light blue
 }
 
 .route-detail-item.cdk-drag-preview {
@@ -1038,6 +1055,19 @@ app-leaflet-map {
   @media (max-width: 768px) {
     right: -16px;
   }
+}
+
+// Route-specific card gradient overrides
+::ng-deep app-card-with-button.route-spotting .analytics-card {
+  background: $gradient-spotting !important;
+}
+
+::ng-deep app-card-with-button.route-concrete .analytics-card {
+  background: $gradient-concrete !important;
+}
+
+::ng-deep app-card-with-button.route-asphalt .analytics-card {
+  background: $gradient-asphalt !important;
 }
 
 // Ensure proper spacing in route detail items

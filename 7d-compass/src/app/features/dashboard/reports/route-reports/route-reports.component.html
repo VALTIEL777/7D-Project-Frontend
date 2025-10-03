@@ -1,0 +1,274 @@
+<app-dashboard-layout>
+  <div class="content-container">
+    <!-- Giant Table Section - Always Visible at the Top -->
+    <div class="giant-table-section">
+      <app-card-with-button
+        [title]="selectedReport ? selectedReport.reportName + ' - Detailed View' : 'Report Data Table'"
+        [showEyeButton]="false">
+        <div class="giant-table-content">
+          <div class="table-info-bar">
+            <span *ngIf="selectedReport">{{ giantTableData.length }} rows</span>
+            <span *ngIf="selectedReport">{{ giantTableColumns.length }} columns</span>
+            <span *ngIf="selectedReport">Generated: {{ selectedReport.generatedDate }}</span>
+            <span *ngIf="!selectedReport" class="no-data-indicator">No data selected</span>
+            <button
+              *ngIf="selectedReport"
+              mat-stroked-button
+              (click)="closeGiantTable()"
+              class="close-table-btn">
+              <mat-icon>close</mat-icon>
+              Close Table
+            </button>
+          </div>
+
+          <div class="giant-table-wrapper" *ngIf="selectedReport">
+            <table class="giant-table">
+              <thead>
+                <tr>
+                  <th *ngFor="let column of giantTableColumns">{{ column }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let row of giantTableData; let i = index">
+                  <td *ngFor="let column of giantTableColumns">
+                    {{ getCellValue(row, column) }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- No Data Selected State -->
+          <div class="no-data-state" *ngIf="!selectedReport">
+            <div class="no-data-content">
+              <mat-icon class="no-data-icon">table_chart</mat-icon>
+              <h3>No Report Selected</h3>
+              <p>Click the "View" button on any report card below to display its data in this table.</p>
+              <div class="legend-info">
+                <h4>Available Reports:</h4>
+                <ul>
+                  <li><strong>Daily Route Summary:</strong> Route performance with phases and completed tickets</li>
+                  <li><strong>Weekly Performance Report:</strong> Weekly metrics with routes and efficiency</li>
+                  <li><strong>Monthly Route Analysis:</strong> Monthly analysis with tickets completed</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </app-card-with-button>
+    </div>
+
+    <div class="reports-section">
+      <app-card-with-button
+        title="Route Reports"
+        [showEyeButton]="false"
+        buttonText="Generate Report"
+        (buttonClick)="generateReport()">
+
+        <div *ngIf="loading" class="loading-container">
+          <div class="loading-spinner"></div>
+          <p>Loading reports...</p>
+        </div>
+
+        <div *ngIf="error" class="error-container">
+          <p class="error-message">{{ error }}</p>
+          <button mat-button (click)="loadReportsData()">Retry</button>
+        </div>
+
+        <div *ngIf="!loading && !error" class="reports-content">
+          <!-- Reports Grid -->
+          <div class="reports-grid">
+            <div *ngFor="let report of reportsData" class="report-card">
+              <div class="report-card-header">
+                <div class="report-title">
+                  <mat-icon class="report-icon">table_chart</mat-icon>
+                  <h3>{{ report.reportName }}</h3>
+                </div>
+                <div class="report-meta">
+                  <span class="type-badge" [ngClass]="'type-' + report.type.toLowerCase()">
+                    {{ report.type }}
+                  </span>
+                  <span class="status-badge" [ngClass]="'status-' + report.status.toLowerCase()">
+                    {{ report.status }}
+                  </span>
+                </div>
+              </div>
+
+
+              <!-- Excel-style Table Preview -->
+              <div class="excel-table-preview">
+                <div class="excel-table-header">
+                  <span class="excel-icon">📊</span>
+                  <span>Excel Table Preview</span>
+                </div>
+                <div class="excel-table-container">
+                  <table class="excel-table">
+                    <thead>
+                      <tr>
+                        <th *ngFor="let column of getReportColumns(report)">{{ column }}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr *ngFor="let row of getPaginatedReportData(report); let i = index">
+                        <td *ngFor="let column of getReportColumns(report)">
+                          {{ getCellValue(row, column) }}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <div class="table-info">
+                  <span>{{ getReportData(report).length }} rows</span>
+                  <span>{{ getReportColumns(report).length }} columns</span>
+                  <span>Showing {{ getPaginatedReportData(report).length }} of {{ getReportData(report).length }}</span>
+                </div>
+                <div class="pagination-controls" *ngIf="getReportData(report).length > 10">
+                  <button
+                    mat-icon-button
+                    (click)="previousPage(report.id)"
+                    [disabled]="getCurrentPage(report.id) === 1">
+                    <mat-icon>chevron_left</mat-icon>
+                  </button>
+                  <span class="page-info">
+                    Page {{ getCurrentPage(report.id) }} of {{ getTotalPages(report) }}
+                  </span>
+                  <button
+                    mat-icon-button
+                    (click)="nextPage(report.id)"
+                    [disabled]="getCurrentPage(report.id) === getTotalPages(report)">
+                    <mat-icon>chevron_right</mat-icon>
+                  </button>
+                </div>
+              </div>
+
+              <div class="report-actions">
+                <button
+                  mat-stroked-button
+                  color="primary"
+                  (click)="viewReport(report)"
+                  [disabled]="report.status !== 'Generated'">
+                  <mat-icon>visibility</mat-icon>
+                  View
+                </button>
+                <button
+                  mat-stroked-button
+                  color="accent"
+                  (click)="downloadReport(report)"
+                  [disabled]="report.status !== 'Generated'">
+                  <mat-icon>download</mat-icon>
+                  Download Excel
+                </button>
+                <button
+                  mat-stroked-button
+                  color="warn"
+                  (click)="downloadPdfReport(report)"
+                  [disabled]="report.status !== 'Generated'">
+                  <mat-icon>picture_as_pdf</mat-icon>
+                  Download PDF
+                </button>
+              </div>
+            </div>
+          </div>
+
+
+        </div>
+      </app-card-with-button>
+    </div>
+
+    <!-- Report History Section -->
+    <div class="history-section">
+      <app-card-with-button title="Report History" [showEyeButton]="false">
+        <div class="history-content">
+          <div class="history-tabs">
+            <button
+              mat-button
+              [class.active]="selectedHistoryTab === 'weekly'"
+              (click)="selectedHistoryTab = 'weekly'; onHistoryTabChange()">
+              Weekly Reports
+            </button>
+            <button
+              mat-button
+              [class.active]="selectedHistoryTab === 'monthly'"
+              (click)="selectedHistoryTab = 'monthly'; onHistoryTabChange()">
+              Monthly Reports
+            </button>
+          </div>
+
+          <div class="history-table-container">
+            <table mat-table [dataSource]="getPaginatedHistoryData()" class="history-table">
+              <ng-container matColumnDef="reportName">
+                <th mat-header-cell *matHeaderCellDef>Report Name</th>
+                <td mat-cell *matCellDef="let report">{{ report.reportName }}</td>
+              </ng-container>
+
+              <ng-container matColumnDef="generatedDate">
+                <th mat-header-cell *matHeaderCellDef>Generated Date</th>
+                <td mat-cell *matCellDef="let report">{{ report.generatedDate }}</td>
+              </ng-container>
+
+              <ng-container matColumnDef="status">
+                <th mat-header-cell *matHeaderCellDef>Status</th>
+                <td mat-cell *matCellDef="let report">
+                  <span class="status-badge" [ngClass]="'status-' + report.status.toLowerCase()">
+                    {{ report.status }}
+                  </span>
+                </td>
+              </ng-container>
+
+              <ng-container matColumnDef="actions">
+                <th mat-header-cell *matHeaderCellDef>Actions</th>
+                <td mat-cell *matCellDef="let report">
+                  <div class="action-buttons">
+                    <button
+                      mat-icon-button
+                      matTooltip="View Report"
+                      (click)="viewReport(report)"
+                      [disabled]="report.status !== 'Generated'">
+                      <mat-icon>visibility</mat-icon>
+                    </button>
+                    <button
+                      mat-icon-button
+                      matTooltip="Download Excel"
+                      (click)="downloadReport(report)"
+                      [disabled]="report.status !== 'Generated'">
+                      <mat-icon>download</mat-icon>
+                    </button>
+                    <button
+                      mat-icon-button
+                      matTooltip="Download PDF"
+                      (click)="downloadPdfReport(report)"
+                      [disabled]="report.status !== 'Generated'">
+                      <mat-icon>picture_as_pdf</mat-icon>
+                    </button>
+                  </div>
+                </td>
+              </ng-container>
+
+              <tr mat-header-row *matHeaderRowDef="historyColumns"></tr>
+              <tr mat-row *matRowDef="let row; columns: historyColumns;"></tr>
+            </table>
+          </div>
+
+          <!-- History Pagination Controls -->
+          <div class="history-pagination-controls" *ngIf="getHistoryData().length > 12">
+            <button
+              mat-icon-button
+              (click)="previousHistoryPage()"
+              [disabled]="currentHistoryPage === 1">
+              <mat-icon>chevron_left</mat-icon>
+            </button>
+            <span class="page-info">
+              Page {{ currentHistoryPage }} of {{ getTotalHistoryPages() }}
+            </span>
+            <button
+              mat-icon-button
+              (click)="nextHistoryPage()"
+              [disabled]="currentHistoryPage === getTotalHistoryPages()">
+              <mat-icon>chevron_right</mat-icon>
+            </button>
+          </div>
+        </div>
+      </app-card-with-button>
+    </div>
+  </div>
+</app-dashboard-layout>
