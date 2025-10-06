@@ -29,6 +29,9 @@ import { RouteData, MapConfig, LeafletMapComponent } from '../../../shared/leafl
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../environments/environment';
 import { DiggerService } from '../../../core/services/permissions/digger.service';
+import { WayfindingService } from '../../../core/services/location/wayfinding.service';
+import { MatSnackBar } from '@angular/material/snack-bar';
+
 
 @Component({
   selector: 'app-current',
@@ -82,6 +85,7 @@ location: {
   toaddressnumber?: string;
   fromAddressFull?: string;
   toAddressFull?: string;
+  wayfindingId?: number;
 } = {
   address: ''
 };
@@ -172,7 +176,9 @@ filteredTicketImages: any[] = [];
         private photoEvidenceService: PhotoEvidenceService,
         private diggerService: DiggerService,
         private contractUnitsPhasesService: ContractUnitsPhasesService,
+        private wayfindingService: WayfindingService,
         private dialog: MatDialog,
+        private snackBar: MatSnackBar,
         private ticketService: TicketService,
         private peopleService: PeopleService,
         private quadrantService: QuadrantsService,
@@ -334,7 +340,63 @@ private loadCriticalDataInParallel(): void {
     }
   }
 
+updateSize(): void {
+  if (!this.location?.wayfindingId) {
+    console.warn('⚠️ No hay wayfindingId para actualizar tamaño');
+    return;
+  }
 
+  // Abrir el diálogo de confirmación
+  const dialogRef = this.dialog.open(ConfirmationDialogComponent, {
+    width: '400px',
+    data: {
+      title: 'Confirm Update',
+      message: 'Are you sure you want to update the size?',
+      confirmText: 'Yes, Update',
+      cancelText: 'Cancel'
+    }
+  });
+
+  // Esperar a que el usuario confirme
+  dialogRef.afterClosed().subscribe(result => {
+    if (result) { // Si confirma
+      const data = {
+        length: this.location.length,
+        width: this.location.width
+      };
+
+      console.log(`📏 Actualizando wayfinding ${this.location.wayfindingId} con:`, data);
+
+      // Llamar al servicio para actualizar
+      if (this.location?.wayfindingId !== undefined) {
+      this.wayfindingService.updateWayfinding(this.location.wayfindingId, data).subscribe({
+        next: (updated) => {
+          console.log('✅ Wayfinding actualizado:', updated);
+
+          // Mostrar snackbar de éxito
+          this.snackBar.open('✅ Size updated successfully!', 'Close', {
+            duration: 3000,
+            horizontalPosition: 'right',
+            verticalPosition: 'top'
+          });
+        },
+        error: (err) => {
+          console.error('❌ Error al actualizar tamaño:', err);
+
+          // Mostrar snackbar de error
+          this.snackBar.open('❌ Error updating size', 'Close', {
+            duration: 3000,
+            horizontalPosition: 'right',
+            verticalPosition: 'top'
+          });
+        }
+      });
+      } else {
+  console.warn('⚠️ wayfindingId no definido');
+}
+    }
+  });
+}
 
 
 loadEmployees() {
@@ -840,6 +902,7 @@ if (details.length > 0) {
   this.location.description = data.contractunit_description;
   this.location.width = data.width;
   this.location.length = data.length;
+  this.location.wayfindingId = data.wayfindingid || data.wayfindingId;
 
   console.log('📍 Dirección actualizada desde backend:', this.location.fullAddress);
   console.log('📝 Descripción:', this.location.description);

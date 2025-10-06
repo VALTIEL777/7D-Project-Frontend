@@ -57,6 +57,35 @@
       </span>
     </li>    
   </ul>
+
+
+ <h3 class="sub-title">Update Size</h3>
+<ul class="info-list">
+  <li class="flex items-center gap-3">
+    <strong>Size:</strong>
+
+    <mat-form-field appearance="outline" style="width: 80px;">
+      <mat-label>Length</mat-label>
+      <input matInput type="number" [(ngModel)]="location.length" placeholder="Length">
+    </mat-form-field>
+
+    <span> X </span>
+
+    <mat-form-field appearance="outline" style="width: 80px;">
+      <mat-label>Width</mat-label>
+      <input matInput type="number" [(ngModel)]="location.width" placeholder="Width">
+    </mat-form-field>
+
+    <span> ft</span>
+
+   <button mat-raised-button color="primary" (click)="updateSize()">
+  Save
+  <mat-icon style="margin-left: 4px;">save</mat-icon>
+</button>
+
+  </li>
+</ul>
+
   
   
   
