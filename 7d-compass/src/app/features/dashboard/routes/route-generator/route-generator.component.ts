@@ -46,6 +46,7 @@ interface RouteTicket {
     placeid?: string;
   };
   watchnProtect?: boolean; // Add watchnProtect property
+  missingPhotoPhases?: string[]; // Phases with missing photos
 }
 
 // Interface for optimization metadata

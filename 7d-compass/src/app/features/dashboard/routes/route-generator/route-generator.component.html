@@ -92,6 +92,10 @@
                             <span class="expiration-label">Permit Expires:</span>
                             {{ ticket.permitExpireDate | date:'MM/dd/yyyy' }}
                           </p>
+                          <div class="missing-photos" *ngIf="ticket.missingPhotoPhases?.length">
+                            <span class="missing-photos-label">Missing photos:</span>
+                            <span class="missing-photo" *ngFor="let phase of ticket.missingPhotoPhases">{{ phase }}</span>
+                          </div>
                         </div>
                         <div class="wp-checkbox-container">
                           <mat-checkbox
@@ -194,6 +198,10 @@
                             <span class="expiration-label">Permit Expires:</span>
                             {{ ticket.permitExpireDate | date:'MM/dd/yyyy' }}
                           </p>
+                          <div class="missing-photos" *ngIf="ticket.missingPhotoPhases?.length">
+                            <span class="missing-photos-label">Missing photos:</span>
+                            <span class="missing-photo" *ngFor="let phase of ticket.missingPhotoPhases">{{ phase }}</span>
+                          </div>
                         </div>
                         <div class="wp-checkbox-container">
                           <mat-checkbox
@@ -296,6 +304,10 @@
                             <span class="expiration-label">Permit Expires:</span>
                             {{ ticket.permitExpireDate | date:'MM/dd/yyyy' }}
                           </p>
+                          <div class="missing-photos" *ngIf="ticket.missingPhotoPhases?.length">
+                            <span class="missing-photos-label">Missing photos:</span>
+                            <span class="missing-photo" *ngFor="let phase of ticket.missingPhotoPhases">{{ phase }}</span>
+                          </div>
                         </div>
                         <div class="wp-checkbox-container">
                           <mat-checkbox

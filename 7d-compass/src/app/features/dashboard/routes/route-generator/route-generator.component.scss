@@ -738,6 +738,30 @@ mat-dialog-actions {
   font-weight: 600;
 }
 
+// Missing photos styling
+.missing-photos {
+  font-size: 11px;
+  margin: 2px 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+
+  .missing-photos-label {
+    font-weight: 600;
+    color: $error-color;
+  }
+
+  .missing-photo {
+    padding: 2px 8px;
+    border-radius: 12px;
+    background-color: rgba(244, 67, 54, 0.08); // subtle red background
+    color: $error-color;
+    border: 1px solid rgba(244, 67, 54, 0.3);
+    font-weight: 600;
+  }
+}
+
 .incident-name {
   font-size: 0.75em;
   color: #888;
