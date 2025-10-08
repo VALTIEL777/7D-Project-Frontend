@@ -28,7 +28,7 @@
   padding-left: 0;
   margin-bottom: 12px;
   position: relative;
-  overflow: hidden;
+  overflow: visible; // allow inline editor to render fully
 
   &::after {
     content: "";
@@ -277,7 +277,7 @@
   border: 1px solid #dcdfe3;
   border-radius: 8px;
   padding: 16px;
-  max-width: 400px;
+  max-width: 100%; // expand to fit inline editor
   box-shadow: 0 2px 6px rgba(0,0,0,0.05);
 }
 
@@ -291,6 +291,54 @@
   color: #555;
   width: 120px;
   display: inline-block;
+}
+
+// Compact inline dimensions editor
+.dimension-inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0; // allow shrink
+}
+
+.dimension-field {
+  width: 90px; // narrower so actions fit
+  margin: 0;
+  min-width: 0;
+}
+
+.dimension-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+// Mobile tweaks: shrink inputs and icons to keep on one line
+@media screen and (max-width: 480px) {
+  .dimension-field {
+    width: 72px;
+  }
+
+  .dimension-inline {
+    gap: 6px;
+  }
+
+  .dimension-actions {
+    gap: 4px;
+  }
+
+  ::ng-deep .mat-icon-button .mat-mdc-button-touch-target {
+    width: 32px;
+    height: 32px;
+  }
+
+  ::ng-deep .mat-icon-button .mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+  }
 }
 
 // Estilos para mostrar fotos del ticket actual
@@ -1347,7 +1395,7 @@
 
 .badge-yes {
   background-color: #d1fae5; /* verde suave */
-  color: #065f46; 
+  color: #065f46;
   padding: 2px 8px;
   border-radius: 12px;
   font-weight: 500;

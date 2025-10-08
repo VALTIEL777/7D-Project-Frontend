@@ -2,13 +2,13 @@
   <div class="content-wrapper">
   <!-- Ya tienes el layout y tabs fuera -->
   <h2 class="section-title">Current Location - {{ location.address }}</h2>
-  
+
   <!-- 🗺️ Mapa estático -->
   <div class="map-section">
     <div class="map-header">
       <h3 class="map-title">Location Map</h3>
     </div>
-  
+
     <div class="map-container">
       <app-leaflet-map
         [routes]="leafletRoutes"
@@ -20,7 +20,7 @@
         [width]="'100%'">
       </app-leaflet-map>
     </div>
-  
+
     <!-- Zoom level selector -->
     <!-- <div class="zoom-selector">
       <span class="zoom-label">Zoom Level:</span>
@@ -37,14 +37,57 @@
       </div>
     </div> -->
   </div>
-  
+
   <!-- General Info -->
   <h3 class="sub-title">General Info</h3>
+  <!-- Dimensions edit success message -->
+  <div *ngIf="dimensionsUpdatedMessage" class="update-notification" style="background-color: #4caf50; color: white; padding: 6px 12px; border-radius: 4px; margin-bottom: 10px; display: inline-flex; align-items: center; gap: 6px;">
+    <mat-icon style="color: white;">check_circle</mat-icon>
+    <span>{{ dimensionsUpdatedMessage }}</span>
+  </div>
+  <!-- Dimensions edit error message -->
+  <div *ngIf="dimensionsError" class="update-notification" style="background-color: #f44336; color: white; padding: 6px 12px; border-radius: 4px; margin-bottom: 10px; display: inline-flex; align-items: center; gap: 6px;">
+    <mat-icon style="color: white;">error</mat-icon>
+    <span>{{ dimensionsError }}</span>
+  </div>
+
   <ul class="info-list">
     <li><strong>Ticket Code:</strong> {{ ticketCode || 'Not available' }}</li>
     <li><strong>Job:</strong> {{ location.job || 'Not available' }}</li>
     <!-- <li><strong>Description:</strong>  {{ location.description || 'No description available' }} </li> -->
-    <li><strong>Size:</strong> {{ location.length || 'Not available'}} x {{ location.width || 'Not available' }} ft</li>
+    <li>
+      <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;">
+        <ng-container *ngIf="!dimensionsEditMode; else inlineEditDimensions">
+          <span><strong>Size:</strong> {{ location.length || 'Not available'}} x {{ location.width || 'Not available' }} ft</span>
+          <button mat-icon-button color="primary" (click)="startEditDimensions()" aria-label="Edit dimensions">
+            <mat-icon>edit</mat-icon>
+          </button>
+        </ng-container>
+        <ng-template #inlineEditDimensions>
+          <div class="dimension-inline">
+            <span style="white-space: nowrap;"><strong>Size:</strong></span>
+            <mat-form-field appearance="outline" class="dimension-field">
+              <mat-label>Length (ft)</mat-label>
+              <input matInput type="number" step="0.1" min="0" [(ngModel)]="editLength" />
+            </mat-form-field>
+            <span style="color: #666;">x</span>
+            <mat-form-field appearance="outline" class="dimension-field">
+              <mat-label>Width (ft)</mat-label>
+              <input matInput type="number" step="0.1" min="0" [(ngModel)]="editWidth" />
+            </mat-form-field>
+          </div>
+          <div class="dimension-actions">
+            <button mat-icon-button color="primary" (click)="saveDimensions()" [disabled]="!canSaveDimensions()" aria-label="Save dimensions">
+              <mat-spinner *ngIf="dimensionsSaving" diameter="16" class="upload-spinner"></mat-spinner>
+              <mat-icon *ngIf="!dimensionsSaving">save</mat-icon>
+            </button>
+            <button mat-icon-button color="warn" (click)="cancelEditDimensions()" [disabled]="dimensionsSaving" aria-label="Cancel dimensions edit">
+              <mat-icon>close</mat-icon>
+            </button>
+          </div>
+        </ng-template>
+      </div>
+    </li>
     <li><strong>Task:</strong> {{ crewType || 'Not available' }}</li>
     <li><strong>Street From:</strong> {{ location.streetFrom || 'Not available' }}</li>
     <li> <strong>Street To:</strong> {{ location.streetTo || 'Not available' }}</li>
@@ -55,48 +98,19 @@
       class="watchn-badge">
         {{ watchnProtectStatus ? '🟢 Yes' : 'No 🔴' }}
       </span>
-    </li>    
+    </li>
   </ul>
 
 
- <h3 class="sub-title">Update Size</h3>
-<ul class="info-list">
-  <li class="flex items-center gap-3">
-    <strong>Size:</strong>
 
-    <mat-form-field appearance="outline" style="width: 80px;">
-      <mat-label>Length</mat-label>
-      <input matInput type="number" [(ngModel)]="location.length" placeholder="Length">
-    </mat-form-field>
-
-    <span> X </span>
-
-    <mat-form-field appearance="outline" style="width: 80px;">
-      <mat-label>Width</mat-label>
-      <input matInput type="number" [(ngModel)]="location.width" placeholder="Width">
-    </mat-form-field>
-
-    <span> ft</span>
-
-   <button mat-raised-button color="primary" (click)="updateSize()">
-  Save
-  <mat-icon style="margin-left: 4px;">save</mat-icon>
-</button>
-
-  </li>
-</ul>
-
-  
-  
-  
   <h3 class="sub-title">Gallery</h3>
-  
+
   <!-- 🎯 NUEVO: Notificación de actualización de galería -->
   <div *ngIf="galleryUpdatedMessage" class="update-notification" style="background-color: #2196f3; color: white; padding: 8px 16px; border-radius: 4px; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
     <mat-icon style="color: white;">photo_library</mat-icon>
     <span>{{ galleryUpdatedMessage }}</span>
   </div>
-  
+
   <!-- Date filter now inside the Gallery section -->
   <div class="date-filter" style="display: flex; gap: 16px; align-items: center; margin-bottom: 16px;">
     <mat-form-field appearance="outline">
@@ -125,7 +139,7 @@
               Current Ticket Images ({{ filteredTicketImages.length }} total)
             </mat-panel-title>
           </mat-expansion-panel-header>
-  
+
           <div *ngFor="let groupName of (groupedImages | keyvalue)">
             <button mat-button class="group-button" (click)="toggleGroup(groupName.key)">
               {{ openedGroups[groupName.key] ? 'Hide' : 'Show' }} {{ groupName.key }} ({{ groupName.value.length }})
@@ -133,7 +147,7 @@
             <div class="images-container" *ngIf="openedGroups[groupName.key]">
               <div *ngFor="let img of groupName.value" class="photo-item">
                 <p class="photo-name">{{ img.name }}</p>
-  
+
                 <!-- Image container with loading indicator -->
                 <div class="image-container">
                   <!-- Error indicator with retry button -->
@@ -145,14 +159,14 @@
                       Retry
                     </button>
                   </div>
-  
+
                   <!-- Show image if it's an image -->
                   <img *ngIf="!isPdfFile(img.url)"
                        [src]="img.url"
                        [alt]="img.name"
                        class="location-image"
                        (error)="onImageError($event, img)" />
-  
+
                   <!-- Show PDF if it's a PDF -->
                   <div *ngIf="isPdfFile(img.url)" class="pdf-container">
                     <mat-icon class="pdf-icon">picture_as_pdf</mat-icon>
@@ -169,7 +183,7 @@
                     </div>
                   </div>
                 </div>
-  
+
                 <p class="photo-date" *ngIf="img.startingdate">
                   <mat-icon class="calendar-icon">calendar_today</mat-icon>
                   <strong>Start:</strong> {{ img.startingdate | date:'MMM d, y, h:mm a' }}
@@ -199,9 +213,9 @@
       </span>
     </p>
   </div>
-  
+
   <!-- ✅ ACTIVITIES + PHOTO EVIDENCE UNIDOS -->
-  
+
   <h3 class="sub-title">Activities</h3>
   <div class="activities-container">
     <mat-form-field appearance="outline" style="width: 100%; margin-bottom: 16px;">
@@ -216,40 +230,40 @@
           <mat-icon *ngIf="!activity.assigned" class="status-icon not-assigned" title="Not assigned">
             radio_button_unchecked
           </mat-icon>
-  
+
           <!-- Estado: Asignada pero no iniciada -->
           <mat-icon *ngIf="isPhaseAssigned(activity)" class="status-icon assigned" title="Assigned - Click to start">
             assignment
           </mat-icon>
-  
+
           <!-- Estado: Iniciada pero no completada -->
           <mat-icon *ngIf="isPhaseStarted(activity)" class="status-icon started" title="Started - Click to complete">
             play_circle
           </mat-icon>
-  
+
           <!-- Estado: Completada -->
           <mat-icon *ngIf="isPhaseCompleted(activity)" class="status-icon completed" title="Completed">
             check_circle
           </mat-icon>
         </div>
-  
+
         <div class="activity-content">
           <span class="activity-name">{{ activity.name }}</span>
-  
+
           <!-- Mostrar fecha de inicio si está iniciada -->
           <span *ngIf="isPhaseStarted(activity) || isPhaseCompleted(activity)" class="activity-date">
             Started: {{ activity.startDate | date:'MMM d, y, h:mm a' }}
           </span>
-  
+
           <!-- Mostrar fecha de finalización si está completada -->
           <span *ngIf="isPhaseCompleted(activity)" class="activity-date">
             Completed: {{ activity.endDate | date:'MMM d, y, h:mm a' }}
           </span>
-  
+
           <span class="crew-evidence">Remember take a crew photo.</span>
         </div>
       </div>
-  
+
       <div class="activity-actions">
         <!-- Botón para iniciar fase asignada -->
         <!-- Botón para iniciar fase asignada o fase opcional no asignada -->
@@ -263,7 +277,7 @@
     <mat-icon>play_arrow</mat-icon>
     Start Phase
   </button>
-  
+
         <!-- Botón para completar fase iniciada -->
         <button
           *ngIf="isPhaseStarted(activity) && !isPreviousPhaseIncomplete(activity)"
@@ -275,20 +289,20 @@
           <mat-icon>done</mat-icon>
           Complete Phase
         </button>
-  
+
         <!-- Indicador de fase completada -->
         <span *ngIf="isPhaseCompleted(activity)" class="completed-indicator">
           <mat-icon>check</mat-icon>
           Completed
         </span>
-  
+
         <!-- Indicador de fase bloqueada por fase anterior -->
         <span *ngIf="isPreviousPhaseIncomplete(activity)" class="blocked-indicator" style="color: #bdbdbd; display: flex; align-items: center; gap: 4px;">
           <mat-icon>lock</mat-icon>
           Previous phase required
         </span>
       </div>
-  
+
       <!-- Formulario de subida de evidencia SOLO para esta fase -->
       <mat-expansion-panel>
         <mat-expansion-panel-header>
@@ -307,7 +321,7 @@
                 <span style="margin-left: 8px;">Take photo</span>
               </button>
               <span class="restriction">You can upload up to 5 photos.</span>
-  
+
               <input
                 #fileInput
                 type="file"
@@ -350,7 +364,7 @@
               <mat-spinner *ngIf="isUploading(activity)" diameter="20" class="upload-spinner"></mat-spinner>
               <span>{{ isUploading(activity) ? 'Uploading...' : 'Upload evidence' }}</span>
             </button>
-  
+
             <!-- 🎯 NUEVO: Indicador de progreso detallado -->
             <div *ngIf="isUploading(activity)" class="upload-progress" style="margin-top: 8px;">
               <mat-progress-bar mode="indeterminate" color="accent"></mat-progress-bar>
@@ -362,7 +376,7 @@
           </mat-card>
         </div>
       </mat-expansion-panel>
-  
+
       <!-- 🎯 NUEVO: Campo de comentario en expansion panel -->
       <mat-expansion-panel>
         <mat-expansion-panel-header>
@@ -371,7 +385,7 @@
             Add Issue
           </mat-panel-title>
         </mat-expansion-panel-header>
-  
+
         <div class="comment-section" style="margin: 16px 0;">
           <div class="comment-input-container" style="display: flex; gap: 12px; align-items: flex-end;">
             <mat-form-field appearance="outline" style="flex: 1;">
@@ -383,7 +397,7 @@
                         maxlength="500"></textarea>
               <mat-hint>{{ (activity.observation || '').length }}/500</mat-hint>
             </mat-form-field>
-  
+
             <button mat-raised-button
                     color="primary"
                     (click)="saveObservation(activity)"
@@ -393,12 +407,12 @@
               <span style="margin-left: 4px;">Send</span>
             </button>
           </div>
-  
+
         </div>
       </mat-expansion-panel>
     </div>
   </div>
-  
+
   <!-- 🎯 NUEVA SECCIÓN: Optional Activities -->
   <div *ngIf="getOptionalActivities().length > 0">
     <h3 class="sub-title">
@@ -415,7 +429,7 @@
           These activities are optional and can be performed if needed. They are not required to complete the main workflow.
         </p>
       </div>
-  
+
       <div *ngFor="let activity of getOptionalActivities(); let i = index" class="activity-item optional-activity" [ngStyle]="{'background-color': getActivityColor(activity.name)}">
         <div class="activity-header">
           <div class="activity-status">
@@ -423,43 +437,43 @@
             <mat-icon *ngIf="!activity.assigned" class="status-icon not-assigned" title="Not assigned">
               radio_button_unchecked
             </mat-icon>
-  
+
             <!-- Estado: Asignada pero no iniciada -->
             <mat-icon *ngIf="isPhaseAssigned(activity)" class="status-icon assigned" title="Assigned - Click to start">
               assignment
             </mat-icon>
-  
+
             <!-- Estado: Iniciada pero no completada -->
             <mat-icon *ngIf="isPhaseStarted(activity)" class="status-icon started" title="Started - Click to complete">
               play_circle
             </mat-icon>
-  
+
             <!-- Estado: Completada -->
             <mat-icon *ngIf="isPhaseCompleted(activity)" class="status-icon completed" title="Completed">
               check_circle
             </mat-icon>
           </div>
-  
+
           <div class="activity-content">
             <span class="activity-name">
               {{ activity.name }}
               <span class="optional-badge" style="background-color: #ff9800; color: white; padding: 2px 8px; border-radius: 12px; font-size: 10px; margin-left: 8px; text-transform: uppercase;">Optional</span>
             </span>
-  
+
             <!-- Mostrar fecha de inicio si está iniciada -->
             <span *ngIf="isPhaseStarted(activity) || isPhaseCompleted(activity)" class="activity-date">
               Started: {{ activity.startDate | date:'MMM d, y, h:mm a' }}
             </span>
-  
+
             <!-- Mostrar fecha de finalización si está completada -->
             <span *ngIf="isPhaseCompleted(activity)" class="activity-date">
               Completed: {{ activity.endDate | date:'MMM d, y, h:mm a' }}
             </span>
-  
+
             <span class="crew-evidence">Remember take a crew photo.</span>
           </div>
         </div>
-  
+
         <div class="activity-actions">
           <!-- Botón para iniciar fase opcional -->
           <button
@@ -472,7 +486,7 @@
             <mat-icon>play_arrow</mat-icon>
             Start Optional Phase
           </button>
-  
+
           <!-- Botón para completar fase iniciada -->
           <button
             *ngIf="isPhaseStarted(activity)"
@@ -484,14 +498,14 @@
             <mat-icon>done</mat-icon>
             Complete Optional Phase
           </button>
-  
+
           <!-- Indicador de fase completada -->
           <span *ngIf="isPhaseCompleted(activity)" class="completed-indicator">
             <mat-icon>check</mat-icon>
             Completed
           </span>
         </div>
-  
+
         <!-- Formulario de subida de evidencia para fase opcional -->
         <mat-expansion-panel>
           <mat-expansion-panel-header>
@@ -507,7 +521,7 @@
                   <span style="margin-left: 8px;">Take photo</span>
                 </button>
                 <span class="restriction">You can upload up to 5 photos.</span>
-  
+
                 <input
                   #optionalFileInput
                   type="file"
@@ -550,7 +564,7 @@
                 <mat-spinner *ngIf="isUploading(activity)" diameter="20" class="upload-spinner"></mat-spinner>
                 <span>{{ isUploading(activity) ? 'Uploading...' : 'Upload evidence' }}</span>
               </button>
-  
+
               <!-- Indicador de progreso detallado -->
               <div *ngIf="isUploading(activity)" class="upload-progress" style="margin-top: 8px;">
                 <mat-progress-bar mode="indeterminate" color="accent"></mat-progress-bar>
@@ -562,7 +576,7 @@
             </mat-card>
           </div>
         </mat-expansion-panel>
-  
+
         <!-- Campo de comentario para fase opcional -->
         <mat-expansion-panel>
           <mat-expansion-panel-header>
@@ -571,7 +585,7 @@
               Add Issue
             </mat-panel-title>
           </mat-expansion-panel-header>
-  
+
           <div class="comment-section" style="margin: 16px 0;">
             <div class="comment-input-container" style="display: flex; gap: 12px; align-items: flex-end;">
               <mat-form-field appearance="outline" style="flex: 1;">
@@ -583,7 +597,7 @@
                           maxlength="500"></textarea>
                 <mat-hint>{{ (activity.observation || '').length }}/500</mat-hint>
               </mat-form-field>
-  
+
               <button mat-raised-button
                       color="primary"
                       (click)="saveObservation(activity)"
@@ -598,7 +612,7 @@
       </div>
     </div>
   </div>
-  
+
   <!-- 🎯 Issues -->
   <div class="comments-header">
     <h3 class="sub-title">Comments</h3>
@@ -609,20 +623,20 @@
       <mat-icon>{{ showAllComments ? 'visibility' : 'visibility_off' }}</mat-icon>
     </button>
   </div>
-  
+
   <!-- 🎯 NUEVO: Notificación de actualización de issues -->
   <div *ngIf="commentsUpdatedMessage" class="update-notification" style="background-color: #4caf50; color: white; padding: 8px 16px; border-radius: 4px; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
     <mat-icon style="color: white;">check_circle</mat-icon>
     <span>{{ commentsUpdatedMessage }}</span>
   </div>
-  
+
   <div class="comments-section">
     <mat-form-field appearance="outline" style="width: 100%; margin-bottom: 16px;">
       <mat-label>Search issues</mat-label>
       <mat-icon matPrefix>search</mat-icon>
       <input matInput [(ngModel)]="commentFilterText" (ngModelChange)="onCommentFilterChange()" placeholder="Search by issue text, phase name, or date">
     </mat-form-field>
-  
+
     <div class="comments-container">
       <div *ngFor="let comment of filteredComments; let i = index"
            class="comment-item"
@@ -644,14 +658,14 @@
             </button> -->
           </div>
         </div>
-  
+
         <div class="comment-content">
           <mat-icon *ngIf="comment.hasIssue" class="issue-icon" color="warn">info</mat-icon>
           <p class="comment-text">{{ comment.text }}</p>
         </div>
       </div>
     </div>
-  
+
     <!-- Mostrar mensaje si no hay issues -->
     <div *ngIf="filteredComments.length === 0" class="no-comments">
       <p class="no-comments-text">
@@ -665,9 +679,9 @@
       </p>
     </div>
   </div>
-  
+
   <mat-divider></mat-divider>
-  
+
   <!-- 🎯 Comments (Observations) -->
   <div class="comments-header">
     <h3 class="sub-title">Issues</h3>
@@ -678,20 +692,20 @@
       <mat-icon>{{ showAllObservations ? 'visibility' : 'visibility_off' }}</mat-icon>
     </button>
   </div>
-  
+
   <!-- 🎯 NUEVO: Notificación de actualización de comments -->
   <div *ngIf="observationsUpdatedMessage" class="update-notification" style="background-color: #2196f3; color: white; padding: 8px 16px; border-radius: 4px; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
     <mat-icon style="color: white;">check_circle</mat-icon>
     <span>{{ observationsUpdatedMessage }}</span>
   </div>
-  
+
   <div class="comments-section">
     <mat-form-field appearance="outline" style="width: 100%; margin-bottom: 16px;">
       <mat-label>Search issues</mat-label>
       <mat-icon matPrefix>search</mat-icon>
       <input matInput [(ngModel)]="observationFilterText" (ngModelChange)="onObservationFilterChange()" placeholder="Search by comment text, phase name, or date">
     </mat-form-field>
-  
+
     <div class="comments-container">
       <div *ngFor="let observation of filteredObservations; let i = index"
            class="comment-item"
@@ -713,13 +727,13 @@
             </button>
           </div>
         </div>
-  
+
         <div class="comment-content">
           <p class="comment-text">{{ observation.text }}</p>
         </div>
       </div>
     </div>
-  
+
     <!-- Mostrar mensaje si no hay comments -->
     <div *ngIf="filteredObservations.length === 0" class="no-comments">
       <p class="no-comments-text">
@@ -733,9 +747,9 @@
       </p>
     </div>
   </div>
-  
+
   <mat-divider></mat-divider>
-  
+
   <!-- Permits -->
   <h3 class="sub-title">Permits</h3>
   <div class="permits">
@@ -757,7 +771,7 @@
       </mat-card>
     </div>
   </div>
-  
+
   <!-- Mostrar mensaje si no hay permits -->
   <div *ngIf="permits.length === 0" class="no-permits">
     <p class="no-permits-text">
@@ -765,10 +779,10 @@
       There are no permits assigned yet.
     </p>
   </div>
-  
+
   <br>
       <mat-divider></mat-divider>
-  
+
   <!-- Contact Supervisor -->
   <h3 class="sub-title">Contact supervisor</h3>
   <p *ngIf="supervisor"><strong>Name:</strong>
@@ -780,7 +794,7 @@
   <p *ngIf="supervisor"><strong>Phone:</strong>
      {{ supervisor.phone }}
   </p>
-  
+
       <mat-divider></mat-divider>
   </div>
     <app-sitejob-tabs></app-sitejob-tabs>

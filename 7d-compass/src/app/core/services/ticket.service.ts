@@ -69,6 +69,12 @@ export interface PaymentInvoiceInfoResponse {
   data: PaymentInvoiceInfo[];
 }
 
+export interface UpdateDimensionsRequest {
+  width?: number;
+  length?: number;
+  updatedBy: number;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -110,5 +116,10 @@ export class TicketService {
   // Get payment and invoice info for tickets
   getPaymentInvoiceInfo(): Observable<PaymentInvoiceInfoResponse> {
     return this.http.get<PaymentInvoiceInfoResponse>(`${environment.apiUrl}/tickets/payment-invoice-info`);
+  }
+
+  // Patch wayfinding dimensions (width/length) for a ticket
+  updateWayfindingDimensions(ticketId: number, payload: UpdateDimensionsRequest): Observable<any> {
+    return this.http.patch<any>(`${this.baseUrl}/${ticketId}/wayfinding/dimensions`, payload);
   }
 }

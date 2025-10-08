@@ -29,9 +29,6 @@ import { RouteData, MapConfig, LeafletMapComponent } from '../../../shared/leafl
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../environments/environment';
 import { DiggerService } from '../../../core/services/permissions/digger.service';
-import { WayfindingService } from '../../../core/services/location/wayfinding.service';
-import { MatSnackBar } from '@angular/material/snack-bar';
-
 
 @Component({
   selector: 'app-current',
@@ -85,7 +82,6 @@ location: {
   toaddressnumber?: string;
   fromAddressFull?: string;
   toAddressFull?: string;
-  wayfindingId?: number;
 } = {
   address: ''
 };
@@ -149,6 +145,14 @@ filterDateFrom: Date | null = null;
 filterDateTo: Date | null = null;
 filteredTicketImages: any[] = [];
 
+  // Dimensions edit state
+  dimensionsEditMode: boolean = false;
+  editWidth: number | null = null;
+  editLength: number | null = null;
+  dimensionsSaving: boolean = false;
+  dimensionsError: string | null = null;
+  dimensionsUpdatedMessage: string = '';
+
   leafletRoutes: RouteData[] = [];
   // Store the full assigned route once loaded to resync local data
   assignedRoute: any = null;
@@ -176,9 +180,7 @@ filteredTicketImages: any[] = [];
         private photoEvidenceService: PhotoEvidenceService,
         private diggerService: DiggerService,
         private contractUnitsPhasesService: ContractUnitsPhasesService,
-        private wayfindingService: WayfindingService,
         private dialog: MatDialog,
-        private snackBar: MatSnackBar,
         private ticketService: TicketService,
         private peopleService: PeopleService,
         private quadrantService: QuadrantsService,
@@ -210,6 +212,72 @@ filteredTicketImages: any[] = [];
 
     this.loadWatchnProtectStatus();
 
+  }
+
+  // === Dimensions editing ===
+  startEditDimensions(): void {
+    this.dimensionsError = null;
+    this.dimensionsEditMode = true;
+    this.editWidth = this.location.width ?? null;
+    this.editLength = this.location.length ?? null;
+  }
+
+  cancelEditDimensions(): void {
+    this.dimensionsEditMode = false;
+    this.dimensionsSaving = false;
+    this.dimensionsError = null;
+    this.editWidth = null;
+    this.editLength = null;
+  }
+
+  canSaveDimensions(): boolean {
+    // At least one value provided and valid (>= 0)
+    const hasWidth = this.editWidth !== null && this.editWidth !== undefined && !isNaN(Number(this.editWidth));
+    const hasLength = this.editLength !== null && this.editLength !== undefined && !isNaN(Number(this.editLength));
+    if (!hasWidth && !hasLength) return false;
+    const widthOk = !hasWidth || (Number(this.editWidth) >= 0);
+    const lengthOk = !hasLength || (Number(this.editLength) >= 0);
+    return widthOk && lengthOk && !!this.ticketId && !!this.userId && !this.dimensionsSaving;
+  }
+
+  saveDimensions(): void {
+    if (!this.ticketId) {
+      this.dimensionsError = 'Ticket not available.';
+      return;
+    }
+    if (!this.userId) {
+      this.dimensionsError = 'User not available.';
+      return;
+    }
+    const payload: any = { updatedBy: this.userId };
+    const hasWidth = this.editWidth !== null && this.editWidth !== undefined && !isNaN(Number(this.editWidth));
+    const hasLength = this.editLength !== null && this.editLength !== undefined && !isNaN(Number(this.editLength));
+
+    if (!hasWidth && !hasLength) {
+      this.dimensionsError = 'Enter width and/or length.';
+      return;
+    }
+    if (hasWidth) payload.width = Number(this.editWidth);
+    if (hasLength) payload.length = Number(this.editLength);
+
+    this.dimensionsSaving = true;
+    this.dimensionsError = null;
+
+    this.ticketService.updateWayfindingDimensions(this.ticketId, payload).subscribe({
+      next: () => {
+        if (hasWidth) this.location.width = Number(this.editWidth);
+        if (hasLength) this.location.length = Number(this.editLength);
+        this.dimensionsSaving = false;
+        this.dimensionsEditMode = false;
+        this.dimensionsUpdatedMessage = 'Dimensions updated successfully';
+        setTimeout(() => this.dimensionsUpdatedMessage = '', 3000);
+      },
+      error: (err) => {
+        console.error('❌ Error updating dimensions:', err);
+        this.dimensionsSaving = false;
+        this.dimensionsError = 'Failed to update dimensions. Please try again.';
+      }
+    });
   }
 
   private loadWatchnProtectStatus(): void {
@@ -340,63 +408,7 @@ private loadCriticalDataInParallel(): void {
     }
   }
 
-updateSize(): void {
-  if (!this.location?.wayfindingId) {
-    console.warn('⚠️ No hay wayfindingId para actualizar tamaño');
-    return;
-  }
 
-  // Abrir el diálogo de confirmación
-  const dialogRef = this.dialog.open(ConfirmationDialogComponent, {
-    width: '400px',
-    data: {
-      title: 'Confirm Update',
-      message: 'Are you sure you want to update the size?',
-      confirmText: 'Yes, Update',
-      cancelText: 'Cancel'
-    }
-  });
-
-  // Esperar a que el usuario confirme
-  dialogRef.afterClosed().subscribe(result => {
-    if (result) { // Si confirma
-      const data = {
-        length: this.location.length,
-        width: this.location.width
-      };
-
-      console.log(`📏 Actualizando wayfinding ${this.location.wayfindingId} con:`, data);
-
-      // Llamar al servicio para actualizar
-      if (this.location?.wayfindingId !== undefined) {
-      this.wayfindingService.updateWayfinding(this.location.wayfindingId, data).subscribe({
-        next: (updated) => {
-          console.log('✅ Wayfinding actualizado:', updated);
-
-          // Mostrar snackbar de éxito
-          this.snackBar.open('✅ Size updated successfully!', 'Close', {
-            duration: 3000,
-            horizontalPosition: 'right',
-            verticalPosition: 'top'
-          });
-        },
-        error: (err) => {
-          console.error('❌ Error al actualizar tamaño:', err);
-
-          // Mostrar snackbar de error
-          this.snackBar.open('❌ Error updating size', 'Close', {
-            duration: 3000,
-            horizontalPosition: 'right',
-            verticalPosition: 'top'
-          });
-        }
-      });
-      } else {
-  console.warn('⚠️ wayfindingId no definido');
-}
-    }
-  });
-}
 
 
 loadEmployees() {
@@ -558,9 +570,9 @@ getActivityColor(activityName: string): string {
     case 'Install Signs':
       return '#90C8E0'; // azul pastel
     case 'Grind':
-      return '#B3C8CF'; // 
+      return '#B3C8CF'; //
     case 'Asphalt':
-      return '#E5E1DA'; // 
+      return '#E5E1DA'; //
     case 'Crack Seal':
       return '#F1F0E8'; // gris medio
     case 'Stripping':
@@ -902,7 +914,6 @@ if (details.length > 0) {
   this.location.description = data.contractunit_description;
   this.location.width = data.width;
   this.location.length = data.length;
-  this.location.wayfindingId = data.wayfindingid || data.wayfindingId;
 
   console.log('📍 Dirección actualizada desde backend:', this.location.fullAddress);
   console.log('📝 Descripción:', this.location.description);
