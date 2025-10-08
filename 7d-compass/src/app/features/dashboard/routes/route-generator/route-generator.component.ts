@@ -2296,9 +2296,63 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
         break;
     }
 
+    // Generate date-based route code with sequential number
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const dateString = `${year}${month}${day}`;
+
+    // Get existing routes of this type to calculate sequential number
+    let existingRoutes: Route[] = [];
+    switch (this.newRouteType) {
+      case 'spotting':
+        existingRoutes = this.spottingRoutes;
+        break;
+      case 'concrete':
+        existingRoutes = this.concreteRoutes;
+        break;
+      case 'asphalt':
+        existingRoutes = this.asphaltRoutes;
+        break;
+    }
+
+    // Find routes created today with the same type
+    const todayRoutes = existingRoutes.filter(route => {
+      const routeCodeParts = route.routeCode.split('-');
+      // Check if route code matches format: TYPE-YYYYMMDD-NNN
+      return routeCodeParts.length >= 2 && routeCodeParts[1] === dateString;
+    });
+
+    // Calculate next sequential number
+    let maxSequence = 0;
+    todayRoutes.forEach(route => {
+      const routeCodeParts = route.routeCode.split('-');
+      if (routeCodeParts.length >= 3) {
+        const sequence = parseInt(routeCodeParts[2], 10);
+        if (!isNaN(sequence) && sequence > maxSequence) {
+          maxSequence = sequence;
+        }
+      }
+    });
+
+    const nextSequence = maxSequence + 1;
+    const sequenceString = String(nextSequence).padStart(3, '0'); // 001, 002, etc.
+
+    const routeCode = `${routeType}-${dateString}-${sequenceString}`;
+
+    console.log('📝 Generated Route Code:', {
+      routeType,
+      dateString,
+      todayRoutesCount: todayRoutes.length,
+      maxSequence,
+      nextSequence,
+      finalRouteCode: routeCode
+    });
+
     const requestBody = {
       ticketIds: ticketIds,
-      routeCode: `${routeType}-${new Date().getFullYear()}-${String(Date.now()).slice(-3)}`,
+      routeCode: routeCode,
       type: routeType,
       originAddress: "2000 W 43rd St, Chicago, IL 60609, Estados Unidos",
       destinationAddress: "2000 W 43rd St, Chicago, IL 60609, Estados Unidos",

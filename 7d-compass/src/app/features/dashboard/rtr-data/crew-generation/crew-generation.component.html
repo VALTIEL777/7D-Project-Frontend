@@ -78,18 +78,24 @@
               <mat-icon>add</mat-icon>
             </button>
           </div>
-          
+
           <!-- ✅ NUEVA SECCIÓN: Información sobre empleados disponibles -->
           <div class="employee-stats">
             <small>
-              📊 Available Employees: {{ getAvailableEmployees().length }} | 
+              📊 Available Employees: {{ getAvailableEmployees().length }} |
               Assigned Employees: {{ getAssignedEmployees().length }}
             </small>
+          </div>
+
+          <!-- ✅ RECORDATORIO: Leader requerido -->
+          <div class="leader-reminder" *ngIf="employees.length > 0 && !hasLeaderAlready">
+            <mat-icon class="warning-icon">warning</mat-icon>
+            <small>⚠️ Remember to assign at least one crew leader before saving</small>
           </div>
           <div *ngIf="employeeDataa?.length" class="custom-list">
             <div *ngFor="let emp of employeeDataa" class="custom-list-item">
               <span>{{ emp.name }}</span>
-              <button mat-icon-button color="warn" (click)="onDeleteEmployee(emp)" aria-label="Remove">
+              <button mat-icon-button color="warn" (click)="onDeleteEmployee(emp)" type="button" aria-label="Remove">
                 <mat-icon>cancel</mat-icon>
               </button>
             </div>
@@ -142,7 +148,7 @@
           <div *ngIf="materialDataa?.length" class="custom-list">
             <div *ngFor="let mat of materialDataa" class="custom-list-item">
               <span>{{ mat.name }} ({{ mat.quantity }})</span>
-              <button mat-icon-button color="warn" (click)="onDeleteMaterial(mat)" aria-label="Remove">
+              <button mat-icon-button color="warn" (click)="onDeleteMaterial(mat)" type="button" aria-label="Remove">
                 <mat-icon>cancel</mat-icon>
               </button>
             </div>
@@ -203,7 +209,7 @@
           <div *ngIf="equipmentDataa?.length" class="custom-list">
             <div *ngFor="let eq of equipmentDataa" class="custom-list-item">
               <span>{{ eq.name }} ({{ eq.quantity }})</span>
-              <button mat-icon-button color="warn" (click)="onDeleteEquipment(eq)" aria-label="Remove">
+              <button mat-icon-button color="warn" (click)="onDeleteEquipment(eq)" type="button" aria-label="Remove">
                 <mat-icon>cancel</mat-icon>
               </button>
             </div>
@@ -219,14 +225,20 @@
           <mat-form-field appearance="outline" style="width: 100%;">
             <mat-label>Route</mat-label>
             <mat-select formControlName="route" required>
-              <mat-option *ngFor="let route of routes" [value]="route.routeid">
-                {{ route.routecode }}
+              <mat-option *ngIf="routes.length === 0" disabled>
+                No routes available
+              </mat-option>
+              <mat-option *ngFor="let route of routes" [value]="route.routeid || route.routeId">
+                {{ route.routecode || route.routeCode || route.code || 'Unknown Route' }}
               </mat-option>
             </mat-select>
             <!-- <mat-error *ngIf="form.get('route')?.hasError('required')">
               Route is required
             </mat-error> -->
           </mat-form-field>
+          <small *ngIf="routes.length > 0" style="color: #666;">
+            {{ routes.length }} route(s) available
+          </small>
         </mat-card-content>
       </mat-card>
 

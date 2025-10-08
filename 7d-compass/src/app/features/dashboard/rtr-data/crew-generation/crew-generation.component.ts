@@ -1,6 +1,6 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, Inject, PLATFORM_ID } from '@angular/core';
+import { isPlatformBrowser, CommonModule } from '@angular/common';
 import { FormArray, FormBuilder, FormControl, FormGroup, Validators } from '@angular/forms';
-import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { MATERIAL_MODULES } from '../../../../material';
 import { DashboardLayoutComponent } from "../../../../shared/dashboard-layout/dashboard-layout.component";
@@ -134,7 +134,8 @@ routes: any[] = [];
     private routeService: RoutesService,
     private routeState: RouteStateService,
     private snackBar: MatSnackBar,
-    private employeeSkillsService: EmployeeSkillsService
+    private employeeSkillsService: EmployeeSkillsService,
+    @Inject(PLATFORM_ID) private platformId: Object
   ) {
     this.form = this.fb.group({
       type: [null, ],
@@ -210,13 +211,16 @@ limitMaterialQuantity(event: any) {
 
 
   ngOnInit(): void {
-    this.loadEmployees();
-    this.loadMaterials();
-    this.loadEquipment();
-    this.updateEmployeeData();
-    this.updateMaterialData();
-    this.updateEquipmentData();
-    this.loadRoutes();
+    // Only load data in browser environment (not during SSR)
+    if (isPlatformBrowser(this.platformId)) {
+      this.loadEmployees();
+      this.loadMaterials();
+      this.loadEquipment();
+      this.updateEmployeeData();
+      this.updateMaterialData();
+      this.updateEquipmentData();
+      this.loadRoutes();
+    }
 
     this.filteredEmployees = this.employeeControl.valueChanges.pipe(
       startWith(''),
@@ -288,41 +292,41 @@ limitMaterialQuantity(event: any) {
         console.log('📦 Crews loaded:', crews.length);
         console.log('📦 Sample crewEmployee:', crewEmployees[0]);
         console.log('📦 Sample crew:', crews[0]);
-        
+
         // ✅ DEBUG: Mostrar todos los crewIds en crewEmployees
         const crewIdsInCrewEmployees = [...new Set(crewEmployees.map(ce => ce.crewid || ce.crewId))];
         console.log('🔍 Crew IDs in crewEmployees:', crewIdsInCrewEmployees);
         console.log('🔍 Types of crew IDs in crewEmployees:', crewIdsInCrewEmployees.map(id => typeof id));
-        
+
         // ✅ DEBUG: Mostrar todos los crewIds en crews
         const crewIdsInCrews = crews.map(c => c.crewid || c.crewId);
         console.log('🔍 Crew IDs in crews:', crewIdsInCrews);
         console.log('🔍 Types of crew IDs in crews:', crewIdsInCrews.map(id => typeof id));
-        
+
         // ✅ DEBUG: Encontrar crews huérfanos
-        const orphanedCrewIds = crewIdsInCrewEmployees.filter(id => 
+        const orphanedCrewIds = crewIdsInCrewEmployees.filter(id =>
           !crewIdsInCrews.some(crewId => crewId == id) // ✅ Usar == para comparar strings y numbers
         );
         console.log('⚠️ Orphaned crew IDs (deleted crews):', orphanedCrewIds);
-        
+
        this.employeeList = people.map((person: any) => {
   // ✅ VERIFICAR EN LA BASE DE DATOS si el empleado está asignado a algún crew ACTIVO
-  const crewAssignment = crewEmployees.find((ce: any) => 
-    ce.employeeId === person.employeeId || 
+  const crewAssignment = crewEmployees.find((ce: any) =>
+    ce.employeeId === person.employeeId ||
     ce.peopleId === person.employeeId ||
     ce.employeeid === person.employeeId
   );
-  
+
   // ✅ Buscar el crew y verificar si EXISTE en la tabla crews
   const crew = crewAssignment ? crews.find((c: any) => {
     const crewId = crewAssignment.crewid || crewAssignment.crewId;
     const cId = c.crewid || c.crewId || c.id;
     return crewId == cId; // ✅ Usar == para comparar strings y numbers
   }) : null;
-  
+
   // ✅ Verificar si el crew existe (no fue eliminado)
   const isCrewExists = crew !== null && crew !== undefined;
-  
+
   const personSkills = skills
     .filter((s: any) => s.userId === person.userId)
     .map((s: any) => s.name);
@@ -343,7 +347,7 @@ limitMaterialQuantity(event: any) {
     console.log(`🔍 Employee ${employeeData.name} is assigned to EXISTING crew ${crewAssignment.crewid || crewAssignment.crewId}`);
   } else if (crewAssignment && !isCrewExists) {
     console.log(`⚠️ Employee ${employeeData.name} was assigned to DELETED crew ${crewAssignment.crewid || crewAssignment.crewId} - now available`);
-    
+
     // ✅ DEBUG específico para crew 4
     if (crewAssignment.crewid === 4 || crewAssignment.crewId === 4) {
       console.log(`🔍 DEBUG Crew 4 - Employee: ${employeeData.name}, CrewAssignment:`, crewAssignment);
@@ -359,7 +363,7 @@ limitMaterialQuantity(event: any) {
         console.log('📦 Final employeeList:', this.employeeList.length);
         console.log('📦 Assigned employees:', this.employeeList.filter(emp => emp.crewid).length);
         console.log('📦 Available employees:', this.employeeList.filter(emp => !emp.crewid).length);
-        
+
         // ✅ DEBUG: Mostrar detalles de crews eliminados
         const deletedCrews = crews.filter(c => c.deletedAt || c.deletedat);
         if (deletedCrews.length > 0) {
@@ -368,7 +372,7 @@ limitMaterialQuantity(event: any) {
             console.log(`  - Crew ID: ${crew.crewid || crew.crewId}, Type: ${crew.type}, DeletedAt: ${crew.deletedAt || crew.deletedat}`);
           });
         }
-        
+
         // ✅ DEBUG: Mostrar crews que no existen en la tabla crews pero sí en crewEmployees
         if (orphanedCrewIds.length > 0) {
           console.log('⚠️ Orphaned crew assignments found (crew deleted but employees still assigned):', orphanedCrewIds);
@@ -444,14 +448,67 @@ loadMaterials() {
 }
 
 loadRoutes() {
-  this.routeService.getAllRoutes().subscribe({
-    next: (res) => {
-      console.log('📦 Resultado crudo de getAllRoutes():', res);
-      // Verifica si necesitas res.data o algo similar
-this.routes = Array.isArray(res.routes) ? res.routes : [];
+  forkJoin({
+    spotting: this.routeService.getSpottingRoutes(),
+    concrete: this.routeService.getConcreteRoutes(),
+    asphalt: this.routeService.getAsphaltRoutes()
+  }).subscribe({
+    next: ({ spotting, concrete, asphalt }) => {
+      console.log('📦 Spotting routes raw response:', spotting);
+      console.log('📦 Concrete routes raw response:', concrete);
+      console.log('📦 Asphalt routes raw response:', asphalt);
+
+      // Helper function to extract routes from different response formats
+      const extractRoutes = (response: any): any[] => {
+        if (!response) return [];
+
+        // If response is already an array
+        if (Array.isArray(response)) {
+          console.log('✅ Response is array:', response.length);
+          return response;
+        }
+
+        // If response has a 'routes' property
+        if (response.routes && Array.isArray(response.routes)) {
+          console.log('✅ Response has routes property:', response.routes.length);
+          return response.routes;
+        }
+
+        // If response has a 'data' property
+        if (response.data && Array.isArray(response.data)) {
+          console.log('✅ Response has data property:', response.data.length);
+          return response.data;
+        }
+
+        // If response has a 'data.routes' property
+        if (response.data?.routes && Array.isArray(response.data.routes)) {
+          console.log('✅ Response has data.routes property:', response.data.routes.length);
+          return response.data.routes;
+        }
+
+        console.warn('⚠️ Could not extract routes from response:', response);
+        return [];
+      };
+
+      // Extract routes from each endpoint
+      const spottingRoutes = extractRoutes(spotting);
+      const concreteRoutes = extractRoutes(concrete);
+      const asphaltRoutes = extractRoutes(asphalt);
+
+      console.log('📊 Spotting routes count:', spottingRoutes.length);
+      console.log('📊 Concrete routes count:', concreteRoutes.length);
+      console.log('📊 Asphalt routes count:', asphaltRoutes.length);
+
+      // Concatenate all routes
+      this.routes = [...spottingRoutes, ...concreteRoutes, ...asphaltRoutes];
+
+      console.log('📦 Total routes loaded:', this.routes.length);
+      console.log('📦 Combined routes:', this.routes);
     },
     error: (err) => {
       console.error('❌ Error al cargar rutas:', err);
+      console.error('❌ Error details:', err.message);
+      this.routes = [];
     }
   });
 }
@@ -507,8 +564,8 @@ private _filterEmployees(value: string | any): any[] {
 
   // ✅ Filtrar solo empleados disponibles (sin equipo asignado) y que no estén ya en la lista
   const currentEmployeeIds = this.employees.controls.map(emp => emp.get('employeeid')?.value);
-  
-  return this.employeeList.filter(employee => 
+
+  return this.employeeList.filter(employee =>
     employee.name.toLowerCase().includes(filterValue) &&
     !employee.crewid && // Solo empleados sin equipo asignado
     !currentEmployeeIds.includes(employee.employeeid) // No incluir empleados ya en la lista
@@ -519,8 +576,8 @@ private _filterEmployees(value: string | any): any[] {
 getAvailableEmployees(): any[] {
   // ✅ Empleados sin crew asignado Y que no estén en la lista actual
   const currentEmployeeIds = this.employees.controls.map(emp => emp.get('employeeid')?.value);
-  return this.employeeList.filter(employee => 
-    !employee.crewid && 
+  return this.employeeList.filter(employee =>
+    !employee.crewid &&
     !currentEmployeeIds.includes(employee.employeeid)
   );
 }
@@ -529,8 +586,8 @@ getAvailableEmployees(): any[] {
 getAssignedEmployees(): any[] {
   // ✅ Empleados con crew asignado O que estén en la lista actual
   const currentEmployeeIds = this.employees.controls.map(emp => emp.get('employeeid')?.value);
-  return this.employeeList.filter(employee => 
-    employee.crewid || 
+  return this.employeeList.filter(employee =>
+    employee.crewid ||
     currentEmployeeIds.includes(employee.employeeid)
   );
 }
@@ -581,8 +638,8 @@ addEmployee() {
   // ✅ VALIDACIÓN: Verificar si el empleado ya tiene un equipo asignado
   if (selected.crewid) {
     this.snackBar.open(
-      `⚠️ ${selected.name} ya tiene un equipo asignado (${selected.type || 'Sin tipo'}). No se puede agregar nuevamente.`, 
-      'Cerrar', 
+      `⚠️ ${selected.name} ya tiene un equipo asignado (${selected.type || 'Sin tipo'}). No se puede agregar nuevamente.`,
+      'Cerrar',
       {
         duration: 5000,
         horizontalPosition: 'center',
@@ -590,7 +647,7 @@ addEmployee() {
         panelClass: ['warning-snackbar']
       }
     );
-    
+
     // Limpiar el formulario
     this.form.patchValue({
       selectedEmployee: null,
@@ -607,8 +664,8 @@ addEmployee() {
   const isAlreadyInList = this.employees.controls.some(emp => emp.get('employeeid')?.value === selected.employeeid);
   if (isAlreadyInList) {
     this.snackBar.open(
-      `⚠️ ${selected.name} ya está en la lista actual. No se puede agregar duplicados.`, 
-      'Cerrar', 
+      `⚠️ ${selected.name} ya está en la lista actual. No se puede agregar duplicados.`,
+      'Cerrar',
       {
         duration: 3000,
         horizontalPosition: 'center',
@@ -616,7 +673,7 @@ addEmployee() {
         panelClass: ['warning-snackbar']
       }
     );
-    
+
     // Limpiar el formulario
     this.form.patchValue({
       selectedEmployee: null,
@@ -664,7 +721,7 @@ addEmployee() {
   } else {
     this.form.get('isLeader')?.enable();
   }
-  
+
   // ✅ Forzar actualización de estadísticas
   this.forceStatsUpdate();
 }
@@ -686,20 +743,20 @@ private isEmployeeAssignedInDatabase(employeeId: number): Observable<boolean> {
         crews: this.crewsService.getAllCrews()
       }).subscribe({
         next: ({ crewEmployees, crews }) => {
-          const crewAssignment = crewEmployees.find((ce: any) => 
-            ce.employeeId === employeeId || 
+          const crewAssignment = crewEmployees.find((ce: any) =>
+            ce.employeeId === employeeId ||
             ce.peopleId === employeeId ||
             ce.employeeid === employeeId
           );
-          
+
           if (crewAssignment) {
             // ✅ Verificar si el crew existe
-            const crew = crews.find((c: any) => 
-              c.crewid === crewAssignment.crewid || 
+            const crew = crews.find((c: any) =>
+              c.crewid === crewAssignment.crewid ||
               c.crewId === crewAssignment.crewId ||
               c.id === crewAssignment.crewId
             );
-            
+
             const isActive = this.isCrewExists(crew);
             observer.next(isActive);
           } else {
@@ -1036,12 +1093,35 @@ save() {
     return;
   }
 
+  // ✅ VALIDACIÓN: Verificar que haya al menos un líder asignado
+  const hasLeader = this.employees.controls.some(emp => emp.get('leader')?.value === true);
+
+  if (!hasLeader) {
+    const dialogRef = this.dialog.open(ConfirmationDialogComponent, {
+      width: '450px',
+      disableClose: true,
+      panelClass: 'confirmation-dialog',
+      data: {
+        title: 'Leader Required',
+        message: 'You must assign at least one crew leader before saving. Please mark an employee as leader.',
+        confirmText: 'OK',
+        cancelText: '',
+        showCancel: false
+      }
+    });
+
+    dialogRef.afterClosed().subscribe(() => {
+      console.warn('⚠️ No leader assigned');
+    });
+
+    return;
+  }
 
   this.isLoading = true; // <-- iniciar loader
 
   const selectedRouteId = this.form.get('route')?.value;
-  const selectedRoute = this.routes.find(r => r.routeid === selectedRouteId);
-  const selectedRouteCode = selectedRoute?.routecode;
+  const selectedRoute = this.routes.find(r => (r.routeid || r.routeId) === selectedRouteId);
+  const selectedRouteCode = selectedRoute?.routecode || selectedRoute?.routeCode;
   localStorage.setItem('selectedRouteCode', selectedRouteCode || '');
 
   this.routeState.setRouteCode(selectedRouteCode || '');

@@ -24,6 +24,24 @@ export class RoutesService {
     return this.http.get<any>(`${this.baseUrl}/${routeId}`);
   }
 
+  // GET /routes/spotting
+  getSpottingRoutes(): Observable<any> {
+    console.log('🛣️ Getting spotting routes...');
+    return this.http.get<any>(`${this.baseUrl}/spotting`);
+  }
+
+  // GET /routes/concrete
+  getConcreteRoutes(): Observable<any> {
+    console.log('🛣️ Getting concrete routes...');
+    return this.http.get<any>(`${this.baseUrl}/concrete`);
+  }
+
+  // GET /routes/asphalt
+  getAsphaltRoutes(): Observable<any> {
+    console.log('🛣️ Getting asphalt routes...');
+    return this.http.get<any>(`${this.baseUrl}/asphalt`);
+  }
+
   // POST /routes
   createRoute(route: any): Observable<any> {
     return this.http.post<any>(this.baseUrl, route);
@@ -62,7 +80,7 @@ export class RoutesService {
 
     // Use the route optimization endpoint (same as route-generator)
     const endpoint = `${environment.apiUrl}/route-optimization/optimize-single`;
-    
+
     // Create temporary ticket IDs for locations that don't have them
     const ticketIds = locations.map((loc, index) => {
       if (loc.ticketid || loc.ticketId) {
@@ -72,7 +90,7 @@ export class RoutesService {
         return -(index + 1); // Use negative numbers to avoid conflicts
       }
     }).filter(id => id);
-    
+
     const requestBody = {
       ticketIds: ticketIds,
       routeCode: `UPCOMING-${new Date().getFullYear()}-${String(Date.now()).slice(-3)}`,

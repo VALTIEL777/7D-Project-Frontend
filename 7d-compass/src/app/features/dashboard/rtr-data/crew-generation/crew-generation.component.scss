@@ -72,6 +72,41 @@ mat-selct{
   font-weight: 500;
 }
 
+// ✅ ESTILOS PARA EL RECORDATORIO DE LEADER
+.leader-reminder {
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  background-color: #fff3e0;
+  border-radius: 4px;
+  border-left: 4px solid #ff9800;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  animation: pulse 2s infinite;
+}
+
+.leader-reminder small {
+  color: #e65100;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.leader-reminder .warning-icon {
+  color: #ff9800;
+  font-size: 20px;
+  width: 20px;
+  height: 20px;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    background-color: #fff3e0;
+  }
+  50% {
+    background-color: #ffe0b2;
+  }
+}
+
 .section-card {
   margin-top: 2rem;
 }
