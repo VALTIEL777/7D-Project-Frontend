@@ -1093,28 +1093,75 @@ export class PhotoEvidenceComponent extends BaseDashboardComponent implements On
   private refreshCurrentTicketPhotos(): void {
     if (!this.selectedTicket) return;
 
-    // Reload the gallery data to get the latest photos
-    this.http.get<GalleryResponse>(`${environment.apiUrl}/tickets/gallery`).subscribe({
-      next: (response) => {
-        if (response.success) {
-          this.galleryData = response.data;
-          this.flattenGalleryData();
+    console.log('🔄 Refreshing photos for current ticket:', this.selectedTicket.ticketCode);
 
+    // Simple approach: Just reload the photos without touching gallery data or filters
+    // This preserves all filters and table state
+    this.reloadCurrentTicketPhotosFromGallery();
+  }
+
+  private async reloadCurrentTicketPhotosFromGallery(): Promise<void> {
+    if (!this.selectedTicket) return;
+
+    const ticketId = this.selectedTicket.ticketId;
+
+    // Fetch fresh gallery data in the background (don't update UI yet)
+    this.http.get<GalleryResponse>(`${environment.apiUrl}/tickets/gallery`).subscribe({
+      next: async (response) => {
+        if (response.success) {
           // Find the updated ticket in the new data
-          const updatedTicket = this.findTicketInGalleryData(this.selectedTicket!.ticketId);
+          let updatedTicket: Ticket | null = null;
+          for (const incident of response.data) {
+            const ticket = incident.tickets.find(t => t.ticketId === ticketId);
+            if (ticket) {
+              // Preserve incident information
+              updatedTicket = {
+                ...ticket,
+                incidentId: incident.incidentId,
+                incidentName: incident.incidentName,
+                earliestRptDate: incident.earliestRptDate
+              };
+              break;
+            }
+          }
+
           if (updatedTicket) {
-            // Update the selected ticket with fresh data
+            console.log('✅ Found updated ticket, reloading photos only...');
+
+            // Update ONLY the selectedTicket reference (don't touch galleryData, allData, or filteredData)
             this.selectedTicket = updatedTicket;
-            // Reload photos for the updated ticket (this will handle its own loading state)
-            this.onTicketSelect(updatedTicket);
+
+            // Reload only the photo gallery (right side) - this doesn't affect the table (left side)
+            await this.reloadTicketPhotosOnly(updatedTicket);
+
+            console.log('✅ Photos refreshed (filters and table preserved)');
+          } else {
+            console.warn('⚠️ Could not find updated ticket');
           }
         }
       },
       error: (error) => {
-        console.error('❌ Error refreshing ticket photos:', error);
+        console.error('❌ Error refreshing photos:', error);
         this.snackBar.open('Error refreshing photos', 'Close', { duration: 3000 });
       }
     });
+  }
+
+  private async reloadTicketPhotosOnly(ticket: Ticket): Promise<void> {
+    // Reload photos without calling flattenGalleryData or resetting filters
+    console.log('🔄 Reloading photos only for ticket:', ticket.ticketCode);
+
+    try {
+      const rawPhotos = this.getAllPhotosFromTicket(ticket);
+      this.selectedPhotos = await this.loadPhotoBlobs(rawPhotos);
+
+      await this.loadPhotosFromSameMXNumber();
+      this.rebuildPhases();
+
+      console.log('✅ Photos reloaded (filters preserved)');
+    } catch (error) {
+      console.error('❌ Error reloading photos:', error);
+    }
   }
 
   private findTicketInGalleryData(ticketId: number): Ticket | null {
