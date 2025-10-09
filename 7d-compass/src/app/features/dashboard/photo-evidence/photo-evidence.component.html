@@ -59,13 +59,28 @@
             <div *ngFor="let phase of phases; trackBy: trackByPhase" class="phase-group">
               <div class="phase-header">
                 <div class="phase-info">
-                  <h4 class="phase-title">{{ phase.phaseName }}</h4>
+                  <div class="phase-title-row">
+                    <h4 class="phase-title">{{ phase.phaseName }}</h4>
+                    <span class="completed-badge" *ngIf="isPhaseCompleted(phase.phaseName)">Completed</span>
+                  </div>
                   <span class="photo-count">{{ phase.photos.length }} photo{{ phase.photos.length !== 1 ? 's' : '' }}</span>
                 </div>
-                <button mat-icon-button class="add-photo-btn" (click)="addPhotoToPhase(getTaskStatusId(phase.phaseName))" matTooltip="Add Photo to this phase" [disabled]="uploadingPhoto">
-                  <mat-icon *ngIf="!uploadingPhoto">add_a_photo</mat-icon>
-                  <div *ngIf="uploadingPhoto" class="upload-spinner"></div>
-                </button>
+                <div class="phase-actions">
+                  <button mat-icon-button class="complete-phase-btn"
+                          (click)="completePhase(getTaskStatusId(phase.phaseName))"
+                          matTooltip="Mark phase as completed"
+                          [disabled]="completingPhase || isPhaseCompleted(phase.phaseName)">
+                    <mat-icon *ngIf="!completingPhase">check_circle</mat-icon>
+                    <div *ngIf="completingPhase" class="complete-spinner"></div>
+                  </button>
+                  <button mat-icon-button class="add-photo-btn"
+                          (click)="addPhotoToPhase(getTaskStatusId(phase.phaseName))"
+                          matTooltip="Add Photo to this phase"
+                          [disabled]="uploadingPhoto">
+                    <mat-icon *ngIf="!uploadingPhoto">add_a_photo</mat-icon>
+                    <div *ngIf="uploadingPhoto" class="upload-spinner"></div>
+                  </button>
+                </div>
               </div>
               <div class="gallery-grid" *ngIf="phase.photos.length > 0">
                 <div *ngFor="let photo of phase.photos; trackBy: trackByPhoto" class="photo-item">

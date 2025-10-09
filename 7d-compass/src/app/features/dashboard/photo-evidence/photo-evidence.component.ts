@@ -23,7 +23,7 @@ interface PhotoEvidence {
   photo: string;
   date: string;
   comment: string;
-  photoURL: string;
+  photoURL?: string; // Optional: may be blob URL, data URL, or undefined (cleared to prevent MinIO URLs)
   createdAt: string;
   taskStatusName?: string; // Optional property added for context
   loaded?: boolean; // Whether the photo has been loaded as blob
@@ -143,6 +143,7 @@ export class PhotoEvidenceComponent extends BaseDashboardComponent implements On
   loadingPhotos = false; // New property for photo loading state
   uploadingPhoto = false; // New property for photo upload state
   deletingPhoto = false; // New property for photo delete state
+  completingPhase = false; // New property for phase completion state
   error: string | null = null;
   galleryData: Incident[] = [];
   selectedTicket: Ticket | null = null;
@@ -435,8 +436,10 @@ export class PhotoEvidenceComponent extends BaseDashboardComponent implements On
     ticket.taskStatuses.forEach(taskStatus => {
       if (taskStatus.photoEvidence && taskStatus.photoEvidence.length > 0) {
         // Add task status name to each photo for context
+        // Clear old photoURL (might contain MinIO URLs) - will be replaced with blob URLs
         const photosWithContext = taskStatus.photoEvidence.map(photo => ({
           ...photo,
+          photoURL: undefined, // Clear stored MinIO URLs
           taskStatusName: taskStatus.name,
           crewLeaderFullName: taskStatus.crewLeader?.fullName
         }));
@@ -447,13 +450,116 @@ export class PhotoEvidenceComponent extends BaseDashboardComponent implements On
     return allPhotos;
   }
 
-  // Load photo blobs and create object URLs like the current/completed components
+  // Load photo blobs and create object URLs using batch endpoint
+  // API Spec: POST /api/photoevidence/files
+  // Body: { "photoIds": number[] }
+  // Response: { results: [{ photoId, exists, url?, error? }], notFoundIds: number[] }
+  // Note: Prefer the returned url values; do not use the stored photoURL
   private async loadPhotoBlobs(photos: PhotoEvidence[]): Promise<PhotoEvidence[]> {
+    if (photos.length === 0) return [];
+
+    console.log(`📦 Loading ${photos.length} photos using batch endpoint...`);
+    const startTime = performance.now();
+
+    try {
+      // Step 1: Get all photo URLs from batch endpoint
+      const photoIds = photos.map(p => p.photoId);
+      const batchResponse = await this.photoEvidenceService.getBatchPhotoUrls(photoIds).toPromise();
+
+      console.log('✅ Batch response received:', batchResponse);
+
+      // Extract the results array from the response
+      const photoResults = batchResponse.results || batchResponse;
+      const notFoundIds = batchResponse.notFoundIds || [];
+
+      console.log('📋 Photo results count:', photoResults.length);
+      if (notFoundIds.length > 0) {
+        console.warn('⚠️ Photos not found on server:', notFoundIds);
+      }
+
+      // Step 2: Load all photo blobs in parallel (browser will naturally throttle concurrent requests)
+      console.log('🚀 Starting parallel photo fetch for all photos...');
+
+      const photosWithBlobs = await Promise.all(
+        photos.map(async (photo) => {
+          try {
+            // Check if this photo is in the notFoundIds list
+            if (notFoundIds.includes(photo.photoId)) {
+              console.warn(`⚠️ Photo ${photo.photoId} not found on server (from notFoundIds)`);
+              return { ...photo, loaded: false, error: true };
+            }
+
+            // Get the URL for this photo from batch response
+            const photoData = photoResults.find((p: any) => p.photoId === photo.photoId);
+
+            if (!photoData) {
+              console.warn(`⚠️ Photo ${photo.photoId} not found in batch response`);
+              return { ...photo, loaded: false, error: true };
+            }
+
+            // Check for errors from the backend
+            if (photoData.error) {
+              console.warn(`⚠️ Photo ${photo.photoId} has error from backend:`, photoData.error);
+              return { ...photo, loaded: false, error: true };
+            }
+
+            // Check if photo exists and has a valid URL (as per API spec: prefer returned url values)
+            if (!photoData.exists || !photoData.url) {
+              console.warn(`⚠️ Photo ${photo.photoId} doesn't exist or has no URL`, photoData);
+              return { ...photo, loaded: false, error: true };
+            }
+
+            // Use the URL exactly as provided by the backend
+            const photoUrl = photoData.url;
+
+            // Fetch the blob using the provided URL
+            const blob = await this.http.get(photoUrl, { responseType: 'blob' }).toPromise();
+
+            if (blob) {
+              const objectUrl = URL.createObjectURL(blob);
+              return {
+                ...photo,
+                photoURL: objectUrl,
+                loaded: true,
+                error: false
+              };
+            } else {
+              return { ...photo, loaded: false, error: true };
+            }
+          } catch (error) {
+            console.error('Error loading photo blob for photoId:', photo.photoId, error);
+            return { ...photo, loaded: false, error: true };
+          }
+        })
+      );
+
+      const endTime = performance.now();
+      const successCount = photosWithBlobs.filter(p => p.loaded).length;
+      const errorCount = photosWithBlobs.filter(p => p.error).length;
+
+      console.log(`✅ Batch loading complete in ${(endTime - startTime).toFixed(2)}ms`);
+      console.log(`📊 Success: ${successCount}/${photosWithBlobs.length} photos loaded`);
+      if (errorCount > 0) {
+        console.warn(`⚠️ Failed: ${errorCount} photos had errors`);
+      }
+
+      return photosWithBlobs;
+
+    } catch (error) {
+      console.error('❌ Error in batch photo loading:', error);
+
+      // Fallback to individual loading if batch fails
+      console.log('⚠️ Falling back to individual photo loading...');
+      return this.loadPhotoBlobsIndividual(photos);
+    }
+  }
+
+  // Fallback method: Load photos individually (old sequential method)
+  private async loadPhotoBlobsIndividual(photos: PhotoEvidence[]): Promise<PhotoEvidence[]> {
     const photosWithBlobs: PhotoEvidence[] = [];
 
     for (const photo of photos) {
       try {
-        // Try to get the photo blob from the service
         const blob = await this.photoEvidenceService.getPhotoEvidenceFile(photo.photoId).toPromise();
         if (blob) {
           const objectUrl = URL.createObjectURL(blob);
@@ -464,7 +570,6 @@ export class PhotoEvidenceComponent extends BaseDashboardComponent implements On
             error: false
           });
         } else {
-          // Fallback to original photoURL if blob fails
           photosWithBlobs.push({
             ...photo,
             loaded: false,
@@ -473,7 +578,6 @@ export class PhotoEvidenceComponent extends BaseDashboardComponent implements On
         }
       } catch (error) {
         console.error('Error loading photo blob for photoId:', photo.photoId, error);
-        // Fallback to original photoURL if blob fails
         photosWithBlobs.push({
           ...photo,
           loaded: false,
@@ -485,15 +589,22 @@ export class PhotoEvidenceComponent extends BaseDashboardComponent implements On
     return photosWithBlobs;
   }
 
+  // Helper method to split array into chunks for parallel processing
+  private chunkArray<T>(array: T[], size: number): T[][] {
+    const chunks: T[][] = [];
+    for (let i = 0; i < array.length; i += size) {
+      chunks.push(array.slice(i, i + size));
+    }
+    return chunks;
+  }
+
   getPhotoPreviewUrl(photo: PhotoEvidence): string {
-    // Prefer previously resolved URL (blob or direct)
-    if (photo.photoURL) {
+    // Only use photoURL if it's a blob URL (created by us) or data URL
+    if (photo.photoURL && (photo.photoURL.startsWith('blob:') || photo.photoURL.startsWith('data:'))) {
       return photo.photoURL;
     }
-    // Fallback to base64 data if available
-    if (photo.photo) {
-      return photo.photo;
-    }
+
+    // NEVER use stored MinIO URLs - always go through API proxy
     // Final fallback: serve directly from API endpoint
     return `${environment.photoEvidenceServiceUrl}/${photo.photoId}/file`;
   }
@@ -692,8 +803,10 @@ export class PhotoEvidenceComponent extends BaseDashboardComponent implements On
           ticket.taskStatuses.forEach(taskStatus => {
             if (taskStatus.name === phaseName && taskStatus.photoEvidence) {
               // Add task status name and ticket info to each photo for context
+              // Clear old photoURL (might contain MinIO URLs) - will be replaced with blob URLs
               const photosWithContext = taskStatus.photoEvidence.map(photo => ({
                 ...photo,
+                photoURL: undefined, // Clear stored MinIO URLs
                 taskStatusName: taskStatus.name,
                 crewLeaderFullName: taskStatus.crewLeader?.fullName,
                 ticketCode: ticket.ticketCode, // Add ticket code for context
@@ -724,8 +837,10 @@ export class PhotoEvidenceComponent extends BaseDashboardComponent implements On
           ticket.taskStatuses.forEach(taskStatus => {
             if ((taskStatus.name === 'No Parking Signs' || taskStatus.name === 'Install Signs') && taskStatus.photoEvidence) {
               // Add task status name and ticket info to each photo for context
+              // Clear old photoURL (might contain MinIO URLs) - will be replaced with blob URLs
               const photosWithContext = taskStatus.photoEvidence.map(photo => ({
                 ...photo,
+                photoURL: undefined, // Clear stored MinIO URLs
                 taskStatusName: taskStatus.name,
                 crewLeaderFullName: taskStatus.crewLeader?.fullName,
                 ticketCode: ticket.ticketCode, // Add ticket code for context
@@ -774,6 +889,63 @@ export class PhotoEvidenceComponent extends BaseDashboardComponent implements On
 
     const taskStatus = this.selectedTicket.taskStatuses.find(ts => ts.name === phaseName);
     return taskStatus ? taskStatus.taskStatusId : 0;
+  }
+
+  isPhaseCompleted(phaseName: string): boolean {
+    if (!this.selectedTicket) return false;
+
+    const taskStatus = this.selectedTicket.taskStatuses.find(ts => ts.name === phaseName);
+    return taskStatus ? !!taskStatus.endingDate : false;
+  }
+
+  completePhase(taskStatusId: number): void {
+    if (!this.selectedTicket || !taskStatusId) {
+      this.snackBar.open('Unable to complete phase', 'Close', { duration: 3000 });
+      return;
+    }
+
+    const dialogRef = this.dialog.open(ConfirmationDialogComponent, {
+      width: '450px',
+      data: {
+        title: 'Complete Phase',
+        message: 'Are you sure you want to mark this phase as completed? This will set the ending date to today.',
+        confirmText: 'Complete',
+        cancelText: 'Cancel'
+      }
+    });
+
+    dialogRef.afterClosed().subscribe(confirmed => {
+      if (confirmed && this.selectedTicket) {
+        this.completingPhase = true;
+
+        // Format today's date as YYYY-MM-DD
+        const today = new Date();
+        const formattedDate = today.toISOString().split('T')[0];
+
+        const payload = {
+          endingDate: formattedDate,
+          updatedBy: 1 // TODO: Get from auth service
+        };
+
+        const ticketId = this.selectedTicket.ticketId;
+
+        this.http.put(`${environment.apiUrl}/ticketstatus/${taskStatusId}/${ticketId}`, payload).subscribe({
+          next: (response) => {
+            console.log('✅ Phase completed successfully:', response);
+            this.snackBar.open('Phase marked as completed', 'Close', { duration: 3000 });
+
+            // Refresh the current ticket's data
+            this.refreshCurrentTicketPhotos();
+            this.completingPhase = false;
+          },
+          error: (error) => {
+            console.error('❌ Error completing phase:', error);
+            this.snackBar.open('Error completing phase', 'Close', { duration: 3000 });
+            this.completingPhase = false;
+          }
+        });
+      }
+    });
   }
 
   onImageError(event: any): void {

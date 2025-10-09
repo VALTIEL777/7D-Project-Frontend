@@ -17,7 +17,7 @@ export class PhotoEvidenceService {
     console.log('🚀 PhotoEvidenceService.uploadPhotoEvidence() llamado');
     console.log('📡 URL de la API:', `${this.baseUrl}`);
     console.log('📦 FormData recibido:', data);
-    
+
     // Log del contenido del FormData
     console.log('📋 Contenido del FormData:');
     for (let [key, value] of data.entries()) {
@@ -27,7 +27,7 @@ export class PhotoEvidenceService {
         console.log(`  ${key}:`, value);
       }
     }
-    
+
     return this.http.post(`${this.baseUrl}`, data);
   }
 
@@ -62,7 +62,7 @@ export class PhotoEvidenceService {
 
   // Método para descargar archivo con nombre específico
   downloadPhotoEvidenceFile(photoId: number, fileName?: string): Observable<Blob> {
-    return this.http.get(`${this.baseUrl}/${photoId}/file`, { 
+    return this.http.get(`${this.baseUrl}/${photoId}/file`, {
       responseType: 'blob',
       headers: {
         'Accept': 'application/octet-stream'
@@ -74,5 +74,23 @@ export class PhotoEvidenceService {
   getPhotoEvidenceFileAlternative(photoId: number): Observable<Blob> {
     // Probar con diferentes endpoints comunes
     return this.http.get(`${this.baseUrl}/${photoId}/file`, { responseType: 'blob' });
+  }
+
+  /**
+   * Batch method to get multiple photo URLs at once
+   *
+   * API Spec:
+   * - Endpoint: POST /api/photoevidence/files
+   * - Body: { "photoIds": number[] }
+   * - Response: { results: [{ photoId, exists, url?, error? }], notFoundIds: number[] }
+   *
+   * @param photoIds Array of photo IDs to fetch
+   * @returns Observable with batch response containing results and notFoundIds
+   *
+   * Note: Prefer the returned url values; do not use the stored photoURL
+   */
+  getBatchPhotoUrls(photoIds: number[]): Observable<any> {
+    console.log('📦 Requesting batch URLs for', photoIds.length, 'photos');
+    return this.http.post(`${this.baseUrl}/files`, { photoIds });
   }
 }
