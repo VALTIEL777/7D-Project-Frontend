@@ -512,6 +512,22 @@
     line-height: 1.4; // Improve line spacing for multi-line text
   }
 
+  // Contract Unit column - smaller width with text wrapping
+  .mat-column-contractUnit {
+    max-width: 120px; // Slightly wider to accommodate wrapped text
+    min-width: 100px;
+
+    .mat-mdc-cell,
+    .mat-mdc-header-cell {
+      white-space: normal !important; // Enable text wrapping
+      word-wrap: break-word; // Break at word boundaries (spaces)
+      overflow-wrap: break-word; // Modern property for word breaking
+      line-height: 1.4; // Better spacing for multi-line text
+      padding: 6px 8px;
+      font-size: 13px; // Slightly smaller for better fit
+    }
+  }
+
   // Mobile responsive table
   @media (max-width: 768px) {
     width: 100%;
@@ -528,6 +544,12 @@
       padding: 6px 8px; // Smaller padding on mobile
       font-size: 12px; // Smaller font on mobile
       min-width: 80px; // Minimum width for cells
+    }
+
+    // Even smaller on mobile
+    .mat-column-contractUnit {
+      max-width: 70px;
+      min-width: 60px;
     }
   }
 }

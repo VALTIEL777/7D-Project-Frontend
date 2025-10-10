@@ -2301,7 +2301,7 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     const year = now.getFullYear();
     const month = String(now.getMonth() + 1).padStart(2, '0');
     const day = String(now.getDate()).padStart(2, '0');
-    const dateString = `${year}${month}${day}`;
+    const dateString = `${year}-${month}-${day}`;
 
     // Get existing routes of this type to calculate sequential number
     let existingRoutes: Route[] = [];
@@ -2320,19 +2320,35 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     // Find routes created today with the same type
     const todayRoutes = existingRoutes.filter(route => {
       const routeCodeParts = route.routeCode.split('-');
-      // Check if route code matches format: TYPE-YYYYMMDD-NNN
-      return routeCodeParts.length >= 2 && routeCodeParts[1] === dateString;
+      // Check if route code matches format: TYPE-YYYY-MM-DD-NNN
+      // After split: [TYPE, YYYY, MM, DD, NNN]
+      if (routeCodeParts.length >= 5) {
+        const routeDateString = `${routeCodeParts[1]}-${routeCodeParts[2]}-${routeCodeParts[3]}`;
+        return routeDateString === dateString;
+      }
+      // Also check old format for backward compatibility: TYPE-YYYYMMDD-NNN
+      if (routeCodeParts.length === 3) {
+        const oldDateString = `${year}${month}${day}`;
+        return routeCodeParts[1] === oldDateString;
+      }
+      return false;
     });
 
     // Calculate next sequential number
     let maxSequence = 0;
     todayRoutes.forEach(route => {
       const routeCodeParts = route.routeCode.split('-');
-      if (routeCodeParts.length >= 3) {
-        const sequence = parseInt(routeCodeParts[2], 10);
-        if (!isNaN(sequence) && sequence > maxSequence) {
-          maxSequence = sequence;
-        }
+      let sequence = 0;
+      // New format: TYPE-YYYY-MM-DD-NNN (5 parts)
+      if (routeCodeParts.length >= 5) {
+        sequence = parseInt(routeCodeParts[4], 10);
+      }
+      // Old format: TYPE-YYYYMMDD-NNN (3 parts)
+      else if (routeCodeParts.length >= 3) {
+        sequence = parseInt(routeCodeParts[2], 10);
+      }
+      if (!isNaN(sequence) && sequence > maxSequence) {
+        maxSequence = sequence;
       }
     });
 

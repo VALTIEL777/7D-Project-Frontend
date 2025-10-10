@@ -178,7 +178,11 @@ export class PhotoEvidenceComponent extends BaseDashboardComponent implements On
     {
       name: 'contractUnit',
       header: 'Contract Unit',
-      cell: (ticket: any) => ticket.contractUnit?.name || 'N/A'
+      cell: (ticket: any) => {
+        const name = ticket.contractUnit?.name || 'N/A';
+        // Replace underscores with spaces for better text wrapping
+        return name.replace(/_/g, ' ');
+      }
     },
     {
       name: 'size',
@@ -662,13 +666,19 @@ export class PhotoEvidenceComponent extends BaseDashboardComponent implements On
 
   getAllPhotoComments(ticket: Ticket): string {
     const comments: string[] = [];
+    const seenComments = new Set<string>(); // Track unique comments
 
     // Get comments from current ticket
     ticket.taskStatuses.forEach(taskStatus => {
       if (taskStatus.photoEvidence && taskStatus.photoEvidence.length > 0) {
         taskStatus.photoEvidence.forEach(photo => {
           if (photo.comment && photo.comment.trim()) {
-            comments.push(photo.comment.trim());
+            const trimmedComment = photo.comment.trim();
+            // Only add if we haven't seen this comment before
+            if (!seenComments.has(trimmedComment)) {
+              seenComments.add(trimmedComment);
+              comments.push(trimmedComment);
+            }
           }
         });
       }
@@ -685,7 +695,12 @@ export class PhotoEvidenceComponent extends BaseDashboardComponent implements On
                     taskStatus.photoEvidence && taskStatus.photoEvidence.length > 0) {
                   taskStatus.photoEvidence.forEach(photo => {
                     if (photo.comment && photo.comment.trim()) {
-                      comments.push(photo.comment.trim());
+                      const trimmedComment = photo.comment.trim();
+                      // Only add if we haven't seen this comment before
+                      if (!seenComments.has(trimmedComment)) {
+                        seenComments.add(trimmedComment);
+                        comments.push(trimmedComment);
+                      }
                     }
                   });
                 }
@@ -700,7 +715,7 @@ export class PhotoEvidenceComponent extends BaseDashboardComponent implements On
       return 'No comments';
     }
 
-    // Join all comments with line breaks
+    // Join all unique comments with line breaks
     const allComments = comments.join('\n');
 
     // Limit to 200 characters to prevent table from becoming too wide
