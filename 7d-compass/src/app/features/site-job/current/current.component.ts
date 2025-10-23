@@ -1651,11 +1651,11 @@ uploadPhotoEvidence(taskStatusId: number, activity: any): void {
     return;
   }
   if (!taskStatusId) {
-    console.error('❌ taskStatusId es undefined o null');
+    console.error('❌ taskStatusId es undefined or null');
     return;
   }
   if (!this.userId) {
-    console.error('❌ userId es undefined o null');
+    console.error('❌ userId es undefined or null');
     return;
   }
 
@@ -1663,39 +1663,38 @@ uploadPhotoEvidence(taskStatusId: number, activity: any): void {
   this.uploadingActivities.add(activity.id);
   console.log(`🚀 Iniciando subida de evidencia para fase ${activity.name}`);
 
-  // 🎯 NUEVO: Optimizar FormData - solo enviar datos necesarios
-  const formData = new FormData();
+  // 🎯 MEJORADO: Optimizar archivos de forma asíncrona para no bloquear UI
+  this.optimizeFilesForUploadAsync(activity.selectedFiles).then(optimizedFiles => {
+    // 🎯 NUEVO: Optimizar FormData - solo enviar datos necesarios
+    const formData = new FormData();
 
-  // 🎯 NUEVO: Comprimir y optimizar archivos antes de enviar
-  const optimizedFiles = this.optimizeFilesForUpload(activity.selectedFiles);
-  optimizedFiles.forEach((file: File) => {
-    formData.append('file', file);
-  });
+    // Agregar archivos optimizados
+    optimizedFiles.forEach((file: File) => {
+      formData.append('file', file);
+    });
 
-  // 🎯 NUEVO: Solo enviar campos esenciales
-  formData.append('ticketStatusId', taskStatusId.toString());
-  formData.append('ticketId', this.ticketId.toString());
-  formData.append('name', activity.name || 'Photo Evidence');
-  formData.append('comment', activity.comment || '');
-  formData.append('createdBy', this.userId.toString());
-  formData.append('updatedBy', this.userId.toString());
+    // 🎯 NUEVO: Solo enviar campos esenciales
+    formData.append('ticketStatusId', taskStatusId.toString());
+    formData.append('ticketId', this.ticketId.toString());
+    formData.append('name', activity.name || 'Photo Evidence');
+    formData.append('comment', activity.comment || '');
+    formData.append('createdBy', this.userId.toString());
+    formData.append('updatedBy', this.userId.toString());
 
-  // 🎯 NUEVO: Usar timestamp más eficiente
-  formData.append('date', new Date().toISOString());
+    // 🎯 NUEVO: Usar timestamp más eficiente
+    formData.append('date', new Date().toISOString());
 
-  // 🎯 NUEVO: Subida optimizada con timeout y retry
-  this.photoEvidenceService.uploadPhotoEvidence(formData).subscribe({
+    // 🎯 NUEVO: Subida optimizada con timeout y retry
+    this.photoEvidenceService.uploadPhotoEvidence(formData).subscribe({
     next: (res) => {
       console.log(`✅ Evidencia subida exitosamente para fase ${activity.name}`);
+      console.log(`🔍 Respuesta del servidor:`, res);
 
       // ✅ Remover actividad del set de carga
       this.uploadingActivities.delete(activity.id);
 
       // 🎯 NUEVO: Limpiar inputs inmediatamente
       this.clearPhotoInputsActivity(activity);
-
-      // 🎯 NUEVO: Actualización optimizada - solo una vez
-      this.updateAfterSuccessfulUpload(activity);
 
       // 🎯 VERIFICAR SI HAY ISSUE REPORTADO
       const hasIssue = activity.comment && activity.comment.trim().length > 0;
@@ -1704,7 +1703,22 @@ uploadPhotoEvidence(taskStatusId: number, activity: any): void {
         // this.updateTicketComment7d('TK - ON HOLD OFF');
       }
 
-      this.completePhase(activity);
+      // 🎯 MEJORADO: Completar fase primero y luego actualizar UI
+      console.log(`🔄 Intentando completar fase ${activity.name} después de subir evidencia...`);
+      this.completePhaseAfterUpload(activity).then(() => {
+        console.log(`✅ Fase ${activity.name} completada exitosamente después de subir evidencia`);
+
+        // 🎯 NUEVO: Actualización optimizada - solo después de completar fase
+        this.updateAfterSuccessfulUpload(activity);
+      }).catch((error) => {
+        console.error(`❌ Error completando fase ${activity.name} después de subir evidencia:`, error);
+
+        // 🎯 NUEVO: Aún así actualizar UI para mostrar la foto
+        this.updateAfterSuccessfulUpload(activity);
+
+        // 🎯 NUEVO: Mostrar advertencia al usuario
+        alert(`Photo uploaded successfully, but there was an issue updating the phase status. Please check your connection and try completing the phase manually.`);
+      });
     },
     error: (err) => {
       // ✅ Remover actividad del set de carga en caso de error
@@ -1715,25 +1729,212 @@ uploadPhotoEvidence(taskStatusId: number, activity: any): void {
       this.showUploadError(activity.name);
     }
   });
-}
-
-// 🎯 NUEVO: Método para optimizar archivos antes de subir
-private optimizeFilesForUpload(files: File[]): File[] {
-  return files.map(file => {
-    // 🎯 NUEVO: Comprimir imágenes si son muy grandes
-    if (file.size > 1024 * 1024) { // Más de 1MB
-      console.log(`📦 Comprimiendo archivo: ${file.name} (${file.size} bytes)`);
-      return this.compressImageFile(file);
-    }
-    return file;
+  }).catch((error) => {
+    // ✅ Remover actividad del set de carga en caso de error en optimización
+    this.uploadingActivities.delete(activity.id);
+    console.error(`❌ Error optimizando archivos para fase ${activity.name}:`, error);
+    alert(`Error preparing files for upload. Please try again.`);
   });
 }
 
-// 🎯 NUEVO: Método para comprimir imágenes
-private compressImageFile(file: File): File {
-  return new File([file], file.name, {
-    type: file.type,
-    lastModified: file.lastModified
+// 🎯 NUEVO: Método para completar fase después de subir evidencia (con manejo de errores mejorado)
+private completePhaseAfterUpload(activity: any): Promise<void> {
+  return new Promise((resolve, reject) => {
+    console.log(`🔄 completePhaseAfterUpload: Verificando estado de fase ${activity.name}...`);
+
+    // Verificar si la fase ya está completada
+    if (this.isPhaseCompleted(activity)) {
+      console.log(`ℹ️ Fase ${activity.name} ya está completada, omitiendo actualización`);
+      resolve();
+      return;
+    }
+
+    // Verificar si la fase está iniciada
+    if (!this.isPhaseStarted(activity)) {
+      console.warn(`⚠️ Fase ${activity.name} no está iniciada, no se puede completar`);
+      reject(new Error(`Phase ${activity.name} is not started`));
+      return;
+    }
+
+    const crewIdToUse = this.crewId || this.currentCrewIdFromLoadEmployees;
+    if (!crewIdToUse || crewIdToUse === 0) {
+      console.error('❌ crewId inválido para completar fase');
+      reject(new Error('Invalid crewId'));
+      return;
+    }
+
+    console.log(`🔄 Obteniendo TicketStatus actuales para completar fase ${activity.name}...`);
+
+    // Buscar el TicketStatus existente para actualizar endingDate
+    this.ticketStatusService.getByTicket(this.ticketId).subscribe({
+      next: (ticketStatuses: any[]) => {
+        console.log(`📋 TicketStatus obtenidos: ${ticketStatuses.length} registros`);
+
+        const existingStatus = ticketStatuses.find(ts =>
+          Number(ts.taskstatusid) === Number(activity.id)
+        );
+
+        if (!existingStatus) {
+          console.error(`❌ No se encontró TicketStatus para fase ${activity.name} (ID: ${activity.id})`);
+          reject(new Error(`TicketStatus not found for phase ${activity.name}`));
+          return;
+        }
+
+        if (!existingStatus.startingdate) {
+          console.error(`❌ TicketStatus para fase ${activity.name} no tiene startingdate`);
+          reject(new Error(`Phase ${activity.name} has no startingdate`));
+          return;
+        }
+
+        if (existingStatus.endingdate) {
+          console.log(`ℹ️ Fase ${activity.name} ya tiene endingdate: ${existingStatus.endingdate}`);
+          activity.completed = true;
+          activity.locked = true;
+          activity.endDate = existingStatus.endingdate;
+          resolve();
+          return;
+        }
+
+        // Actualizar con endingDate
+        const now = new Date();
+        const newEndingDate = now.toISOString();
+        console.log(`🕐 Completando fase ${activity.name} - enviando endingDate: ${newEndingDate}`);
+
+        this.ticketStatusService.update(activity.id, this.ticketId, {
+          startingDate: existingStatus.startingdate,
+          endingDate: newEndingDate,
+          updatedBy: this.userId,
+          crewId: crewIdToUse
+        }).subscribe({
+          next: (updatedStatus) => {
+            console.log(`✅ Fase ${activity.name} completada exitosamente:`, updatedStatus);
+
+            // Actualizar estado local
+            activity.completed = true;
+            activity.locked = true;
+            activity.endDate = newEndingDate;
+
+            // 🎯 VERIFICAR SI SE COMPLETÓ CRACK SEAL O CLEAN
+            if (this.shouldUpdateTicketToCompleted(activity.name)) {
+              console.log(`🎉 ¡Fase ${activity.name} completada! Actualizando comment7d a TK - COMPLETED`);
+              this.updateTicketComment7d('TK - COMPLETED');
+            }
+
+            // Recargar fases para actualizar estado desde el backend
+            console.log(`🔄 Recargando fases desde el backend...`);
+            this.loadLinkedPhases();
+
+            resolve();
+          },
+          error: (err) => {
+            console.error(`❌ Error actualizando endingDate para fase ${activity.name}:`, err);
+            console.error(`❌ Detalles del error:`, err.error);
+            reject(err);
+          }
+        });
+      },
+      error: (err) => {
+        console.error(`❌ Error obteniendo TicketStatus para completar fase ${activity.name}:`, err);
+        reject(err);
+      }
+    });
+  });
+}
+
+// 🎯 MEJORADO: Método asíncrono para optimizar archivos antes de subir
+private async optimizeFilesForUploadAsync(files: File[]): Promise<File[]> {
+  console.log(`📦 Optimizando ${files.length} archivos de forma asíncrona...`);
+
+  const optimizationPromises = files.map(async file => {
+    // 🎯 Comprimir imágenes si son muy grandes (más de 1MB)
+    if (file.size > 1024 * 1024) {
+      console.log(`📦 Archivo grande detectado: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`);
+      return await this.compressImageFileAsync(file);
+    }
+    return file;
+  });
+
+  const optimizedFiles = await Promise.all(optimizationPromises);
+  console.log(`✅ ${optimizedFiles.length} archivos optimizados`);
+  return optimizedFiles;
+}
+
+// 🎯 MEJORADO: Método asíncrono para comprimir imágenes usando Canvas API
+private async compressImageFileAsync(file: File): Promise<File> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        // Crear canvas para redimensionar/comprimir
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+
+        if (!ctx) {
+          console.warn(`⚠️ No se pudo obtener contexto de canvas, usando archivo original`);
+          resolve(file);
+          return;
+        }
+
+        // Calcular nuevas dimensiones (máximo 1920px de ancho)
+        const maxWidth = 1920;
+        const maxHeight = 1920;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > maxWidth || height > maxHeight) {
+          const ratio = Math.min(maxWidth / width, maxHeight / height);
+          width = width * ratio;
+          height = height * ratio;
+          console.log(`🔄 Redimensionando de ${img.width}x${img.height} a ${Math.round(width)}x${Math.round(height)}`);
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+
+        // Dibujar imagen redimensionada
+        ctx.drawImage(img, 0, 0, width, height);
+
+        // Convertir a Blob con compresión (calidad 0.8)
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              const compressedFile = new File([blob], file.name, {
+                type: 'image/jpeg',
+                lastModified: Date.now()
+              });
+
+              const originalSizeMB = (file.size / 1024 / 1024).toFixed(2);
+              const compressedSizeMB = (compressedFile.size / 1024 / 1024).toFixed(2);
+              const savings = (((file.size - compressedFile.size) / file.size) * 100).toFixed(1);
+
+              console.log(`✅ Compresión exitosa: ${originalSizeMB}MB → ${compressedSizeMB}MB (${savings}% reducción)`);
+              resolve(compressedFile);
+            } else {
+              console.warn(`⚠️ Error en compresión, usando archivo original`);
+              resolve(file);
+            }
+          },
+          'image/jpeg',
+          0.8 // Calidad de compresión (80%)
+        );
+      };
+
+      img.onerror = () => {
+        console.error(`❌ Error cargando imagen para comprimir: ${file.name}`);
+        resolve(file); // Usar archivo original si falla
+      };
+
+      img.src = e.target?.result as string;
+    };
+
+    reader.onerror = () => {
+      console.error(`❌ Error leyendo archivo: ${file.name}`);
+      reject(new Error(`Failed to read file: ${file.name}`));
+    };
+
+    reader.readAsDataURL(file);
   });
 }
 
@@ -1741,12 +1942,54 @@ private compressImageFile(file: File): File {
 private updateAfterSuccessfulUpload(activity: any): void {
   console.log(`🔄 Actualizando UI después de subida exitosa para ${activity.name}`);
 
-  // 🎯 NUEVO: Actualizar solo una vez con delay optimizado
+  // 🎯 MEJORADO: Usar un delay más largo para asegurar que el backend haya procesado todo
   setTimeout(() => {
-    this.loadCurrentTicketImages();
-    this.updateCommentsAfterUpload();
-    this.updateGalleryAfterUpload();
-  }, 1000); // 🎯 REDUCIDO: De 2000ms a 1000ms
+    console.log(`🔄 Iniciando actualización de UI...`);
+
+    // 🎯 NUEVO: Primero recargar las fases para obtener el estado más reciente
+    this.ticketStatusService.getByTicket(this.ticketId).subscribe({
+      next: (ticketStatuses: any[]) => {
+        console.log(`📋 TicketStatus actualizados obtenidos del backend`);
+
+        // Actualizar el estado de la actividad desde el backend
+        const existingStatus = ticketStatuses.find(ts =>
+          Number(ts.taskstatusid) === Number(activity.id)
+        );
+
+        if (existingStatus) {
+          console.log(`✅ Estado actualizado para ${activity.name}:`, existingStatus);
+
+          // Sincronizar estado local con el backend
+          if (existingStatus.endingdate) {
+            activity.completed = true;
+            activity.locked = true;
+            activity.endDate = existingStatus.endingdate;
+            console.log(`✅ Fase ${activity.name} marcada como completada en UI`);
+          } else if (existingStatus.startingdate) {
+            activity.started = true;
+            activity.checked = true;
+            activity.startDate = existingStatus.startingdate;
+            console.log(`ℹ️ Fase ${activity.name} marcada como iniciada en UI`);
+          }
+        }
+
+        // Ahora actualizar las imágenes y comentarios
+        this.loadCurrentTicketImages();
+        this.updateCommentsAfterUpload();
+        this.updateGalleryAfterUpload();
+
+        console.log(`✅ UI actualizada completamente`);
+      },
+      error: (err) => {
+        console.error(`❌ Error actualizando estado de fase desde backend:`, err);
+
+        // Aún así intentar actualizar imágenes
+        this.loadCurrentTicketImages();
+        this.updateCommentsAfterUpload();
+        this.updateGalleryAfterUpload();
+      }
+    });
+  }, 1500); // 🎯 AUMENTADO: De 1000ms a 1500ms para mejor sincronización
 }
 
 // 🎯 NUEVO: Método para mostrar errores de subida

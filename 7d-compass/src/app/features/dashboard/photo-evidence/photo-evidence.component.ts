@@ -1324,6 +1324,51 @@ export class PhotoEvidenceComponent extends BaseDashboardComponent implements On
 
   trackByPhoto = (_index: number, photo: PhotoEvidence): number => photo.photoId;
 
+  // Drag and drop handlers
+  onDragOver(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    const target = event.currentTarget as HTMLElement;
+    target.classList.add('drag-over');
+  }
+
+  onDragLeave(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    const target = event.currentTarget as HTMLElement;
+    target.classList.remove('drag-over');
+  }
+
+  onDrop(event: DragEvent, taskStatusId: number): void {
+    event.preventDefault();
+    event.stopPropagation();
+    const target = event.currentTarget as HTMLElement;
+    target.classList.remove('drag-over');
+
+    if (!this.selectedTicket) {
+      this.snackBar.open('Please select a ticket first', 'Close', { duration: 3000 });
+      return;
+    }
+
+    const files = event.dataTransfer?.files;
+    if (!files || files.length === 0) {
+      return;
+    }
+
+    // Get the first file
+    const file = files[0];
+
+    // Validate file type
+    const validTypes = ['image/png', 'image/jpg', 'image/jpeg'];
+    if (!validTypes.includes(file.type)) {
+      this.snackBar.open('Please drop a valid image file (PNG, JPG, JPEG)', 'Close', { duration: 3000 });
+      return;
+    }
+
+    // Show comment dialog and upload
+    this.showCommentDialog(file, taskStatusId);
+  }
+
   onPageChange(page: number) {
     this.currentPage = page;
     console.log('📄 Page changed to:', page);
