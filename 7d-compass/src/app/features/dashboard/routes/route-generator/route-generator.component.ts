@@ -1769,8 +1769,13 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
         }
       }
 
-      // Refresh the data to get the updated route with the new ticket
-      this.refreshAllDataAndCache();
+      // Update the local route data with the new ticket instead of refreshing all data
+      // This prevents the loading states from being triggered and routes disappearing
+      const updatedRoute = await this.getUpdatedRouteData(destinationRoute.routeId);
+      if (updatedRoute) {
+        // Update the route in the appropriate array
+        this.updateRouteInLocalArrays(updatedRoute);
+      }
 
       // Force immediate map update
       this.forceMapUpdate();
