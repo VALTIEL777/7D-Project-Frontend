@@ -1346,11 +1346,8 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
             }
           }
         } else if (isSourceRoute && !isDestRoute) {
-          // Moving from route to ready section - not allowed
-          this.snackBar.open('Cannot move tickets from routes back to ready sections.', 'Close', {
-            duration: 3000,
-            panelClass: ['error-snackbar']
-          });
+          // Moving from route to ready section - now allowed
+          await this.handleMoveFromRouteToReady(event, draggedTicket);
           return;
         }
 
@@ -1511,8 +1508,10 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
         await this.handleMoveBetweenRoutes(event, t);
       }
     } else if (isSourceRoute && !isDestRoute) {
-      // Moving from route to ready section (if supported)
-      // (implement if needed)
+      // Moving from route to ready section - handle each ticket
+      for (const t of batchTickets) {
+        await this.handleMoveFromRouteToReady(event, t);
+      }
     } else if (!isSourceRoute && isDestRoute) {
       // Moving from ready section to route
       for (const t of batchTickets) {
@@ -1786,6 +1785,131 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
 
       // Provide more specific error messages
       let errorMessage = 'Error adding ticket to route. Please try again.';
+
+      if (error?.status === 404) {
+        errorMessage = 'Route not found. Please refresh and try again.';
+      } else if (error?.status === 400) {
+        errorMessage = 'Invalid ticket data. Please check the ticket information.';
+      } else if (error?.status === 500) {
+        errorMessage = 'Server error. Please try again later.';
+      } else if (error?.status === 0) {
+        errorMessage = 'Network error. Please check your connection.';
+      }
+
+      this.snackBar.open(errorMessage, 'Close', { duration: 5000, panelClass: ['error-snackbar'] });
+    }
+  }
+
+  private async handleMoveFromRouteToReady(event: CdkDragDrop<any[]>, draggedTicket: any): Promise<void> {
+    try {
+      // Get the source route ID
+      const sourceRouteId = this.getRouteIdFromDropEvent({ ...event, container: event.previousContainer });
+      if (!sourceRouteId) {
+        console.error('Could not find source route ID from drop event');
+        this.snackBar.open('Could not identify source route. Please try again.', 'Close', { duration: 3000, panelClass: ['error-snackbar'] });
+        return;
+      }
+
+      const sourceRoute = this.findRouteByTickets(sourceRouteId);
+      if (!sourceRoute) {
+        console.error('Could not find source route');
+        this.snackBar.open('Could not find source route. Please try again.', 'Close', { duration: 3000, panelClass: ['error-snackbar'] });
+        return;
+      }
+
+      // Extract ticket ID
+      const ticketId = draggedTicket.ticketId || draggedTicket.ticketid;
+      if (!ticketId) {
+        console.error('Could not find ticket ID in dragged ticket:', draggedTicket);
+        this.snackBar.open('Could not find ticket ID. Please try again.', 'Close', { duration: 3000, panelClass: ['error-snackbar'] });
+        return;
+      }
+
+      // Determine the destination ready section type based on the route type
+      let destinationReadyType: string;
+      switch (sourceRoute.type) {
+        case 'SPOTTER':
+          destinationReadyType = 'spot';
+          break;
+        case 'CONCRETE':
+          destinationReadyType = 'concrete';
+          break;
+        case 'ASPHALT':
+          destinationReadyType = 'asphalt';
+          break;
+        default:
+          this.snackBar.open('Unknown route type. Cannot move ticket to ready section.', 'Close', { duration: 3000, panelClass: ['error-snackbar'] });
+          return;
+      }
+
+      console.log(`🔄 Moving ticket ${ticketId} from route ${sourceRoute.routeCode} (${sourceRoute.type}) to ${destinationReadyType} ready section`);
+
+      // Show loading message
+      this.snackBar.open(`Moving ticket from route ${sourceRoute.routeCode} to ready section...`, 'Close', { duration: 2000 });
+
+      // 1. Remove ticket from the route via API
+      await this.removeTicketsFromRoute(sourceRoute.routeId, [ticketId]);
+
+      // 2. Add ticket to the appropriate ready section
+      // We need to create a ReadyTicket object from the RouteTicket
+      const readyTicket: ReadyTicket = {
+        ticketid: ticketId,
+        ticketcode: draggedTicket.ticketCode,
+        contractnumber: draggedTicket.contractNumber || null,
+        amounttopay: draggedTicket.amountToPay || null,
+        tickettype: sourceRoute.type,
+        daysoutstanding: null,
+        comment7d: null,
+        quantity: draggedTicket.quantity || 1,
+        address: draggedTicket.address,
+        contractunitname: draggedTicket.contractUnitName || '',
+        incidentname: '',
+        createdat: new Date().toISOString(),
+        updatedat: new Date().toISOString(),
+        expiredate: draggedTicket.permitExpireDate || new Date().toISOString(),
+        watchnProtect: draggedTicket.watchnProtect || false
+      };
+
+      // Add to the appropriate ready section array
+      switch (destinationReadyType) {
+        case 'spot':
+          this.spotReadyTickets.push(readyTicket);
+          break;
+        case 'concrete':
+          this.concreteReadyTickets.push(readyTicket);
+          break;
+        case 'asphalt':
+          this.asphaltReadyTickets.push(readyTicket);
+          break;
+      }
+
+      // 3. Update the queue positions in the source route
+      const sourceTickets = event.previousContainer.data;
+      if (sourceTickets && sourceTickets.length > 0) {
+        sourceTickets.forEach((ticket, index) => {
+          ticket.queue = index;
+        });
+        await this.handleReorderWithinRoute(sourceRoute, sourceTickets);
+      }
+
+      // 4. Update the local route data instead of refreshing all data
+      // This prevents the loading states from being triggered and routes disappearing
+      const updatedRoute = await this.getUpdatedRouteData(sourceRoute.routeId);
+      if (updatedRoute) {
+        // Update the route in the appropriate array
+        this.updateRouteInLocalArrays(updatedRoute);
+      }
+
+      // 5. Force immediate map update
+      this.forceMapUpdate();
+
+      this.snackBar.open(`Successfully moved ticket from route ${sourceRoute.routeCode} to ready section!`, 'Close', { duration: 3000 });
+
+    } catch (error: any) {
+      console.error('Error moving ticket from route to ready section:', error);
+
+      // Provide more specific error messages
+      let errorMessage = 'Error moving ticket to ready section. Please try again.';
 
       if (error?.status === 404) {
         errorMessage = 'Route not found. Please refresh and try again.';
