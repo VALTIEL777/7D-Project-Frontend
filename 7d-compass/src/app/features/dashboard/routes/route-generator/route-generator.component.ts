@@ -3357,51 +3357,10 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     });
   }
 
-  // Method to validate phase names to prevent random phases from showing
+  // Method to validate phase names - now shows all phase names from endpoint
   isValidPhaseName(phaseName: string | undefined): boolean {
-    if (!phaseName || typeof phaseName !== 'string') {
-      return false;
-    }
-
-    // Debug logging to help identify what random phases are being shown
-    console.log('🔍 Validating phase name:', phaseName);
-
-    // List of valid phase names (you can expand this list based on your business logic)
-    const validPhaseNames = [
-      'Excavation',
-      'Backfill',
-      'Concrete',
-      'Asphalt',
-      'Spotting',
-      'Crack Seal',
-      'Clean',
-      'Inspection',
-      'Preparation',
-      'Completion',
-      'Pending',
-      'In Progress',
-      'Completed'
-    ];
-
-    // Check if the phase name is in the valid list
-    const isValid = validPhaseNames.some(validName =>
-      phaseName.toLowerCase().includes(validName.toLowerCase()) ||
-      validName.toLowerCase().includes(phaseName.toLowerCase())
-    );
-
-    // Also check for obviously invalid names (random strings, etc.)
-    const isInvalid = phaseName.length < 2 ||
-                     phaseName.length > 50 ||
-                     /^[0-9]+$/.test(phaseName) || // Only numbers
-                     /^[^a-zA-Z]*$/.test(phaseName); // No letters
-
-    const result = isValid && !isInvalid;
-
-    if (!result) {
-      console.warn('⚠️ Invalid phase name detected:', phaseName);
-    }
-
-    return result;
+    // Always return true to show all phase names from the endpoint
+    return true;
   }
 
   // Method to load watchnProtect status for all tickets
