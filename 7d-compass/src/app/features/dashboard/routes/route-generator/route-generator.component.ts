@@ -3148,6 +3148,133 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     this.updateWatchnProtectStatus(ticketId, checked);
   }
 
+  // Helper method to get updated route data from API without triggering loading states
+  private async getUpdatedRouteData(routeId: number): Promise<Route | null> {
+    try {
+      // Determine which API endpoint to call based on the route type
+      const allRoutes = [...this.spottingRoutes, ...this.concreteRoutes, ...this.asphaltRoutes];
+      const route = allRoutes.find(r => r.routeId === routeId);
+
+      if (!route) {
+        console.warn(`Route ${routeId} not found in local arrays`);
+        return null;
+      }
+
+      let endpoint: string;
+      switch (route.type) {
+        case 'SPOTTER':
+          endpoint = `${environment.apiUrl}/routes/spotting`;
+          break;
+        case 'CONCRETE':
+          endpoint = `${environment.apiUrl}/routes/concrete`;
+          break;
+        case 'ASPHALT':
+          endpoint = `${environment.apiUrl}/routes/asphalt`;
+          break;
+        default:
+          console.warn(`Unknown route type: ${route.type}`);
+          return null;
+      }
+
+      const response = await this.http.get<RoutesResponse>(endpoint).toPromise();
+      if (response && response.routes) {
+        // Find the specific route that was updated
+        const updatedRoute = response.routes.find(r => r.routeId === routeId);
+        return updatedRoute || null;
+      }
+
+      return null;
+    } catch (error) {
+      console.error(`Error getting updated route data for route ${routeId}:`, error);
+      return null;
+    }
+  }
+
+  // Helper method to update a route in the appropriate local array
+  private updateRouteInLocalArrays(updatedRoute: Route): void {
+    const routeId = updatedRoute.routeId;
+
+    // Remove from all arrays first
+    this.spottingRoutes = this.spottingRoutes.filter(r => r.routeId !== routeId);
+    this.concreteRoutes = this.concreteRoutes.filter(r => r.routeId !== routeId);
+    this.asphaltRoutes = this.asphaltRoutes.filter(r => r.routeId !== routeId);
+
+    // Add to the appropriate array based on route type
+    switch (updatedRoute.type) {
+      case 'SPOTTER':
+        this.spottingRoutes.push(updatedRoute);
+        break;
+      case 'CONCRETE':
+        this.concreteRoutes.push(updatedRoute);
+        break;
+      case 'ASPHALT':
+        this.asphaltRoutes.push(updatedRoute);
+        break;
+    }
+
+    // Update the leaflet routes array as well
+    this.leafletRoutes = this.leafletRoutes.filter(r => r.routeId !== routeId);
+    this.leafletRoutes.push({
+      routeId: updatedRoute.routeId,
+      routeCode: updatedRoute.routeCode,
+      type: updatedRoute.type,
+      encodedPolyline: updatedRoute.encodedPolyline,
+      tickets: updatedRoute.tickets.map(ticket => ({
+        ticketId: ticket.ticketId,
+        address: ticket.address,
+        queue: ticket.queue,
+        coordinates: ticket.coordinates
+      }))
+    });
+  }
+
+  // Method to validate phase names to prevent random phases from showing
+  isValidPhaseName(phaseName: string | undefined): boolean {
+    if (!phaseName || typeof phaseName !== 'string') {
+      return false;
+    }
+
+    // Debug logging to help identify what random phases are being shown
+    console.log('🔍 Validating phase name:', phaseName);
+
+    // List of valid phase names (you can expand this list based on your business logic)
+    const validPhaseNames = [
+      'Excavation',
+      'Backfill',
+      'Concrete',
+      'Asphalt',
+      'Spotting',
+      'Crack Seal',
+      'Clean',
+      'Inspection',
+      'Preparation',
+      'Completion',
+      'Pending',
+      'In Progress',
+      'Completed'
+    ];
+
+    // Check if the phase name is in the valid list
+    const isValid = validPhaseNames.some(validName =>
+      phaseName.toLowerCase().includes(validName.toLowerCase()) ||
+      validName.toLowerCase().includes(phaseName.toLowerCase())
+    );
+
+    // Also check for obviously invalid names (random strings, etc.)
+    const isInvalid = phaseName.length < 2 ||
+                     phaseName.length > 50 ||
+                     /^[0-9]+$/.test(phaseName) || // Only numbers
+                     /^[^a-zA-Z]*$/.test(phaseName); // No letters
+
+    const result = isValid && !isInvalid;
+
+    if (!result) {
+      console.warn('⚠️ Invalid phase name detected:', phaseName);
+    }
+
+    return result;
+  }
+
   // Method to load watchnProtect status for all tickets
   private async loadWatchnProtectStatusForTickets(): Promise<void> {
     const allTickets: Array<{ ticketId: number; type: string }> = [];
