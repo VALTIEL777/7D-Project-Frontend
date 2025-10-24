@@ -16,26 +16,33 @@ $gradient-asphalt: linear-gradient(160deg, #bddab2 0%, #FAF9FD 100%); // Asphalt
   gap: 1rem;
   flex-grow: 1;
   height: 100%;
+  width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
 
   @media (max-width: 768px) {
     flex-direction: column;
+    overflow-x: hidden;
   }
 }
 
 .dashboard-wrapper {
-  flex: 1 1 50%;
+  flex: 1 1 60%;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
   height: 100%;
+  width: 100%;
+  overflow-x: hidden;
 
   @media (max-width: 768px) {
     flex: 1 1 100%;
+    overflow-x: hidden;
   }
 }
 
 .todays-routes-card {
-  flex: 1 1 50%;
+  flex: 1 1 40%;
   box-sizing: border-box;
   height: 100%;
 
@@ -94,7 +101,7 @@ $gradient-asphalt: linear-gradient(160deg, #bddab2 0%, #FAF9FD 100%); // Asphalt
   grid-column: 1 / -1;
 
   @media (max-width: 768px) {
-    /* Removed grid-column: auto; from here */
+    grid-column: auto;
   }
 }
 
@@ -606,7 +613,7 @@ mat-dialog-actions {
 }
 
 .routes-section {
-  flex: 1;
+  flex: 3;
   width: 50%;
   height: 100%; // Take full height
   overflow-y: auto; // Allow scrolling if content overflows
@@ -619,8 +626,8 @@ mat-dialog-actions {
 }
 
 .todays-routes-card {
-  flex: 1;
-  width: 50%;
+  flex: 2;
+  width: 40%;
   height: 100vh; // Set explicit height for the card
   display: flex !important;
   flex-direction: column !important;
@@ -715,9 +722,13 @@ mat-dialog-actions {
   grid-template-columns: repeat(3, 1fr);
   gap: 20px;
   margin-bottom: 20px;
+  width: 100%;
+  box-sizing: border-box;
 
   @media (max-width: 768px) {
     grid-template-columns: 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
   }
 }
 
