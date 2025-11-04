@@ -45,7 +45,8 @@ interface RouteTicket {
     longitude: number;
     placeid?: string;
   };
-  watchnProtect?: boolean; // Add watchnProtect property
+  watchnProtect?: boolean; // Add watchnProtect property (mapped from watchAndProtect in API)
+  watchAndProtect?: boolean | null; // API field name (can be null)
   missingPhotoPhases?: string[]; // Phases with missing photos
 }
 
@@ -435,10 +436,7 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
         this.updateLeafletMap();
       }, 500);
 
-      // Load watchnProtect status for all tickets after data is loaded
-      setTimeout(async () => {
-        await this.loadWatchnProtectStatusForTickets();
-      }, 1000);
+      // Note: watchAndProtect is now included in route responses, no need for separate API calls
 
       // Subscribe to filter changes to trigger change detection
       this.filterService.textSearch$.subscribe(() => {
@@ -889,7 +887,16 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
       next: (response) => {
         console.log('🔍 SPOTTING ROUTES API Response:', response);
 
-        this.spottingRoutes = response.routes || [];
+        // Map watchAndProtect from API to watchnProtect for component compatibility
+        const mappedRoutes = (response.routes || []).map(route => ({
+          ...route,
+          tickets: route.tickets?.map(ticket => ({
+            ...ticket,
+            watchnProtect: ticket.watchAndProtect ?? ticket.watchnProtect ?? false
+          }))
+        }));
+
+        this.spottingRoutes = mappedRoutes;
         this.initialSpottingRoutes = [...this.spottingRoutes];
         this.isLoadingSpottingRoutes = false;
 
@@ -950,7 +957,16 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
       next: (response) => {
         console.log('🔍 CONCRETE ROUTES API Response:', response);
 
-        this.concreteRoutes = response.routes || [];
+        // Map watchAndProtect from API to watchnProtect for component compatibility
+        const mappedRoutes = (response.routes || []).map(route => ({
+          ...route,
+          tickets: route.tickets?.map(ticket => ({
+            ...ticket,
+            watchnProtect: ticket.watchAndProtect ?? ticket.watchnProtect ?? false
+          }))
+        }));
+
+        this.concreteRoutes = mappedRoutes;
         this.initialConcreteRoutes = [...this.concreteRoutes];
         this.isLoadingConcreteRoutes = false;
 
@@ -1042,7 +1058,16 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
       next: (response) => {
         console.log('🔍 ASPHALT ROUTES API Response:', response);
 
-        this.asphaltRoutes = response.routes || [];
+        // Map watchAndProtect from API to watchnProtect for component compatibility
+        const mappedRoutes = (response.routes || []).map(route => ({
+          ...route,
+          tickets: route.tickets?.map(ticket => ({
+            ...ticket,
+            watchnProtect: ticket.watchAndProtect ?? ticket.watchnProtect ?? false
+          }))
+        }));
+
+        this.asphaltRoutes = mappedRoutes;
         this.initialAsphaltRoutes = [...this.asphaltRoutes];
         this.isLoadingAsphaltRoutes = false;
 
@@ -3112,10 +3137,7 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     this.loadExpiredTickets();
     this.updateLeafletMap(); // Update Leaflet map after refresh
 
-    // Reload watchnProtect status for all tickets after data refresh
-    setTimeout(async () => {
-      await this.loadWatchnProtectStatusForTickets();
-    }, 1000);
+    // Note: watchAndProtect is now included in route responses, no need for separate API calls
   }
 
   // Remove route from local arrays immediately
@@ -3308,8 +3330,18 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
       const response = await this.http.get<RoutesResponse>(endpoint).toPromise();
       if (response && response.routes) {
         // Find the specific route that was updated
-        const updatedRoute = response.routes.find(r => r.routeId === routeId);
-        return updatedRoute || null;
+        const foundRoute = response.routes.find(r => r.routeId === routeId);
+        if (foundRoute) {
+          // Map watchAndProtect from API to watchnProtect for component compatibility
+          return {
+            ...foundRoute,
+            tickets: foundRoute.tickets?.map(ticket => ({
+              ...ticket,
+              watchnProtect: ticket.watchAndProtect ?? ticket.watchnProtect ?? false
+            }))
+          };
+        }
+        return null;
       }
 
       return null;
@@ -3363,59 +3395,5 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     return true;
   }
 
-  // Method to load watchnProtect status for all tickets
-  private async loadWatchnProtectStatusForTickets(): Promise<void> {
-    const allTickets: Array<{ ticketId: number; type: string }> = [];
 
-    // Collect all ticket IDs from routes
-    this.spottingRoutes.forEach(route => {
-      route.tickets.forEach(ticket => {
-        allTickets.push({ ticketId: ticket.ticketId, type: 'route' });
-      });
-    });
-
-    this.concreteRoutes.forEach(route => {
-      route.tickets.forEach(ticket => {
-        allTickets.push({ ticketId: ticket.ticketId, type: 'route' });
-      });
-    });
-
-    this.asphaltRoutes.forEach(route => {
-      route.tickets.forEach(ticket => {
-        allTickets.push({ ticketId: ticket.ticketId, type: 'route' });
-      });
-    });
-
-    // Collect all ticket IDs from ready tickets
-    this.spotReadyTickets.forEach(ticket => {
-      allTickets.push({ ticketId: ticket.ticketid, type: 'ready' });
-    });
-
-    this.asphaltReadyTickets.forEach(ticket => {
-      allTickets.push({ ticketId: ticket.ticketid, type: 'ready' });
-    });
-
-    this.concreteReadyTickets.forEach(ticket => {
-      allTickets.push({ ticketId: ticket.ticketid, type: 'ready' });
-    });
-
-    // Load watchnProtect status for each ticket
-    const promises = allTickets.map(async ({ ticketId, type }) => {
-      try {
-        const status = await this.getWatchnProtectStatus(ticketId);
-
-        // Update the local data based on ticket type
-        if (type === 'route') {
-          this.updateLocalTicketWatchnProtect(ticketId, status);
-        } else if (type === 'ready') {
-          this.updateLocalTicketWatchnProtect(ticketId, status);
-        }
-      } catch (error) {
-        console.error(`Error loading watchnProtect status for ticket ${ticketId}:`, error);
-      }
-    });
-
-    // Wait for all statuses to be loaded
-    await Promise.all(promises);
-  }
 }
