@@ -176,7 +176,7 @@
           <!-- Pagination info -->
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
             <span class="pagination-info">
-              Showing {{ getDisplayedInconsistencies().length }} of {{ inconsistencies.length }} inconsistencies
+              Showing {{ getDisplayedInconsistencies().length }} of {{ filteredInconsistencies.length }} inconsistencies{{ filteredInconsistencies.length !== inconsistencies.length ? ' (filtered from ' + inconsistencies.length + ' total)' : '' }}
             </span>
             <div style="display: flex; gap: 8px; align-items: center;">
               <span>Page {{ currentPage + 1 }} of {{ getTotalPages() }}</span>
@@ -273,7 +273,7 @@
           <!-- Pagination controls at the bottom -->
           <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 12px;">
             <span class="pagination-info">
-              Showing {{ getDisplayedInconsistencies().length }} of {{ inconsistencies.length }} inconsistencies
+              Showing {{ getDisplayedInconsistencies().length }} of {{ filteredInconsistencies.length }} inconsistencies{{ filteredInconsistencies.length !== inconsistencies.length ? ' (filtered from ' + inconsistencies.length + ' total)' : '' }}
             </span>
             <div style="display: flex; gap: 8px; align-items: center;">
               <span>Page {{ currentPage + 1 }} of {{ getTotalPages() }}</span>

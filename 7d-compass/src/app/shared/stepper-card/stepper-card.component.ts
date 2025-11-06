@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, ViewChild } from '@angular/core';
+import { Component, Input, Output, EventEmitter, ViewChild, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatStepperModule, MatStepper } from '@angular/material/stepper';
 import { MatButtonModule } from '@angular/material/button';
@@ -21,6 +21,8 @@ import { ConfirmationDialogComponent } from '../confirmation-dialog/confirmation
 import { HttpClient } from '@angular/common/http';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { environment } from '../../../environments/environment';
+import { FilterService } from '../../core/services/filter.service';
+import { Subject, takeUntil } from 'rxjs';
 
 // API Response Interfaces
 export interface StepperUploadResponse {
@@ -218,7 +220,7 @@ export interface ValidationResult {
   templateUrl: './stepper-card.component.html',
   styleUrls: ['./stepper-card.component.scss']
 })
-export class StepperCardComponent {
+export class StepperCardComponent implements OnDestroy {
   @Input() title: string = 'RTR Processing Stepper';
   @Input() data: StepperData = {};
   @Output() stepCompleted = new EventEmitter<{ step: number; data: any }>();
@@ -240,6 +242,7 @@ export class StepperCardComponent {
   uploadedFile: File | null = null;
   analyzedData: any = null;
   inconsistencies: InconsistencyItem[] = [];
+  filteredInconsistencies: InconsistencyItem[] = [];
   missingInfo: MissingInfoItem[] = [];
   validationResults: ValidationResult[] = [];
   saveResults: any = null;
@@ -261,11 +264,60 @@ export class StepperCardComponent {
   currentPage = 0;
   itemsPerPage = 10;
 
+  // Filter subscription
+  private destroy$ = new Subject<void>();
+  private currentTextSearch: string = '';
+
   constructor(
     private dialog: MatDialog,
     private http: HttpClient,
-    private snackBar: MatSnackBar
-  ) {}
+    private snackBar: MatSnackBar,
+    private filterService: FilterService
+  ) {
+    this.setupFilterSubscriptions();
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  // Setup filter subscriptions
+  private setupFilterSubscriptions(): void {
+    // Subscribe to text search changes
+    this.filterService.textSearch$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(search => {
+        this.currentTextSearch = search;
+        this.applyFiltersToInconsistencies();
+      });
+  }
+
+  // Apply filters to inconsistencies array
+  private applyFiltersToInconsistencies(): void {
+    if (!this.currentTextSearch.trim()) {
+      // No filter, show all inconsistencies
+      this.filteredInconsistencies = [...this.inconsistencies];
+    } else {
+      // Apply text search filter
+      const searchTerm = this.currentTextSearch.toLowerCase().trim();
+      this.filteredInconsistencies = this.inconsistencies.filter(item => {
+        // Search across multiple fields
+        return (
+          (item.ticketCode && item.ticketCode.toLowerCase().includes(searchTerm)) ||
+          (item.address && item.address.toLowerCase().includes(searchTerm)) ||
+          (item.restWoNum && item.restWoNum.toLowerCase().includes(searchTerm)) ||
+          (item.taskWoNum && item.taskWoNum.toLowerCase().includes(searchTerm)) ||
+          (item.field && item.field.toLowerCase().includes(searchTerm)) ||
+          (item.excelValue && String(item.excelValue).toLowerCase().includes(searchTerm)) ||
+          (item.databaseValue && String(item.databaseValue).toLowerCase().includes(searchTerm))
+        );
+      });
+    }
+
+    // Reset pagination to first page when filters change
+    this.currentPage = 0;
+  }
 
   // Step 1: Upload File
   onFileUploaded(files: File[]) {
@@ -320,6 +372,7 @@ export class StepperCardComponent {
   private resetStepperState() {
     this.analyzedData = null;
     this.inconsistencies = [];
+    this.filteredInconsistencies = [];
     this.missingInfo = [];
     this.validationResults = [];
     this.saveResults = null;
@@ -409,6 +462,9 @@ export class StepperCardComponent {
 
             // Sort inconsistencies by conflicting field alphabetically
             this.inconsistencies.sort((a, b) => a.field.localeCompare(b.field));
+
+            // Apply filters to populate filteredInconsistencies
+            this.applyFiltersToInconsistencies();
 
             // Convert missing info to our format - handle both single and multiple missing fields
             this.missingInfo = [];
@@ -1579,11 +1635,11 @@ export class StepperCardComponent {
   getDisplayedInconsistencies(): InconsistencyItem[] {
     const startIndex = this.currentPage * this.itemsPerPage;
     const endIndex = startIndex + this.itemsPerPage;
-    return this.inconsistencies.slice(startIndex, endIndex);
+    return this.filteredInconsistencies.slice(startIndex, endIndex);
   }
 
   getTotalPages(): number {
-    return Math.ceil(this.inconsistencies.length / this.itemsPerPage);
+    return Math.ceil(this.filteredInconsistencies.length / this.itemsPerPage);
   }
 
   previousPage(): void {
