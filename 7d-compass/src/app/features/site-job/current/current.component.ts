@@ -1663,6 +1663,13 @@ uploadPhotoEvidence(taskStatusId: number, activity: any): void {
   this.uploadingActivities.add(activity.id);
   console.log(`🚀 Iniciando subida de evidencia para fase ${activity.name}`);
 
+  // 🎯 FIX TIMEZONE: Capturar timestamp una sola vez al inicio para consistencia
+  const uploadTimestamp = new Date().toISOString();
+  const localTime = new Date();
+  console.log(`🕐 Timestamp capturado: ${uploadTimestamp}`);
+  console.log(`🕐 Hora local: ${localTime.toLocaleString()}`);
+  console.log(`🕐 Zona horaria: ${Intl.DateTimeFormat().resolvedOptions().timeZone}`);
+
   // 🎯 MEJORADO: Optimizar archivos de forma asíncrona para no bloquear UI
   this.optimizeFilesForUploadAsync(activity.selectedFiles).then(optimizedFiles => {
     // 🎯 NUEVO: Optimizar FormData - solo enviar datos necesarios
@@ -1681,8 +1688,8 @@ uploadPhotoEvidence(taskStatusId: number, activity: any): void {
     formData.append('createdBy', this.userId.toString());
     formData.append('updatedBy', this.userId.toString());
 
-    // 🎯 NUEVO: Usar timestamp más eficiente
-    formData.append('date', new Date().toISOString());
+    // 🎯 FIX TIMEZONE: Usar el mismo timestamp capturado al inicio
+    formData.append('date', uploadTimestamp);
 
     // 🎯 NUEVO: Subida optimizada con timeout y retry
     this.photoEvidenceService.uploadPhotoEvidence(formData).subscribe({
@@ -1705,7 +1712,7 @@ uploadPhotoEvidence(taskStatusId: number, activity: any): void {
 
       // 🎯 MEJORADO: Completar fase primero y luego actualizar UI
       console.log(`🔄 Intentando completar fase ${activity.name} después de subir evidencia...`);
-      this.completePhaseAfterUpload(activity).then(() => {
+      this.completePhaseAfterUpload(activity, uploadTimestamp).then(() => {
         console.log(`✅ Fase ${activity.name} completada exitosamente después de subir evidencia`);
 
         // 🎯 NUEVO: Actualización optimizada - solo después de completar fase
@@ -1738,7 +1745,7 @@ uploadPhotoEvidence(taskStatusId: number, activity: any): void {
 }
 
 // 🎯 NUEVO: Método para completar fase después de subir evidencia (con manejo de errores mejorado)
-private completePhaseAfterUpload(activity: any): Promise<void> {
+private completePhaseAfterUpload(activity: any, uploadTimestamp: string): Promise<void> {
   return new Promise((resolve, reject) => {
     console.log(`🔄 completePhaseAfterUpload: Verificando estado de fase ${activity.name}...`);
 
@@ -1795,10 +1802,10 @@ private completePhaseAfterUpload(activity: any): Promise<void> {
           return;
         }
 
-        // Actualizar con endingDate
-        const now = new Date();
-        const newEndingDate = now.toISOString();
+        // 🎯 FIX TIMEZONE: Usar el mismo timestamp que se usó para la foto
+        const newEndingDate = uploadTimestamp;
         console.log(`🕐 Completando fase ${activity.name} - enviando endingDate: ${newEndingDate}`);
+        console.log(`🕐 Usando el mismo timestamp que la foto para consistencia`);
 
         this.ticketStatusService.update(activity.id, this.ticketId, {
           startingDate: existingStatus.startingdate,
@@ -1808,11 +1815,13 @@ private completePhaseAfterUpload(activity: any): Promise<void> {
         }).subscribe({
           next: (updatedStatus) => {
             console.log(`✅ Fase ${activity.name} completada exitosamente:`, updatedStatus);
+            console.log(`🕐 endingDate recibido del backend: ${updatedStatus.endingdate || updatedStatus.endingDate}`);
 
             // Actualizar estado local
             activity.completed = true;
             activity.locked = true;
-            activity.endDate = newEndingDate;
+            activity.endDate = updatedStatus.endingdate || updatedStatus.endingDate || newEndingDate;
+            console.log(`🕐 endDate asignado a actividad: ${activity.endDate}`);
 
             // 🎯 VERIFICAR SI SE COMPLETÓ CRACK SEAL O CLEAN
             if (this.shouldUpdateTicketToCompleted(activity.name)) {
