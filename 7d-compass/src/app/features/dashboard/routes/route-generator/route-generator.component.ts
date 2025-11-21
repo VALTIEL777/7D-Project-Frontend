@@ -436,6 +436,10 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
 
       console.log('✅ All data loaded successfully');
 
+      // Initialize data once after all routes are loaded
+      this.loadData(); // Refresh filtered data
+      this.initializeVisibleRoutes(); // Initialize visible routes
+
       // Generate Leaflet map after all data is loaded
       setTimeout(() => {
         this.updateLeafletMap();
@@ -902,29 +906,6 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
         this.spottingRoutes = mappedRoutes;
         this.initialSpottingRoutes = [...this.spottingRoutes];
         this.isLoadingSpottingRoutes = false;
-
-        // Debug each route's ticket data
-        this.spottingRoutes.forEach((route, routeIndex) => {
-          console.log(`🔍 Spotting Route ${routeIndex + 1} (${route.routeCode}) - Raw Data:`, {
-            routeId: route.routeId,
-            routeCode: route.routeCode,
-            type: route.type,
-            ticketsCount: route.tickets?.length || 0,
-            tickets: route.tickets?.map((ticket, ticketIndex) => ({
-              index: ticketIndex,
-              ticketId: ticket.ticketId,
-              ticketCode: ticket.ticketCode,
-              address: ticket.address,
-              queue: ticket.queue,
-              coordinates: ticket.coordinates,
-              rawTicketData: ticket
-            }))
-          });
-        });
-
-        this.loadData(); // Refresh filtered data
-        this.initializeVisibleRoutes(); // Initialize visible routes
-        this.updateLeafletMap(); // Update Leaflet map
       },
       error: (error) => {
         console.error('Error loading spotting routes:', error);
@@ -932,8 +913,6 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
         // Use empty array if API fails
         this.spottingRoutes = [];
         this.initialSpottingRoutes = [...this.spottingRoutes];
-        this.loadData(); // Refresh filtered data
-        this.updateLeafletMap(); // Update Leaflet map
       }
     });
   }
@@ -970,60 +949,6 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
         this.concreteRoutes = mappedRoutes;
         this.initialConcreteRoutes = [...this.concreteRoutes];
         this.isLoadingConcreteRoutes = false;
-
-        // Debug each route's ticket data
-        this.concreteRoutes.forEach((route, routeIndex) => {
-          console.log(`🔍 Concrete Route ${routeIndex + 1} (${route.routeCode}) - Raw Data:`, {
-            routeId: route.routeId,
-            routeCode: route.routeCode,
-            type: route.type,
-            ticketsCount: route.tickets?.length || 0,
-            encodedPolyline: route.encodedPolyline,
-            polylineLength: route.encodedPolyline?.length || 0,
-            tickets: route.tickets?.map((ticket, ticketIndex) => ({
-              index: ticketIndex,
-              ticketId: ticket.ticketId,
-              ticketCode: ticket.ticketCode,
-              address: ticket.address,
-              queue: ticket.queue,
-              coordinates: ticket.coordinates,
-              rawTicketData: ticket
-            }))
-          });
-
-          // Special debugging for concrete routes
-          console.log(`🚨 CONCRETE ROUTE DEBUG - ${route.routeCode}:`, {
-            hasPolyline: !!route.encodedPolyline,
-            polylineValid: route.encodedPolyline && route.encodedPolyline.length > 0,
-            ticketsValid: route.tickets && route.tickets.length > 0,
-            firstTicket: route.tickets?.[0],
-            lastTicket: route.tickets?.[route.tickets.length - 1],
-            allTicketIds: route.tickets?.map(t => t.ticketId),
-            allTicketCodes: route.tickets?.map(t => t.ticketCode),
-            allQueues: route.tickets?.map(t => t.queue)
-          });
-
-          // Check if polyline can be decoded
-          if (route.encodedPolyline) {
-            try {
-              const decodedPolyline = polyline.decode(route.encodedPolyline);
-              console.log(`🗺️ Concrete Polyline Decoded Successfully:`, {
-                pointCount: decodedPolyline.length,
-                firstPoint: decodedPolyline[0],
-                lastPoint: decodedPolyline[decodedPolyline.length - 1],
-                isValid: decodedPolyline.length > 0
-              });
-            } catch (error) {
-              console.error(`❌ Concrete Polyline Decode Error:`, error);
-            }
-          } else {
-            console.warn(`⚠️ Concrete Route ${route.routeCode} has NO encoded polyline!`);
-          }
-        });
-
-        this.loadData(); // Refresh filtered data
-        this.initializeVisibleRoutes(); // Initialize visible routes
-        this.updateLeafletMap(); // Update Leaflet map
       },
       error: (error) => {
         console.error('Error loading concrete routes:', error);
@@ -1031,8 +956,6 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
         // Use empty array if API fails
         this.concreteRoutes = [];
         this.initialConcreteRoutes = [...this.concreteRoutes];
-        this.loadData(); // Refresh filtered data
-        this.updateLeafletMap(); // Update Leaflet map
       }
     });
   }
@@ -1069,29 +992,6 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
         this.asphaltRoutes = mappedRoutes;
         this.initialAsphaltRoutes = [...this.asphaltRoutes];
         this.isLoadingAsphaltRoutes = false;
-
-        // Debug each route's ticket data
-        this.asphaltRoutes.forEach((route, routeIndex) => {
-          console.log(`🔍 Asphalt Route ${routeIndex + 1} (${route.routeCode}) - Raw Data:`, {
-            routeId: route.routeId,
-            routeCode: route.routeCode,
-            type: route.type,
-            ticketsCount: route.tickets?.length || 0,
-            tickets: route.tickets?.map((ticket, ticketIndex) => ({
-              index: ticketIndex,
-              ticketId: ticket.ticketId,
-              ticketCode: ticket.ticketCode,
-              address: ticket.address,
-              queue: ticket.queue,
-              coordinates: ticket.coordinates,
-              rawTicketData: ticket
-            }))
-          });
-        });
-
-        this.loadData(); // Refresh filtered data
-        this.initializeVisibleRoutes(); // Initialize visible routes
-        this.updateLeafletMap(); // Update Leaflet map
       },
       error: (error) => {
         console.error('Error loading asphalt routes:', error);
@@ -1099,8 +999,6 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
         // Use empty array if API fails
         this.asphaltRoutes = [];
         this.initialAsphaltRoutes = [...this.asphaltRoutes];
-        this.loadData(); // Refresh filtered data
-        this.updateLeafletMap(); // Update Leaflet map
       }
     });
   }
@@ -1127,14 +1025,12 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
       next: (response) => {
         this.spotReadyTickets = response.tickets;
         this.isLoadingSpotReady = false;
-        this.loadData(); // Refresh filtered data
       },
       error: (error) => {
         console.error('Error loading spot ready tickets:', error);
         this.isLoadingSpotReady = false;
         // Fallback to empty array if API fails
         this.spotReadyTickets = [];
-        this.loadData(); // Refresh filtered data
       }
     });
   }
@@ -1161,14 +1057,12 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
       next: (response) => {
         this.asphaltReadyTickets = response.tickets;
         this.isLoadingAsphaltReady = false;
-        this.loadData(); // Refresh filtered data
       },
       error: (error) => {
         console.error('Error loading asphalt ready tickets:', error);
         this.isLoadingAsphaltReady = false;
         // Fallback to empty array if API fails
         this.asphaltReadyTickets = [];
-        this.loadData(); // Refresh filtered data
       }
     });
   }
@@ -1195,14 +1089,12 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
       next: (response) => {
         this.concreteReadyTickets = response.tickets;
         this.isLoadingConcreteReady = false;
-        this.loadData(); // Refresh filtered data
       },
       error: (error) => {
         console.error('Error loading concrete ready tickets:', error);
         this.isLoadingConcreteReady = false;
         // Fallback to empty array if API fails
         this.concreteReadyTickets = [];
-        this.loadData(); // Refresh filtered data
       }
     });
   }
