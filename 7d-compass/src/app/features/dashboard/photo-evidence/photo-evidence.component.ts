@@ -305,38 +305,13 @@ export class PhotoEvidenceComponent extends BaseDashboardComponent implements On
     this.loading = true;
     this.error = null;
 
-    console.log('🔄 Loading gallery data from API...');
-    console.log('📡 API URL:', `${environment.apiUrl}/tickets/gallery`);
-
     this.http.get<GalleryResponse>(`${environment.apiUrl}/tickets/gallery`).subscribe({
       next: (response) => {
-        console.log('✅ API Response received:', response);
-        console.log('📊 Response summary:', response.summary);
-        console.log('📋 Total incidents:', response.data.length);
-
-        // Log the first incident structure to see the actual properties
-        if (response.data && response.data.length > 0) {
-          console.log('🔍 First incident structure:', response.data[0]);
-          if (response.data[0].tickets && response.data[0].tickets.length > 0) {
-            console.log('🔍 First ticket structure:', response.data[0].tickets[0]);
-            console.log('🔍 Contract unit in first ticket:', response.data[0].tickets[0].contractUnit);
-          }
-        }
-
         if (response.success) {
           this.galleryData = response.data;
           // Flatten the data structure for the table
           this.flattenGalleryData();
           this.totalCount = this.allData.length;
-          console.log('✅ Gallery data loaded successfully');
-          console.log('📋 Flattened data count:', this.allData.length);
-          console.log('📊 Total count for pagination:', this.totalCount);
-
-          // Log the first flattened ticket to see the structure
-          if (this.allData.length > 0) {
-            console.log('🔍 First flattened ticket:', this.allData[0]);
-            console.log('🔍 Contract unit in flattened ticket:', this.allData[0].contractUnit);
-          }
         } else {
           console.error('❌ API returned error:', response.message);
           this.error = response.message || 'Failed to load gallery data';
@@ -345,12 +320,6 @@ export class PhotoEvidenceComponent extends BaseDashboardComponent implements On
       },
       error: (err) => {
         console.error('❌ Error loading gallery data:', err);
-        console.error('❌ Error details:', {
-          status: err.status,
-          statusText: err.statusText,
-          message: err.message,
-          url: err.url
-        });
         this.error = 'Error loading gallery data. Please try again.';
         this.loading = false;
       }
@@ -366,7 +335,6 @@ export class PhotoEvidenceComponent extends BaseDashboardComponent implements On
         if (ticket.contractUnit && ticket.contractUnit.name) {
           const contractUnitName = ticket.contractUnit.name.toLowerCase();
           if (contractUnitName.includes('mobilization')) {
-            console.log('🚫 Skipping MOBILIZATION ticket:', ticket.ticketCode, 'Contract Unit:', ticket.contractUnit.name);
             return; // Skip this ticket
           }
         }
@@ -386,8 +354,6 @@ export class PhotoEvidenceComponent extends BaseDashboardComponent implements On
     this.allData = flattenedData;
     this.filteredData = [...this.allData];
 
-    console.log('📊 Total tickets after filtering MOBILIZATION:', this.allData.length);
-
     // Apply any existing filters after data is loaded
     // This ensures filters set before navigation are applied when data loads
     this.currentTextSearch = this.filterService.currentTextSearch;
@@ -404,13 +370,10 @@ export class PhotoEvidenceComponent extends BaseDashboardComponent implements On
   async onTicketSelect(ticket: Ticket): Promise<void> {
     this.selectedTicket = ticket;
     this.loadingPhotos = true; // Start loading photos
-    console.log('🔄 Starting to load photos for ticket:', ticket.ticketCode);
 
     try {
       // Get all photos from the ticket (including empty phases)
       const rawPhotos = this.getAllPhotosFromTicket(ticket);
-      console.log('Selected ticket:', ticket);
-      console.log('Raw photos found:', rawPhotos.length);
 
       // Reset state to avoid flicker during rebuild
       this.selectedPhotos = [];
@@ -419,7 +382,6 @@ export class PhotoEvidenceComponent extends BaseDashboardComponent implements On
 
       // Load photo blobs and create object URLs for current ticket photos
       this.selectedPhotos = await this.loadPhotoBlobs(rawPhotos);
-      console.log('Photos loaded with blobs:', this.selectedPhotos.length);
 
       // Load photos from all tickets with the same MX Number for "No Parking Signs" and "Install Signs"
       await this.loadPhotosFromSameMXNumber();
@@ -430,14 +392,11 @@ export class PhotoEvidenceComponent extends BaseDashboardComponent implements On
       // Add a small delay to ensure UI updates are processed
       await new Promise(resolve => setTimeout(resolve, 100));
 
-      console.log('✅ Photos loading completed for ticket:', ticket.ticketCode);
-
     } catch (error) {
       console.error('Error loading photos:', error);
       this.error = 'Error loading photos. Please try again.';
     } finally {
       this.loadingPhotos = false; // Stop loading photos
-      console.log('🔄 Loading state set to false for ticket:', ticket.ticketCode);
     }
   }
 
@@ -469,34 +428,21 @@ export class PhotoEvidenceComponent extends BaseDashboardComponent implements On
   private async loadPhotoBlobs(photos: PhotoEvidence[]): Promise<PhotoEvidence[]> {
     if (photos.length === 0) return [];
 
-    console.log(`📦 Loading ${photos.length} photos using batch endpoint...`);
-    const startTime = performance.now();
-
     try {
       // Step 1: Get all photo URLs from batch endpoint
       const photoIds = photos.map(p => p.photoId);
       const batchResponse = await this.photoEvidenceService.getBatchPhotoUrls(photoIds).toPromise();
 
-      console.log('✅ Batch response received:', batchResponse);
-
       // Extract the results array from the response
       const photoResults = batchResponse.results || batchResponse;
       const notFoundIds = batchResponse.notFoundIds || [];
 
-      console.log('📋 Photo results count:', photoResults.length);
-      if (notFoundIds.length > 0) {
-        console.warn('⚠️ Photos not found on server:', notFoundIds);
-      }
-
       // Step 2: Load all photo blobs in parallel (browser will naturally throttle concurrent requests)
-      console.log('🚀 Starting parallel photo fetch for all photos...');
-
       const photosWithBlobs = await Promise.all(
         photos.map(async (photo) => {
           try {
             // Check if this photo is in the notFoundIds list
             if (notFoundIds.includes(photo.photoId)) {
-              console.warn(`⚠️ Photo ${photo.photoId} not found on server (from notFoundIds)`);
               return { ...photo, loaded: false, error: true };
             }
 
@@ -504,19 +450,16 @@ export class PhotoEvidenceComponent extends BaseDashboardComponent implements On
             const photoData = photoResults.find((p: any) => p.photoId === photo.photoId);
 
             if (!photoData) {
-              console.warn(`⚠️ Photo ${photo.photoId} not found in batch response`);
               return { ...photo, loaded: false, error: true };
             }
 
             // Check for errors from the backend
             if (photoData.error) {
-              console.warn(`⚠️ Photo ${photo.photoId} has error from backend:`, photoData.error);
               return { ...photo, loaded: false, error: true };
             }
 
             // Check if photo exists and has a valid URL (as per API spec: prefer returned url values)
             if (!photoData.exists || !photoData.url) {
-              console.warn(`⚠️ Photo ${photo.photoId} doesn't exist or has no URL`, photoData);
               return { ...photo, loaded: false, error: true };
             }
 
@@ -544,23 +487,12 @@ export class PhotoEvidenceComponent extends BaseDashboardComponent implements On
         })
       );
 
-      const endTime = performance.now();
-      const successCount = photosWithBlobs.filter(p => p.loaded).length;
-      const errorCount = photosWithBlobs.filter(p => p.error).length;
-
-      console.log(`✅ Batch loading complete in ${(endTime - startTime).toFixed(2)}ms`);
-      console.log(`📊 Success: ${successCount}/${photosWithBlobs.length} photos loaded`);
-      if (errorCount > 0) {
-        console.warn(`⚠️ Failed: ${errorCount} photos had errors`);
-      }
-
       return photosWithBlobs;
 
     } catch (error) {
       console.error('❌ Error in batch photo loading:', error);
 
       // Fallback to individual loading if batch fails
-      console.log('⚠️ Falling back to individual photo loading...');
       return this.loadPhotoBlobsIndividual(photos);
     }
   }
@@ -841,7 +773,6 @@ export class PhotoEvidenceComponent extends BaseDashboardComponent implements On
       }
     });
 
-    console.log(`📸 Found ${allPhotos.length} photos for phase "${phaseName}" across all tickets with MX Number "${mxNumber}"`);
     return allPhotos;
   }
 
@@ -875,8 +806,6 @@ export class PhotoEvidenceComponent extends BaseDashboardComponent implements On
       }
     });
 
-    console.log(`📸 Found ${allPhotos.length} photos from all tickets with MX Number "${mxNumber}" for No Parking Signs and Install Signs`);
-
     // Load photo blobs for all photos from multiple tickets
     const photosWithBlobs = await this.loadPhotoBlobs(allPhotos);
 
@@ -891,19 +820,15 @@ export class PhotoEvidenceComponent extends BaseDashboardComponent implements On
 
   // Check if we should show the no phases message
   get shouldShowNoPhases(): boolean {
-    const result = !this.loadingPhotos && !!this.selectedTicket &&
+    return !this.loadingPhotos && !!this.selectedTicket &&
            (!this.selectedTicket.taskStatuses || this.selectedTicket.taskStatuses.length === 0);
-    console.log('🔍 shouldShowNoPhases:', result, '(loadingPhotos:', this.loadingPhotos, ')');
-    return result;
   }
 
   // Check if we should show the no photos message
   get shouldShowNoPhotos(): boolean {
-    const result = !this.loadingPhotos && !!this.selectedTicket &&
+    return !this.loadingPhotos && !!this.selectedTicket &&
            !!this.selectedTicket.taskStatuses && this.selectedTicket.taskStatuses.length > 0 &&
            this.phases.every(phase => phase.photos.length === 0);
-    console.log('🔍 shouldShowNoPhotos:', result, '(loadingPhotos:', this.loadingPhotos, ')');
-    return result;
   }
 
   getTaskStatusId(phaseName: string): number {
@@ -1115,8 +1040,6 @@ export class PhotoEvidenceComponent extends BaseDashboardComponent implements On
   private refreshCurrentTicketPhotos(): void {
     if (!this.selectedTicket) return;
 
-    console.log('🔄 Refreshing photos for current ticket:', this.selectedTicket.ticketCode);
-
     // Simple approach: Just reload the photos without touching gallery data or filters
     // This preserves all filters and table state
     this.reloadCurrentTicketPhotosFromGallery();
@@ -1148,17 +1071,11 @@ export class PhotoEvidenceComponent extends BaseDashboardComponent implements On
           }
 
           if (updatedTicket) {
-            console.log('✅ Found updated ticket, reloading photos only...');
-
             // Update ONLY the selectedTicket reference (don't touch galleryData, allData, or filteredData)
             this.selectedTicket = updatedTicket;
 
             // Reload only the photo gallery (right side) - this doesn't affect the table (left side)
             await this.reloadTicketPhotosOnly(updatedTicket);
-
-            console.log('✅ Photos refreshed (filters and table preserved)');
-          } else {
-            console.warn('⚠️ Could not find updated ticket');
           }
         }
       },
@@ -1171,16 +1088,12 @@ export class PhotoEvidenceComponent extends BaseDashboardComponent implements On
 
   private async reloadTicketPhotosOnly(ticket: Ticket): Promise<void> {
     // Reload photos without calling flattenGalleryData or resetting filters
-    console.log('🔄 Reloading photos only for ticket:', ticket.ticketCode);
-
     try {
       const rawPhotos = this.getAllPhotosFromTicket(ticket);
       this.selectedPhotos = await this.loadPhotoBlobs(rawPhotos);
 
       await this.loadPhotosFromSameMXNumber();
       this.rebuildPhases();
-
-      console.log('✅ Photos reloaded (filters preserved)');
     } catch (error) {
       console.error('❌ Error reloading photos:', error);
     }
@@ -1269,10 +1182,6 @@ export class PhotoEvidenceComponent extends BaseDashboardComponent implements On
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-
-    console.log('📥 Downloading photo:', filename);
-    console.log('🔍 Photo URL type:', photoUrl.startsWith('blob:') ? 'blob' : 'regular');
-    console.log('🔍 Original photo data:', photo.photo ? 'exists' : 'none');
   }
 
   private rebuildPhases(): void {
@@ -1323,8 +1232,6 @@ export class PhotoEvidenceComponent extends BaseDashboardComponent implements On
       if (bIndex !== -1) return 1;
       return a.phaseName.localeCompare(b.phaseName);
     });
-
-    console.log('📊 phases rebuilt:', this.phases.length);
   }
 
   trackByPhase = (_index: number, phase: { phaseName: string }): string => phase.phaseName;
@@ -1378,15 +1285,12 @@ export class PhotoEvidenceComponent extends BaseDashboardComponent implements On
 
   onPageChange(page: number) {
     this.currentPage = page;
-    console.log('📄 Page changed to:', page);
     // If you need server-side pagination, you would modify the API call here
     // For now, we'll just update the current page
   }
 
   onCommentChange(event: {element: any, newComment: string}): void {
     const { element, newComment } = event;
-
-    console.log('🔄 Updating comment for ticket:', element.ticketId, 'New comment:', newComment);
 
     const payload = {
       comment7d: newComment,
@@ -1395,7 +1299,6 @@ export class PhotoEvidenceComponent extends BaseDashboardComponent implements On
 
     this.http.put(`${environment.apiUrl}/tickets/${element.ticketId}/comment`, payload).subscribe({
       next: (response) => {
-        console.log('✅ Comment updated successfully:', response);
         this.snackBar.open('Comment updated successfully', 'Close', { duration: 3000 });
 
         // Update the element in the data
