@@ -3182,5 +3182,28 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     return true;
   }
 
+  // Method to get the display text for a phase
+  // For spotting routes, shows "In Progress" if the phase is not completed
+  getPhaseDisplayText(route: Route, ticket: RouteTicket): string | null {
+    if (!ticket.latestPhase?.name) {
+      return null;
+    }
+
+    const phaseName = ticket.latestPhase.name;
+    const isCompleted = !!ticket.latestPhase.endedAt;
+    const isSpottingRoute = route.type === 'SPOTTER';
+
+    // Normalize phase name for comparison (case-insensitive)
+    const normalizedPhaseName = phaseName.toLowerCase().trim();
+
+    // For spotting routes, if the phase is "spotting" and not completed, show "In Progress"
+    if (isSpottingRoute && (normalizedPhaseName === 'spotting' || normalizedPhaseName === 'spot') && !isCompleted) {
+      return 'In Progress';
+    }
+
+    // Otherwise, return the phase name as is
+    return phaseName;
+  }
+
 
 }

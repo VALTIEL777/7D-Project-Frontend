@@ -86,7 +86,7 @@
                         <div class="ticket-info">
                           <p class="route-location">{{ formatAddress(ticket.address) }}</p>
                           <p class="contract-unit" *ngIf="ticket.contractUnitName">{{ ticket.contractUnitName }}</p>
-                          <p class="latest-phase" *ngIf="ticket.latestPhase?.name && isValidPhaseName(ticket.latestPhase?.name)"><strong>{{ ticket.latestPhase?.name }}</strong></p>
+                          <p class="latest-phase" *ngIf="getPhaseDisplayText(route, ticket)"><strong>{{ getPhaseDisplayText(route, ticket) }}</strong></p>
                           <p class="expiration-date" *ngIf="ticket.permitExpireDate">
                             <span class="expiration-label">Permit Expires:</span>
                             {{ ticket.permitExpireDate | date:'MM/dd/yyyy' }}
@@ -199,7 +199,7 @@
                         <div class="ticket-info">
                           <p class="route-location">{{ formatAddress(ticket.address) }}</p>
                           <p class="contract-unit" *ngIf="ticket.contractUnitName">{{ ticket.contractUnitName }}</p>
-                          <p class="latest-phase" *ngIf="ticket.latestPhase?.name && isValidPhaseName(ticket.latestPhase?.name)"><strong>{{ ticket.latestPhase?.name }}</strong></p>
+                          <p class="latest-phase" *ngIf="getPhaseDisplayText(route, ticket)"><strong>{{ getPhaseDisplayText(route, ticket) }}</strong></p>
                           <p class="expiration-date" *ngIf="ticket.permitExpireDate">
                             <span class="expiration-label">Permit Expires:</span>
                             {{ ticket.permitExpireDate | date:'MM/dd/yyyy' }}
@@ -312,7 +312,7 @@
                         <div class="ticket-info">
                           <p class="route-location">{{ formatAddress(ticket.address) }}</p>
                           <p class="contract-unit" *ngIf="ticket.contractUnitName">{{ ticket.contractUnitName }}</p>
-                          <p class="latest-phase" *ngIf="ticket.latestPhase?.name && isValidPhaseName(ticket.latestPhase?.name)"><strong>{{ ticket.latestPhase?.name }}</strong></p>
+                          <p class="latest-phase" *ngIf="getPhaseDisplayText(route, ticket)"><strong>{{ getPhaseDisplayText(route, ticket) }}</strong></p>
                           <p class="expiration-date" *ngIf="ticket.permitExpireDate">
                             <span class="expiration-label">Permit Expires:</span>
                             {{ ticket.permitExpireDate | date:'MM/dd/yyyy' }}
