@@ -43,7 +43,7 @@ export class TitleBarComponent {
   hasUnreadNotifications: boolean = true;
   pageTitle: string = 'Dashboard';
   notificationCount: number = 11;
-  showFilterBar: boolean = false;
+  showFilterBar: boolean = true;
 
   // Filter properties
   textSearch: string = '';
