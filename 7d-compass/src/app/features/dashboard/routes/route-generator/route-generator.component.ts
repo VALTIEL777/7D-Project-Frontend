@@ -890,8 +890,6 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     this.isLoadingSpottingRoutes = true;
     this.http.get<RoutesResponse>(`${environment.apiUrl}/routes/spotting`).subscribe({
       next: (response) => {
-        console.log('🔍 SPOTTING ROUTES API Response:', response);
-
         // Map watchAndProtect from API to watchnProtect for component compatibility
         const mappedRoutes = (response.routes || []).map(route => ({
           ...route,
@@ -960,8 +958,6 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     this.isLoadingConcreteRoutes = true;
     this.http.get<RoutesResponse>(`${environment.apiUrl}/routes/concrete`).subscribe({
       next: (response) => {
-        console.log('🔍 CONCRETE ROUTES API Response:', response);
-
         // Map watchAndProtect from API to watchnProtect for component compatibility
         const mappedRoutes = (response.routes || []).map(route => ({
           ...route,
@@ -1061,8 +1057,6 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     this.isLoadingAsphaltRoutes = true;
     this.http.get<RoutesResponse>(`${environment.apiUrl}/routes/asphalt`).subscribe({
       next: (response) => {
-        console.log('🔍 ASPHALT ROUTES API Response:', response);
-
         // Map watchAndProtect from API to watchnProtect for component compatibility
         const mappedRoutes = (response.routes || []).map(route => ({
           ...route,
@@ -2601,101 +2595,6 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     // Combine all routes to create comprehensive map data
     const allRoutes = [...this.spottingRoutes, ...this.concreteRoutes, ...this.asphaltRoutes];
 
-    // Debug coordinate data
-    console.log('🔍 Route Generator - Debugging coordinate data:');
-    allRoutes.forEach((route, routeIndex) => {
-      console.log(`📍 Route ${routeIndex + 1} (${route.type}):`, {
-        routeId: route.routeId,
-        routeCode: route.routeCode,
-        ticketsCount: route.tickets?.length || 0,
-        encodedPolyline: route.encodedPolyline,
-        polylineLength: route.encodedPolyline?.length || 0
-      });
-
-      // Special focus on concrete routes
-      if (route.type === 'concrete') {
-        console.log(`🚨 CONCRETE ROUTE MAP DEBUG - ${route.routeCode}:`, {
-          routeInArray: route,
-          hasTickets: !!route.tickets,
-          ticketsLength: route.tickets?.length || 0,
-          hasPolyline: !!route.encodedPolyline,
-          polylineLength: route.encodedPolyline?.length || 0,
-          willBeInLeafletRoutes: true
-        });
-      }
-
-      route.tickets?.forEach((ticket, ticketIndex) => {
-        console.log(`  📍 Ticket ${ticketIndex + 1}:`, {
-          ticketId: ticket.ticketId,
-          ticketCode: ticket.ticketCode,
-          address: ticket.address,
-          queue: ticket.queue,
-          hasCoordinates: !!ticket.coordinates,
-          coordinates: ticket.coordinates,
-          coordinateKeys: ticket.coordinates ? Object.keys(ticket.coordinates) : [],
-          latType: ticket.coordinates?.latitude ? typeof ticket.coordinates.latitude : 'undefined',
-          lngType: ticket.coordinates?.longitude ? typeof ticket.coordinates.longitude : 'undefined',
-          latValue: ticket.coordinates?.latitude,
-          lngValue: ticket.coordinates?.longitude,
-          placeid: ticket.coordinates?.placeid
-        });
-      });
-
-      // Debug polyline decoding
-      if (route.encodedPolyline) {
-        try {
-          const decodedPolyline = polyline.decode(route.encodedPolyline);
-          console.log(`  🗺️ Decoded Polyline for ${route.routeCode}:`, {
-            pointCount: decodedPolyline.length,
-            firstPoint: decodedPolyline[0],
-            lastPoint: decodedPolyline[decodedPolyline.length - 1],
-            allPoints: decodedPolyline.map((point, index) => ({
-              index,
-              lat: point[0],
-              lng: point[1]
-            }))
-          });
-
-          // Compare ticket coordinates with polyline points
-          console.log(`  🔍 Comparing ticket coordinates with polyline points:`);
-          route.tickets?.forEach((ticket, ticketIndex) => {
-            if (ticket.coordinates?.latitude && ticket.coordinates?.longitude) {
-              const ticketLat = ticket.coordinates.latitude;
-              const ticketLng = ticket.coordinates.longitude;
-
-              // Find closest polyline point
-              let closestPoint = null;
-              let minDistance = Infinity;
-              let closestIndex = -1;
-
-              decodedPolyline.forEach((point, pointIndex) => {
-                const distance = Math.sqrt(
-                  Math.pow(point[0] - ticketLat, 2) +
-                  Math.pow(point[1] - ticketLng, 2)
-                );
-                if (distance < minDistance) {
-                  minDistance = distance;
-                  closestPoint = point;
-                  closestIndex = pointIndex;
-                }
-              });
-
-              console.log(`    🎯 Ticket ${ticketIndex + 1} (${ticket.ticketCode}):`, {
-                ticketCoords: { lat: ticketLat, lng: ticketLng },
-                closestPolylinePoint: closestPoint,
-                closestIndex: closestIndex,
-                distance: minDistance,
-                address: ticket.address,
-                queue: ticket.queue
-              });
-            }
-          });
-        } catch (error) {
-          console.error(`  ❌ Error decoding polyline for ${route.routeCode}:`, error);
-        }
-      }
-    });
-
     // Convert routes to Leaflet map format
     this.leafletRoutes = allRoutes.map(route => ({
       routeId: route.routeId,
@@ -2710,27 +2609,7 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
       }))
     }));
 
-    // Debug the final leafletRoutes array
-    console.log('🗺️ FINAL LEAFLET ROUTES ARRAY:', {
-      totalRoutes: this.leafletRoutes.length,
-      routeTypes: this.leafletRoutes.map(r => r.type),
-      concreteRoutes: this.leafletRoutes.filter(r => r.type === 'concrete'),
-      concreteRouteDetails: this.leafletRoutes.filter(r => r.type === 'concrete').map(r => ({
-        routeId: r.routeId,
-        routeCode: r.routeCode,
-        hasPolyline: !!r.encodedPolyline,
-        polylineLength: r.encodedPolyline?.length || 0,
-        ticketsCount: r.tickets?.length || 0,
-        tickets: r.tickets?.map(t => ({
-          ticketId: t.ticketId,
-          queue: t.queue,
-          hasCoordinates: !!t.coordinates
-        }))
-      }))
-    });
-
-    // Remove: if (this.visibleRoutes.size === 0) { ... add all ... }
-    // Instead, just update visible routes based on current settings
+    // Update visible routes based on current settings
     this.updateVisibleRoutes();
   }
 
