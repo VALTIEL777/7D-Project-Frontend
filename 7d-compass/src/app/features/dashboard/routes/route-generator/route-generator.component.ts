@@ -1,4 +1,5 @@
 import { Component, HostListener, OnInit, ViewChild, TemplateRef, ElementRef, ChangeDetectorRef } from '@angular/core';
+import { Router, RouterModule } from '@angular/router';
 import { DashboardLayoutComponent } from "../../../../shared/dashboard-layout/dashboard-layout.component";
 import { CardWithButtonComponent } from "../../../../shared/card-with-button/card-with-button.component";
 import { MatTableModule } from "@angular/material/table";
@@ -17,6 +18,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatTabsModule } from '@angular/material/tabs';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { LoadingSpinnerComponent } from '../../../../shared/loading-spinner/loading-spinner.component';
 import { BaseDashboardComponent } from '../../../../shared/base-dashboard.component';
 import { FilterService } from '../../../../core/services/filter.service';
@@ -237,7 +239,9 @@ interface ExpiredTicketsResponse {
     MatCheckboxModule,
     LoadingSpinnerComponent,
     LeafletMapComponent,
-    MatTabsModule
+    MatTabsModule,
+    RouterModule,
+    MatTooltipModule
   ],
   templateUrl: './route-generator.component.html',
   styleUrl: './route-generator.component.scss'
@@ -387,7 +391,8 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     private http: HttpClient,
     private dialog: MatDialog,
     private snackBar: MatSnackBar,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private router: Router
   ) {
     super(filterService);
     this.checkMobile();
@@ -3297,6 +3302,17 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
   onWatchnProtectChange(ticketId: number, event: any): void {
     const checked = event.checked;
     this.updateWatchnProtectStatus(ticketId, checked);
+  }
+
+  // Method to navigate to photo-evidence with ticket code filter
+  navigateToPhotoEvidence(ticketCode: string): void {
+    if (!ticketCode) {
+      return;
+    }
+    // Set the ticket code as the search filter
+    this.filterService.setTextSearch(ticketCode);
+    // Navigate to photo-evidence component
+    this.router.navigate(['/photo-evidence']);
   }
 
   // Helper method to get updated route data from API without triggering loading states

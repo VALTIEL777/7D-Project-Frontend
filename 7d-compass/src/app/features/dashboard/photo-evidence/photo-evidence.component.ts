@@ -387,6 +387,13 @@ export class PhotoEvidenceComponent extends BaseDashboardComponent implements On
     this.filteredData = [...this.allData];
 
     console.log('📊 Total tickets after filtering MOBILIZATION:', this.allData.length);
+
+    // Apply any existing filters after data is loaded
+    // This ensures filters set before navigation are applied when data loads
+    this.currentTextSearch = this.filterService.currentTextSearch;
+    this.currentDateRange = this.filterService.currentDateRange;
+    this.currentFilters = this.filterService.currentFilters;
+    this.applyFilters();
   }
 
   // Getter for filtered gallery data

@@ -107,6 +107,14 @@
                           </mat-checkbox>
                           <mat-spinner *ngIf="watchnProtectLoading.has(ticket.ticketId)" diameter="16" class="wp-loading"></mat-spinner>
                         </div>
+                        <button
+                          mat-icon-button
+                          color="primary"
+                          (click)="navigateToPhotoEvidence(ticket.ticketCode)"
+                          [disabled]="!ticket.ticketCode"
+                          matTooltip="View photos for this ticket">
+                          <mat-icon>photo_library</mat-icon>
+                        </button>
                         <span class="ticket-code">{{ ticket.ticketCode || 'No ticket code' }}</span>
                         <mat-divider></mat-divider>
                       </div>
@@ -212,6 +220,14 @@
                           </mat-checkbox>
                           <mat-spinner *ngIf="watchnProtectLoading.has(ticket.ticketId)" diameter="16" class="wp-loading"></mat-spinner>
                         </div>
+                        <button
+                          mat-icon-button
+                          color="primary"
+                          (click)="navigateToPhotoEvidence(ticket.ticketCode)"
+                          [disabled]="!ticket.ticketCode"
+                          matTooltip="View photos for this ticket">
+                          <mat-icon>photo_library</mat-icon>
+                        </button>
                         <span class="ticket-code">{{ ticket.ticketCode || 'No ticket code' }}</span>
                         <mat-divider></mat-divider>
                       </div>
@@ -317,6 +333,14 @@
                           </mat-checkbox>
                           <mat-spinner *ngIf="watchnProtectLoading.has(ticket.ticketId)" diameter="16" class="wp-loading"></mat-spinner>
                         </div>
+                        <button
+                          mat-icon-button
+                          color="primary"
+                          (click)="navigateToPhotoEvidence(ticket.ticketCode)"
+                          [disabled]="!ticket.ticketCode"
+                          matTooltip="View photos for this ticket">
+                          <mat-icon>photo_library</mat-icon>
+                        </button>
                         <span class="ticket-code">{{ ticket.ticketCode || 'No ticket code' }}</span>
                         <mat-divider></mat-divider>
                       </div>
@@ -473,6 +497,14 @@
                   </mat-checkbox>
                   <mat-spinner *ngIf="watchnProtectLoading.has(ticket.ticketid)" diameter="16" class="wp-loading"></mat-spinner>
                 </div>
+                <button
+                  mat-icon-button
+                  color="primary"
+                  (click)="navigateToPhotoEvidence(ticket.ticketcode)"
+                  [disabled]="!ticket.ticketcode"
+                  matTooltip="View photos for this ticket">
+                  <mat-icon>photo_library</mat-icon>
+                </button>
                 <span class="ticket-code">{{ ticket.ticketcode || 'No ticket code' }}</span>
                 <mat-divider></mat-divider>
               </div>
@@ -539,6 +571,14 @@
                   </mat-checkbox>
                   <mat-spinner *ngIf="watchnProtectLoading.has(ticket.ticketid)" diameter="16" class="wp-loading"></mat-spinner>
                 </div>
+                <button
+                  mat-icon-button
+                  color="primary"
+                  (click)="navigateToPhotoEvidence(ticket.ticketcode)"
+                  [disabled]="!ticket.ticketcode"
+                  matTooltip="View photos for this ticket">
+                  <mat-icon>photo_library</mat-icon>
+                </button>
                 <span class="ticket-code">{{ ticket.ticketcode || 'No ticket code' }}</span>
                 <mat-divider></mat-divider>
               </div>
@@ -606,6 +646,14 @@
                   </mat-checkbox>
                   <mat-spinner *ngIf="watchnProtectLoading.has(ticket.ticketid)" diameter="16" class="wp-loading"></mat-spinner>
                 </div>
+                <button
+                  mat-icon-button
+                  color="primary"
+                  (click)="navigateToPhotoEvidence(ticket.ticketcode)"
+                  [disabled]="!ticket.ticketcode"
+                  matTooltip="View photos for this ticket">
+                  <mat-icon>photo_library</mat-icon>
+                </button>
                 <span class="ticket-code">{{ ticket.ticketcode || 'No ticket code' }}</span>
                 <mat-divider></mat-divider>
               </div>
