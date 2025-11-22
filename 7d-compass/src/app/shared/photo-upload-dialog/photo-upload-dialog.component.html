@@ -1,11 +1,11 @@
 <h2 mat-dialog-title>Upload Photo Evidence</h2>
 
 <mat-dialog-content>
-  <button mat-raised-button color="primary" (click)="fileInput.click()">
+  <button mat-raised-button color="primary" (click)="triggerFileInput()">
     <mat-icon>camera_enhance</mat-icon>
     Take photo
   </button>
-  <input #fileInput type="file" accept="image/*" capture="environment" hidden multiple (change)="onFileSelected($event)" />
+  <input id="photoUploadFileInput" type="file" accept="image/*" capture="environment" hidden multiple (change)="onFileSelected($event)" />
 
   <div class="preview-container" *ngFor="let preview of previews; let i = index">
     <img [src]="preview" alt="Preview" class="preview-img" />

@@ -22,6 +22,15 @@ export class PhotoUploadDialogComponent {
     @Inject(MAT_DIALOG_DATA) public data: any
   ) {}
 
+  triggerFileInput(): void {
+    const fileInput = document.getElementById('photoUploadFileInput') as HTMLInputElement;
+    if (fileInput) {
+      fileInput.click();
+    } else {
+      console.warn('File input not found');
+    }
+  }
+
   onFileSelected(event: any): void {
     const files: FileList = event.target.files;
     this.selectedFiles = Array.from(files);
