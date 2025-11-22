@@ -2252,11 +2252,15 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
 
       await this.reoptimizeRoute(route.routeId);
 
-      // Force immediate map update
-      this.forceMapUpdate();
-
-      // Refresh the specific route data
+      // Refresh the specific route data FIRST
       this.refreshAllDataAndCache();
+
+      // Wait for the data to actually load before updating the map
+      // This ensures we have the new encodedPolyline before rendering
+      await this.waitForRoutesToLoad();
+
+      // THEN update the map with the new data
+      this.forceMapUpdate();
 
       this.snackBar.open(`Route ${route.routeCode} has been reoptimized successfully!`, 'Close', { duration: 5000 });
     } catch (error) {
@@ -2914,6 +2918,31 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
     this.updateLeafletMap(); // Update Leaflet map after refresh
 
     // Note: watchAndProtect is now included in route responses, no need for separate API calls
+  }
+
+  // Wait for route loading to complete
+  private async waitForRoutesToLoad(): Promise<void> {
+    const maxWaitTime = 10000; // Maximum wait time: 10 seconds
+    const checkInterval = 100; // Check every 100ms
+    const startTime = Date.now();
+
+    return new Promise((resolve) => {
+      const checkLoading = () => {
+        const allRoutesLoaded =
+          !this.isLoadingSpottingRoutes &&
+          !this.isLoadingConcreteRoutes &&
+          !this.isLoadingAsphaltRoutes;
+
+        const elapsed = Date.now() - startTime;
+
+        if (allRoutesLoaded || elapsed >= maxWaitTime) {
+          resolve();
+        } else {
+          setTimeout(checkLoading, checkInterval);
+        }
+      };
+      checkLoading();
+    });
   }
 
   // Remove route from local arrays immediately
