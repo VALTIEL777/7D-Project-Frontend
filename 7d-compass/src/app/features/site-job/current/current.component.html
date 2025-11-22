@@ -316,14 +316,14 @@
         <div class="photo-evidence-upload" style="margin: 16px 0;">
           <mat-card class="evidence-card">
             <div class="evidence-header">
-              <button mat-raised-button color="primary" class="upload-btn" (click)="fileInput.click()">
+              <button mat-raised-button color="primary" class="upload-btn" (click)="triggerFileInput(activity.id || i)">
                 <mat-icon>camera_enhance</mat-icon>
                 <span style="margin-left: 8px;">Take photo</span>
               </button>
               <span class="restriction">You can upload up to 5 photos.</span>
 
               <input
-                #fileInput
+                [id]="'fileInput_' + (activity.id || i)"
                 type="file"
                 accept="image/*"
                 capture="environment"
@@ -516,14 +516,14 @@
           <div class="photo-evidence-upload" style="margin: 16px 0;">
             <mat-card class="evidence-card">
               <div class="evidence-header">
-                <button mat-raised-button color="primary" class="upload-btn" (click)="optionalFileInput.click()">
+                <button mat-raised-button color="primary" class="upload-btn" (click)="triggerFileInput('optional_' + (activity.id || i))">
                   <mat-icon>camera_enhance</mat-icon>
                   <span style="margin-left: 8px;">Take photo</span>
                 </button>
                 <span class="restriction">You can upload up to 5 photos.</span>
 
                 <input
-                  #optionalFileInput
+                  [id]="'fileInput_optional_' + (activity.id || i)"
                   type="file"
                   accept="image/*"
                   capture="environment"

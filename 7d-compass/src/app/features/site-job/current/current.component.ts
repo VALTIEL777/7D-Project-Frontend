@@ -1610,6 +1610,17 @@ getSelectedFileNames(activity: any): string {
     : '';
 }
 
+// Method to trigger file input click for a specific activity
+triggerFileInput(activityId: string | number): void {
+  const inputId = `fileInput_${activityId}`;
+  const fileInput = document.getElementById(inputId) as HTMLInputElement;
+  if (fileInput) {
+    fileInput.click();
+  } else {
+    console.warn(`File input with ID ${inputId} not found`);
+  }
+}
+
 // Modificar onFileSelected para trabajar por activity
 onFileSelected(event: Event, activity: any) {
   const input = event.target as HTMLInputElement;
