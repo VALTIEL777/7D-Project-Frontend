@@ -1168,3 +1168,12 @@ app-leaflet-map {
     }
   }
 }
+
+// Hide month abbreviation labels in datepicker calendar without displacing dates
+::ng-deep .mat-calendar-body-label {
+  visibility: hidden !important;
+  height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  line-height: 0 !important;
+}

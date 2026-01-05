@@ -1,4 +1,5 @@
 import { Component, HostListener, OnInit, ViewChild, TemplateRef, ElementRef, ChangeDetectorRef } from '@angular/core';
+import { MatDatepicker } from '@angular/material/datepicker';
 import { Router, RouterModule } from '@angular/router';
 import { DashboardLayoutComponent } from "../../../../shared/dashboard-layout/dashboard-layout.component";
 import { CardWithButtonComponent } from "../../../../shared/card-with-button/card-with-button.component";
@@ -19,6 +20,8 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatDatepickerModule } from '@angular/material/datepicker';
+import { MatNativeDateModule } from '@angular/material/core';
 import { LoadingSpinnerComponent } from '../../../../shared/loading-spinner/loading-spinner.component';
 import { BaseDashboardComponent } from '../../../../shared/base-dashboard.component';
 import { FilterService } from '../../../../core/services/filter.service';
@@ -242,7 +245,9 @@ interface ExpiredTicketsResponse {
     LeafletMapComponent,
     MatTabsModule,
     RouterModule,
-    MatTooltipModule
+    MatTooltipModule,
+    MatDatepickerModule,
+    MatNativeDateModule
   ],
   templateUrl: './route-generator.component.html',
   styleUrl: './route-generator.component.scss'
@@ -315,6 +320,8 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
   // Expired tickets
   expiredTickets: TicketWithIssue[] = [];
   isLoadingExpiredTickets = false;
+  editingExpireDateTicketId: number | null = null;
+  selectedExpireDate: Date | null = null;
 
   // Diagnostics (Unassigned) tickets
   diagnosticsTickets: DiagnosticsTicket[] = [];
@@ -363,6 +370,8 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
 
   @ViewChild('generateRouteDialog') generateRouteDialog!: TemplateRef<any>;
   @ViewChild('leafletMap') leafletMapComponent!: LeafletMapComponent;
+  @ViewChild('expireDatePicker') expireDatePicker!: MatDatepicker<Date>;
+  @ViewChild('expireDatePickerField', { read: ElementRef }) expireDatePickerField!: ElementRef;
 
   // Add per-route and spot ready filters
   routeTicketFilters: { [routeId: number]: string } = {};
@@ -2830,6 +2839,106 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
         this.expiredTickets = [];
       }
     });
+  }
+
+  // Update expire date for a ticket
+  updateExpireDate(ticket: TicketWithIssue) {
+    if (!this.selectedExpireDate || !ticket.ticketId) {
+      return;
+    }
+
+    const expireDateStr = this.selectedExpireDate.toISOString().split('T')[0]; // Format as YYYY-MM-DD
+    const updateData = {
+      expireDate: expireDateStr,
+      updatedBy: this.getCurrentUserId()
+    };
+
+    this.http.patch(`${environment.apiUrl}/permits/ticket/${ticket.ticketId}/expireDate`, updateData).subscribe({
+      next: () => {
+        // Update the ticket in the local array
+        const ticketIndex = this.expiredTickets.findIndex(t => t.ticketId === ticket.ticketId);
+        if (ticketIndex !== -1) {
+          this.expiredTickets[ticketIndex] = {
+            ...this.expiredTickets[ticketIndex],
+            expireDate: expireDateStr
+          };
+        }
+
+        // Reset editing state
+        this.editingExpireDateTicketId = null;
+        this.selectedExpireDate = null;
+        this.currentEditingTicket = null;
+
+        this.snackBar.open('Expiration date updated successfully', 'Close', { duration: 3000 });
+
+        // Reload expired tickets to ensure data is in sync
+        this.loadExpiredTickets();
+      },
+      error: (error) => {
+        console.error('Error updating expire date:', error);
+        this.snackBar.open('Error updating expiration date', 'Close', { duration: 3000 });
+      }
+    });
+  }
+
+  // Store current ticket being edited
+  currentEditingTicket: TicketWithIssue | null = null;
+
+  // Open date picker for a ticket
+  openDatePicker(ticket: TicketWithIssue, event?: MouseEvent) {
+    this.currentEditingTicket = ticket;
+    this.editingExpireDateTicketId = ticket.ticketId;
+    // Set initial date from ticket's expireDate if available
+    if (ticket.expireDate) {
+      this.selectedExpireDate = new Date(ticket.expireDate);
+    } else if (ticket.expiredate) {
+      this.selectedExpireDate = new Date(ticket.expiredate);
+    } else {
+      this.selectedExpireDate = new Date(); // Default to today
+    }
+
+    // Position the form field near the button if event is provided
+    if (event && event.target && this.expireDatePickerField) {
+      const buttonElement = (event.target as HTMLElement).closest('button') as HTMLElement;
+      if (buttonElement) {
+        const buttonRect = buttonElement.getBoundingClientRect();
+        const formFieldElement = this.expireDatePickerField.nativeElement as HTMLElement;
+        if (formFieldElement) {
+          formFieldElement.style.position = 'fixed';
+          formFieldElement.style.top = `${buttonRect.top - 10}px`;
+          formFieldElement.style.left = `${buttonRect.left}px`;
+          formFieldElement.style.zIndex = '1000';
+        }
+      }
+    }
+
+    // Open the date picker
+    setTimeout(() => {
+      if (this.expireDatePicker) {
+        this.expireDatePicker.open();
+      }
+    }, 0);
+  }
+
+  // Handle date selection - auto-save when date is picked
+  onDateSelected(event: any) {
+    if (event.value && this.currentEditingTicket) {
+      this.selectedExpireDate = event.value;
+      // Auto-save the date
+      this.updateExpireDate(this.currentEditingTicket);
+    }
+  }
+
+  // Check if date picker is open for a specific ticket
+  isDatePickerOpen(ticketId: number): boolean {
+    return this.editingExpireDateTicketId === ticketId;
+  }
+
+  // Helper method to get current user ID
+  private getCurrentUserId(): number {
+    // TODO: Implement this when auth service is available
+    // return this.authService.getCurrentUser()?.id || 1;
+    return 2; // Default for now (matching the example in the request)
   }
 
   // Async load for Diagnostics tickets

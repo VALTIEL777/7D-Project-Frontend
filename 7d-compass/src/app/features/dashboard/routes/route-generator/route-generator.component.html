@@ -770,9 +770,23 @@
                   </p>
                   <p class="incident-name" *ngIf="getCrewComments(ticket)">{{ getCrewComments(ticket) }}</p>
                 </div>
+                <!-- Calendar Button -->
+                <button
+                  mat-icon-button
+                  matTooltip="Update expiration date"
+                  (click)="openDatePicker(ticket, $event)"
+                  style="color: #1976d2; margin-right: 8px;">
+                  <mat-icon>calendar_today</mat-icon>
+                </button>
                 <span class="ticket-code">{{ ticket.ticketCode || 'No ticket code' }}</span>
                 <mat-divider></mat-divider>
               </div>
+              <!-- Single Date Picker (positioned relative to clicked button) -->
+              <mat-form-field #expireDatePickerField appearance="outline" style="position: fixed; top: -9999px; left: -9999px; width: 1px; height: 1px; opacity: 0; pointer-events: none;">
+                <input matInput [matDatepicker]="expireDatePicker" [(ngModel)]="selectedExpireDate" (dateChange)="onDateSelected($event)">
+                <mat-datepicker-toggle matSuffix [for]="expireDatePicker"></mat-datepicker-toggle>
+                <mat-datepicker #expireDatePicker [xPosition]="'start'" [yPosition]="'above'"></mat-datepicker>
+              </mat-form-field>
               <div *ngIf="isLoadingExpiredTickets" class="loading-state">
                 <p>Loading expired tickets...</p>
               </div>
