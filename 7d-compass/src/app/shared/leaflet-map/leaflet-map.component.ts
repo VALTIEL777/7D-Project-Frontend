@@ -526,24 +526,69 @@ export class LeafletMapComponent implements OnInit, OnDestroy, AfterViewInit, On
     if (ticket.coordinates) {
       console.log(`🔍 Ticket ${ticket.ticketId} coordinates:`, ticket.coordinates);
 
-      // Try different possible coordinate property names
-      let lat = ticket.coordinates.latitude || ticket.coordinates.lat || ticket.coordinates.latitud;
-      let lng = ticket.coordinates.longitude || ticket.coordinates.lng || ticket.coordinates.longitud;
+      let lat: number | null = null;
+      let lng: number | null = null;
 
-      // Convert to numbers if they're strings
-      if (typeof lat === 'string') lat = parseFloat(lat);
-      if (typeof lng === 'string') lng = parseFloat(lng);
+      // Handle array format [lat, lng] or [lng, lat]
+      if (Array.isArray(ticket.coordinates)) {
+        if (ticket.coordinates.length >= 2) {
+          const coord1 = typeof ticket.coordinates[0] === 'string' ? parseFloat(ticket.coordinates[0]) : ticket.coordinates[0];
+          const coord2 = typeof ticket.coordinates[1] === 'string' ? parseFloat(ticket.coordinates[1]) : ticket.coordinates[1];
+          
+          // Validate which is lat and which is lng based on valid ranges
+          // Latitude must be between -90 and 90, longitude between -180 and 180
+          if (Math.abs(coord1) <= 90 && Math.abs(coord2) <= 180) {
+            // coord1 is likely latitude, coord2 is longitude
+            lat = coord1;
+            lng = coord2;
+          } else if (Math.abs(coord2) <= 90 && Math.abs(coord1) <= 180) {
+            // coord2 is likely latitude, coord1 is longitude (GeoJSON format)
+            lat = coord2;
+            lng = coord1;
+          } else {
+            // Default assumption: first is lat, second is lng
+            lat = coord1;
+            lng = coord2;
+          }
+        }
+      } else if (typeof ticket.coordinates === 'object') {
+        // Try different possible coordinate property names
+        lat = ticket.coordinates.latitude || ticket.coordinates.lat || ticket.coordinates.latitud;
+        lng = ticket.coordinates.longitude || ticket.coordinates.lng || ticket.coordinates.longitud;
+
+        // Convert to numbers if they're strings
+        if (typeof lat === 'string') lat = parseFloat(lat);
+        if (typeof lng === 'string') lng = parseFloat(lng);
+      }
 
       console.log(`🔍 Extracted lat/lng:`, { lat, lng, latType: typeof lat, lngType: typeof lng });
 
-      if (lat && lng && !isNaN(lat) && !isNaN(lng)) {
-        // Ensure full precision for coordinates
-        const preciseLat = parseFloat(lat.toFixed(8));
-        const preciseLng = parseFloat(lng.toFixed(8));
+      // Validate coordinates are within valid ranges
+      if (lat != null && lng != null && !isNaN(lat) && !isNaN(lng)) {
+        // Validate latitude is between -90 and 90
+        if (lat < -90 || lat > 90) {
+          console.warn(`⚠️ Invalid latitude ${lat} for ticket ${ticket.ticketId}, swapping coordinates`);
+          // Swap coordinates if lat is out of range
+          [lat, lng] = [lng, lat];
+        }
+        
+        // Validate longitude is between -180 and 180
+        if (lng < -180 || lng > 180) {
+          console.warn(`⚠️ Invalid longitude ${lng} for ticket ${ticket.ticketId}`);
+        }
 
-        markerLocation = [preciseLat, preciseLng];
-        console.log(`✅ Using API coordinates for ticket ${ticket.ticketId}: [${preciseLat}, ${preciseLng}]`);
-        return this.createMarkerWithLocation(ticket, route, index, color, markerLocation, 'API');
+        // Final validation
+        if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+          // Ensure full precision for coordinates
+          const preciseLat = parseFloat(lat.toFixed(8));
+          const preciseLng = parseFloat(lng.toFixed(8));
+
+          markerLocation = [preciseLat, preciseLng];
+          console.log(`✅ Using API coordinates for ticket ${ticket.ticketId}: [${preciseLat}, ${preciseLng}]`);
+          return this.createMarkerWithLocation(ticket, route, index, color, markerLocation, 'API');
+        } else {
+          console.warn(`⚠️ Coordinates out of valid range for ticket ${ticket.ticketId}: [${lat}, ${lng}]`);
+        }
       } else {
         console.warn(`⚠️ Invalid API coordinates for ticket ${ticket.ticketId}:`, { lat, lng });
       }
@@ -552,24 +597,47 @@ export class LeafletMapComponent implements OnInit, OnDestroy, AfterViewInit, On
     }
 
     // ONLY use polyline coordinates if NO API coordinates are available
-    if (route.encodedPolyline) {
+    // Note: Polyline typically starts and ends at depot, so we need to map tickets to route points
+    if (route.encodedPolyline && markerLocation === null) {
       try {
         const coordinates = this.decodePolyline(route.encodedPolyline);
         if (coordinates.length > 0) {
-          if (index === 0) {
-            markerLocation = coordinates[0];
-            console.log(`🔄 Using first polyline coordinate for ticket ${ticket.ticketId}:`, markerLocation);
-            return this.createMarkerWithLocation(ticket, route, index, color, markerLocation, 'POLYLINE_FIRST');
-          } else if (index === route.tickets.length - 1) {
-            markerLocation = coordinates[coordinates.length - 1];
-            console.log(`🔄 Using last polyline coordinate for ticket ${ticket.ticketId}:`, markerLocation);
-            return this.createMarkerWithLocation(ticket, route, index, color, markerLocation, 'POLYLINE_LAST');
-          } else {
-            const progress = index / (route.tickets.length - 1);
-            const coordIndex = Math.floor(progress * (coordinates.length - 1));
+          // Use queue position (0-based) to map ticket to polyline point
+          // The polyline includes depot at start/end, so we map tickets to intermediate points
+          // For better accuracy, we use the ticket's queue value if available, otherwise use index
+          const ticketQueue = ticket.queue != null ? ticket.queue : index;
+          const totalTickets = route.tickets.length;
+          
+          // Map queue position to polyline index
+          // Skip first point (depot start) and map tickets across the route
+          // If only one ticket, use a point near the start but not the depot
+          if (totalTickets === 1) {
+            // Single ticket: use a point after the depot (skip first point)
+            const coordIndex = Math.min(1, coordinates.length - 1);
             markerLocation = coordinates[coordIndex];
-            console.log(`🔄 Using polyline coordinate at index ${coordIndex} for ticket ${ticket.ticketId}:`, markerLocation);
-            return this.createMarkerWithLocation(ticket, route, index, color, markerLocation, 'POLYLINE_PROGRESS');
+            console.log(`🔄 Using polyline coordinate at index ${coordIndex} for single ticket ${ticket.ticketId}:`, markerLocation);
+          } else {
+            // Multiple tickets: distribute them along the route, excluding depot points
+            // Map queue 0 to first route point (skip depot), queue N-1 to last route point (before depot return)
+            const progress = ticketQueue / (totalTickets - 1);
+            // Skip first point (depot) and map to route points (1 to length-2)
+            const routeStartIndex = 1;
+            const routeEndIndex = coordinates.length - 2;
+            const routeLength = routeEndIndex - routeStartIndex + 1;
+            
+            if (routeLength > 0) {
+              const coordIndex = routeStartIndex + Math.floor(progress * routeLength);
+              markerLocation = coordinates[Math.min(coordIndex, coordinates.length - 1)];
+              console.log(`🔄 Using polyline coordinate at index ${coordIndex} (queue ${ticketQueue}) for ticket ${ticket.ticketId}:`, markerLocation);
+            } else {
+              // Fallback if route is too short
+              markerLocation = coordinates[Math.min(1, coordinates.length - 1)];
+              console.log(`🔄 Using fallback polyline coordinate for ticket ${ticket.ticketId}:`, markerLocation);
+            }
+          }
+          
+          if (markerLocation) {
+            return this.createMarkerWithLocation(ticket, route, index, color, markerLocation, 'POLYLINE_INTERPOLATED');
           }
         }
       } catch (error) {
