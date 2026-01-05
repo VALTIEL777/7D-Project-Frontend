@@ -87,9 +87,17 @@
                           <p class="route-location">{{ formatAddress(ticket.address) }}</p>
                           <p class="contract-unit" *ngIf="ticket.contractUnitName">{{ ticket.contractUnitName }}</p>
                           <p class="latest-phase" *ngIf="getPhaseDisplayText(route, ticket)"><strong>{{ getPhaseDisplayText(route, ticket) }}</strong></p>
-                          <p class="expiration-date" *ngIf="ticket.permitExpireDate">
+                          <p class="expiration-date" *ngIf="ticket.permitExpireDate"
+                             [class.expired]="isTicketExpiredOrExpiringSoon(ticket).isExpired"
+                             [class.expiring-soon]="isTicketExpiredOrExpiringSoon(ticket).isExpiringSoon">
                             <span class="expiration-label">Permit Expires:</span>
-                            {{ ticket.permitExpireDate | date:'MM/dd/yyyy' }}
+                            {{ formatExpirationDate(ticket) }}
+                            <span *ngIf="isTicketExpiredOrExpiringSoon(ticket).daysLeft >= 0" class="days-left">
+                              ({{ isTicketExpiredOrExpiringSoon(ticket).daysLeft }} days left)
+                            </span>
+                            <span *ngIf="isTicketExpiredOrExpiringSoon(ticket).isExpired" class="expired-text">
+                              (EXPIRED)
+                            </span>
                           </p>
                           <div class="missing-photos" *ngIf="ticket.missingPhotoPhases?.length">
                             <span class="missing-photos-label">Missing photos:</span>
@@ -200,9 +208,17 @@
                           <p class="route-location">{{ formatAddress(ticket.address) }}</p>
                           <p class="contract-unit" *ngIf="ticket.contractUnitName">{{ ticket.contractUnitName }}</p>
                           <p class="latest-phase" *ngIf="getPhaseDisplayText(route, ticket)"><strong>{{ getPhaseDisplayText(route, ticket) }}</strong></p>
-                          <p class="expiration-date" *ngIf="ticket.permitExpireDate">
+                          <p class="expiration-date" *ngIf="ticket.permitExpireDate"
+                             [class.expired]="isTicketExpiredOrExpiringSoon(ticket).isExpired"
+                             [class.expiring-soon]="isTicketExpiredOrExpiringSoon(ticket).isExpiringSoon">
                             <span class="expiration-label">Permit Expires:</span>
-                            {{ ticket.permitExpireDate | date:'MM/dd/yyyy' }}
+                            {{ formatExpirationDate(ticket) }}
+                            <span *ngIf="isTicketExpiredOrExpiringSoon(ticket).daysLeft >= 0" class="days-left">
+                              ({{ isTicketExpiredOrExpiringSoon(ticket).daysLeft }} days left)
+                            </span>
+                            <span *ngIf="isTicketExpiredOrExpiringSoon(ticket).isExpired" class="expired-text">
+                              (EXPIRED)
+                            </span>
                           </p>
                           <div class="missing-photos" *ngIf="ticket.missingPhotoPhases?.length">
                             <span class="missing-photos-label">Missing photos:</span>
@@ -313,9 +329,17 @@
                           <p class="route-location">{{ formatAddress(ticket.address) }}</p>
                           <p class="contract-unit" *ngIf="ticket.contractUnitName">{{ ticket.contractUnitName }}</p>
                           <p class="latest-phase" *ngIf="getPhaseDisplayText(route, ticket)"><strong>{{ getPhaseDisplayText(route, ticket) }}</strong></p>
-                          <p class="expiration-date" *ngIf="ticket.permitExpireDate">
+                          <p class="expiration-date" *ngIf="ticket.permitExpireDate"
+                             [class.expired]="isTicketExpiredOrExpiringSoon(ticket).isExpired"
+                             [class.expiring-soon]="isTicketExpiredOrExpiringSoon(ticket).isExpiringSoon">
                             <span class="expiration-label">Permit Expires:</span>
-                            {{ ticket.permitExpireDate | date:'MM/dd/yyyy' }}
+                            {{ formatExpirationDate(ticket) }}
+                            <span *ngIf="isTicketExpiredOrExpiringSoon(ticket).daysLeft >= 0" class="days-left">
+                              ({{ isTicketExpiredOrExpiringSoon(ticket).daysLeft }} days left)
+                            </span>
+                            <span *ngIf="isTicketExpiredOrExpiringSoon(ticket).isExpired" class="expired-text">
+                              (EXPIRED)
+                            </span>
                           </p>
                           <div class="missing-photos" *ngIf="ticket.missingPhotoPhases?.length">
                             <span class="missing-photos-label">Missing photos:</span>

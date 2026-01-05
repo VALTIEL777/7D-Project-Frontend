@@ -126,6 +126,7 @@ interface TicketWithIssue {
   daysOutstanding: number | null;
   comment7d: string;
   expireDate: string; // Add expireDate field from API
+  expiredate?: string; // Alternative field name from API (lowercase)
   quantity: number;
   createdAt: string;
   updatedAt: string;
@@ -2556,6 +2557,11 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
       return this.formatDate(ticket.expireDate);
     }
 
+    // Check if ticket has permitExpireDate field (for route tickets)
+    if (ticket.permitExpireDate) {
+      return this.formatDate(ticket.permitExpireDate);
+    }
+
     // Check if ticket has an explicit expiration date field
     if (ticket.expirationDate) {
       return this.formatDate(ticket.expirationDate);
@@ -2611,6 +2617,8 @@ export class RouteGeneratorComponent extends BaseDashboardComponent implements O
       expirationDate = new Date(ticket.expiredate);
     } else if (ticket.expireDate) {
       expirationDate = new Date(ticket.expireDate);
+    } else if (ticket.permitExpireDate) {
+      expirationDate = new Date(ticket.permitExpireDate);
     } else if (ticket.expirationDate) {
       expirationDate = new Date(ticket.expirationDate);
     } else if (ticket.expiryDate) {
